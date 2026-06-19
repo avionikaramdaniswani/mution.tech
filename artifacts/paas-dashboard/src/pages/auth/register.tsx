@@ -61,7 +61,7 @@ export default function Register() {
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight">Create an account</CardTitle>
           <CardDescription>
-            Join NexusPaaS to deploy your applications
+            Join Mution to deploy your applications
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -21,8 +21,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
+  const publicRoutes = ["/", "/login", "/register"];
+
   useEffect(() => {
-    if (!isLoading && !user && location !== "/login" && location !== "/register") {
+    if (!isLoading && !user && !publicRoutes.includes(location)) {
       setLocation("/login");
     }
   }, [user, isLoading, location, setLocation]);

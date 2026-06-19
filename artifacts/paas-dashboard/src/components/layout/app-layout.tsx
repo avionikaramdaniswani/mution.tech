@@ -46,7 +46,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2 font-bold tracking-tight text-primary">
                 <TerminalSquare className="h-6 w-6" />
-                <span>NexusPaaS</span>
+                <span>Mution</span>
               </div>
               {health?.status === "ok" ? (
                 <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full" title="Platform Operational">
