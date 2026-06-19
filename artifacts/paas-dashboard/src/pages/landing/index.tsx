@@ -491,76 +491,44 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-16" style={{ borderColor:"rgba(255,255,255,0.07)" }}>
+      <footer className="border-t py-10" style={{ borderColor:"rgba(255,255,255,0.07)" }}>
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          {/* Top grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-10 pb-12" style={{ borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
-
-            {/* Brand col */}
-            <div className="col-span-2 sm:col-span-1 flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+            {/* Brand + founders */}
+            <div className="flex flex-col items-center sm:items-start gap-2">
               <div className="flex items-center gap-2.5">
                 <img src="/mution-logo.png" alt="Mution" className="h-6 w-auto" />
                 <span style={{ fontFamily:"'Space Grotesk', sans-serif" }} className="text-sm font-extrabold text-primary">Mution</span>
               </div>
-              <p className="text-xs leading-relaxed" style={{ color:"rgba(255,255,255,0.35)", maxWidth:"180px" }}>
-                Platform infrastruktur modern untuk developer Indonesia. Deploy cepat, skala mudah.
+              <p className="text-xs" style={{ color:"rgba(255,255,255,0.3)" }}>
+                Pioo (Co-founder & CEO) · Tiara (Co-founder)
               </p>
-              {/* Founders */}
-              <div className="flex flex-col gap-1.5 mt-1">
-                <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color:"rgba(255,255,255,0.2)" }}>Tim Pendiri</p>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-medium" style={{ color:"rgba(255,255,255,0.45)" }}>Pio — Co-founder & CEO</span>
-                  <span className="text-xs font-medium" style={{ color:"rgba(255,255,255,0.45)" }}>Tiara — Co-founder</span>
-                </div>
+            </div>
+
+            {/* Email */}
+            <a
+              href="mailto:support@mution.tech"
+              className="text-xs transition-colors"
+              style={{ color:"rgba(255,255,255,0.4)" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "rgb(249,115,22)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
+            >
+              support@mution.tech
+            </a>
+
+            {/* Copyright + links */}
+            <div className="flex flex-col items-center sm:items-end gap-1.5">
+              <p className="text-xs" style={{ color:"rgba(255,255,255,0.2)" }}>
+                © {new Date().getFullYear()} Mution. Dibuat di Indonesia.
+              </p>
+              <div className="flex gap-4 text-xs" style={{ color:"rgba(255,255,255,0.25)" }}>
+                {["Privasi","Ketentuan","Status"].map(l => (
+                  <a key={l} href="#" className="transition-colors"
+                    onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
+                    onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.25)")}
+                  >{l}</a>
+                ))}
               </div>
-            </div>
-
-            {/* Produk */}
-            <div className="flex flex-col gap-3">
-              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color:"rgba(255,255,255,0.2)" }}>Produk</p>
-              {["Fitur","Harga","Runtime","Cara Kerja","Changelog"].map(l => (
-                <a key={l} href="#" className="text-sm transition-colors" style={{ color:"rgba(255,255,255,0.45)" }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.45)")}
-                >{l}</a>
-              ))}
-            </div>
-
-            {/* Developer */}
-            <div className="flex flex-col gap-3">
-              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color:"rgba(255,255,255,0.2)" }}>Developer</p>
-              {["Dokumentasi","API Reference","CLI","Status","Community"].map(l => (
-                <a key={l} href="#" className="text-sm transition-colors" style={{ color:"rgba(255,255,255,0.45)" }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.45)")}
-                >{l}</a>
-              ))}
-            </div>
-
-            {/* Perusahaan */}
-            <div className="flex flex-col gap-3">
-              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color:"rgba(255,255,255,0.2)" }}>Perusahaan</p>
-              {["Tentang Kami","Blog","Karir","Kontak","Press Kit"].map(l => (
-                <a key={l} href="#" className="text-sm transition-colors" style={{ color:"rgba(255,255,255,0.45)" }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.45)")}
-                >{l}</a>
-              ))}
-            </div>
-          </div>
-
-          {/* Bottom bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8">
-            <p className="text-xs" style={{ color:"rgba(255,255,255,0.25)" }}>
-              © {new Date().getFullYear()} Mution. Semua hak dilindungi. Dibuat dengan ❤️ di Indonesia.
-            </p>
-            <div className="flex gap-5 text-xs" style={{ color:"rgba(255,255,255,0.25)" }}>
-              {["Kebijakan Privasi","Syarat & Ketentuan","Keamanan"].map(l => (
-                <a key={l} href="#" className="transition-colors"
-                  onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.25)")}
-                >{l}</a>
-              ))}
             </div>
           </div>
         </div>
