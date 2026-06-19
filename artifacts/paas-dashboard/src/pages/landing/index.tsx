@@ -212,7 +212,7 @@ export default function Landing() {
           >
             {/* Background image */}
             <div className="absolute inset-0" style={{
-              backgroundImage: "url('/hero-bg.png')",
+              backgroundImage: "url('/hero-bg.png?v=2')",
               backgroundSize: "cover",
               backgroundPosition: "center top",
             }} />
