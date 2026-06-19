@@ -293,27 +293,9 @@ export default function Landing() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* ── Trusted By — landscape strip + logo grid ── */}
-      <section className="px-3 sm:px-6 lg:px-8 pb-0">
-        <div className="mx-auto max-w-6xl">
-          <div className="rounded-b-2xl overflow-hidden" style={{ border:"1px solid rgba(255,255,255,0.07)", borderTop:"none" }}>
-            {/* Decorative landscape strip */}
-            <div className="relative h-28 overflow-hidden" style={{ background:"linear-gradient(to bottom, #0e0e1a, #0a1020)" }}>
-              {/* Mountain silhouettes */}
-              <svg viewBox="0 0 1200 112" preserveAspectRatio="none" className="absolute inset-0 w-full h-full" style={{ opacity:0.35 }}>
-                <path d="M0,112 L0,70 L80,30 L160,60 L260,10 L380,55 L480,20 L580,50 L680,15 L780,45 L880,5 L980,40 L1080,20 L1200,50 L1200,112 Z" fill="#1a1a2e" />
-                <path d="M0,112 L0,85 L100,55 L200,75 L320,40 L430,70 L540,45 L650,65 L760,38 L860,60 L960,35 L1060,55 L1200,42 L1200,112 Z" fill="#12122a" />
-              </svg>
-              {/* Subtle horizon glow */}
-              <div className="absolute bottom-0 left-0 right-0 h-12" style={{ background:"linear-gradient(to top, rgba(249,115,22,0.06), transparent)" }} />
-            </div>
-
-            {/* Logo grid */}
-            <div style={{ background:"rgba(10,10,18,0.95)", borderTop:"1px solid rgba(255,255,255,0.06)" }}>
+            {/* Trusted By — inside the same card */}
+            <div className="relative z-10 mt-0" style={{ borderTop:"1px solid rgba(255,255,255,0.06)", background:"rgba(6,6,14,0.85)" }}>
               <div className="px-6 py-4 border-b" style={{ borderColor:"rgba(255,255,255,0.05)" }}>
                 <p className="text-center text-xs font-medium" style={{ color:"rgba(255,255,255,0.25)", letterSpacing:"0.12em", textTransform:"uppercase" }}>Dipercaya oleh tim dari berbagai industri</p>
               </div>
