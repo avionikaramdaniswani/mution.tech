@@ -295,7 +295,7 @@ export default function Landing() {
             </div>
 
             {/* Trusted By — inside the same card */}
-            <div className="relative z-10 mt-0" style={{ borderTop:"1px solid rgba(255,255,255,0.06)", background:"rgba(6,6,14,0.85)" }}>
+            <div className="relative z-10 mt-0" style={{ borderTop:"1px solid rgba(255,255,255,0.06)" }}>
               <div className="px-6 py-4 border-b" style={{ borderColor:"rgba(255,255,255,0.05)" }}>
                 <p className="text-center text-xs font-medium" style={{ color:"rgba(255,255,255,0.25)", letterSpacing:"0.12em", textTransform:"uppercase" }}>Dipercaya oleh tim dari berbagai industri</p>
               </div>
