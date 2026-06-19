@@ -13,7 +13,7 @@ import {
   Database,
   ChevronRight,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const features = [
   {
@@ -85,15 +85,98 @@ const stats = [
   { value: "24/7", label: "Dukungan teknis" },
 ];
 
+const pipelineSteps = [
+  { id: "hero", label: "Mulai" },
+  { id: "runtime", label: "Runtime" },
+  { id: "fitur", label: "Fitur" },
+  { id: "harga", label: "Harga" },
+  { id: "cta", label: "Deploy" },
+];
+
+function PipelineTrack({ scrollProgress }: { scrollProgress: number }) {
+  return (
+    <div className="fixed left-0 top-0 bottom-0 z-40 hidden lg:block pointer-events-none select-none" style={{ width: "80px" }}>
+      {/* Centered container vertically */}
+      <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 flex flex-col items-center" style={{ height: "60vh" }}>
+        {/* Track background line */}
+        <div className="absolute" style={{ left: "32px", top: 0, bottom: 0, width: "1px", background: "rgba(255,255,255,0.08)" }} />
+
+        {/* Track fill */}
+        <div
+          className="absolute origin-top transition-all duration-100 ease-out"
+          style={{
+            left: "32px",
+            top: 0,
+            width: "1px",
+            height: `${scrollProgress * 100}%`,
+            background: "rgba(249,115,22,0.6)"
+          }}
+        />
+
+        {/* Step dots + labels */}
+        {pipelineSteps.map((step, i) => {
+          const pos = i / (pipelineSteps.length - 1);
+          const active = scrollProgress >= pos - 0.05;
+          return (
+            <div key={step.id} className="absolute" style={{ top: `${pos * 100}%`, left: "32px", transform: "translate(-50%, -50%)" }}>
+              {/* Dot */}
+              <div
+                className={`w-2 h-2 rounded-full border transition-all duration-300 ${
+                  active
+                    ? "bg-primary border-primary shadow-[0_0_8px_2px_rgba(249,115,22,0.5)]"
+                    : "bg-background border-border/40"
+                }`}
+              />
+              {/* Label to the right */}
+              <span
+                className={`absolute top-1/2 -translate-y-1/2 text-[9px] font-medium whitespace-nowrap transition-all duration-300 ${
+                  active ? "text-primary/70" : "text-muted-foreground/30"
+                }`}
+                style={{ left: "14px" }}
+              >
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+
+        {/* Moving orb */}
+        <div
+          className="absolute transition-all duration-100 ease-out"
+          style={{ top: `${scrollProgress * 100}%`, left: "32px", transform: "translate(-50%, -50%)" }}
+        >
+          <div className="relative w-4 h-4 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+            <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_14px_5px_rgba(249,115,22,0.55)]" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Landing() {
   const { user } = useAuth();
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
+
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? scrollTop / docHeight : 0;
+      setScrollProgress(Math.min(1, Math.max(0, progress)));
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground dark">
+      <PipelineTrack scrollProgress={scrollProgress} />
+
       {/* Navbar */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -128,7 +211,7 @@ export default function Landing() {
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden py-24 sm:py-36">
+      <section id="hero" className="relative overflow-hidden py-24 sm:py-36">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/2 top-0 -translate-x-1/2 h-[700px] w-[700px] rounded-full bg-primary/8 blur-[120px]" />
           <div className="absolute right-0 top-1/3 h-[300px] w-[300px] rounded-full bg-orange-600/5 blur-[80px]" />
@@ -263,7 +346,7 @@ export default function Landing() {
       </section>
 
       {/* CTA */}
-      <section className="py-28">
+      <section id="cta" className="py-28">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
           <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/10 to-primary/5 px-8 py-16">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
