@@ -1,0 +1,119 @@
+Kamu adalah senior full-stack developer. Bantu saya membangun sebuah 
+platform PaaS (Platform as a Service) berbasis web, mirip seperti 
+Railway atau Render, yang akan dihosting di atas VM sendiri menggunakan 
+Coolify sebagai container orchestrator.
+
+---
+
+## STACK TEKNOLOGI
+
+- Framework: Next.js 14 dengan App Router dan TypeScript
+- Database: Supabase (PostgreSQL) untuk data platform (users, projects, deployments)
+- ORM: Prisma untuk schema dan query database
+- Styling: Tailwind CSS + shadcn/ui
+- Auth: Supabase Auth (email/password + OAuth GitHub)
+- Backend ke VM: Next.js API routes → Coolify REST API
+- Deployment target: Coolify di VM 4 core / 24 GB RAM
+
+---
+
+## FITUR YANG DIBANGUN
+
+### 1. Autentikasi
+- Register dan login via Supabase Auth
+- OAuth GitHub
+- Protected routes via middleware Next.js
+- Role: user dan admin
+
+### 2. Dashboard user
+- Overview semua project milik user
+- Status deployment (running, stopped, failed, building)
+- Quick action: deploy baru, stop, restart
+
+### 3. Manajemen project
+- Buat project baru dari GitHub repo URL atau ZIP
+- Set environment variables per project (disimpan terenkripsi)
+- Pilih runtime: Node.js, Python, PHP, Static
+- Set custom domain atau subdomain otomatis
+
+### 4. Deployment pipeline
+- Trigger deploy manual atau via GitHub webhook
+- Build log realtime menggunakan SSE (Server-Sent Events)
+- Status: queued → building → deploying → running / failed
+- Rollback ke deployment sebelumnya
+
+### 5. Database per project (opsional)
+- Provision PostgreSQL container baru di VM per project
+- Tampilkan connection string ke user
+
+### 6. Panel admin
+- Monitor semua user dan project
+- Lihat resource VM secara keseluruhan
+- Bisa stop/delete project user manapun
+
+---
+
+## SCHEMA DATABASE (PRISMA + SUPABASE)
+
+Tabel yang dibutuhkan:
+- users: id, email, name, role, created_at
+- projects: id, user_id, name, repo_url, runtime, status, domain, env_vars, created_at
+- deployments: id, project_id, status, commit_hash, build_log, deployed_at, duration_ms
+- databases: id, project_id, type, connection_string, size_mb, created_at
+- activity_logs: id, user_id, project_id, action, metadata, created_at
+
+---
+
+## STRUKTUR FOLDER
+
+app/
+├── (auth)/login/ dan register/
+├── (dashboard)/
+│   ├── layout.tsx          ← sidebar + navbar
+│   ├── page.tsx            ← overview
+│   ├── projects/
+│   │   ├── page.tsx        ← list project
+│   │   ├── new/page.tsx    ← form buat project
+│   │   └── [id]/           ← detail, deployments, settings
+│   └── admin/page.tsx
+├── api/
+│   ├── projects/
+│   ├── deployments/
+│   ├── webhooks/github/
+│   └── admin/
+└── middleware.ts
+
+---
+
+## INTEGRASI COOLIFY
+
+- Komunikasi ke VM via Coolify REST API (http://VM_IP:8000/api/v1)
+- Buat service layer di lib/coolify.ts yang wraps semua Coolify API call
+- Flow: user trigger → Next.js API route → Coolify API → container di VM
+
+---
+
+## ENVIRONMENT VARIABLES
+
+DATABASE_URL=             ← dari Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+COOLIFY_API_URL=http://IP_VM:8000
+COOLIFY_API_KEY=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+ENCRYPTION_KEY=           ← untuk enkripsi env vars user
+
+---
+
+## INSTRUKSI
+
+Kerjakan step by step mulai dari:
+1. Setup project Next.js + TypeScript + Tailwind + shadcn/ui
+2. Konfigurasi Supabase + Prisma (schema + migration)
+3. Auth flow (register, login, middleware, protected routes)
+4. Dashboard dan manajemen project
+5. Integrasi Coolify API
+
+Mulai dari langkah 1 sekarang. Jelaskan setiap keputusan teknis.

@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: PaaS Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: projects
+    description: Project management
+  - name: deployments
+    description: Deployment management
+  - name: databases
+    description: Database management
+  - name: activity
+    description: Activity logs
+  - name: admin
+    description: Admin operations
+  - name: stats
+    description: Dashboard statistics
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +37,592 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # Auth
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # Projects
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List user's projects
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /projects/{id}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdate"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /projects/{id}/env:
+    get:
+      operationId: getProjectEnv
+      tags: [projects]
+      summary: Get project environment variables
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Env vars list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EnvVar"
+
+    post:
+      operationId: setProjectEnv
+      tags: [projects]
+      summary: Set/update project environment variables
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnvVarInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvVar"
+
+  /projects/{id}/env/{envId}:
+    delete:
+      operationId: deleteProjectEnv
+      tags: [projects]
+      summary: Delete an env variable
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: envId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # Deployments
+  /projects/{id}/deployments:
+    get:
+      operationId: listDeployments
+      tags: [deployments]
+      summary: List deployments for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deployments list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Deployment"
+
+    post:
+      operationId: triggerDeployment
+      tags: [deployments]
+      summary: Trigger a new deployment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeploymentTriggerInput"
+      responses:
+        "201":
+          description: Deployment queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deployment"
+
+  /projects/{id}/deployments/{deploymentId}:
+    get:
+      operationId: getDeployment
+      tags: [deployments]
+      summary: Get deployment details and logs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: deploymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deployment details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deployment"
+
+  /projects/{id}/deployments/{deploymentId}/rollback:
+    post:
+      operationId: rollbackDeployment
+      tags: [deployments]
+      summary: Rollback to this deployment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: deploymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Rollback deployment queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deployment"
+
+  # Project actions
+  /projects/{id}/stop:
+    post:
+      operationId: stopProject
+      tags: [projects]
+      summary: Stop a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /projects/{id}/restart:
+    post:
+      operationId: restartProject
+      tags: [projects]
+      summary: Restart a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Restarted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  # Databases
+  /projects/{id}/database:
+    get:
+      operationId: getProjectDatabase
+      tags: [databases]
+      summary: Get project database info
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Database info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDatabase"
+        "404":
+          description: No database
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      operationId: provisionDatabase
+      tags: [databases]
+      summary: Provision a database for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Database provisioned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDatabase"
+
+    delete:
+      operationId: deleteDatabase
+      tags: [databases]
+      summary: Delete the project database
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  # Activity logs
+  /activity:
+    get:
+      operationId: listActivity
+      tags: [activity]
+      summary: List activity logs for current user
+      responses:
+        "200":
+          description: Activity logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityLog"
+
+  # Stats / Dashboard
+  /stats/dashboard:
+    get:
+      operationId: getDashboardStats
+      tags: [stats]
+      summary: Get dashboard overview stats
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /stats/deployments:
+    get:
+      operationId: getDeploymentStats
+      tags: [stats]
+      summary: Get deployment stats (counts by status, last 30 days activity)
+      responses:
+        "200":
+          description: Deployment stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeploymentStats"
+
+  # Admin
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: All users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserWithStats"
+
+  /admin/projects:
+    get:
+      operationId: adminListProjects
+      tags: [admin]
+      summary: List all projects (admin only)
+      responses:
+        "200":
+          description: All projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectWithOwner"
+
+  /admin/projects/{id}/stop:
+    post:
+      operationId: adminStopProject
+      tags: [admin]
+      summary: Stop any user's project (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /admin/projects/{id}:
+    delete:
+      operationId: adminDeleteProject
+      tags: [admin]
+      summary: Delete any user's project (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get platform-wide stats (admin only)
+      responses:
+        "200":
+          description: Admin stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +633,326 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    # Auth schemas
+    RegisterInput:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        name:
+          type: string
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      required: [id, email, name, role, createdAt]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+        createdAt:
+          type: string
+
+    # Project schemas
+    Project:
+      type: object
+      required: [id, userId, name, runtime, status, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+        repoUrl:
+          type: ["string", "null"]
+        runtime:
+          type: string
+          enum: [nodejs, python, php, static]
+        status:
+          type: string
+          enum: [idle, running, stopped, building, deploying, failed]
+        domain:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        lastDeployedAt:
+          type: ["string", "null"]
+
+    ProjectInput:
+      type: object
+      required: [name, runtime]
+      properties:
+        name:
+          type: string
+        repoUrl:
+          type: string
+        runtime:
+          type: string
+          enum: [nodejs, python, php, static]
+        domain:
+          type: string
+
+    ProjectUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        repoUrl:
+          type: string
+        runtime:
+          type: string
+          enum: [nodejs, python, php, static]
+        domain:
+          type: string
+
+    ProjectWithOwner:
+      type: object
+      required: [id, userId, name, runtime, status, createdAt, ownerEmail, ownerName]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+        repoUrl:
+          type: ["string", "null"]
+        runtime:
+          type: string
+        status:
+          type: string
+        domain:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        lastDeployedAt:
+          type: ["string", "null"]
+        ownerEmail:
+          type: string
+        ownerName:
+          type: string
+
+    EnvVar:
+      type: object
+      required: [id, projectId, key, createdAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        key:
+          type: string
+        value:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    EnvVarInput:
+      type: object
+      required: [key, value]
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+
+    # Deployment schemas
+    Deployment:
+      type: object
+      required: [id, projectId, status, createdAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        status:
+          type: string
+          enum: [queued, building, deploying, running, failed, stopped, rolled_back]
+        commitHash:
+          type: ["string", "null"]
+        commitMessage:
+          type: ["string", "null"]
+        buildLog:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        deployedAt:
+          type: ["string", "null"]
+        durationMs:
+          type: ["integer", "null"]
+
+    DeploymentTriggerInput:
+      type: object
+      properties:
+        commitHash:
+          type: string
+        commitMessage:
+          type: string
+
+    # Database schemas
+    ProjectDatabase:
+      type: object
+      required: [id, projectId, type, sizeMb, createdAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        type:
+          type: string
+          enum: [postgresql]
+        connectionString:
+          type: ["string", "null"]
+        sizeMb:
+          type: integer
+        status:
+          type: string
+          enum: [provisioning, ready, error]
+        createdAt:
+          type: string
+
+    # Activity logs
+    ActivityLog:
+      type: object
+      required: [id, userId, action, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        projectId:
+          type: ["integer", "null"]
+        projectName:
+          type: ["string", "null"]
+        action:
+          type: string
+        metadata:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    # Stats schemas
+    DashboardStats:
+      type: object
+      required: [totalProjects, runningProjects, failedProjects, totalDeployments, successfulDeployments, recentDeployments]
+      properties:
+        totalProjects:
+          type: integer
+        runningProjects:
+          type: integer
+        failedProjects:
+          type: integer
+        totalDeployments:
+          type: integer
+        successfulDeployments:
+          type: integer
+        recentDeployments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Deployment"
+
+    DeploymentStats:
+      type: object
+      required: [byStatus, last30Days]
+      properties:
+        byStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusCount"
+        last30Days:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyCount"
+
+    StatusCount:
+      type: object
+      required: [status, count]
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+
+    DailyCount:
+      type: object
+      required: [date, count]
+      properties:
+        date:
+          type: string
+        count:
+          type: integer
+
+    AdminStats:
+      type: object
+      required: [totalUsers, totalProjects, totalDeployments, runningProjects, failedProjects]
+      properties:
+        totalUsers:
+          type: integer
+        totalProjects:
+          type: integer
+        totalDeployments:
+          type: integer
+        runningProjects:
+          type: integer
+        failedProjects:
+          type: integer
+
+    UserWithStats:
+      type: object
+      required: [id, email, name, role, createdAt, projectCount]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        createdAt:
+          type: string
+        projectCount:
+          type: integer
+        lastActive:
+          type: ["string", "null"]

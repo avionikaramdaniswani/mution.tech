@@ -1,0 +1,1 @@
+- [PaaS Platform Stack Decision](paas-stack.md) — uses Express+Vite (not Next.js), Drizzle (not Prisma), Replit DB (not Supabase), session cookies (not JWT)

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "PaaS Dashboard"
+version = "1.0.0"
+id = "artifacts/paas-dashboard"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21183
+
+[services.development]
+run = "pnpm --filter @workspace/paas-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/paas-dashboard", "run", "build" ]
+publicDir = "artifacts/paas-dashboard/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21183"
+BASE_PATH = "/"
