@@ -44,9 +44,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <Sidebar variant="inset" className="border-r border-border/50">
           <SidebarHeader className="flex h-16 items-center px-4">
             <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-2 font-bold tracking-tight text-primary">
-                <img src="/mution-logo.png" alt="Mution" className="h-6 w-auto" />
-                <span>Mution</span>
+              <div className="flex items-center gap-2.5">
+                <img src="/mution-logo.png" alt="Mution" className="h-8 w-auto" />
+                <span style={{ fontFamily: "'Space Grotesk', sans-serif" }} className="text-lg font-extrabold tracking-tight text-primary">Mution</span>
               </div>
               {health?.status === "ok" ? (
                 <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full" title="Platform Operational">

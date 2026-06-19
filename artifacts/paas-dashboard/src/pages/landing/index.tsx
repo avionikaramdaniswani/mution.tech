@@ -6,45 +6,45 @@ import {
   Shield,
   GitBranch,
   Globe,
-  TerminalSquare,
   ArrowRight,
   CheckCircle2,
   Box,
   Activity,
   Database,
+  ChevronRight,
 } from "lucide-react";
 import { useEffect } from "react";
 
 const features = [
   {
     icon: Zap,
-    title: "Deploy in Seconds",
-    desc: "Push your code and it's live. Zero downtime deployments with automatic rollbacks.",
+    title: "Deploy dalam Hitungan Detik",
+    desc: "Push kode kamu dan langsung live. Deploy tanpa downtime dengan rollback otomatis.",
   },
   {
     icon: Shield,
-    title: "Secure by Default",
-    desc: "SSL, isolated containers, and encrypted environment variables out of the box.",
+    title: "Aman sejak Awal",
+    desc: "SSL, container terisolasi, dan enkripsi environment variable sudah tersedia secara default.",
   },
   {
     icon: GitBranch,
-    title: "Git-based Workflow",
-    desc: "Connect your repo and deploy on every push. Full build logs included.",
+    title: "Alur Kerja Berbasis Git",
+    desc: "Hubungkan repo kamu dan deploy setiap kali push. Log build lengkap tersedia.",
   },
   {
     icon: Globe,
-    title: "Custom Domains",
-    desc: "Map your own domain to any project. HTTPS provisioned automatically.",
+    title: "Domain Kustom",
+    desc: "Pasang domain sendiri ke proyek manapun. HTTPS otomatis diaktifkan.",
   },
   {
     icon: Database,
-    title: "Managed Databases",
-    desc: "Provision a PostgreSQL database per project with one click.",
+    title: "Database Terkelola",
+    desc: "Provisioning database PostgreSQL per proyek hanya dengan satu klik.",
   },
   {
     icon: Activity,
-    title: "Real-time Monitoring",
-    desc: "Live deployment logs, status, and activity history for every project.",
+    title: "Monitoring Real-time",
+    desc: "Log deployment live, status, dan riwayat aktivitas untuk setiap proyek.",
   },
 ];
 
@@ -53,29 +53,36 @@ const runtimes = ["Node.js", "Python", "PHP", "Static"];
 const plans = [
   {
     name: "Starter",
-    price: "Free",
-    desc: "For personal projects and experiments.",
-    features: ["3 projects", "1 GB RAM per container", "Shared CPU", "Community support"],
-    cta: "Get started",
+    price: "Gratis",
+    desc: "Untuk proyek pribadi dan eksperimen.",
+    features: ["3 proyek", "1 GB RAM per container", "CPU Bersama", "Dukungan komunitas"],
+    cta: "Mulai sekarang",
     highlight: false,
   },
   {
     name: "Pro",
-    price: "$12",
-    per: "/mo",
-    desc: "For teams shipping production apps.",
-    features: ["Unlimited projects", "4 GB RAM per container", "Dedicated CPU", "Priority support", "Custom domains", "Managed databases"],
-    cta: "Start free trial",
+    price: "Rp 189rb",
+    per: "/bln",
+    desc: "Untuk tim yang men-deploy aplikasi produksi.",
+    features: ["Proyek tak terbatas", "4 GB RAM per container", "CPU Dedicated", "Dukungan prioritas", "Domain kustom", "Database terkelola"],
+    cta: "Coba gratis 14 hari",
     highlight: true,
   },
   {
     name: "Enterprise",
-    price: "Custom",
-    desc: "For organizations that need more control.",
-    features: ["Everything in Pro", "SLA guarantee", "On-premise option", "Dedicated account manager", "Audit logs", "SSO / SAML"],
-    cta: "Contact us",
+    price: "Kustom",
+    desc: "Untuk organisasi yang butuh kendali penuh.",
+    features: ["Semua fitur Pro", "Jaminan SLA", "Opsi on-premise", "Account manager khusus", "Audit log", "SSO / SAML"],
+    cta: "Hubungi kami",
     highlight: false,
   },
+];
+
+const stats = [
+  { value: "99.9%", label: "Uptime SLA" },
+  { value: "< 30 detik", label: "Rata-rata deploy" },
+  { value: "10.000+", label: "Proyek aktif" },
+  { value: "24/7", label: "Dukungan teknis" },
 ];
 
 export default function Landing() {
@@ -91,27 +98,27 @@ export default function Landing() {
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-2 text-lg font-bold text-primary">
-              <img src="/mution-logo.png" alt="Mution" className="h-7 w-auto" />
-              <span>Mution</span>
+            <div className="flex items-center gap-2.5">
+              <img src="/mution-logo.png" alt="Mution" className="h-9 w-auto" />
+              <span style={{ fontFamily: "'Space Grotesk', sans-serif" }} className="text-xl font-extrabold text-primary tracking-tight">Mution</span>
             </div>
             <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-              <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
-              <a href="#runtimes" className="hover:text-foreground transition-colors">Runtimes</a>
+              <a href="#fitur" className="hover:text-foreground transition-colors">Fitur</a>
+              <a href="#harga" className="hover:text-foreground transition-colors">Harga</a>
+              <a href="#runtime" className="hover:text-foreground transition-colors">Runtime</a>
             </nav>
             <div className="flex items-center gap-3">
               {user ? (
                 <Link href="/dashboard">
-                  <Button size="sm">Go to Dashboard <ArrowRight className="ml-1.5 h-4 w-4" /></Button>
+                  <Button size="sm">Buka Dashboard <ArrowRight className="ml-1.5 h-4 w-4" /></Button>
                 </Link>
               ) : (
                 <>
                   <Link href="/login">
-                    <Button variant="ghost" size="sm">Sign in</Button>
+                    <Button variant="ghost" size="sm">Masuk</Button>
                   </Link>
                   <Link href="/register">
-                    <Button size="sm">Get started free</Button>
+                    <Button size="sm">Daftar Gratis</Button>
                   </Link>
                 </>
               )}
@@ -121,43 +128,55 @@ export default function Landing() {
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden py-24 sm:py-32">
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="h-[600px] w-[600px] rounded-full bg-primary/5 blur-3xl" />
+      <section className="relative overflow-hidden py-24 sm:py-36">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute left-1/2 top-0 -translate-x-1/2 h-[700px] w-[700px] rounded-full bg-primary/8 blur-[120px]" />
+          <div className="absolute right-0 top-1/3 h-[300px] w-[300px] rounded-full bg-orange-600/5 blur-[80px]" />
         </div>
-        <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary font-medium mb-8">
-            <Zap className="h-3.5 w-3.5" />
-            Ship faster with Mution
+        <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/60 px-3.5 py-1.5 text-xs text-muted-foreground font-medium mb-10 backdrop-blur-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Platform sudah aktif · 99.9% uptime
+            <ChevronRight className="h-3 w-3" />
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground leading-tight">
-            Deploy your apps.<br />
-            <span className="text-primary">No DevOps needed.</span>
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.08]">
+            Infrastruktur yang<br />
+            <span className="text-primary">siap dalam menit.</span>
           </h1>
-          <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Mution is a Platform as a Service that lets you deploy, scale, and manage your applications in minutes — without worrying about servers, Docker, or infrastructure.
+          <p className="mt-7 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Mution membantu tim developer men-deploy, mengelola, dan men-scale aplikasi tanpa perlu mengurus server, Docker, atau konfigurasi infrastruktur yang rumit.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/register">
-              <Button size="lg" className="text-base px-8 gap-2">
-                Start for free <ArrowRight className="h-4 w-4" />
+              <Button size="lg" className="text-base px-8 gap-2 h-12 font-semibold">
+                Mulai Gratis <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
             <Link href="/login">
-              <Button size="lg" variant="outline" className="text-base px-8">
-                Sign in to dashboard
+              <Button size="lg" variant="outline" className="text-base px-8 h-12 border-border/60">
+                Masuk ke Dashboard
               </Button>
             </Link>
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">No credit card required · Free tier available</p>
+          <p className="mt-5 text-xs text-muted-foreground/70">Tidak perlu kartu kredit · Tier gratis tersedia</p>
+
+          {/* Stats strip */}
+          <div className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-px bg-border/40 rounded-2xl overflow-hidden border border-border/40">
+            {stats.map((s) => (
+              <div key={s.label} className="bg-card/60 backdrop-blur-sm px-6 py-5 text-center">
+                <div className="text-2xl font-extrabold text-foreground">{s.value}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{s.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Runtimes */}
-      <section id="runtimes" className="border-y border-border/50 bg-card/30 py-10">
+      <section id="runtime" className="border-y border-border/50 bg-card/20 py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-6">Supported Runtimes</p>
-          <div className="flex flex-wrap items-center justify-center gap-6">
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-6">Runtime yang Didukung</p>
+          <div className="flex flex-wrap items-center justify-center gap-4">
             {runtimes.map((r) => (
               <div key={r} className="flex items-center gap-2 rounded-lg border border-border/60 bg-card px-5 py-2.5 text-sm font-medium text-foreground">
                 <Box className="h-4 w-4 text-primary" />
@@ -169,18 +188,18 @@ export default function Landing() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-24">
+      <section id="fitur" className="py-28">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Everything you need to ship</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Semua yang kamu butuhkan untuk ship</h2>
             <p className="mt-4 text-muted-foreground text-lg max-w-xl mx-auto">
-              From deployment to monitoring — Mution has you covered end-to-end.
+              Dari deployment hingga monitoring — Mution siap mendukung kamu end-to-end.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {features.map((f) => (
-              <div key={f.title} className="rounded-xl border border-border/60 bg-card p-6 hover:border-primary/40 transition-colors">
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <div key={f.title} className="group rounded-xl border border-border/60 bg-card p-6 hover:border-primary/40 hover:bg-card/80 transition-all">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
                   <f.icon className="h-5 w-5 text-primary" />
                 </div>
                 <h3 className="text-base font-semibold mb-2">{f.title}</h3>
@@ -192,12 +211,12 @@ export default function Landing() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="border-t border-border/50 bg-card/20 py-24">
+      <section id="harga" className="border-t border-border/50 bg-card/20 py-28">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Simple, transparent pricing</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Harga yang jelas, tanpa biaya tersembunyi</h2>
             <p className="mt-4 text-muted-foreground text-lg max-w-xl mx-auto">
-              Start free, scale when you're ready.
+              Mulai gratis, scale saat kamu siap.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
@@ -212,7 +231,7 @@ export default function Landing() {
               >
                 {plan.highlight && (
                   <div className="mb-3 inline-block rounded-full bg-primary/20 px-3 py-1 text-xs font-semibold text-primary">
-                    Most Popular
+                    Paling Populer
                   </div>
                 )}
                 <h3 className="text-xl font-bold">{plan.name}</h3>
@@ -244,22 +263,23 @@ export default function Landing() {
       </section>
 
       {/* CTA */}
-      <section className="py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center">
-          <div className="rounded-2xl border border-primary/20 bg-primary/5 px-8 py-16">
+      <section className="py-28">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
+          <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/10 to-primary/5 px-8 py-16">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Ready to deploy your first app?
+              Siap deploy aplikasi pertamamu?
             </h2>
             <p className="mt-4 text-muted-foreground text-lg max-w-xl mx-auto">
-              Join developers already hosting on Mution. Set up in under 5 minutes.
+              Bergabung dengan ribuan developer yang sudah hosting di Mution. Siap dalam kurang dari 5 menit.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/register">
-                <Button size="lg" className="text-base px-10 gap-2">
-                  Get started for free <ArrowRight className="h-4 w-4" />
+                <Button size="lg" className="text-base px-10 gap-2 h-12 font-semibold">
+                  Mulai Gratis Sekarang <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </div>
+            <p className="mt-4 text-xs text-muted-foreground/70">Tidak perlu kartu kredit</p>
           </div>
         </div>
       </section>
@@ -267,14 +287,14 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t border-border/50 py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm font-bold text-primary">
-            <img src="/mution-logo.png" alt="Mution" className="h-5 w-auto" />
-            <span>Mution</span>
+          <div className="flex items-center gap-2.5">
+            <img src="/mution-logo.png" alt="Mution" className="h-6 w-auto" />
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif" }} className="text-sm font-extrabold text-primary">Mution</span>
           </div>
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Mution. All rights reserved.</p>
+          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Mution. Semua hak dilindungi.</p>
           <div className="flex gap-4 text-xs text-muted-foreground">
-            <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-            <a href="#" className="hover:text-foreground transition-colors">Terms</a>
+            <a href="#" className="hover:text-foreground transition-colors">Privasi</a>
+            <a href="#" className="hover:text-foreground transition-colors">Ketentuan</a>
             <a href="#" className="hover:text-foreground transition-colors">Status</a>
           </div>
         </div>
