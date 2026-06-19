@@ -25,25 +25,25 @@ const pipelineSteps = [
   {
     icon: GitCommit,
     label: "Push kode",
-    desc: "Hubungkan repository Git kamu. Setiap push otomatis memicu build.",
+    desc: "Hubungkan repo Git kamu. Setiap push otomatis memicu proses build.",
     tag: "git push origin main",
   },
   {
     icon: Cpu,
     label: "Build otomatis",
-    desc: "Mution mendeteksi runtime, menginstall dependencies, dan membangun image container.",
+    desc: "Runtime terdeteksi, dependencies diinstall, container image siap.",
     tag: "Build sukses · 12s",
   },
   {
     icon: Globe2,
     label: "Deploy & live",
-    desc: "Aplikasi langsung live dengan SSL aktif, domain siap, tanpa konfigurasi manual.",
+    desc: "Aplikasi langsung live — SSL aktif, domain siap, tanpa konfigurasi manual.",
     tag: "● Live · app.mution.id",
   },
   {
     icon: BarChart3,
     label: "Monitor & scale",
-    desc: "Pantau log, metrik, dan performa secara real-time. Scale resource kapan saja.",
+    desc: "Pantau log dan metrik real-time. Scale resource kapan saja.",
     tag: "99.9% uptime · 0ms downtime",
   },
 ];
@@ -92,123 +92,73 @@ const stats = [
   { value: "24/7", label: "Dukungan teknis" },
 ];
 
-function PipelineSection() {
+export default function Landing() {
+  const { user } = useAuth();
+  const [scrollProgress, setScrollProgress] = useState(0);
   const [visibleSteps, setVisibleSteps] = useState<Set<number>>(new Set());
-  const refs = useRef<(HTMLDivElement | null)[]>([]);
+  const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
+    document.documentElement.classList.add("dark");
+
+    // Scroll tracker
+    const onScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    // IntersectionObserver for pipeline steps
     const observers: IntersectionObserver[] = [];
-    refs.current.forEach((el, i) => {
+    stepRefs.current.forEach((el, i) => {
       if (!el) return;
       const obs = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            setVisibleSteps((prev) => new Set([...prev, i]));
-          }
-        },
-        { threshold: 0.3 }
+        ([entry]) => { if (entry.isIntersecting) setVisibleSteps(prev => new Set([...prev, i])); },
+        { threshold: 0.25 }
       );
       obs.observe(el);
       observers.push(obs);
     });
-    return () => observers.forEach((o) => o.disconnect());
-  }, []);
 
-  return (
-    <section className="py-28 relative">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-20">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Deploy semudah empat langkah</h2>
-          <p className="mt-4 text-muted-foreground text-lg max-w-lg mx-auto">
-            Dari kode lokal ke production — dalam hitungan detik.
-          </p>
-        </div>
-
-        <div className="relative">
-          {/* Vertical track line */}
-          <div className="absolute left-6 top-3 bottom-3 w-px bg-border/40 hidden sm:block" />
-
-          <div className="space-y-2">
-            {pipelineSteps.map((step, i) => {
-              const visible = visibleSteps.has(i);
-              const Icon = step.icon;
-              const isLast = i === pipelineSteps.length - 1;
-              return (
-                <div
-                  key={i}
-                  ref={(el) => { refs.current[i] = el; }}
-                  className={`relative flex gap-6 sm:gap-8 items-start transition-all duration-500 ${
-                    visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                  }`}
-                  style={{ transitionDelay: `${i * 60}ms` }}
-                >
-                  {/* Track node */}
-                  <div className="relative z-10 hidden sm:flex flex-col items-center flex-shrink-0" style={{ width: "48px" }}>
-                    <div
-                      className={`w-3 h-3 rounded-full border-2 mt-4 transition-all duration-500 ${
-                        visible
-                          ? "bg-primary border-primary shadow-[0_0_10px_3px_rgba(249,115,22,0.45)]"
-                          : "bg-background border-border/40"
-                      }`}
-                    />
-                    {!isLast && (
-                      <div
-                        className={`w-px flex-1 mt-1 transition-all duration-700 ${
-                          visible ? "bg-primary/40" : "bg-border/20"
-                        }`}
-                        style={{ minHeight: "60px" }}
-                      />
-                    )}
-                  </div>
-
-                  {/* Card */}
-                  <div
-                    className={`flex-1 mb-6 rounded-xl border p-5 transition-all duration-500 ${
-                      visible
-                        ? "border-border/60 bg-card/70"
-                        : "border-border/20 bg-card/30"
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-500 ${
-                        visible ? "bg-primary/15" : "bg-muted/20"
-                      }`}>
-                        <Icon className={`h-4 w-4 transition-colors duration-500 ${visible ? "text-primary" : "text-muted-foreground"}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <h3 className="text-sm font-semibold">{step.label}</h3>
-                          <span className={`inline-block rounded-md px-2 py-0.5 font-mono text-[10px] transition-all duration-500 ${
-                            visible
-                              ? "bg-primary/10 text-primary/80 border border-primary/20"
-                              : "bg-muted/30 text-muted-foreground border border-border/20"
-                          }`}>
-                            {step.tag}
-                          </span>
-                        </div>
-                        <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export default function Landing() {
-  const { user } = useAuth();
-
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      observers.forEach(o => o.disconnect());
+    };
   }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground dark">
+
+      {/* ── Fixed scroll track: pure line + orb, no container ── */}
+      <div
+        className="fixed hidden lg:block pointer-events-none z-30"
+        style={{ left: "28px", top: "64px", bottom: 0, width: "1px", background: "rgba(255,255,255,0.05)" }}
+      >
+        {/* Fill */}
+        <div
+          style={{
+            position: "absolute", left: 0, top: 0, width: "1px",
+            height: `${scrollProgress * 100}%`,
+            background: "linear-gradient(to bottom, rgba(249,115,22,0.7), rgba(249,115,22,0.3))",
+          }}
+        />
+        {/* Orb */}
+        <div
+          style={{
+            position: "absolute", left: "-5px",
+            top: `${scrollProgress * 100}%`,
+            transform: "translateY(-50%)",
+          }}
+        >
+          <div style={{
+            width: "11px", height: "11px", borderRadius: "50%",
+            background: "rgb(249,115,22)",
+            boxShadow: "0 0 10px 3px rgba(249,115,22,0.5)",
+          }} />
+        </div>
+      </div>
+
       {/* Navbar */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -230,12 +180,8 @@ export default function Landing() {
                 </Link>
               ) : (
                 <>
-                  <Link href="/login">
-                    <Button variant="ghost" size="sm">Masuk</Button>
-                  </Link>
-                  <Link href="/register">
-                    <Button size="sm">Daftar Gratis</Button>
-                  </Link>
+                  <Link href="/login"><Button variant="ghost" size="sm">Masuk</Button></Link>
+                  <Link href="/register"><Button size="sm">Daftar Gratis</Button></Link>
                 </>
               )}
             </div>
@@ -275,8 +221,6 @@ export default function Landing() {
             </Link>
           </div>
           <p className="mt-5 text-xs text-muted-foreground/70">Tidak perlu kartu kredit · Tier gratis tersedia</p>
-
-          {/* Stats strip */}
           <div className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-px bg-border/40 rounded-2xl overflow-hidden border border-border/40">
             {stats.map((s) => (
               <div key={s.label} className="bg-card/60 backdrop-blur-sm px-6 py-5 text-center">
@@ -288,9 +232,75 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pipeline / How it works */}
-      <div id="cara-kerja" className="border-t border-border/50">
-        <PipelineSection />
+      {/* ── Pipeline "Cara Kerja" — inline layout, no section box ── */}
+      <div id="cara-kerja" className="border-t border-border/40 py-24">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-14">Cara Kerja</p>
+
+          {/* Steps — track runs as left column */}
+          <div className="relative">
+            {/* The track line that spans all steps */}
+            <div
+              className="absolute hidden sm:block"
+              style={{ left: "15px", top: "10px", bottom: "10px", width: "1px", background: "rgba(255,255,255,0.07)" }}
+            />
+
+            {pipelineSteps.map((step, i) => {
+              const visible = visibleSteps.has(i);
+              const isLast = i === pipelineSteps.length - 1;
+              const Icon = step.icon;
+              return (
+                <div
+                  key={i}
+                  ref={(el) => { stepRefs.current[i] = el; }}
+                  className={`relative flex gap-8 items-start transition-all duration-600 ${
+                    visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+                  }`}
+                  style={{ transitionDelay: `${i * 80}ms`, marginBottom: isLast ? 0 : "2.5rem" }}
+                >
+                  {/* Track node */}
+                  <div className="hidden sm:flex flex-col items-center flex-shrink-0 pt-1" style={{ width: "30px" }}>
+                    <div
+                      className="relative z-10 flex items-center justify-center rounded-full transition-all duration-500"
+                      style={{
+                        width: "30px", height: "30px",
+                        background: visible ? "rgba(249,115,22,0.12)" : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${visible ? "rgba(249,115,22,0.4)" : "rgba(255,255,255,0.08)"}`,
+                      }}
+                    >
+                      <Icon
+                        style={{
+                          width: "13px", height: "13px",
+                          color: visible ? "rgb(249,115,22)" : "rgba(255,255,255,0.2)",
+                          transition: "color 0.5s",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Content — no card border, just text */}
+                  <div className="flex-1 pb-1">
+                    <div className="flex items-center gap-3 mb-1.5 flex-wrap">
+                      <span className="text-sm font-semibold text-foreground">{step.label}</span>
+                      <span
+                        className="font-mono text-[10px] px-2 py-0.5 rounded"
+                        style={{
+                          background: visible ? "rgba(249,115,22,0.08)" : "rgba(255,255,255,0.04)",
+                          color: visible ? "rgba(249,115,22,0.8)" : "rgba(255,255,255,0.25)",
+                          border: `1px solid ${visible ? "rgba(249,115,22,0.2)" : "rgba(255,255,255,0.06)"}`,
+                          transition: "all 0.5s",
+                        }}
+                      >
+                        {step.tag}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Runtimes */}
@@ -308,7 +318,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Extra Features */}
+      {/* Features */}
       <section id="fitur" className="py-28">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -336,9 +346,7 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Harga yang jelas, tanpa biaya tersembunyi</h2>
-            <p className="mt-4 text-muted-foreground text-lg max-w-xl mx-auto">
-              Mulai gratis, scale saat kamu siap.
-            </p>
+            <p className="mt-4 text-muted-foreground text-lg max-w-xl mx-auto">Mulai gratis, scale saat kamu siap.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
             {plans.map((plan) => (
@@ -351,9 +359,7 @@ export default function Landing() {
                 }`}
               >
                 {plan.highlight && (
-                  <div className="mb-3 inline-block rounded-full bg-primary/20 px-3 py-1 text-xs font-semibold text-primary">
-                    Paling Populer
-                  </div>
+                  <div className="mb-3 inline-block rounded-full bg-primary/20 px-3 py-1 text-xs font-semibold text-primary">Paling Populer</div>
                 )}
                 <h3 className="text-xl font-bold">{plan.name}</h3>
                 <div className="mt-2 flex items-baseline gap-1">
@@ -370,9 +376,7 @@ export default function Landing() {
                   ))}
                 </ul>
                 <Link href="/register">
-                  <Button className="mt-8 w-full" variant={plan.highlight ? "default" : "outline"}>
-                    {plan.cta}
-                  </Button>
+                  <Button className="mt-8 w-full" variant={plan.highlight ? "default" : "outline"}>{plan.cta}</Button>
                 </Link>
               </div>
             ))}
@@ -384,13 +388,11 @@ export default function Landing() {
       <section className="py-28">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
           <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/10 to-primary/5 px-8 py-16">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Siap deploy aplikasi pertamamu?
-            </h2>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Siap deploy aplikasi pertamamu?</h2>
             <p className="mt-4 text-muted-foreground text-lg max-w-xl mx-auto">
               Bergabung dengan ribuan developer yang sudah hosting di Mution. Siap dalam kurang dari 5 menit.
             </p>
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="mt-8">
               <Link href="/register">
                 <Button size="lg" className="text-base px-10 gap-2 h-12 font-semibold">
                   Mulai Gratis Sekarang <ArrowRight className="h-4 w-4" />
