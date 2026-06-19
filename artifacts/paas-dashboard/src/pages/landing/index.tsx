@@ -12,43 +12,50 @@ import {
   Activity,
   Database,
   ChevronRight,
+  GitCommit,
+  Cpu,
+  Globe2,
+  BarChart3,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-const features = [
+const runtimes = ["Node.js", "Python", "PHP", "Static"];
+
+const pipelineSteps = [
   {
-    icon: Zap,
-    title: "Deploy dalam Hitungan Detik",
-    desc: "Push kode kamu dan langsung live. Deploy tanpa downtime dengan rollback otomatis.",
+    icon: GitCommit,
+    label: "Push kode",
+    desc: "Hubungkan repository Git kamu. Setiap push otomatis memicu build.",
+    tag: "git push origin main",
   },
   {
-    icon: Shield,
-    title: "Aman sejak Awal",
-    desc: "SSL, container terisolasi, dan enkripsi environment variable sudah tersedia secara default.",
+    icon: Cpu,
+    label: "Build otomatis",
+    desc: "Mution mendeteksi runtime, menginstall dependencies, dan membangun image container.",
+    tag: "Build sukses · 12s",
   },
   {
-    icon: GitBranch,
-    title: "Alur Kerja Berbasis Git",
-    desc: "Hubungkan repo kamu dan deploy setiap kali push. Log build lengkap tersedia.",
+    icon: Globe2,
+    label: "Deploy & live",
+    desc: "Aplikasi langsung live dengan SSL aktif, domain siap, tanpa konfigurasi manual.",
+    tag: "● Live · app.mution.id",
   },
   {
-    icon: Globe,
-    title: "Domain Kustom",
-    desc: "Pasang domain sendiri ke proyek manapun. HTTPS otomatis diaktifkan.",
-  },
-  {
-    icon: Database,
-    title: "Database Terkelola",
-    desc: "Provisioning database PostgreSQL per proyek hanya dengan satu klik.",
-  },
-  {
-    icon: Activity,
-    title: "Monitoring Real-time",
-    desc: "Log deployment live, status, dan riwayat aktivitas untuk setiap proyek.",
+    icon: BarChart3,
+    label: "Monitor & scale",
+    desc: "Pantau log, metrik, dan performa secara real-time. Scale resource kapan saja.",
+    tag: "99.9% uptime · 0ms downtime",
   },
 ];
 
-const runtimes = ["Node.js", "Python", "PHP", "Static"];
+const extraFeatures = [
+  { icon: Shield, title: "Aman sejak Awal", desc: "SSL, container terisolasi, dan enkripsi env variable out of the box." },
+  { icon: GitBranch, title: "Alur Kerja Git", desc: "Deploy tiap push. Log build lengkap tersedia di dashboard." },
+  { icon: Globe, title: "Domain Kustom", desc: "Pasang domain sendiri. HTTPS diaktifkan otomatis." },
+  { icon: Database, title: "Database Terkelola", desc: "Provisioning PostgreSQL per proyek hanya satu klik." },
+  { icon: Activity, title: "Monitoring Real-time", desc: "Log, status, dan histori aktivitas untuk setiap proyek." },
+  { icon: Zap, title: "Deploy Instan", desc: "Rata-rata waktu deploy di bawah 30 detik. Zero downtime." },
+];
 
 const plans = [
   {
@@ -85,98 +92,123 @@ const stats = [
   { value: "24/7", label: "Dukungan teknis" },
 ];
 
-const pipelineSteps = [
-  { id: "hero", label: "Mulai" },
-  { id: "runtime", label: "Runtime" },
-  { id: "fitur", label: "Fitur" },
-  { id: "harga", label: "Harga" },
-  { id: "cta", label: "Deploy" },
-];
+function PipelineSection() {
+  const [visibleSteps, setVisibleSteps] = useState<Set<number>>(new Set());
+  const refs = useRef<(HTMLDivElement | null)[]>([]);
 
-function PipelineTrack({ scrollProgress }: { scrollProgress: number }) {
+  useEffect(() => {
+    const observers: IntersectionObserver[] = [];
+    refs.current.forEach((el, i) => {
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setVisibleSteps((prev) => new Set([...prev, i]));
+          }
+        },
+        { threshold: 0.3 }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+    return () => observers.forEach((o) => o.disconnect());
+  }, []);
+
   return (
-    <div className="fixed left-0 top-0 bottom-0 z-40 hidden lg:block pointer-events-none select-none" style={{ width: "80px" }}>
-      {/* Centered container vertically */}
-      <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 flex flex-col items-center" style={{ height: "60vh" }}>
-        {/* Track background line */}
-        <div className="absolute" style={{ left: "32px", top: 0, bottom: 0, width: "1px", background: "rgba(255,255,255,0.08)" }} />
+    <section className="py-28 relative">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-20">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Deploy semudah empat langkah</h2>
+          <p className="mt-4 text-muted-foreground text-lg max-w-lg mx-auto">
+            Dari kode lokal ke production — dalam hitungan detik.
+          </p>
+        </div>
 
-        {/* Track fill */}
-        <div
-          className="absolute origin-top transition-all duration-100 ease-out"
-          style={{
-            left: "32px",
-            top: 0,
-            width: "1px",
-            height: `${scrollProgress * 100}%`,
-            background: "rgba(249,115,22,0.6)"
-          }}
-        />
+        <div className="relative">
+          {/* Vertical track line */}
+          <div className="absolute left-6 top-3 bottom-3 w-px bg-border/40 hidden sm:block" />
 
-        {/* Step dots + labels */}
-        {pipelineSteps.map((step, i) => {
-          const pos = i / (pipelineSteps.length - 1);
-          const active = scrollProgress >= pos - 0.05;
-          return (
-            <div key={step.id} className="absolute" style={{ top: `${pos * 100}%`, left: "32px", transform: "translate(-50%, -50%)" }}>
-              {/* Dot */}
-              <div
-                className={`w-2 h-2 rounded-full border transition-all duration-300 ${
-                  active
-                    ? "bg-primary border-primary shadow-[0_0_8px_2px_rgba(249,115,22,0.5)]"
-                    : "bg-background border-border/40"
-                }`}
-              />
-              {/* Label to the right */}
-              <span
-                className={`absolute top-1/2 -translate-y-1/2 text-[9px] font-medium whitespace-nowrap transition-all duration-300 ${
-                  active ? "text-primary/70" : "text-muted-foreground/30"
-                }`}
-                style={{ left: "14px" }}
-              >
-                {step.label}
-              </span>
-            </div>
-          );
-        })}
+          <div className="space-y-2">
+            {pipelineSteps.map((step, i) => {
+              const visible = visibleSteps.has(i);
+              const Icon = step.icon;
+              const isLast = i === pipelineSteps.length - 1;
+              return (
+                <div
+                  key={i}
+                  ref={(el) => { refs.current[i] = el; }}
+                  className={`relative flex gap-6 sm:gap-8 items-start transition-all duration-500 ${
+                    visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                  }`}
+                  style={{ transitionDelay: `${i * 60}ms` }}
+                >
+                  {/* Track node */}
+                  <div className="relative z-10 hidden sm:flex flex-col items-center flex-shrink-0" style={{ width: "48px" }}>
+                    <div
+                      className={`w-3 h-3 rounded-full border-2 mt-4 transition-all duration-500 ${
+                        visible
+                          ? "bg-primary border-primary shadow-[0_0_10px_3px_rgba(249,115,22,0.45)]"
+                          : "bg-background border-border/40"
+                      }`}
+                    />
+                    {!isLast && (
+                      <div
+                        className={`w-px flex-1 mt-1 transition-all duration-700 ${
+                          visible ? "bg-primary/40" : "bg-border/20"
+                        }`}
+                        style={{ minHeight: "60px" }}
+                      />
+                    )}
+                  </div>
 
-        {/* Moving orb */}
-        <div
-          className="absolute transition-all duration-100 ease-out"
-          style={{ top: `${scrollProgress * 100}%`, left: "32px", transform: "translate(-50%, -50%)" }}
-        >
-          <div className="relative w-4 h-4 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
-            <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_14px_5px_rgba(249,115,22,0.55)]" />
+                  {/* Card */}
+                  <div
+                    className={`flex-1 mb-6 rounded-xl border p-5 transition-all duration-500 ${
+                      visible
+                        ? "border-border/60 bg-card/70"
+                        : "border-border/20 bg-card/30"
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-500 ${
+                        visible ? "bg-primary/15" : "bg-muted/20"
+                      }`}>
+                        <Icon className={`h-4 w-4 transition-colors duration-500 ${visible ? "text-primary" : "text-muted-foreground"}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <h3 className="text-sm font-semibold">{step.label}</h3>
+                          <span className={`inline-block rounded-md px-2 py-0.5 font-mono text-[10px] transition-all duration-500 ${
+                            visible
+                              ? "bg-primary/10 text-primary/80 border border-primary/20"
+                              : "bg-muted/30 text-muted-foreground border border-border/20"
+                          }`}>
+                            {step.tag}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
 export default function Landing() {
   const { user } = useAuth();
-  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
-
-    const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = docHeight > 0 ? scrollTop / docHeight : 0;
-      setScrollProgress(Math.min(1, Math.max(0, progress)));
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground dark">
-      <PipelineTrack scrollProgress={scrollProgress} />
-
       {/* Navbar */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -186,6 +218,7 @@ export default function Landing() {
               <span style={{ fontFamily: "'Space Grotesk', sans-serif" }} className="text-xl font-extrabold text-primary tracking-tight">Mution</span>
             </div>
             <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
+              <a href="#cara-kerja" className="hover:text-foreground transition-colors">Cara Kerja</a>
               <a href="#fitur" className="hover:text-foreground transition-colors">Fitur</a>
               <a href="#harga" className="hover:text-foreground transition-colors">Harga</a>
               <a href="#runtime" className="hover:text-foreground transition-colors">Runtime</a>
@@ -211,7 +244,7 @@ export default function Landing() {
       </header>
 
       {/* Hero */}
-      <section id="hero" className="relative overflow-hidden py-24 sm:py-36">
+      <section className="relative overflow-hidden py-24 sm:py-36">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/2 top-0 -translate-x-1/2 h-[700px] w-[700px] rounded-full bg-primary/8 blur-[120px]" />
           <div className="absolute right-0 top-1/3 h-[300px] w-[300px] rounded-full bg-orange-600/5 blur-[80px]" />
@@ -255,6 +288,11 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Pipeline / How it works */}
+      <div id="cara-kerja" className="border-t border-border/50">
+        <PipelineSection />
+      </div>
+
       {/* Runtimes */}
       <section id="runtime" className="border-y border-border/50 bg-card/20 py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -270,7 +308,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Extra Features */}
       <section id="fitur" className="py-28">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -280,7 +318,7 @@ export default function Landing() {
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map((f) => (
+            {extraFeatures.map((f) => (
               <div key={f.title} className="group rounded-xl border border-border/60 bg-card p-6 hover:border-primary/40 hover:bg-card/80 transition-all">
                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
                   <f.icon className="h-5 w-5 text-primary" />
@@ -332,10 +370,7 @@ export default function Landing() {
                   ))}
                 </ul>
                 <Link href="/register">
-                  <Button
-                    className="mt-8 w-full"
-                    variant={plan.highlight ? "default" : "outline"}
-                  >
+                  <Button className="mt-8 w-full" variant={plan.highlight ? "default" : "outline"}>
                     {plan.cta}
                   </Button>
                 </Link>
@@ -346,7 +381,7 @@ export default function Landing() {
       </section>
 
       {/* CTA */}
-      <section id="cta" className="py-28">
+      <section className="py-28">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
           <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/10 to-primary/5 px-8 py-16">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
