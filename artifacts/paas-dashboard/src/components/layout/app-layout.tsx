@@ -45,7 +45,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <SidebarHeader className="flex h-16 items-center px-4">
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2 font-bold tracking-tight text-primary">
-                <TerminalSquare className="h-6 w-6" />
+                <img src="/mution-logo.png" alt="Mution" className="h-6 w-auto" />
                 <span>Mution</span>
               </div>
               {health?.status === "ok" ? (
