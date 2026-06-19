@@ -208,56 +208,67 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl">
           <div
             className="relative rounded-2xl overflow-hidden"
-            style={{
-              border: "1px solid rgba(255,255,255,0.07)",
-              background: "linear-gradient(160deg, #09090f 0%, #0e0e1a 40%, #12101a 100%)",
-            }}
+            style={{ border: "1px solid rgba(255,255,255,0.08)" }}
           >
-            {/* Atmospheric glows */}
-            <div className="pointer-events-none absolute inset-0">
-              <div style={{ position:"absolute", bottom:"-60px", left:"50%", transform:"translateX(-50%)", width:"700px", height:"300px", background:"radial-gradient(ellipse, rgba(249,115,22,0.18) 0%, transparent 70%)", filter:"blur(30px)" }} />
-              <div style={{ position:"absolute", top:"30px", left:"10%", width:"300px", height:"200px", background:"radial-gradient(ellipse, rgba(249,115,22,0.06) 0%, transparent 70%)", filter:"blur(40px)" }} />
-              <div style={{ position:"absolute", top:"40px", right:"8%", width:"250px", height:"180px", background:"radial-gradient(ellipse, rgba(180,100,255,0.04) 0%, transparent 70%)", filter:"blur(40px)" }} />
-              {/* Stars */}
-              {[...Array(40)].map((_, i) => (
-                <div key={i} style={{
-                  position:"absolute",
-                  left:`${(i * 37 + i * 13) % 100}%`,
-                  top:`${(i * 53 + i * 7) % 75}%`,
-                  width: i % 5 === 0 ? "2px" : "1px",
-                  height: i % 5 === 0 ? "2px" : "1px",
-                  borderRadius:"50%",
-                  background:`rgba(255,255,255,${0.1 + (i % 4) * 0.08})`,
-                }} />
-              ))}
-            </div>
+            {/* Background image */}
+            <div className="absolute inset-0" style={{
+              backgroundImage: "url('/hero-bg.png')",
+              backgroundSize: "cover",
+              backgroundPosition: "center top",
+            }} />
+            {/* Dark overlay so text is readable */}
+            <div className="absolute inset-0" style={{
+              background: "linear-gradient(to bottom, rgba(4,4,12,0.78) 0%, rgba(6,6,16,0.72) 50%, rgba(8,8,18,0.92) 100%)",
+            }} />
+            {/* Subtle orange glow at bottom center */}
+            <div className="absolute inset-0 pointer-events-none" style={{
+              background: "radial-gradient(ellipse at 50% 110%, rgba(249,115,22,0.2) 0%, transparent 55%)",
+            }} />
 
             {/* Hero text content */}
             <div className="relative z-10 text-center px-6 pt-20 pb-14">
-              <div className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium mb-8" style={{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.5)" }}>
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Platform sudah aktif · 99.9% uptime
-              </div>
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.06]">
                 Deploy tanpa<br />
                 <span className="text-primary">batas kompleksitas.</span>
               </h1>
-              <p className="mt-6 text-base sm:text-lg max-w-xl mx-auto leading-relaxed" style={{ color:"rgba(255,255,255,0.45)" }}>
+              <p className="mt-6 text-base sm:text-lg max-w-xl mx-auto leading-relaxed" style={{ color:"rgba(255,255,255,0.5)" }}>
                 Platform infrastruktur modern — deploy, scale, dan pantau aplikasi kamu tanpa perlu mengurus server atau konfigurasi rumit.
               </p>
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link href="/register">
-                  <Button size="lg" className="text-sm px-7 gap-2 h-11 font-semibold">
-                    Deploy Sekarang <ArrowRight className="h-4 w-4" />
-                  </Button>
+                  <button
+                    className="group inline-flex items-center gap-2 rounded-xl font-semibold text-sm transition-all duration-200"
+                    style={{
+                      background: "rgb(249,115,22)",
+                      color: "#fff",
+                      padding: "12px 28px",
+                      boxShadow: "0 0 0 1px rgba(249,115,22,0.4), 0 4px 24px rgba(249,115,22,0.35)",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 0 0 1px rgba(249,115,22,0.6), 0 6px 32px rgba(249,115,22,0.5)")}
+                    onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 0 0 1px rgba(249,115,22,0.4), 0 4px 24px rgba(249,115,22,0.35)")}
+                  >
+                    Deploy Sekarang
+                    <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  </button>
                 </Link>
                 <Link href="/login">
-                  <Button size="lg" variant="ghost" className="text-sm px-7 h-11" style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.7)" }}>
+                  <button
+                    className="inline-flex items-center gap-2 rounded-xl font-medium text-sm transition-all duration-200"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      color: "rgba(255,255,255,0.75)",
+                      padding: "12px 28px",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      backdropFilter: "blur(8px)",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; e.currentTarget.style.color = "#fff"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "rgba(255,255,255,0.75)"; }}
+                  >
                     Masuk ke Dashboard
-                  </Button>
+                  </button>
                 </Link>
               </div>
-              <p className="mt-4 text-xs" style={{ color:"rgba(255,255,255,0.25)" }}>Tidak perlu kartu kredit · Tier gratis tersedia</p>
+              <p className="mt-5 text-xs" style={{ color:"rgba(255,255,255,0.22)" }}>Tidak perlu kartu kredit · Tier gratis tersedia</p>
             </div>
 
             {/* Dashboard preview peek */}
