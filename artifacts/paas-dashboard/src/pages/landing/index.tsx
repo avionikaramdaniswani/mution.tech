@@ -130,31 +130,45 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background text-foreground dark">
 
-      {/* ── Fixed scroll track: pure line + orb, no container ── */}
+      {/* ── Fixed scroll track: line + comet ── */}
       <div
         className="fixed hidden lg:block pointer-events-none z-30"
         style={{ left: "28px", top: "64px", bottom: 0, width: "1px", background: "rgba(255,255,255,0.05)" }}
       >
-        {/* Fill */}
+        {/* Track fill behind comet */}
         <div
           style={{
             position: "absolute", left: 0, top: 0, width: "1px",
             height: `${scrollProgress * 100}%`,
-            background: "linear-gradient(to bottom, rgba(249,115,22,0.7), rgba(249,115,22,0.3))",
+            background: "linear-gradient(to bottom, transparent, rgba(249,115,22,0.15) 40%, rgba(249,115,22,0.5))",
           }}
         />
-        {/* Orb */}
+
+        {/* Comet — tail fades up, bright head at bottom */}
         <div
           style={{
-            position: "absolute", left: "-5px",
+            position: "absolute",
+            left: "-3px",
             top: `${scrollProgress * 100}%`,
-            transform: "translateY(-50%)",
+            transform: "translateY(-100%)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
           }}
         >
+          {/* Tail */}
           <div style={{
-            width: "11px", height: "11px", borderRadius: "50%",
-            background: "rgb(249,115,22)",
-            boxShadow: "0 0 10px 3px rgba(249,115,22,0.5)",
+            width: "1px",
+            height: "60px",
+            background: "linear-gradient(to bottom, transparent, rgba(249,115,22,0.25) 60%, rgba(249,115,22,0.7))",
+          }} />
+          {/* Head */}
+          <div style={{
+            width: "7px", height: "7px",
+            borderRadius: "50%",
+            background: "radial-gradient(circle at 40% 35%, #ffb86c, rgb(249,115,22) 60%)",
+            boxShadow: "0 0 6px 2px rgba(249,115,22,0.6), 0 0 14px 4px rgba(249,115,22,0.25)",
+            flexShrink: 0,
           }} />
         </div>
       </div>
