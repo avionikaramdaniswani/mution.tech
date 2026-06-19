@@ -189,45 +189,124 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden py-24 sm:py-36">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute left-1/2 top-0 -translate-x-1/2 h-[700px] w-[700px] rounded-full bg-primary/8 blur-[120px]" />
-          <div className="absolute right-0 top-1/3 h-[300px] w-[300px] rounded-full bg-orange-600/5 blur-[80px]" />
-        </div>
-        <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/60 px-3.5 py-1.5 text-xs text-muted-foreground font-medium mb-10 backdrop-blur-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Platform sudah aktif · 99.9% uptime
-            <ChevronRight className="h-3 w-3" />
-          </div>
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.08]">
-            Infrastruktur yang<br />
-            <span className="text-primary">siap dalam menit.</span>
-          </h1>
-          <p className="mt-7 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Mution membantu tim developer men-deploy, mengelola, dan men-scale aplikasi tanpa perlu mengurus server, Docker, atau konfigurasi infrastruktur yang rumit.
-          </p>
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/register">
-              <Button size="lg" className="text-base px-8 gap-2 h-12 font-semibold">
-                Mulai Gratis <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button size="lg" variant="outline" className="text-base px-8 h-12 border-border/60">
-                Masuk ke Dashboard
-              </Button>
-            </Link>
-          </div>
-          <p className="mt-5 text-xs text-muted-foreground/70">Tidak perlu kartu kredit · Tier gratis tersedia</p>
-          <div className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-px bg-border/40 rounded-2xl overflow-hidden border border-border/40">
-            {stats.map((s) => (
-              <div key={s.label} className="bg-card/60 backdrop-blur-sm px-6 py-5 text-center">
-                <div className="text-2xl font-extrabold text-foreground">{s.value}</div>
-                <div className="mt-1 text-xs text-muted-foreground">{s.label}</div>
+      {/* ── Hero Card ── */}
+      <section className="px-3 sm:px-6 lg:px-8 pt-6 pb-0">
+        <div className="mx-auto max-w-6xl">
+          <div
+            className="relative rounded-2xl overflow-hidden"
+            style={{
+              border: "1px solid rgba(255,255,255,0.07)",
+              background: "linear-gradient(160deg, #09090f 0%, #0e0e1a 40%, #12101a 100%)",
+            }}
+          >
+            {/* Atmospheric glows */}
+            <div className="pointer-events-none absolute inset-0">
+              <div style={{ position:"absolute", bottom:"-60px", left:"50%", transform:"translateX(-50%)", width:"700px", height:"300px", background:"radial-gradient(ellipse, rgba(249,115,22,0.18) 0%, transparent 70%)", filter:"blur(30px)" }} />
+              <div style={{ position:"absolute", top:"30px", left:"10%", width:"300px", height:"200px", background:"radial-gradient(ellipse, rgba(249,115,22,0.06) 0%, transparent 70%)", filter:"blur(40px)" }} />
+              <div style={{ position:"absolute", top:"40px", right:"8%", width:"250px", height:"180px", background:"radial-gradient(ellipse, rgba(180,100,255,0.04) 0%, transparent 70%)", filter:"blur(40px)" }} />
+              {/* Stars */}
+              {[...Array(40)].map((_, i) => (
+                <div key={i} style={{
+                  position:"absolute",
+                  left:`${(i * 37 + i * 13) % 100}%`,
+                  top:`${(i * 53 + i * 7) % 75}%`,
+                  width: i % 5 === 0 ? "2px" : "1px",
+                  height: i % 5 === 0 ? "2px" : "1px",
+                  borderRadius:"50%",
+                  background:`rgba(255,255,255,${0.1 + (i % 4) * 0.08})`,
+                }} />
+              ))}
+            </div>
+
+            {/* Hero text content */}
+            <div className="relative z-10 text-center px-6 pt-20 pb-14">
+              <div className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium mb-8" style={{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.5)" }}>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Platform sudah aktif · 99.9% uptime
               </div>
-            ))}
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.06]">
+                Deploy tanpa<br />
+                <span className="text-primary">batas kompleksitas.</span>
+              </h1>
+              <p className="mt-6 text-base sm:text-lg max-w-xl mx-auto leading-relaxed" style={{ color:"rgba(255,255,255,0.45)" }}>
+                Platform infrastruktur modern — deploy, scale, dan pantau aplikasi kamu tanpa perlu mengurus server atau konfigurasi rumit.
+              </p>
+              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link href="/register">
+                  <Button size="lg" className="text-sm px-7 gap-2 h-11 font-semibold">
+                    Deploy Sekarang <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/login">
+                  <Button size="lg" variant="ghost" className="text-sm px-7 h-11" style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", color:"rgba(255,255,255,0.7)" }}>
+                    Masuk ke Dashboard
+                  </Button>
+                </Link>
+              </div>
+              <p className="mt-4 text-xs" style={{ color:"rgba(255,255,255,0.25)" }}>Tidak perlu kartu kredit · Tier gratis tersedia</p>
+            </div>
+
+            {/* Dashboard preview peek */}
+            <div className="relative z-10 px-4 sm:px-10">
+              <div className="mx-auto max-w-4xl rounded-t-xl overflow-hidden" style={{ border:"1px solid rgba(255,255,255,0.1)", borderBottom:"none", background:"rgba(10,10,18,0.9)", boxShadow:"0 -20px 60px rgba(0,0,0,0.5)" }}>
+                {/* Fake window chrome */}
+                <div className="flex items-center gap-1.5 px-4 py-3 border-b" style={{ borderColor:"rgba(255,255,255,0.06)", background:"rgba(255,255,255,0.02)" }}>
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background:"rgba(255,255,255,0.12)" }} />
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background:"rgba(255,255,255,0.12)" }} />
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ background:"rgba(255,255,255,0.12)" }} />
+                  <div className="flex-1 mx-4 rounded px-3 py-1 text-[10px]" style={{ background:"rgba(255,255,255,0.04)", color:"rgba(255,255,255,0.2)" }}>app.mution.id/dashboard</div>
+                </div>
+                {/* Fake dashboard rows */}
+                <div className="p-4 space-y-2">
+                  {["my-api · Node.js · ● Running", "frontend · Static · ● Running", "auth-service · Python · ⟳ Building"].map((row, i) => (
+                    <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.05)" }}>
+                      <div className="w-6 h-6 rounded" style={{ background:"rgba(249,115,22,0.15)", border:"1px solid rgba(249,115,22,0.25)" }} />
+                      <span className="text-xs font-mono" style={{ color:"rgba(255,255,255,0.4)" }}>{row}</span>
+                      <div className="ml-auto w-16 h-4 rounded" style={{ background:"rgba(255,255,255,0.04)" }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Trusted By — landscape strip + logo grid ── */}
+      <section className="px-3 sm:px-6 lg:px-8 pb-0">
+        <div className="mx-auto max-w-6xl">
+          <div className="rounded-b-2xl overflow-hidden" style={{ border:"1px solid rgba(255,255,255,0.07)", borderTop:"none" }}>
+            {/* Decorative landscape strip */}
+            <div className="relative h-28 overflow-hidden" style={{ background:"linear-gradient(to bottom, #0e0e1a, #0a1020)" }}>
+              {/* Mountain silhouettes */}
+              <svg viewBox="0 0 1200 112" preserveAspectRatio="none" className="absolute inset-0 w-full h-full" style={{ opacity:0.35 }}>
+                <path d="M0,112 L0,70 L80,30 L160,60 L260,10 L380,55 L480,20 L580,50 L680,15 L780,45 L880,5 L980,40 L1080,20 L1200,50 L1200,112 Z" fill="#1a1a2e" />
+                <path d="M0,112 L0,85 L100,55 L200,75 L320,40 L430,70 L540,45 L650,65 L760,38 L860,60 L960,35 L1060,55 L1200,42 L1200,112 Z" fill="#12122a" />
+              </svg>
+              {/* Subtle horizon glow */}
+              <div className="absolute bottom-0 left-0 right-0 h-12" style={{ background:"linear-gradient(to top, rgba(249,115,22,0.06), transparent)" }} />
+            </div>
+
+            {/* Logo grid */}
+            <div style={{ background:"rgba(10,10,18,0.95)", borderTop:"1px solid rgba(255,255,255,0.06)" }}>
+              <div className="px-6 py-4 border-b" style={{ borderColor:"rgba(255,255,255,0.05)" }}>
+                <p className="text-center text-xs font-medium" style={{ color:"rgba(255,255,255,0.25)", letterSpacing:"0.12em", textTransform:"uppercase" }}>Dipercaya oleh tim dari berbagai industri</p>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-6" style={{ borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                {["Tokopedia","Gojek","Traveloka","Ruangguru","Bukalapak","Kumparan"].map((name, i) => (
+                  <div key={i} className="flex items-center justify-center py-5 px-4" style={{ borderRight: i < 5 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                    <span className="text-sm font-semibold" style={{ color:"rgba(255,255,255,0.2)", fontFamily:"system-ui", letterSpacing:"-0.02em" }}>{name}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-6">
+                {["Flip","Xendit","Midtrans","Ovo","Dana","Shopee"].map((name, i) => (
+                  <div key={i} className="flex items-center justify-center py-5 px-4" style={{ borderRight: i < 5 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                    <span className="text-sm font-semibold" style={{ color:"rgba(255,255,255,0.2)", fontFamily:"system-ui", letterSpacing:"-0.02em" }}>{name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
