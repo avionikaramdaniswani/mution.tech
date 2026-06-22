@@ -10,6 +10,8 @@ export const usersTable = pgTable("users", {
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
   role: userRoleEnum("role").notNull().default("user"),
+  githubAccessToken: text("github_access_token"),
+  githubLogin: text("github_login"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
