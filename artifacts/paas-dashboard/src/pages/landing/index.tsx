@@ -3,7 +3,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
-  CheckCircle2,
   Globe,
   ChevronDown,
 } from "lucide-react";
@@ -79,25 +78,6 @@ const faqs = [
   },
 ];
 
-const resourceRates = [
-  { label: "vCPU",      rate: "Rp 1.42",  unit: "/ vCPU / menit",  desc: "Pemakaian aktual" },
-  { label: "RAM",       rate: "Rp 0.75",  unit: "/ GB / menit",    desc: "Pemakaian aktual" },
-  { label: "Storage",   rate: "Rp 150",   unit: "/ GB / bulan",    desc: "Persistent disk" },
-  { label: "Bandwidth", rate: "Rp 120",   unit: "/ GB keluar",     desc: "Ingress gratis" },
-];
-
-const usageExamples = [
-  { name: "Side project kecil",  spec: "0.5 vCPU · 256 MB · ~480 menit/hari", price: "~Rp 9rb" },
-  { name: "REST API produksi",   spec: "1 vCPU · 512 MB · 1.440 menit/hari",  price: "~Rp 55rb" },
-  { name: "Full-stack app",      spec: "2 vCPU · 1 GB · 1.440 menit/hari",    price: "~Rp 160rb" },
-  { name: "Multi-service",       spec: "4 vCPU · 4 GB · 1.440 menit/hari",    price: "~Rp 570rb" },
-];
-
-const billingSteps = [
-  { step: "01", title: "Deploy aplikasi",    desc: "Container berjalan → resource mulai dihitung per menit." },
-  { step: "02", title: "Stop kapan saja",    desc: "Container berhenti → tagihan langsung berhenti. Tidak ada idle cost." },
-  { step: "03", title: "Bayar di akhir bulan", desc: "Invoice otomatis berdasarkan total menit aktif × rate resource." },
-];
 
 const stats = [
   { value: "99.9%", label: "Uptime SLA" },
@@ -207,7 +187,7 @@ export default function Landing() {
               <span style={{ fontFamily: "'Space Grotesk', sans-serif" }} className="text-xl font-extrabold text-primary tracking-tight">Mution</span>
             </div>
             <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-              <Link href="/pricing" className="hover:text-foreground transition-colors">Harga</Link>
+              <a href="/pricing" className="hover:text-foreground transition-colors">Harga</a>
               <a href="#runtime" className="hover:text-foreground transition-colors">Runtime</a>
             </nav>
             <div className="flex items-center gap-3">
@@ -420,125 +400,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="harga" className="border-t border-border/50 bg-card/20 py-28">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-
-          {/* Header */}
-          <div className="text-center mb-16">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-4">Harga</p>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Pay As You Go. Tidak ada tier.</h2>
-            <p className="mt-4 text-muted-foreground text-lg max-w-lg mx-auto">
-              Bayar per resource yang benar-benar dipakai. Container mati = tagihan nol.
-            </p>
-          </div>
-
-          {/* Free credit banner */}
-          <div
-            className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl px-6 py-5 mb-10"
-            style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)" }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(249,115,22,0.15)" }}>
-                <span className="text-base">🎁</span>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Rp 100.000 kredit gratis untuk akun baru</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Tidak perlu kartu kredit. Kredit hangus setelah 30 hari.</p>
-              </div>
-            </div>
-            <Link href="/register" className="flex-shrink-0">
-              <Button size="sm" className="font-semibold px-6">Daftar Sekarang</Button>
-            </Link>
-          </div>
-
-          {/* Resource rate grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
-            {resourceRates.map(r => (
-              <div
-                key={r.label}
-                className="rounded-xl border border-border/60 bg-card p-5 flex flex-col gap-1"
-              >
-                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">{r.label}</p>
-                <p className="text-2xl font-extrabold text-foreground leading-none mt-1">{r.rate}</p>
-                <p className="text-xs text-muted-foreground">{r.unit}</p>
-                <p className="text-[11px] text-muted-foreground/60 mt-auto pt-2 border-t border-border/30">{r.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Two columns: how billing works + usage examples */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-
-            {/* How billing works */}
-            <div className="rounded-xl border border-border/60 bg-card p-6">
-              <p className="text-sm font-semibold mb-5">Cara kerja billing</p>
-              <div className="space-y-5">
-                {billingSteps.map(s => (
-                  <div key={s.step} className="flex gap-4">
-                    <span
-                      className="flex-shrink-0 text-xs font-bold font-mono mt-0.5"
-                      style={{ color: "rgba(249,115,22,0.7)" }}
-                    >{s.step}</span>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{s.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{s.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Usage examples */}
-            <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-              <div className="px-6 py-4 border-b border-border/40">
-                <p className="text-sm font-semibold">Estimasi tagihan / bulan</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Tagihan aktual mungkin lebih rendah.</p>
-              </div>
-              <div className="divide-y divide-border/30">
-                {usageExamples.map(ex => (
-                  <div key={ex.name} className="flex items-center justify-between px-6 py-3.5">
-                    <div>
-                      <p className="text-sm font-medium">{ex.name}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">{ex.spec}</p>
-                    </div>
-                    <span className="text-sm font-bold text-primary flex-shrink-0 ml-4">{ex.price}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Included in all accounts */}
-          <div className="rounded-xl border border-border/50 bg-card/40 px-6 py-5 mb-6">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-4">Sudah termasuk di semua akun</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-2.5">
-              {[
-                "SSL otomatis", "Custom domain", "Database managed",
-                "Deploy unlimited", "Auto-scaling", "Rollback 1-klik",
-              ].map(f => (
-                <div key={f} className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
-                  {f}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Enterprise strip */}
-          <div
-            className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl px-6 py-4"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
-          >
-            <div>
-              <p className="text-sm font-semibold">Butuh SLA, on-premise, atau volume discount?</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Enterprise tersedia dengan harga kustom, audit log, SSO/SAML, dan account manager.</p>
-            </div>
-            <Button variant="outline" size="sm" className="flex-shrink-0">Hubungi Kami</Button>
-          </div>
-
-        </div>
-      </section>
 
       {/* FAQ */}
       <section className="py-24 border-t border-border/40">
