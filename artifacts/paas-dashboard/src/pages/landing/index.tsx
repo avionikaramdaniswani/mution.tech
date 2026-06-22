@@ -80,10 +80,10 @@ const faqs = [
 ];
 
 const resourceRates = [
-  { label: "vCPU",      rate: "Rp 85",  unit: "/ vCPU / jam" },
-  { label: "RAM",       rate: "Rp 45",  unit: "/ GB / jam" },
-  { label: "Storage",   rate: "Rp 150", unit: "/ GB / bulan" },
-  { label: "Bandwidth", rate: "Rp 120", unit: "/ GB keluar" },
+  { label: "vCPU",      rate: "Rp 85",  unit: "/ vCPU / jam",   desc: "Per core aktif" },
+  { label: "RAM",       rate: "Rp 45",  unit: "/ GB / jam",     desc: "Diukur per jam" },
+  { label: "Storage",   rate: "Rp 150", unit: "/ GB / bulan",   desc: "Persistent disk" },
+  { label: "Bandwidth", rate: "Rp 120", unit: "/ GB keluar",    desc: "Ingress gratis" },
 ];
 
 const usageExamples = [
@@ -91,6 +91,12 @@ const usageExamples = [
   { name: "REST API produksi",   spec: "1 vCPU · 512 MB · aktif 24 jam",  price: "~Rp 55rb" },
   { name: "Full-stack app",      spec: "2 vCPU · 1 GB · aktif 24 jam",    price: "~Rp 160rb" },
   { name: "Multi-service",       spec: "4 vCPU · 4 GB · aktif 24 jam",    price: "~Rp 570rb" },
+];
+
+const billingSteps = [
+  { step: "01", title: "Deploy aplikasi",    desc: "Container berjalan → resource mulai dihitung per detik." },
+  { step: "02", title: "Stop kapan saja",    desc: "Container berhenti → tagihan langsung berhenti. Tidak ada idle cost." },
+  { step: "03", title: "Bayar di akhir bulan", desc: "Invoice otomatis berdasarkan total detik aktif × rate resource." },
 ];
 
 const stats = [
@@ -416,112 +422,119 @@ export default function Landing() {
 
       {/* Pricing */}
       <section id="harga" className="border-t border-border/50 bg-card/20 py-28">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
 
           {/* Header */}
           <div className="text-center mb-16">
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-4">Harga</p>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Bayar yang kamu pakai. Titik.</h2>
-            <p className="mt-4 text-muted-foreground text-lg max-w-xl mx-auto">Tidak ada tier tersembunyi. Tidak ada kejutan di akhir bulan.</p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Pay As You Go. Tidak ada tier.</h2>
+            <p className="mt-4 text-muted-foreground text-lg max-w-lg mx-auto">
+              Bayar per resource yang benar-benar dipakai. Container mati = tagihan nol.
+            </p>
           </div>
 
-          {/* 3 cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-
-            {/* Starter */}
-            <div className="rounded-xl border border-border/60 bg-card p-8 flex flex-col">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Starter</p>
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-extrabold">Gratis</span>
+          {/* Free credit banner */}
+          <div
+            className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl px-6 py-5 mb-10"
+            style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)" }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(249,115,22,0.15)" }}>
+                <span className="text-base">🎁</span>
               </div>
-              <p className="text-sm text-muted-foreground mb-6">Selamanya. Tidak perlu kartu kredit.</p>
-              <ul className="space-y-3 mb-8 flex-1">
-                {["3 proyek aktif", "512 MB RAM shared", "1 GB storage", "Deploy unlimited", "SSL otomatis", "Dukungan komunitas"].map(f => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/register">
-                <Button variant="outline" className="w-full">Mulai Gratis</Button>
-              </Link>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Rp 100.000 kredit gratis untuk akun baru</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Tidak perlu kartu kredit. Kredit hangus setelah 30 hari.</p>
+              </div>
             </div>
+            <Link href="/register" className="flex-shrink-0">
+              <Button size="sm" className="font-semibold px-6">Daftar Sekarang</Button>
+            </Link>
+          </div>
 
-            {/* PAYG — highlighted */}
-            <div className="rounded-xl border border-primary/50 bg-primary/5 p-8 flex flex-col relative shadow-xl shadow-primary/10 md:scale-[1.03]">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="rounded-full bg-primary px-4 py-1 text-xs font-bold text-white shadow">Paling Fleksibel</span>
+          {/* Resource rate grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
+            {resourceRates.map(r => (
+              <div
+                key={r.label}
+                className="rounded-xl border border-border/60 bg-card p-5 flex flex-col gap-1"
+              >
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">{r.label}</p>
+                <p className="text-2xl font-extrabold text-foreground leading-none mt-1">{r.rate}</p>
+                <p className="text-xs text-muted-foreground">{r.unit}</p>
+                <p className="text-[11px] text-muted-foreground/60 mt-auto pt-2 border-t border-border/30">{r.desc}</p>
               </div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-4">Pay As You Go</p>
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-extrabold">Rp 0</span>
-                <span className="text-muted-foreground text-sm">untuk mulai</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-6">Ditagih per resource aktual. Tidak jalan, tidak bayar.</p>
+            ))}
+          </div>
 
-              {/* Resource rates */}
-              <div className="rounded-lg border border-border/50 bg-background/40 divide-y divide-border/40 mb-6">
-                {resourceRates.map(r => (
-                  <div key={r.label} className="flex items-center justify-between px-4 py-2.5">
-                    <span className="text-xs text-muted-foreground">{r.label}</span>
-                    <span className="text-xs font-mono">
-                      <span className="font-bold text-foreground">{r.rate}</span>
-                      <span className="text-muted-foreground"> {r.unit}</span>
-                    </span>
+          {/* Two columns: how billing works + usage examples */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+
+            {/* How billing works */}
+            <div className="rounded-xl border border-border/60 bg-card p-6">
+              <p className="text-sm font-semibold mb-5">Cara kerja billing</p>
+              <div className="space-y-5">
+                {billingSteps.map(s => (
+                  <div key={s.step} className="flex gap-4">
+                    <span
+                      className="flex-shrink-0 text-xs font-bold font-mono mt-0.5"
+                      style={{ color: "rgba(249,115,22,0.7)" }}
+                    >{s.step}</span>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{s.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{s.desc}</p>
+                    </div>
                   </div>
                 ))}
               </div>
-
-              <ul className="space-y-3 mb-8 flex-1">
-                {["Proyek tak terbatas", "CPU Dedicated", "Custom domain", "Database managed", "Priority support", "Auto-scaling"].map(f => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/register">
-                <Button className="w-full font-semibold">Mulai Sekarang</Button>
-              </Link>
             </div>
 
-            {/* Enterprise */}
-            <div className="rounded-xl border border-border/60 bg-card p-8 flex flex-col">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Enterprise</p>
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-4xl font-extrabold">Kustom</span>
+            {/* Usage examples */}
+            <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+              <div className="px-6 py-4 border-b border-border/40">
+                <p className="text-sm font-semibold">Estimasi tagihan / bulan</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Tagihan aktual mungkin lebih rendah.</p>
               </div>
-              <p className="text-sm text-muted-foreground mb-6">Untuk tim besar yang butuh kendali penuh.</p>
-              <ul className="space-y-3 mb-8 flex-1">
-                {["Semua fitur PAYG", "SLA 99.9% uptime", "Opsi on-premise", "Account manager", "Audit log", "SSO / SAML"].map(f => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-                    {f}
-                  </li>
+              <div className="divide-y divide-border/30">
+                {usageExamples.map(ex => (
+                  <div key={ex.name} className="flex items-center justify-between px-6 py-3.5">
+                    <div>
+                      <p className="text-sm font-medium">{ex.name}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">{ex.spec}</p>
+                    </div>
+                    <span className="text-sm font-bold text-primary flex-shrink-0 ml-4">{ex.price}</span>
+                  </div>
                 ))}
-              </ul>
-              <Button variant="outline" className="w-full">Hubungi Kami</Button>
+              </div>
             </div>
           </div>
 
-          {/* Usage examples */}
-          <div className="mt-14 rounded-xl border border-border/50 bg-card/40 overflow-hidden">
-            <div className="px-6 py-4 border-b border-border/40">
-              <p className="text-sm font-semibold">Contoh estimasi tagihan / bulan</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Berdasarkan penggunaan rata-rata. Tagihan aktual bisa lebih rendah.</p>
-            </div>
-            <div className="divide-y divide-border/30">
-              {usageExamples.map(ex => (
-                <div key={ex.name} className="flex items-center justify-between px-6 py-4">
-                  <div>
-                    <p className="text-sm font-medium">{ex.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 font-mono">{ex.spec}</p>
-                  </div>
-                  <span className="text-sm font-bold text-primary">{ex.price}</span>
+          {/* Included in all accounts */}
+          <div className="rounded-xl border border-border/50 bg-card/40 px-6 py-5 mb-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-4">Sudah termasuk di semua akun</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-2.5">
+              {[
+                "SSL otomatis", "Custom domain", "Database managed",
+                "Deploy unlimited", "Auto-scaling", "Rollback 1-klik",
+              ].map(f => (
+                <div key={f} className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  {f}
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Enterprise strip */}
+          <div
+            className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl px-6 py-4"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            <div>
+              <p className="text-sm font-semibold">Butuh SLA, on-premise, atau volume discount?</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Enterprise tersedia dengan harga kustom, audit log, SSO/SAML, dan account manager.</p>
+            </div>
+            <Button variant="outline" size="sm" className="flex-shrink-0">Hubungi Kami</Button>
           </div>
 
         </div>
