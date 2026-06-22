@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { TerminalSquare } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Format email tidak valid." }),
@@ -49,69 +48,88 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background dark p-4">
-      <Card className="w-full max-w-md border-border/50 shadow-2xl">
-        <CardHeader className="space-y-3 text-center pb-6">
-          <div className="flex justify-center mb-2">
-            <div className="rounded-full bg-primary/10 p-3">
-              <TerminalSquare className="h-8 w-8 text-primary" />
+    <div
+      className="min-h-screen flex items-center justify-center p-4 dark"
+      style={{
+        backgroundImage: "url('/hero-bg.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center top",
+        position: "relative",
+      }}
+    >
+      {/* Dark overlay */}
+      <div
+        className="absolute inset-0"
+        style={{ background: "linear-gradient(to bottom, rgba(4,4,12,0.82) 0%, rgba(6,6,16,0.78) 50%, rgba(8,8,18,0.95) 100%)" }}
+      />
+      {/* Orange glow */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse at 50% 110%, rgba(249,115,22,0.18) 0%, transparent 55%)" }}
+      />
+
+      <div className="relative z-10 w-full max-w-md">
+        <Card className="border-white/10 shadow-2xl" style={{ background: "rgba(10,10,18,0.85)", backdropFilter: "blur(20px)" }}>
+          <CardHeader className="space-y-3 text-center pb-6">
+            <div className="flex justify-center mb-2">
+              <img src="/mution-logo.png" alt="Mution" className="h-14 w-auto" />
             </div>
-          </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Selamat datang kembali</CardTitle>
-          <CardDescription>
-            Masukkan kredensial kamu untuk mengakses dashboard
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="kamu@contoh.com" autoComplete="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+            <CardTitle className="text-2xl font-bold tracking-tight text-white">Selamat datang kembali</CardTitle>
+            <CardDescription className="text-white/50">
+              Masukkan kredensial kamu untuk mengakses dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70">Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="kamu@contoh.com" autoComplete="email" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-white/70">Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" autoComplete="current-password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {loginMutation.isError && (
+                  <div className="text-sm text-destructive font-medium">
+                    {/* @ts-ignore */}
+                    {loginMutation.error?.error || "Login gagal. Periksa kembali email dan password kamu."}
+                  </div>
                 )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" autoComplete="current-password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {loginMutation.isError && (
-                <div className="text-sm text-destructive font-medium">
-                  {/* @ts-ignore */}
-                  {loginMutation.error?.error || "Login gagal. Periksa kembali email dan password kamu."}
-                </div>
-              )}
-              <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-                {loginMutation.isPending ? "Masuk..." : "Masuk"}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-        <CardFooter className="flex justify-center border-t border-border/50 pt-6">
-          <div className="text-sm text-muted-foreground">
-            Belum punya akun?{" "}
-            <Link href="/register" className="text-primary hover:underline font-medium">
-              Daftar di sini
-            </Link>
-          </div>
-        </CardFooter>
-      </Card>
+                <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+                  {loginMutation.isPending ? "Masuk..." : "Masuk"}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+          <CardFooter className="flex justify-center border-t pt-6" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+            <div className="text-sm text-white/40">
+              Belum punya akun?{" "}
+              <Link href="/register" className="text-primary hover:underline font-medium">
+                Daftar di sini
+              </Link>
+            </div>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }

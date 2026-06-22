@@ -235,7 +235,7 @@ export default function Landing() {
                 Platform infrastruktur modern — deploy, scale, dan pantau aplikasi kamu tanpa perlu mengurus server atau konfigurasi rumit.
               </p>
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Link href="/register">
+                <Link href="/login">
                   <button
                     className="group inline-flex items-center gap-2 rounded-xl font-semibold text-sm transition-all duration-200"
                     style={{
@@ -249,22 +249,6 @@ export default function Landing() {
                   >
                     Deploy Sekarang
                     <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                  </button>
-                </Link>
-                <Link href="/login">
-                  <button
-                    className="inline-flex items-center gap-2 rounded-xl font-medium text-sm transition-all duration-200"
-                    style={{
-                      background: "rgba(255,255,255,0.05)",
-                      color: "rgba(255,255,255,0.75)",
-                      padding: "12px 28px",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      backdropFilter: "blur(8px)",
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; e.currentTarget.style.color = "#fff"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "rgba(255,255,255,0.75)"; }}
-                  >
-                    Masuk ke Dashboard
                   </button>
                 </Link>
               </div>
