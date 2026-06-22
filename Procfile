@@ -1,1 +1,1 @@
-web: pnpm --filter @workspace/api-server run start
+web: node artifacts/api-server/dist/index.mjs
