@@ -353,65 +353,67 @@ export default function NewProject() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="runtime"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex items-center justify-between">
-                      <FormLabel>Runtime</FormLabel>
-                      {detectedRuntime && !showRuntimeOverride && (
-                        <button
-                          type="button"
-                          onClick={() => setShowRuntimeOverride(true)}
-                          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-                        >
-                          Ubah manual
-                        </button>
-                      )}
-                    </div>
+              {(selectedRepo || showRuntimeOverride) && (
+                <FormField
+                  control={form.control}
+                  name="runtime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Runtime</FormLabel>
+                        {detectedRuntime && !showRuntimeOverride && (
+                          <button
+                            type="button"
+                            onClick={() => setShowRuntimeOverride(true)}
+                            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                          >
+                            Ubah manual
+                          </button>
+                        )}
+                      </div>
 
-                    {detectingRuntime ? (
-                      <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/50">
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Mendeteksi dari file repo...</span>
-                      </div>
-                    ) : detectedRuntime && !showRuntimeOverride ? (
-                      <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/30">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                        <span className="text-sm font-medium">
-                          {{
-                            nodejs: "Node.js",
-                            python: "Python",
-                            php: "PHP",
-                            static: "Static HTML/JS",
-                          }[detectedRuntime.runtime] ?? detectedRuntime.runtime}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {detectedRuntime.confidence === "detected"
-                            ? "— terdeteksi dari file repo"
-                            : "— fallback dari bahasa repo"}
-                        </span>
-                      </div>
-                    ) : (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih runtime" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="nodejs">Node.js</SelectItem>
-                          <SelectItem value="python">Python</SelectItem>
-                          <SelectItem value="php">PHP</SelectItem>
-                          <SelectItem value="static">Static HTML/JS</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      {detectingRuntime ? (
+                        <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/50">
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Mendeteksi dari file repo...</span>
+                        </div>
+                      ) : detectedRuntime && !showRuntimeOverride ? (
+                        <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/30">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                          <span className="text-sm font-medium">
+                            {{
+                              nodejs: "Node.js",
+                              python: "Python",
+                              php: "PHP",
+                              static: "Static HTML/JS",
+                            }[detectedRuntime.runtime] ?? detectedRuntime.runtime}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {detectedRuntime.confidence === "detected"
+                              ? "— terdeteksi dari file repo"
+                              : "— fallback dari bahasa repo"}
+                          </span>
+                        </div>
+                      ) : (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Pilih runtime" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="nodejs">Node.js</SelectItem>
+                            <SelectItem value="python">Python</SelectItem>
+                            <SelectItem value="php">PHP</SelectItem>
+                            <SelectItem value="static">Static HTML/JS</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <div className="flex justify-end gap-3 pt-2 border-t border-border/50">
                 <Link href="/projects">
