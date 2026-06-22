@@ -17,7 +17,7 @@ import ProjectDetail from "@/pages/projects/detail";
 import AdminPanel from "@/pages/admin";
 import ActivityLog from "@/pages/activity";
 import GitHubCallback from "@/pages/github-callback";
-import PricingPage from "@/pages/pricing";
+import HargaPage from "@/pages/harga";
 
 const queryClient = new QueryClient();
 
@@ -63,7 +63,7 @@ function Router() {
       <Route path="/admin" component={() => <ProtectedRoute component={AdminPanel} adminOnly />} />
       <Route path="/activity" component={() => <ProtectedRoute component={ActivityLog} />} />
       <Route path="/github-callback" component={GitHubCallback} />
-      <Route path="/pricing" component={PricingPage} />
+      <Route path="/harga" component={HargaPage} />
 
       <Route component={NotFound} />
     </Switch>

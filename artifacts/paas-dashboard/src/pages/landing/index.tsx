@@ -187,7 +187,7 @@ export default function Landing() {
               <span style={{ fontFamily: "'Space Grotesk', sans-serif" }} className="text-xl font-extrabold text-primary tracking-tight">Mution</span>
             </div>
             <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="/pricing" className="hover:text-foreground transition-colors">Harga</a>
+              <a href="/harga" className="hover:text-foreground transition-colors">Harga</a>
               <a href="#runtime" className="hover:text-foreground transition-colors">Runtime</a>
             </nav>
             <div className="flex items-center gap-3">

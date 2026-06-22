@@ -86,7 +86,7 @@ export default function PricingPage() {
               </div>
             </Link>
             <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-              <Link href="/pricing" className="text-foreground font-medium transition-colors">Harga</Link>
+              <Link href="/harga" className="text-foreground font-medium transition-colors">Harga</Link>
               <Link href="/#runtime" className="hover:text-foreground transition-colors">Runtime</Link>
             </nav>
             <div className="flex items-center gap-3">
@@ -311,7 +311,7 @@ export default function PricingPage() {
           </div>
           <div className="flex gap-5 text-xs text-muted-foreground">
             <Link href="/" className="hover:text-foreground transition-colors">Beranda</Link>
-            <Link href="/pricing" className="hover:text-foreground transition-colors">Harga</Link>
+            <Link href="/harga" className="hover:text-foreground transition-colors">Harga</Link>
             <Link href="/login" className="hover:text-foreground transition-colors">Masuk</Link>
           </div>
         </div>
