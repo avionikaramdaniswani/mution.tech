@@ -5,11 +5,53 @@ import {
   ArrowRight,
   CheckCircle2,
   Box,
-  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 const runtimes = ["Node.js", "Python", "PHP", "Static"];
+
+const terminalLines = [
+  { delay: 0,    text: "$ git push origin main",                  color: "rgba(255,255,255,0.85)" },
+  { delay: 700,  text: "Counting objects: 12, done.",              color: "rgba(255,255,255,0.35)" },
+  { delay: 1100, text: "Writing objects: 100% (12/12) · 4.2 KiB", color: "rgba(255,255,255,0.35)" },
+  { delay: 1700, text: "remote: Mution — deploy triggered ⚡",    color: "rgba(249,115,22,0.9)"  },
+  { delay: 2300, text: "remote: Detecting runtime... Node.js 20", color: "rgba(255,255,255,0.45)" },
+  { delay: 2900, text: "remote: Installing dependencies...",       color: "rgba(255,255,255,0.45)" },
+  { delay: 3600, text: "remote: npm install · 47 packages · 8s",  color: "rgba(255,255,255,0.35)" },
+  { delay: 4300, text: "remote: Building... npm run build",        color: "rgba(255,255,255,0.45)" },
+  { delay: 5100, text: "remote: Build succeeded in 11.4s ✓",      color: "rgba(249,115,22,0.8)"  },
+  { delay: 5800, text: "remote: Deploying container...",           color: "rgba(255,255,255,0.45)" },
+  { delay: 6600, text: "remote: SSL certificate provisioned ✓",   color: "rgba(255,255,255,0.35)" },
+  { delay: 7200, text: "remote: ● Live → my-api.mution.app",      color: "#4ade80"               },
+];
+
+const faqs = [
+  {
+    q: "Apakah ada biaya tersembunyi?",
+    a: "Tidak. Kamu hanya membayar sesuai resource yang dipakai. Tidak ada biaya setup, tidak ada biaya egress tersembunyi.",
+  },
+  {
+    q: "Berapa lama waktu deploy rata-rata?",
+    a: "Rata-rata 15–30 detik dari git push sampai aplikasi live. Build yang lebih besar dengan banyak dependencies bisa 60–90 detik.",
+  },
+  {
+    q: "Apakah saya bisa pakai domain sendiri?",
+    a: "Ya. Kamu bisa menghubungkan domain custom di plan Pro ke atas. SSL/HTTPS diaktifkan otomatis tanpa konfigurasi manual.",
+  },
+  {
+    q: "Database apa yang didukung?",
+    a: "Mution mendukung managed PostgreSQL per proyek. Provisioning cukup satu klik, backup otomatis setiap hari.",
+  },
+  {
+    q: "Bagaimana cara kerja billing pay-as-you-go?",
+    a: "Kamu ditagih berdasarkan CPU dan RAM aktual yang dipakai per jam. Jika aplikasi tidak berjalan, tidak ada tagihan.",
+  },
+  {
+    q: "Apakah ada jaminan uptime?",
+    a: "Plan Pro dan Enterprise mendapatkan SLA 99.9% uptime. Kamu bisa memantau status platform real-time di status.mution.tech.",
+  },
+];
 
 const plans = [
   {
@@ -49,6 +91,10 @@ const stats = [
 export default function Landing() {
   const { user } = useAuth();
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [visibleLines, setVisibleLines] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const terminalRef = useRef<HTMLDivElement | null>(null);
+  const animStarted = useRef(false);
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
@@ -63,6 +109,29 @@ export default function Landing() {
     return () => {
       window.removeEventListener("scroll", onScroll);
     };
+  }, []);
+
+  useEffect(() => {
+    const el = terminalRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !animStarted.current) {
+          animStarted.current = true;
+          terminalLines.forEach((line, i) => {
+            setTimeout(() => setVisibleLines(i + 1), line.delay);
+          });
+          const totalDuration = terminalLines[terminalLines.length - 1].delay + 3000;
+          setTimeout(() => {
+            animStarted.current = false;
+            setVisibleLines(0);
+          }, totalDuration);
+        }
+      },
+      { threshold: 0.4 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
   }, []);
 
   return (
@@ -247,6 +316,102 @@ export default function Landing() {
               <div key={r} className="flex items-center gap-2 rounded-lg border border-border/60 bg-card px-5 py-2.5 text-sm font-medium text-foreground">
                 <Box className="h-4 w-4 text-primary" />
                 {r}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Terminal Animasi */}
+      <section className="py-24 border-t border-border/40">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Teks kiri */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-4">Deploy dalam hitungan detik</p>
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
+                Push kode.<br />
+                <span className="text-primary">Sisanya urusan kami.</span>
+              </h2>
+              <p className="mt-5 text-muted-foreground leading-relaxed">
+                Cukup <code className="text-xs bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono">git push</code> — Mution otomatis mendeteksi runtime, install dependencies, build, dan deploy. SSL aktif, domain siap, tanpa konfigurasi manual.
+              </p>
+              <div className="mt-8 flex flex-col gap-3">
+                {[
+                  "Runtime terdeteksi otomatis",
+                  "Zero-downtime deployment",
+                  "SSL otomatis tanpa konfigurasi",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Terminal */}
+            <div
+              ref={terminalRef}
+              className="rounded-xl overflow-hidden"
+              style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(6,6,14,0.95)" }}
+            >
+              {/* Chrome bar */}
+              <div className="flex items-center gap-1.5 px-4 py-3 border-b" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(255,80,80,0.5)" }} />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(255,190,0,0.4)" }} />
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(0,200,80,0.4)" }} />
+                <span className="ml-3 text-[11px] font-mono" style={{ color: "rgba(255,255,255,0.2)" }}>bash — 80×24</span>
+              </div>
+              {/* Lines */}
+              <div className="p-5 font-mono text-[13px] leading-relaxed min-h-[320px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+                {terminalLines.slice(0, visibleLines).map((line, i) => (
+                  <div
+                    key={i}
+                    className="transition-opacity duration-300"
+                    style={{ color: line.color, opacity: 1 }}
+                  >
+                    {line.text}
+                  </div>
+                ))}
+                {visibleLines < terminalLines.length && (
+                  <span className="inline-block w-2 h-4 ml-0.5 align-middle animate-pulse" style={{ background: "rgba(249,115,22,0.7)" }} />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-24 border-t border-border/40">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-4">FAQ</p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Pertanyaan yang sering ditanyakan</h2>
+          </div>
+          <div className="space-y-2">
+            {faqs.map((faq, i) => (
+              <div
+                key={i}
+                className="rounded-xl border overflow-hidden transition-colors"
+                style={{ borderColor: openFaq === i ? "rgba(249,115,22,0.3)" : "rgba(255,255,255,0.08)", background: openFaq === i ? "rgba(249,115,22,0.04)" : "rgba(255,255,255,0.02)" }}
+              >
+                <button
+                  className="w-full flex items-center justify-between px-6 py-4 text-left"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                >
+                  <span className="text-sm font-semibold text-foreground">{faq.q}</span>
+                  <ChevronDown
+                    className="h-4 w-4 flex-shrink-0 ml-4 transition-transform duration-200"
+                    style={{ color: "rgba(255,255,255,0.4)", transform: openFaq === i ? "rotate(180deg)" : "rotate(0deg)" }}
+                  />
+                </button>
+                {openFaq === i && (
+                  <div className="px-6 pb-5 text-sm text-muted-foreground leading-relaxed border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                    <p className="pt-4">{faq.a}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
