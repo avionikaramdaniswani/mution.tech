@@ -19,9 +19,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { TerminalSquare } from "lucide-react";
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  name: z.string().min(2, { message: "Nama minimal 2 karakter." }),
+  email: z.string().email({ message: "Format email tidak valid." }),
+  password: z.string().min(6, { message: "Password minimal 6 karakter." }),
 });
 
 export default function Register() {
@@ -59,9 +59,9 @@ export default function Register() {
               <TerminalSquare className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Create an account</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">Buat akun baru</CardTitle>
           <CardDescription>
-            Join Mution to deploy your applications
+            Bergabung dengan Mution dan mulai deploy aplikasi kamu
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -72,9 +72,9 @@ export default function Register() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel>Nama Lengkap</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input placeholder="Budi Santoso" autoComplete="name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -87,7 +87,7 @@ export default function Register() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="you@example.com" {...field} />
+                      <Input placeholder="kamu@contoh.com" autoComplete="email" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -100,7 +100,7 @@ export default function Register() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="••••••••" autoComplete="new-password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -108,21 +108,21 @@ export default function Register() {
               />
               {registerMutation.isError && (
                 <div className="text-sm text-destructive font-medium">
-                  {/* @ts-ignore - error type is unknown by default */}
-                  {registerMutation.error?.error || "Failed to register. Please try again."}
+                  {/* @ts-ignore */}
+                  {registerMutation.error?.error || "Registrasi gagal. Silakan coba lagi."}
                 </div>
               )}
               <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-                {registerMutation.isPending ? "Creating account..." : "Sign up"}
+                {registerMutation.isPending ? "Mendaftar..." : "Daftar"}
               </Button>
             </form>
           </Form>
         </CardContent>
         <CardFooter className="flex justify-center border-t border-border/50 pt-6">
           <div className="text-sm text-muted-foreground">
-            Already have an account?{" "}
+            Sudah punya akun?{" "}
             <Link href="/login" className="text-primary hover:underline font-medium">
-              Sign in
+              Masuk
             </Link>
           </div>
         </CardFooter>

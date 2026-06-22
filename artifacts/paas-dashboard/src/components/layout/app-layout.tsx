@@ -15,7 +15,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Activity, Box, LayoutDashboard, LogOut, Settings, ShieldAlert, TerminalSquare, HeartPulse } from "lucide-react";
+import { Activity, Box, LayoutDashboard, LogOut, ShieldAlert, HeartPulse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -33,9 +33,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const navItems = [
-    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    { title: "Projects", url: "/projects", icon: Box },
-    { title: "Activity", url: "/activity", icon: Activity },
+    { title: "Beranda", url: "/dashboard", icon: LayoutDashboard },
+    { title: "Proyek", url: "/projects", icon: Box },
+    { title: "Aktivitas", url: "/activity", icon: Activity },
   ];
 
   return (
@@ -49,14 +49,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span style={{ fontFamily: "'Space Grotesk', sans-serif" }} className="text-lg font-extrabold tracking-tight text-primary">Mution</span>
               </div>
               {health?.status === "ok" ? (
-                <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full" title="Platform Operational">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full" title="Platform beroperasi normal">
                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Operational</span>
+                  <span>Normal</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 text-xs font-medium text-destructive bg-destructive/10 px-2 py-1 rounded-full" title="Platform degraded">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-destructive bg-destructive/10 px-2 py-1 rounded-full" title="Platform mengalami gangguan">
                   <HeartPulse className="h-3 w-3" />
-                  <span>Degraded</span>
+                  <span>Gangguan</span>
                 </div>
               )}
             </div>
@@ -86,18 +86,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
             {user?.role === "admin" && (
               <SidebarGroup>
-                <SidebarGroupLabel>Administration</SidebarGroupLabel>
+                <SidebarGroupLabel>Administrasi</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         asChild
                         isActive={location.startsWith("/admin")}
-                        tooltip="Admin Panel"
+                        tooltip="Panel Admin"
                       >
                         <Link href="/admin" className="flex items-center gap-3">
                           <ShieldAlert className="h-4 w-4 text-destructive" />
-                          <span className="text-destructive font-medium">Admin Panel</span>
+                          <span className="text-destructive font-medium">Panel Admin</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -113,7 +113,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="text-sm font-medium">{user?.name}</span>
                 <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleLogout} title="Log out">
+              <Button variant="ghost" size="icon" onClick={handleLogout} title="Keluar">
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -123,9 +123,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-1 flex-col overflow-hidden">
           <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border/50 px-4 md:px-6">
             <SidebarTrigger />
-            <div className="ml-auto flex items-center space-x-4">
-              {/* Could add environment selector or global search here */}
-            </div>
           </header>
           <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
             {children}

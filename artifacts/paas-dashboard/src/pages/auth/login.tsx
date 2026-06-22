@@ -19,8 +19,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { TerminalSquare } from "lucide-react";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(1, { message: "Password is required." }),
+  email: z.string().email({ message: "Format email tidak valid." }),
+  password: z.string().min(1, { message: "Password tidak boleh kosong." }),
 });
 
 export default function Login() {
@@ -57,9 +57,9 @@ export default function Login() {
               <TerminalSquare className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Welcome back</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">Selamat datang kembali</CardTitle>
           <CardDescription>
-            Enter your credentials to access your dashboard
+            Masukkan kredensial kamu untuk mengakses dashboard
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -72,7 +72,7 @@ export default function Login() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="you@example.com" {...field} />
+                      <Input placeholder="kamu@contoh.com" autoComplete="email" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -83,11 +83,9 @@ export default function Login() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex items-center justify-between">
-                      <FormLabel>Password</FormLabel>
-                    </div>
+                    <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="••••••••" autoComplete="current-password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -95,21 +93,21 @@ export default function Login() {
               />
               {loginMutation.isError && (
                 <div className="text-sm text-destructive font-medium">
-                  {/* @ts-ignore - error type is unknown by default */}
-                  {loginMutation.error?.error || "Failed to login. Please check your credentials."}
+                  {/* @ts-ignore */}
+                  {loginMutation.error?.error || "Login gagal. Periksa kembali email dan password kamu."}
                 </div>
               )}
               <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-                {loginMutation.isPending ? "Signing in..." : "Sign in"}
+                {loginMutation.isPending ? "Masuk..." : "Masuk"}
               </Button>
             </form>
           </Form>
         </CardContent>
         <CardFooter className="flex justify-center border-t border-border/50 pt-6">
           <div className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            Belum punya akun?{" "}
             <Link href="/register" className="text-primary hover:underline font-medium">
-              Register here
+              Daftar di sini
             </Link>
           </div>
         </CardFooter>

@@ -6,22 +6,24 @@ import {
   useGetProjectEnv, getGetProjectEnvQueryKey, useSetProjectEnv, useDeleteProjectEnv,
   useListDeployments, getListDeploymentsQueryKey, useTriggerDeployment, useRollbackDeployment,
   useGetProjectDatabase, getGetProjectDatabaseQueryKey, useProvisionDatabase, useDeleteDatabase,
-  getListProjectsQueryKey, useGetDeployment
+  getListProjectsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { ProjectStatusBadge } from "./index";
+import { useLocation } from "wouter";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Database, Globe, Play, Power, RotateCcw, Settings, TerminalSquare, Trash } from "lucide-react";
+import { ArrowLeft, Copy, Database, Globe, Play, Power, RotateCcw, Trash } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { id } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 export default function ProjectDetail() {
@@ -29,6 +31,7 @@ export default function ProjectDetail() {
   const projectId = parseInt(params.id || "0", 10);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const { data: project, isLoading: isLoadingProject } = useGetProject(projectId, { 
     query: { enabled: !!projectId, queryKey: getGetProjectQueryKey(projectId) } 
@@ -38,7 +41,6 @@ export default function ProjectDetail() {
     query: { enabled: !!projectId, queryKey: getListDeploymentsQueryKey() }
   });
   
-  // Filter deployments by this project
   const projectDeployments = deployments?.filter(d => d.projectId === projectId) || [];
 
   const { data: envVars, isLoading: isLoadingEnv } = useGetProjectEnv(projectId, {
@@ -53,6 +55,7 @@ export default function ProjectDetail() {
   const triggerRollback = useRollbackDeployment();
   const stopProject = useStopProject();
   const restartProject = useRestartProject();
+  const deleteProject = useDeleteProject();
   
   const handleDeploy = () => {
     triggerDeploy.mutate(
@@ -61,7 +64,7 @@ export default function ProjectDetail() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListDeploymentsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-          toast({ title: "Deployment triggered" });
+          toast({ title: "Deployment dimulai" });
         }
       }
     );
@@ -73,7 +76,7 @@ export default function ProjectDetail() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-          toast({ title: "Project stopped" });
+          toast({ title: "Proyek dihentikan" });
         }
       }
     );
@@ -85,7 +88,20 @@ export default function ProjectDetail() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-          toast({ title: "Project restarted" });
+          toast({ title: "Proyek di-restart" });
+        }
+      }
+    );
+  };
+
+  const handleDelete = () => {
+    deleteProject.mutate(
+      { id: projectId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+          toast({ title: "Proyek dihapus" });
+          setLocation("/projects");
         }
       }
     );
@@ -96,7 +112,7 @@ export default function ProjectDetail() {
   }
 
   if (!project) {
-    return <div>Project not found</div>;
+    return <div className="text-muted-foreground py-12 text-center">Proyek tidak ditemukan.</div>;
   }
 
   return (
@@ -128,7 +144,7 @@ export default function ProjectDetail() {
             onClick={handleStop}
             disabled={project.status === 'stopped' || stopProject.isPending}
           >
-            <Power className="h-4 w-4 mr-2" /> Stop
+            <Power className="h-4 w-4 mr-2" /> Hentikan
           </Button>
           <Button 
             variant="outline" 
@@ -148,9 +164,9 @@ export default function ProjectDetail() {
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="bg-muted">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="deployments">Deployments</TabsTrigger>
-          <TabsTrigger value="environment">Environment</TabsTrigger>
+          <TabsTrigger value="overview">Ringkasan</TabsTrigger>
+          <TabsTrigger value="deployments">Deployment</TabsTrigger>
+          <TabsTrigger value="environment">Variabel Env</TabsTrigger>
           <TabsTrigger value="database">Database</TabsTrigger>
         </TabsList>
 
@@ -158,7 +174,7 @@ export default function ProjectDetail() {
           <div className="grid gap-6 md:grid-cols-2">
             <Card className="border-border/50">
               <CardHeader>
-                <CardTitle>Project Details</CardTitle>
+                <CardTitle>Detail Proyek</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -168,48 +184,48 @@ export default function ProjectDetail() {
                       {project.repoUrl}
                     </a>
                   ) : (
-                    <span className="text-sm text-muted-foreground">No repository connected</span>
+                    <span className="text-sm text-muted-foreground">Belum ada repository yang terhubung</span>
                   )}
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Created</div>
-                  <div className="text-sm">{formatDistanceToNow(new Date(project.createdAt), { addSuffix: true })}</div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Dibuat</div>
+                  <div className="text-sm">{formatDistanceToNow(new Date(project.createdAt), { addSuffix: true, locale: id })}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Last Deployed</div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Terakhir Deploy</div>
                   <div className="text-sm">
                     {project.lastDeployedAt 
-                      ? formatDistanceToNow(new Date(project.lastDeployedAt), { addSuffix: true }) 
-                      : "Never deployed"}
+                      ? formatDistanceToNow(new Date(project.lastDeployedAt), { addSuffix: true, locale: id }) 
+                      : "Belum pernah deploy"}
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border/50">
+            <Card className="border-border/50 border-destructive/30">
               <CardHeader>
-                <CardTitle>Danger Zone</CardTitle>
-                <CardDescription>Destructive actions for this project.</CardDescription>
+                <CardTitle className="text-destructive">Zona Berbahaya</CardTitle>
+                <CardDescription>Tindakan yang tidak bisa dibatalkan.</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Deleting a project removes all deployments, databases, and environment variables permanently.
+                  Menghapus proyek akan menghapus semua deployment, database, dan variabel environment secara permanen.
                 </p>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive">Delete Project</Button>
+                    <Button variant="destructive">Hapus Proyek</Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogTitle>Yakin ingin menghapus?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the project and all its data.
+                        Tindakan ini tidak bisa dibatalkan. Semua data proyek <span className="font-semibold text-foreground">{project.name}</span> akan dihapus permanen.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Delete
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Hapus
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -222,15 +238,15 @@ export default function ProjectDetail() {
         <TabsContent value="deployments" className="mt-6">
           <Card className="border-border/50">
             <CardHeader>
-              <CardTitle>Deployments</CardTitle>
-              <CardDescription>History of all deployments for this project.</CardDescription>
+              <CardTitle>Riwayat Deployment</CardTitle>
+              <CardDescription>Semua deployment yang pernah dijalankan untuk proyek ini.</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoadingDeployments ? (
                 <Skeleton className="h-[200px]" />
               ) : projectDeployments.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-                  No deployments yet
+                  Belum ada deployment
                 </div>
               ) : (
                 <Table>
@@ -238,9 +254,9 @@ export default function ProjectDetail() {
                     <TableRow>
                       <TableHead>Status</TableHead>
                       <TableHead>Commit</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
+                      <TableHead>Waktu</TableHead>
+                      <TableHead>Durasi</TableHead>
+                      <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -252,16 +268,19 @@ export default function ProjectDetail() {
                             deployment.status === 'failed' ? 'destructive' :
                             'secondary'
                           } className={deployment.status === 'running' ? 'bg-emerald-500' : ''}>
-                            {deployment.status}
+                            {deployment.status === 'running' ? 'Berjalan' :
+                             deployment.status === 'failed' ? 'Gagal' :
+                             deployment.status === 'building' ? 'Build' :
+                             deployment.status}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="font-mono text-xs max-w-[200px] truncate" title={deployment.commitMessage || deployment.commitHash || ''}>
-                            {deployment.commitMessage || deployment.commitHash || 'Manual deployment'}
+                            {deployment.commitMessage || deployment.commitHash || 'Deploy manual'}
                           </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
-                          {formatDistanceToNow(new Date(deployment.createdAt), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(deployment.createdAt), { addSuffix: true, locale: id })}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
                           {deployment.durationMs ? `${(deployment.durationMs / 1000).toFixed(1)}s` : '-'}
@@ -277,7 +296,7 @@ export default function ProjectDetail() {
                                   {
                                     onSuccess: () => {
                                       queryClient.invalidateQueries({ queryKey: getListDeploymentsQueryKey() });
-                                      toast({ title: "Rollback initiated" });
+                                      toast({ title: "Rollback dimulai" });
                                     }
                                   }
                                 );
@@ -326,7 +345,7 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number, envV
           queryClient.invalidateQueries({ queryKey: getGetProjectEnvQueryKey(projectId) });
           setNewKey("");
           setNewVal("");
-          toast({ title: "Environment variable added" });
+          toast({ title: "Variabel environment ditambahkan" });
         }
       }
     );
@@ -338,7 +357,7 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number, envV
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetProjectEnvQueryKey(projectId) });
-          toast({ title: "Environment variable deleted" });
+          toast({ title: "Variabel environment dihapus" });
         }
       }
     );
@@ -347,35 +366,35 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number, envV
   return (
     <Card className="border-border/50">
       <CardHeader>
-        <CardTitle>Environment Variables</CardTitle>
-        <CardDescription>Secrets and configuration available to your application at runtime.</CardDescription>
+        <CardTitle>Variabel Environment</CardTitle>
+        <CardDescription>Secret dan konfigurasi yang tersedia di aplikasi kamu saat runtime.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex items-end gap-4">
           <div className="space-y-2 flex-1">
-            <Label>Key</Label>
+            <Label>Nama</Label>
             <Input placeholder="API_KEY" value={newKey} onChange={e => setNewKey(e.target.value)} />
           </div>
           <div className="space-y-2 flex-1">
-            <Label>Value</Label>
+            <Label>Nilai</Label>
             <Input type="password" placeholder="••••••••" value={newVal} onChange={e => setNewVal(e.target.value)} />
           </div>
-          <Button onClick={handleAdd} disabled={setEnv.isPending || !newKey || !newVal}>Add</Button>
+          <Button onClick={handleAdd} disabled={setEnv.isPending || !newKey || !newVal}>Tambah</Button>
         </div>
 
         {isLoading ? (
           <Skeleton className="h-[200px]" />
         ) : !envVars || envVars.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-            No environment variables configured
+            Belum ada variabel environment
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Key</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead>Nama</TableHead>
+                <TableHead>Nilai</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -410,24 +429,22 @@ function DatabaseTab({ projectId, database, isLoading }: { projectId: number, da
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetProjectDatabaseQueryKey(projectId) });
-          toast({ title: "Database provisioning started" });
+          toast({ title: "Provisioning database dimulai" });
         }
       }
     );
   };
 
   const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this database? All data will be lost.")) {
-      deleteDb.mutate(
-        { id: projectId },
-        {
-          onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: getGetProjectDatabaseQueryKey(projectId) });
-            toast({ title: "Database deleted" });
-          }
+    deleteDb.mutate(
+      { id: projectId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetProjectDatabaseQueryKey(projectId) });
+          toast({ title: "Database dihapus" });
         }
-      );
-    }
+      }
+    );
   };
 
   return (
@@ -435,9 +452,9 @@ function DatabaseTab({ projectId, database, isLoading }: { projectId: number, da
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Database className="h-5 w-5 text-primary" />
-          Attached Database
+          Database Terpasang
         </CardTitle>
-        <CardDescription>Provision a PostgreSQL database for this project.</CardDescription>
+        <CardDescription>Provisioning database PostgreSQL untuk proyek ini.</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -447,12 +464,30 @@ function DatabaseTab({ projectId, database, isLoading }: { projectId: number, da
             <div className="flex items-center justify-between border border-border p-4 rounded-lg bg-muted/50">
               <div>
                 <div className="font-medium text-lg">PostgreSQL</div>
-                <div className="text-sm text-muted-foreground mt-1">Status: <Badge variant="outline">{database.status || 'ready'}</Badge></div>
-                <div className="text-sm text-muted-foreground">Size: {database.sizeMb} MB</div>
+                <div className="text-sm text-muted-foreground mt-1">Status: <Badge variant="outline">{database.status || 'siap'}</Badge></div>
+                <div className="text-sm text-muted-foreground">Ukuran: {database.sizeMb} MB</div>
               </div>
-              <Button variant="destructive" onClick={handleDelete} disabled={deleteDb.isPending}>
-                <Trash className="h-4 w-4 mr-2" /> Delete Database
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" disabled={deleteDb.isPending}>
+                    <Trash className="h-4 w-4 mr-2" /> Hapus Database
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Hapus database?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Semua data di database ini akan hilang permanen. Tindakan ini tidak bisa dibatalkan.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Hapus
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
             
             <div className="space-y-2">
@@ -461,11 +496,13 @@ function DatabaseTab({ projectId, database, isLoading }: { projectId: number, da
                 <Input value={database.connectionString || "••••••••••••••••••••••••••••••••••••••••••••"} readOnly type="password" />
                 <Button variant="outline" onClick={() => {
                   navigator.clipboard.writeText(database.connectionString || "");
-                  toast({ title: "Copied to clipboard" });
-                }}>Copy</Button>
+                  toast({ title: "Disalin ke clipboard" });
+                }}>
+                  <Copy className="h-4 w-4" />
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Also available in your project's environment as DATABASE_URL.
+                Tersedia juga di environment proyek kamu sebagai <code className="font-mono bg-muted px-1 rounded">DATABASE_URL</code>.
               </p>
             </div>
           </div>
@@ -474,12 +511,12 @@ function DatabaseTab({ projectId, database, isLoading }: { projectId: number, da
             <div className="rounded-full bg-primary/10 p-4 mb-4 text-primary">
               <Database className="h-8 w-8" />
             </div>
-            <h3 className="text-lg font-medium">No database provisioned</h3>
+            <h3 className="text-lg font-medium">Belum ada database</h3>
             <p className="text-muted-foreground max-w-sm mt-2 mb-6">
-              Add a PostgreSQL database to your project. The connection string will automatically be injected into your environment.
+              Tambahkan database PostgreSQL ke proyek ini. Connection string akan otomatis tersedia di environment kamu.
             </p>
             <Button onClick={handleProvision} disabled={provisionDb.isPending}>
-              Provision PostgreSQL Database
+              {provisionDb.isPending ? "Menyiapkan..." : "Provision Database PostgreSQL"}
             </Button>
           </div>
         )}

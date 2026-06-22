@@ -23,8 +23,8 @@ import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: "Project name must be at least 2 characters." }).regex(/^[a-z0-9-]+$/, { message: "Only lowercase letters, numbers, and hyphens are allowed." }),
-  repoUrl: z.string().url({ message: "Must be a valid URL." }).optional().or(z.literal("")),
+  name: z.string().min(2, { message: "Nama proyek minimal 2 karakter." }).regex(/^[a-z0-9-]+$/, { message: "Hanya huruf kecil, angka, dan tanda hubung yang diperbolehkan." }),
+  repoUrl: z.string().url({ message: "Harus berupa URL yang valid." }).optional().or(z.literal("")),
   runtime: z.enum(["nodejs", "python", "php", "static"]),
   domain: z.string().optional(),
 });
@@ -58,15 +58,15 @@ export default function NewProject() {
         onSuccess: (data) => {
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           toast({
-            title: "Project created",
-            description: "Your new project has been created successfully.",
+            title: "Proyek dibuat",
+            description: "Proyek baru kamu berhasil dibuat.",
           });
           setLocation(`/projects/${data.id}`);
         },
         onError: (error: any) => {
           toast({
-            title: "Error",
-            description: error.error || "Failed to create project.",
+            title: "Gagal",
+            description: error.error || "Gagal membuat proyek.",
             variant: "destructive",
           });
         }
@@ -83,8 +83,8 @@ export default function NewProject() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Create Project</h1>
-          <p className="text-muted-foreground mt-1">Configure your new application.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Buat Proyek</h1>
+          <p className="text-muted-foreground mt-1">Konfigurasi aplikasi baru kamu.</p>
         </div>
       </div>
 
@@ -92,10 +92,10 @@ export default function NewProject() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Box className="h-5 w-5 text-primary" />
-            Project Settings
+            Pengaturan Proyek
           </CardTitle>
           <CardDescription>
-            Basic configuration for your new deployment.
+            Konfigurasi dasar untuk deployment baru kamu.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -106,12 +106,12 @@ export default function NewProject() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Project Name</FormLabel>
+                    <FormLabel>Nama Proyek</FormLabel>
                     <FormControl>
-                      <Input placeholder="my-awesome-app" {...field} />
+                      <Input placeholder="aplikasi-saya" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Unique identifier. Use lowercase letters, numbers, and hyphens.
+                      Identifer unik. Gunakan huruf kecil, angka, dan tanda hubung.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -123,11 +123,11 @@ export default function NewProject() {
                 name="runtime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Runtime Environment</FormLabel>
+                    <FormLabel>Runtime</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a runtime" />
+                          <SelectValue placeholder="Pilih runtime" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -138,7 +138,7 @@ export default function NewProject() {
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      The environment used to build and run your application.
+                      Environment yang digunakan untuk build dan menjalankan aplikasi kamu.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -150,12 +150,12 @@ export default function NewProject() {
                 name="repoUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Repository URL <span className="text-muted-foreground font-normal">(Optional)</span></FormLabel>
+                    <FormLabel>URL Repository <span className="text-muted-foreground font-normal">(Opsional)</span></FormLabel>
                     <FormControl>
                       <Input placeholder="https://github.com/username/repo.git" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Public Git repository to deploy from. If omitted, you can deploy manually later.
+                      Repository Git publik untuk di-deploy. Jika dikosongkan, kamu bisa deploy manual nanti.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -167,12 +167,12 @@ export default function NewProject() {
                 name="domain"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Custom Domain <span className="text-muted-foreground font-normal">(Optional)</span></FormLabel>
+                    <FormLabel>Domain Kustom <span className="text-muted-foreground font-normal">(Opsional)</span></FormLabel>
                     <FormControl>
-                      <Input placeholder="app.example.com" {...field} />
+                      <Input placeholder="app.contoh.com" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Custom domain to route traffic to this project. You must configure DNS separately.
+                      Domain kustom untuk proyek ini. Kamu perlu konfigurasi DNS secara terpisah.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -181,10 +181,10 @@ export default function NewProject() {
 
               <div className="flex justify-end gap-4 pt-4 border-t border-border/50">
                 <Link href="/projects">
-                  <Button type="button" variant="ghost">Cancel</Button>
+                  <Button type="button" variant="ghost">Batal</Button>
                 </Link>
                 <Button type="submit" disabled={createProject.isPending}>
-                  {createProject.isPending ? "Creating..." : "Create Project"}
+                  {createProject.isPending ? "Membuat..." : "Buat Proyek"}
                 </Button>
               </div>
             </form>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
+import { id } from "date-fns/locale";
 import { AlertCircle, Box, CheckCircle2, Clock, Globe, MoreHorizontal, Plus, TerminalSquare, Trash } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -28,13 +29,13 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 export function ProjectStatusBadge({ status }: { status: string }) {
-  const statusConfig: Record<string, { color: string; icon: any }> = {
-    running: { color: "bg-emerald-500 hover:bg-emerald-600", icon: CheckCircle2 },
-    stopped: { color: "bg-zinc-500 hover:bg-zinc-600", icon: Clock },
-    building: { color: "bg-amber-500 hover:bg-amber-600 animate-pulse", icon: TerminalSquare },
-    deploying: { color: "bg-blue-500 hover:bg-blue-600 animate-pulse", icon: Globe },
-    failed: { color: "bg-destructive hover:bg-destructive/90", icon: AlertCircle },
-    idle: { color: "bg-zinc-500 hover:bg-zinc-600", icon: Box },
+  const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
+    running:   { color: "bg-emerald-500 hover:bg-emerald-600",                      icon: CheckCircle2,    label: "Berjalan"  },
+    stopped:   { color: "bg-zinc-500 hover:bg-zinc-600",                            icon: Clock,           label: "Berhenti"  },
+    building:  { color: "bg-amber-500 hover:bg-amber-600 animate-pulse",            icon: TerminalSquare,  label: "Build"     },
+    deploying: { color: "bg-blue-500 hover:bg-blue-600 animate-pulse",              icon: Globe,           label: "Deploy"    },
+    failed:    { color: "bg-destructive hover:bg-destructive/90",                   icon: AlertCircle,     label: "Gagal"     },
+    idle:      { color: "bg-zinc-500 hover:bg-zinc-600",                            icon: Box,             label: "Idle"      },
   };
 
   const config = statusConfig[status] || statusConfig.idle;
@@ -43,7 +44,7 @@ export function ProjectStatusBadge({ status }: { status: string }) {
   return (
     <Badge className={`${config.color} text-white flex items-center gap-1.5 px-2.5 py-0.5`}>
       <Icon className="h-3 w-3" />
-      <span className="capitalize">{status}</span>
+      <span>{config.label}</span>
     </Badge>
   );
 }
@@ -61,14 +62,14 @@ export default function Projects() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           toast({
-            title: "Project deleted",
-            description: "The project has been successfully deleted.",
+            title: "Proyek dihapus",
+            description: "Proyek berhasil dihapus.",
           });
         },
         onError: (error: any) => {
           toast({
-            title: "Error",
-            description: error.error || "Failed to delete project.",
+            title: "Gagal",
+            description: error.error || "Gagal menghapus proyek.",
             variant: "destructive",
           });
         },
@@ -104,13 +105,13 @@ export default function Projects() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground mt-1">Manage your applications and deployments.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Proyek</h1>
+          <p className="text-muted-foreground mt-1">Kelola aplikasi dan deployment kamu.</p>
         </div>
         <Link href="/projects/new">
           <Button className="gap-2 shadow-sm">
             <Plus className="h-4 w-4" />
-            New Project
+            Proyek Baru
           </Button>
         </Link>
       </div>
@@ -121,12 +122,12 @@ export default function Projects() {
             <div className="rounded-full bg-primary/10 p-4 mb-4">
               <Box className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="text-xl font-semibold mb-2">No projects yet</h2>
+            <h2 className="text-xl font-semibold mb-2">Belum ada proyek</h2>
             <p className="text-muted-foreground max-w-sm mb-6">
-              Create your first project to start deploying your applications to the platform.
+              Buat proyek pertama kamu untuk mulai men-deploy aplikasi ke platform.
             </p>
             <Link href="/projects/new">
-              <Button>Create Project</Button>
+              <Button>Buat Proyek</Button>
             </Link>
           </CardContent>
         </Card>
@@ -155,32 +156,32 @@ export default function Projects() {
                     <DropdownMenuContent align="end">
                       <Link href={`/projects/${project.id}`}>
                         <DropdownMenuItem className="cursor-pointer">
-                          View details
+                          Lihat detail
                         </DropdownMenuItem>
                       </Link>
                       <DropdownMenuSeparator />
                       <AlertDialogTrigger asChild>
                         <DropdownMenuItem className="text-destructive focus:bg-destructive/10 cursor-pointer">
                           <Trash className="mr-2 h-4 w-4" />
-                          Delete
+                          Hapus
                         </DropdownMenuItem>
                       </AlertDialogTrigger>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogTitle>Yakin ingin menghapus?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will permanently delete the project <span className="font-semibold text-foreground">{project.name}</span> and all associated resources, databases, and deployments.
+                        Proyek <span className="font-semibold text-foreground">{project.name}</span> beserta semua resource, database, dan deployment-nya akan dihapus permanen.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
                       <AlertDialogAction 
                         onClick={() => handleDelete(project.id)}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
-                        Delete
+                        Hapus
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -206,12 +207,12 @@ export default function Projects() {
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      Last deployed
+                      Terakhir deploy
                     </span>
                     <span>
                       {project.lastDeployedAt 
-                        ? formatDistanceToNow(new Date(project.lastDeployedAt), { addSuffix: true }) 
-                        : "Never"}
+                        ? formatDistanceToNow(new Date(project.lastDeployedAt), { addSuffix: true, locale: id }) 
+                        : "Belum pernah"}
                     </span>
                   </div>
                 </div>

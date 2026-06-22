@@ -1,6 +1,7 @@
 import { useListActivity } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
+import { id } from "date-fns/locale";
 import { Activity as ActivityIcon, Settings, Terminal, Play, Square, Database, Box } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -16,10 +17,27 @@ export default function ActivityLog() {
     return <Settings className="h-4 w-4" />;
   };
 
+  const translateAction = (action: string) => {
+    const map: Record<string, string> = {
+      deploy: "Deploy",
+      create_project: "Buat proyek",
+      delete_project: "Hapus proyek",
+      start: "Mulai",
+      stop: "Hentikan",
+      restart: "Restart",
+      rollback: "Rollback",
+      provision_db: "Provisioning database",
+      delete_db: "Hapus database",
+      set_env: "Set variabel env",
+      delete_env: "Hapus variabel env",
+    };
+    return map[action] || action.replace(/_/g, ' ');
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold tracking-tight">Activity Log</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Aktivitas</h1>
         <Card>
           <CardContent className="p-6 space-y-6">
             {Array(6).fill(0).map((_, i) => (
@@ -41,8 +59,8 @@ export default function ActivityLog() {
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Activity Log</h1>
-          <p className="text-muted-foreground mt-1">Recent events across all your projects.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Aktivitas</h1>
+          <p className="text-muted-foreground mt-1">Riwayat event di semua proyek kamu.</p>
         </div>
       </div>
 
@@ -51,7 +69,7 @@ export default function ActivityLog() {
           {!activities || activities.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <ActivityIcon className="h-10 w-10 text-muted-foreground mb-4 opacity-50" />
-              <p className="text-muted-foreground">No activity recorded yet.</p>
+              <p className="text-muted-foreground">Belum ada aktivitas yang tercatat.</p>
             </div>
           ) : (
             <div className="divide-y divide-border/50">
@@ -62,10 +80,10 @@ export default function ActivityLog() {
                   </div>
                   <div className="flex-1 space-y-1">
                     <p className="text-sm font-medium leading-none flex items-center gap-2">
-                      <span className="capitalize">{activity.action.replace(/_/g, ' ')}</span>
+                      <span className="capitalize">{translateAction(activity.action)}</span>
                       {activity.projectName && (
                         <span className="text-muted-foreground font-normal">
-                          on <span className="text-foreground font-medium">{activity.projectName}</span>
+                          pada <span className="text-foreground font-medium">{activity.projectName}</span>
                         </span>
                       )}
                     </p>
@@ -75,7 +93,7 @@ export default function ActivityLog() {
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground pt-1">
-                      {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true, locale: id })}
                     </p>
                   </div>
                 </div>
