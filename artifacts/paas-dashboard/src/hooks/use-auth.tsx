@@ -25,13 +25,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !user && !publicRoutes.includes(location)) {
-      setLocation("/login");
+      setLocation("/");
     }
   }, [user, isLoading, location, setLocation]);
 
   const logout = () => {
     queryClient.setQueryData(getGetMeQueryKey(), null);
-    setLocation("/login");
+    setLocation("/");
   };
 
   return (
