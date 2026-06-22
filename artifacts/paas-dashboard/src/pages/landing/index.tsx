@@ -6,6 +6,7 @@ import {
   Globe,
   ChevronDown,
 } from "lucide-react";
+import { PublicNavbar } from "@/components/public-navbar";
 import {
   SiNodedotjs,
   SiPython,
@@ -178,33 +179,7 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <img src="/mution-logo.png" alt="Mution" className="h-9 w-auto" />
-              <span style={{ fontFamily: "'Space Grotesk', sans-serif" }} className="text-xl font-extrabold text-primary tracking-tight">Mution</span>
-            </div>
-            <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="/harga" className="hover:text-foreground transition-colors">Harga</a>
-              <a href="#runtime" className="hover:text-foreground transition-colors">Runtime</a>
-            </nav>
-            <div className="flex items-center gap-3">
-              {user ? (
-                <Link href="/dashboard">
-                  <Button size="sm">Buka Dashboard <ArrowRight className="ml-1.5 h-4 w-4" /></Button>
-                </Link>
-              ) : (
-                <>
-                  <Link href="/login"><Button variant="ghost" size="sm">Masuk</Button></Link>
-                  <Link href="/register"><Button size="sm">Daftar Gratis</Button></Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <PublicNavbar />
 
       {/* ── Hero Card ── */}
       <section className="px-3 sm:px-6 lg:px-8 pt-6 pb-0">

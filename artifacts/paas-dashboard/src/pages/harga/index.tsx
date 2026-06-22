@@ -1,7 +1,4 @@
-import { Link } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { PublicNavbar } from "@/components/public-navbar";
 
 const ramPlans = [
   { ram: "256 MB",  perMenit: "Rp0,29",  perBulan: "~Rp12.700" },
@@ -14,43 +11,9 @@ const ramPlans = [
 ];
 
 export default function HargaPage() {
-  const { user } = useAuth();
-
   return (
     <div className="min-h-screen bg-background text-foreground dark">
-
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <a href="/" className="flex items-center gap-2.5">
-              <img src="/mution-logo.png" alt="Mution" className="h-9 w-auto" />
-              <span
-                style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-                className="text-xl font-extrabold text-primary tracking-tight"
-              >
-                Mution
-              </span>
-            </a>
-            <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="/harga" className="text-foreground font-medium transition-colors">Harga</a>
-              <a href="/#runtime" className="hover:text-foreground transition-colors">Runtime</a>
-            </nav>
-            <div className="flex items-center gap-3">
-              {user ? (
-                <Link href="/dashboard">
-                  <Button size="sm">Buka Dashboard <ArrowRight className="ml-1.5 h-4 w-4" /></Button>
-                </Link>
-              ) : (
-                <>
-                  <Link href="/login"><Button variant="ghost" size="sm">Masuk</Button></Link>
-                  <Link href="/register"><Button size="sm">Daftar Gratis</Button></Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <PublicNavbar />
 
       {/* Content */}
       <section className="pt-16 pb-24 px-4 sm:px-6 lg:px-8">
