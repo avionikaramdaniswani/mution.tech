@@ -71,7 +71,7 @@ const faqs = [
   },
   {
     q: "Bagaimana cara kerja billing pay-as-you-go?",
-    a: "Kamu ditagih berdasarkan CPU dan RAM aktual yang dipakai per jam. Jika aplikasi tidak berjalan, tidak ada tagihan.",
+    a: "Kamu ditagih berdasarkan CPU dan RAM aktual yang dipakai per menit. Jika aplikasi tidak berjalan, tidak ada tagihan.",
   },
   {
     q: "Apakah ada jaminan uptime?",
@@ -80,23 +80,23 @@ const faqs = [
 ];
 
 const resourceRates = [
-  { label: "vCPU",      rate: "Rp 85",  unit: "/ vCPU / jam",   desc: "Per core aktif" },
-  { label: "RAM",       rate: "Rp 45",  unit: "/ GB / jam",     desc: "Diukur per jam" },
-  { label: "Storage",   rate: "Rp 150", unit: "/ GB / bulan",   desc: "Persistent disk" },
-  { label: "Bandwidth", rate: "Rp 120", unit: "/ GB keluar",    desc: "Ingress gratis" },
+  { label: "vCPU",      rate: "Rp 1.42",  unit: "/ vCPU / menit",  desc: "Pemakaian aktual" },
+  { label: "RAM",       rate: "Rp 0.75",  unit: "/ GB / menit",    desc: "Pemakaian aktual" },
+  { label: "Storage",   rate: "Rp 150",   unit: "/ GB / bulan",    desc: "Persistent disk" },
+  { label: "Bandwidth", rate: "Rp 120",   unit: "/ GB keluar",     desc: "Ingress gratis" },
 ];
 
 const usageExamples = [
-  { name: "Side project kecil",  spec: "0.5 vCPU · 256 MB · 8 jam/hari", price: "~Rp 9rb" },
-  { name: "REST API produksi",   spec: "1 vCPU · 512 MB · aktif 24 jam",  price: "~Rp 55rb" },
-  { name: "Full-stack app",      spec: "2 vCPU · 1 GB · aktif 24 jam",    price: "~Rp 160rb" },
-  { name: "Multi-service",       spec: "4 vCPU · 4 GB · aktif 24 jam",    price: "~Rp 570rb" },
+  { name: "Side project kecil",  spec: "0.5 vCPU · 256 MB · ~480 menit/hari", price: "~Rp 9rb" },
+  { name: "REST API produksi",   spec: "1 vCPU · 512 MB · 1.440 menit/hari",  price: "~Rp 55rb" },
+  { name: "Full-stack app",      spec: "2 vCPU · 1 GB · 1.440 menit/hari",    price: "~Rp 160rb" },
+  { name: "Multi-service",       spec: "4 vCPU · 4 GB · 1.440 menit/hari",    price: "~Rp 570rb" },
 ];
 
 const billingSteps = [
-  { step: "01", title: "Deploy aplikasi",    desc: "Container berjalan → resource mulai dihitung per detik." },
+  { step: "01", title: "Deploy aplikasi",    desc: "Container berjalan → resource mulai dihitung per menit." },
   { step: "02", title: "Stop kapan saja",    desc: "Container berhenti → tagihan langsung berhenti. Tidak ada idle cost." },
-  { step: "03", title: "Bayar di akhir bulan", desc: "Invoice otomatis berdasarkan total detik aktif × rate resource." },
+  { step: "03", title: "Bayar di akhir bulan", desc: "Invoice otomatis berdasarkan total menit aktif × rate resource." },
 ];
 
 const stats = [
