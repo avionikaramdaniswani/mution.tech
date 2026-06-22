@@ -1,13 +1,11 @@
 import {
   useGetDashboardStats,
   useListProjects,
-  useListActivity,
   useStopProject,
   useRestartProject,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,13 +16,12 @@ import {
   Clock,
   Globe,
   Code2,
-  Activity,
   FolderOpen,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { Link } from "wouter";
-import type { Project, ActivityLog } from "@workspace/api-client-react";
+import type { Project } from "@workspace/api-client-react";
 
 function seededRandom(seed: number, min: number, max: number) {
   const x = Math.sin(seed + 1) * 10000;
@@ -157,46 +154,9 @@ function ProjectCard({ project }: { project: Project }) {
   );
 }
 
-function ActivityItem({ log }: { log: ActivityLog }) {
-  const actionMap: Record<string, { icon: React.ReactNode; color: string }> = {
-    deploy:    { icon: <RefreshCw className="h-3.5 w-3.5" />,     color: "text-blue-500 bg-blue-500/10" },
-    stop:      { icon: <Square className="h-3.5 w-3.5" />,        color: "text-zinc-500 bg-zinc-500/10" },
-    restart:   { icon: <RefreshCw className="h-3.5 w-3.5" />,     color: "text-emerald-500 bg-emerald-500/10" },
-    create:    { icon: <FolderOpen className="h-3.5 w-3.5" />,    color: "text-violet-500 bg-violet-500/10" },
-    delete:    { icon: <AlertCircle className="h-3.5 w-3.5" />,   color: "text-red-500 bg-red-500/10" },
-    rollback:  { icon: <Activity className="h-3.5 w-3.5" />,      color: "text-amber-500 bg-amber-500/10" },
-  };
-
-  const matched = Object.entries(actionMap).find(([key]) => log.action.toLowerCase().includes(key));
-  const { icon, color } = matched?.[1] ?? { icon: <Activity className="h-3.5 w-3.5" />, color: "text-muted-foreground bg-muted" };
-
-  return (
-    <div className="flex items-start gap-3 py-3 border-b border-border/50 last:border-0">
-      <div className={`mt-0.5 rounded-full p-1.5 shrink-0 ${color}`}>
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-foreground leading-snug">
-          {log.projectName && (
-            <span className="font-medium">{log.projectName} — </span>
-          )}
-          {log.action}
-        </p>
-        {log.metadata && (
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">{log.metadata}</p>
-        )}
-      </div>
-      <span className="text-xs text-muted-foreground shrink-0 mt-0.5">
-        {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true, locale: idLocale })}
-      </span>
-    </div>
-  );
-}
-
 export default function Dashboard() {
   const { data: stats }    = useGetDashboardStats();
   const { data: projects, isLoading: projectsLoading } = useListProjects();
-  const { data: activity, isLoading: activityLoading } = useListActivity();
 
   return (
     <div className="space-y-8">
@@ -256,37 +216,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div>
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Aktivitas Terbaru</h2>
-        <Card className="border-border/60">
-          <CardContent className="p-0 divide-y divide-border/50">
-            {activityLoading ? (
-              <div className="p-5 space-y-4">
-                {Array(5).fill(0).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <Skeleton className="h-7 w-7 rounded-full shrink-0" />
-                    <div className="flex-1 space-y-1.5">
-                      <Skeleton className="h-3 w-3/4" />
-                      <Skeleton className="h-3 w-1/3" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : !activity?.length ? (
-              <div className="py-12 text-center">
-                <Activity className="h-7 w-7 text-muted-foreground/40 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Belum ada aktivitas.</p>
-              </div>
-            ) : (
-              <div className="px-5">
-                {activity.slice(0, 10).map((log) => (
-                  <ActivityItem key={log.id} log={log} />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
