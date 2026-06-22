@@ -73,6 +73,9 @@ export default function NewProject() {
   const [selectedRepo, setSelectedRepo] = useState<GithubRepo | null>(null);
   const [repoSearch, setRepoSearch] = useState("");
   const [showRepoPicker, setShowRepoPicker] = useState(false);
+  const [showRuntimeOverride, setShowRuntimeOverride] = useState(false);
+  const [detectedRuntime, setDetectedRuntime] = useState<{ runtime: string; confidence: string } | null>(null);
+  const [detectingRuntime, setDetectingRuntime] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const { data: ghStatus, refetch: refetchStatus } = useQuery<GithubStatus>({
@@ -102,10 +105,7 @@ export default function NewProject() {
 
   useEffect(() => {
     if (!selectedRepo) return;
-    const rt = selectedRepo.language
-      ? (LANGUAGE_TO_RUNTIME[selectedRepo.language] ?? "nodejs")
-      : "nodejs";
-    form.setValue("runtime", rt as any);
+
     if (!form.getValues("name")) {
       const slug = selectedRepo.fullName
         .split("/")[1]
@@ -115,6 +115,26 @@ export default function NewProject() {
         .slice(0, 40);
       form.setValue("name", slug);
     }
+
+    setDetectedRuntime(null);
+    setShowRuntimeOverride(false);
+    setDetectingRuntime(true);
+
+    apiFetch<{ runtime: string; confidence: string }>(
+      `/api/github/detect-runtime?repo=${encodeURIComponent(selectedRepo.fullName)}`,
+    )
+      .then((result) => {
+        setDetectedRuntime(result);
+        form.setValue("runtime", result.runtime as any);
+      })
+      .catch(() => {
+        const fallback = selectedRepo.language
+          ? (LANGUAGE_TO_RUNTIME[selectedRepo.language] ?? "nodejs")
+          : "nodejs";
+        setDetectedRuntime({ runtime: fallback, confidence: "fallback" });
+        form.setValue("runtime", fallback as any);
+      })
+      .finally(() => setDetectingRuntime(false));
   }, [selectedRepo]);
 
   useEffect(() => {
@@ -338,25 +358,56 @@ export default function NewProject() {
                 name="runtime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Runtime</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih runtime" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="nodejs">Node.js</SelectItem>
-                        <SelectItem value="python">Python</SelectItem>
-                        <SelectItem value="php">PHP</SelectItem>
-                        <SelectItem value="static">Static HTML/JS</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      {selectedRepo?.language
-                        ? `Terdeteksi dari bahasa repo: ${selectedRepo.language}`
-                        : "Environment untuk menjalankan aplikasimu."}
-                    </FormDescription>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Runtime</FormLabel>
+                      {detectedRuntime && !showRuntimeOverride && (
+                        <button
+                          type="button"
+                          onClick={() => setShowRuntimeOverride(true)}
+                          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                        >
+                          Ubah manual
+                        </button>
+                      )}
+                    </div>
+
+                    {detectingRuntime ? (
+                      <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/50">
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Mendeteksi dari file repo...</span>
+                      </div>
+                    ) : detectedRuntime && !showRuntimeOverride ? (
+                      <div className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-muted/30">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        <span className="text-sm font-medium">
+                          {{
+                            nodejs: "Node.js",
+                            python: "Python",
+                            php: "PHP",
+                            static: "Static HTML/JS",
+                          }[detectedRuntime.runtime] ?? detectedRuntime.runtime}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {detectedRuntime.confidence === "detected"
+                            ? "— terdeteksi dari file repo"
+                            : "— fallback dari bahasa repo"}
+                        </span>
+                      </div>
+                    ) : (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih runtime" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="nodejs">Node.js</SelectItem>
+                          <SelectItem value="python">Python</SelectItem>
+                          <SelectItem value="php">PHP</SelectItem>
+                          <SelectItem value="static">Static HTML/JS</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}

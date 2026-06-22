@@ -146,6 +146,67 @@ router.get("/github/repos", requireAuth, async (req, res): Promise<void> => {
   );
 });
 
+router.get("/github/detect-runtime", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const { repo } = req.query as { repo?: string };
+
+  if (!repo || !repo.includes("/")) {
+    res.status(400).json({ error: "Invalid repo format. Use owner/repo." });
+    return;
+  }
+
+  const [dbUser] = await db
+    .select({ githubAccessToken: usersTable.githubAccessToken })
+    .from(usersTable)
+    .where(eq(usersTable.id, user.id));
+
+  if (!dbUser?.githubAccessToken) {
+    res.status(403).json({ error: "GitHub not connected" });
+    return;
+  }
+
+  const headers = {
+    Authorization: `Bearer ${dbUser.githubAccessToken}`,
+    Accept: "application/vnd.github+json",
+    "User-Agent": "paas-platform",
+  };
+
+  const contentsRes = await fetch(`https://api.github.com/repos/${repo}/contents/`, { headers });
+
+  if (!contentsRes.ok) {
+    res.json({ runtime: "nodejs", confidence: "fallback" });
+    return;
+  }
+
+  const files = await contentsRes.json() as Array<{ name: string }>;
+  const names = files.map((f) => f.name.toLowerCase());
+
+  let runtime = "nodejs";
+  let confidence = "detected";
+
+  if (names.includes("package.json")) {
+    runtime = "nodejs";
+  } else if (
+    names.includes("requirements.txt") ||
+    names.includes("pyproject.toml") ||
+    names.includes("pipfile") ||
+    names.includes("setup.py")
+  ) {
+    runtime = "python";
+  } else if (names.includes("composer.json") || names.some((n) => n.endsWith(".php"))) {
+    runtime = "php";
+  } else if (
+    names.includes("index.html") ||
+    names.some((n) => n.endsWith(".html"))
+  ) {
+    runtime = "static";
+  } else {
+    confidence = "fallback";
+  }
+
+  res.json({ runtime, confidence });
+});
+
 router.delete("/github/disconnect", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
   await db
