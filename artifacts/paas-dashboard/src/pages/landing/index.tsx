@@ -428,41 +428,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="py-24 border-t border-border/40">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-4">FAQ</p>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Pertanyaan yang sering ditanyakan</h2>
-          </div>
-          <div className="space-y-2">
-            {faqs.map((faq, i) => (
-              <div
-                key={i}
-                className="rounded-xl border overflow-hidden transition-colors"
-                style={{ borderColor: openFaq === i ? "rgba(249,115,22,0.3)" : "rgba(255,255,255,0.08)", background: openFaq === i ? "rgba(249,115,22,0.04)" : "rgba(255,255,255,0.02)" }}
-              >
-                <button
-                  className="w-full flex items-center justify-between px-6 py-4 text-left"
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                >
-                  <span className="text-sm font-semibold text-foreground">{faq.q}</span>
-                  <ChevronDown
-                    className="h-4 w-4 flex-shrink-0 ml-4 transition-transform duration-200"
-                    style={{ color: "rgba(255,255,255,0.4)", transform: openFaq === i ? "rotate(180deg)" : "rotate(0deg)" }}
-                  />
-                </button>
-                {openFaq === i && (
-                  <div className="px-6 pb-5 text-sm text-muted-foreground leading-relaxed border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-                    <p className="pt-4">{faq.a}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Pricing */}
       <section id="harga" className="border-t border-border/50 bg-card/20 py-28">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -506,22 +471,37 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-28">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
-          <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/10 to-primary/5 px-8 py-16">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Siap deploy aplikasi pertamamu?</h2>
-            <p className="mt-4 text-muted-foreground text-lg max-w-xl mx-auto">
-              Bergabung dengan ribuan developer yang sudah hosting di Mution. Siap dalam kurang dari 5 menit.
-            </p>
-            <div className="mt-8">
-              <Link href="/register">
-                <Button size="lg" className="text-base px-10 gap-2 h-12 font-semibold">
-                  Mulai Gratis Sekarang <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-            <p className="mt-4 text-xs text-muted-foreground/70">Tidak perlu kartu kredit</p>
+      {/* FAQ */}
+      <section className="py-24 border-t border-border/40">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-4">FAQ</p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Pertanyaan yang sering ditanyakan</h2>
+          </div>
+          <div className="space-y-2">
+            {faqs.map((faq, i) => (
+              <div
+                key={i}
+                className="rounded-xl border overflow-hidden transition-colors"
+                style={{ borderColor: openFaq === i ? "rgba(249,115,22,0.3)" : "rgba(255,255,255,0.08)", background: openFaq === i ? "rgba(249,115,22,0.04)" : "rgba(255,255,255,0.02)" }}
+              >
+                <button
+                  className="w-full flex items-center justify-between px-6 py-4 text-left"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                >
+                  <span className="text-sm font-semibold text-foreground">{faq.q}</span>
+                  <ChevronDown
+                    className="h-4 w-4 flex-shrink-0 ml-4 transition-transform duration-200"
+                    style={{ color: "rgba(255,255,255,0.4)", transform: openFaq === i ? "rotate(180deg)" : "rotate(0deg)" }}
+                  />
+                </button>
+                {openFaq === i && (
+                  <div className="px-6 pb-5 text-sm text-muted-foreground leading-relaxed border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                    <p className="pt-4">{faq.a}</p>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </section>
