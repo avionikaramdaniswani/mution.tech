@@ -9,7 +9,11 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 
-const runtimes = ["Node.js", "Python", "PHP", "Static"];
+const runtimes = [
+  "Node.js", "Python", "PHP", "Static",
+  "Go", "Ruby", "Java", "Rust",
+  "Deno", "Bun", ".NET", "Docker",
+];
 
 const terminalLines = [
   { delay: 0,    text: "$ git push origin main",                  color: "rgba(255,255,255,0.85)" },
