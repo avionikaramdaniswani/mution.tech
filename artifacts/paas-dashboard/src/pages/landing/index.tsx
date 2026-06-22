@@ -4,15 +4,37 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
   CheckCircle2,
-  Box,
+  Globe,
   ChevronDown,
 } from "lucide-react";
+import {
+  SiNodedotjs,
+  SiPython,
+  SiPhp,
+  SiGo,
+  SiRuby,
+  SiRust,
+  SiDeno,
+  SiBun,
+  SiDotnet,
+  SiDocker,
+} from "react-icons/si";
+import { FaJava } from "react-icons/fa";
 import { useEffect, useState, useRef } from "react";
 
 const runtimes = [
-  "Node.js", "Python", "PHP", "Static",
-  "Go", "Ruby", "Java", "Rust",
-  "Deno", "Bun", ".NET", "Docker",
+  { label: "Node.js",  Icon: SiNodedotjs, color: "#5FA04E" },
+  { label: "Python",   Icon: SiPython,    color: "#3776AB" },
+  { label: "PHP",      Icon: SiPhp,       color: "#777BB4" },
+  { label: "Static",   Icon: Globe,       color: "#94a3b8" },
+  { label: "Go",       Icon: SiGo,        color: "#00ADD8" },
+  { label: "Ruby",     Icon: SiRuby,      color: "#CC342D" },
+  { label: "Java",     Icon: FaJava,      color: "#ED8B00" },
+  { label: "Rust",     Icon: SiRust,      color: "#CE422B" },
+  { label: "Deno",     Icon: SiDeno,      color: "#ffffff" },
+  { label: "Bun",      Icon: SiBun,       color: "#FBF0DF" },
+  { label: ".NET",     Icon: SiDotnet,    color: "#512BD4" },
+  { label: "Docker",   Icon: SiDocker,    color: "#2496ED" },
 ];
 
 const terminalLines = [
@@ -311,19 +333,38 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Runtimes */}
-      <section id="runtime" className="border-y border-border/50 bg-card/20 py-10">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-6">Runtime yang Didukung</p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            {runtimes.map((r) => (
-              <div key={r} className="flex items-center gap-2 rounded-lg border border-border/60 bg-card px-5 py-2.5 text-sm font-medium text-foreground">
-                <Box className="h-4 w-4 text-primary" />
-                {r}
+      {/* Runtimes — infinite marquee */}
+      <section id="runtime" className="border-y border-border/50 bg-card/20 py-10 overflow-hidden">
+        <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-7">Runtime yang Didukung</p>
+
+        {/* fade masks on left & right */}
+        <div className="relative">
+          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-24 z-10"
+            style={{ background: "linear-gradient(to right, hsl(var(--background)), transparent)" }} />
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-24 z-10"
+            style={{ background: "linear-gradient(to left, hsl(var(--background)), transparent)" }} />
+
+          {/* scrolling track */}
+          <div className="flex" style={{ animation: "marquee 28s linear infinite" }}>
+            {/* duplicate so it loops seamlessly */}
+            {[...runtimes, ...runtimes].map(({ label, Icon, color }, i) => (
+              <div
+                key={i}
+                className="flex-shrink-0 flex items-center gap-2.5 rounded-xl border border-border/60 bg-card px-5 py-2.5 text-sm font-medium text-foreground mx-2"
+              >
+                <Icon style={{ color, flexShrink: 0 }} className="h-4 w-4" />
+                {label}
               </div>
             ))}
           </div>
         </div>
+
+        <style>{`
+          @keyframes marquee {
+            from { transform: translateX(0); }
+            to   { transform: translateX(-50%); }
+          }
+        `}</style>
       </section>
 
       {/* Terminal Animasi */}
