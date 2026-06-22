@@ -32,7 +32,7 @@ export function PublicNavbar() {
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-6 text-sm">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.href}
                 href={link.href}
                 className={`transition-colors ${
@@ -42,7 +42,7 @@ export function PublicNavbar() {
                 }`}
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </nav>
 
@@ -82,7 +82,7 @@ export function PublicNavbar() {
         <div className="md:hidden border-t border-border/50 bg-background/95 backdrop-blur-md">
           <div className="mx-auto max-w-6xl px-4 py-4 flex flex-col gap-1">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
@@ -93,7 +93,7 @@ export function PublicNavbar() {
                 }`}
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
 
             <div className="mt-3 pt-3 border-t border-border/40 flex flex-col gap-2">
