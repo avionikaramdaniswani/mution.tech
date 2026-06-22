@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  const publicRoutes = ["/", "/login", "/register"];
+  const publicRoutes = ["/", "/login", "/register", "/harga"];
 
   useEffect(() => {
     if (!isLoading && !user && !publicRoutes.includes(location)) {
