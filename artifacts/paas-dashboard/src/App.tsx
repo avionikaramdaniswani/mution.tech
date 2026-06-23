@@ -20,6 +20,7 @@ import GitHubCallback from "@/pages/github-callback";
 import HargaPage from "@/pages/harga";
 import ProfilePage from "@/pages/profile";
 import BillingPage from "@/pages/billing";
+import PaymentSuccessPage from "@/pages/billing/success";
 
 import AdminOverview from "@/pages/admin/overview";
 import AdminUsers from "@/pages/admin/users";
@@ -80,6 +81,7 @@ function Router() {
       <Route path="/activity" component={() => <ProtectedRoute component={ActivityLog} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
       <Route path="/billing" component={() => <ProtectedRoute component={BillingPage} />} />
+      <Route path="/billing/payment/success" component={() => <ProtectedRoute component={PaymentSuccessPage} />} />
       <Route path="/github-callback" component={GitHubCallback} />
       <Route path="/harga" component={HargaPage} />
 

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useListTransactions, useTopupCredits } from "@workspace/api-client-react";
+import { useListTransactions, useCreatePayment } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetMeQueryKey } from "@workspace/api-client-react";
-import { Wallet, Zap, ArrowUpCircle, Clock, X, TrendingUp } from "lucide-react";
+import { Wallet, Zap, ArrowUpCircle, Clock, X, TrendingUp, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
@@ -22,7 +22,7 @@ function TopupModal({ onClose, currentCredits }: { onClose: () => void; currentC
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
   const queryClient = useQueryClient();
-  const topup = useTopupCredits();
+  const createPayment = useCreatePayment();
 
   const presets = [5000, 10000, 25000, 50000, 100000];
 
@@ -34,16 +34,22 @@ function TopupModal({ onClose, currentCredits }: { onClose: () => void; currentC
       setError("Minimal topup adalah Rp 1.000");
       return;
     }
-    topup.mutate(
+    createPayment.mutate(
       { data: { amount: parsed } },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
           queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
           queryClient.invalidateQueries({ queryKey: ["/api/billing/transactions"] });
           onClose();
+          window.location.href = data.paymentUrl;
         },
-        onError: () => {
-          setError("Topup gagal, coba lagi.");
+        onError: (err: any) => {
+          const msg = err?.response?.data?.error ?? err?.message ?? "";
+          if (msg.includes("belum dikonfigurasi") || msg.includes("503")) {
+            setError("Payment gateway belum aktif. Hubungi administrator.");
+          } else {
+            setError("Gagal membuat pembayaran. Coba lagi.");
+          }
         },
       }
     );
@@ -139,13 +145,26 @@ function TopupModal({ onClose, currentCredits }: { onClose: () => void; currentC
             </div>
           )}
 
+          {/* DOKU info */}
+          <div
+            className="rounded-xl px-4 py-3 flex items-center gap-3"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+          >
+            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+            <p className="text-[11px] text-muted-foreground">
+              Kamu akan diarahkan ke halaman pembayaran DOKU. Kredit otomatis ditambahkan setelah pembayaran berhasil.
+            </p>
+          </div>
+
           <Button
             type="submit"
             className="w-full"
-            disabled={topup.isPending}
+            disabled={createPayment.isPending}
             style={{ background: "rgb(249,115,22)", color: "#fff" }}
           >
-            {topup.isPending ? "Memproses…" : `Topup ${amount && parseInt(amount) >= 1000 ? formatRp(parseInt(amount)) : ""}`}
+            {createPayment.isPending
+              ? "Memproses…"
+              : `Bayar ${amount && parseInt(amount) >= 1000 ? formatRp(parseInt(amount)) : ""} via DOKU`}
           </Button>
         </form>
       </div>

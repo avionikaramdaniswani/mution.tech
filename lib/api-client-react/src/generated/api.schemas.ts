@@ -260,6 +260,37 @@ export interface DeploymentStats {
   last30Days: DailyCount[];
 }
 
+export interface CreatePaymentInput {
+  /** @minimum 1000 */
+  amount: number;
+}
+
+export interface CreatePaymentResponse {
+  paymentUrl: string;
+  invoiceNumber: string;
+}
+
+export type PaymentStatusResponseStatus = typeof PaymentStatusResponseStatus[keyof typeof PaymentStatusResponseStatus];
+
+
+export const PaymentStatusResponseStatus = {
+  pending: 'pending',
+  paid: 'paid',
+  expired: 'expired',
+  failed: 'failed',
+} as const;
+
+export interface PaymentStatusResponse {
+  invoiceNumber: string;
+  amount: number;
+  status: PaymentStatusResponseStatus;
+  /** @nullable */
+  paymentUrl?: string | null;
+  createdAt: string;
+  /** @nullable */
+  paidAt?: string | null;
+}
+
 export interface AdminStats {
   totalUsers: number;
   totalProjects: number;

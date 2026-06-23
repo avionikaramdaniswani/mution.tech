@@ -23,6 +23,8 @@ import type {
   ActivityLog,
   AdminStats,
   AuthResponse,
+  CreatePaymentInput,
+  CreatePaymentResponse,
   CreditTransaction,
   DashboardStats,
   Deployment,
@@ -33,6 +35,7 @@ import type {
   ErrorResponse,
   HealthStatus,
   LoginInput,
+  PaymentStatusResponse,
   Project,
   ProjectDatabase,
   ProjectInput,
@@ -1891,6 +1894,224 @@ export function useGetDeploymentStats<TData = Awaited<ReturnType<typeof getDeplo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDeploymentStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreatePaymentUrl = () => {
+
+
+
+
+  return `/api/billing/payment/create`
+}
+
+/**
+ * @summary Create a DOKU payment order and get checkout URL
+ */
+export const createPayment = async (createPaymentInput: CreatePaymentInput, options?: RequestInit): Promise<CreatePaymentResponse> => {
+
+  return customFetch<CreatePaymentResponse>(getCreatePaymentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createPaymentInput,)
+  }
+);}
+
+
+
+
+export const getCreatePaymentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPayment>>, TError,{data: BodyType<CreatePaymentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPayment>>, TError,{data: BodyType<CreatePaymentInput>}, TContext> => {
+
+const mutationKey = ['createPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPayment>>, {data: BodyType<CreatePaymentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPayment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePaymentMutationResult = NonNullable<Awaited<ReturnType<typeof createPayment>>>
+    export type CreatePaymentMutationBody = BodyType<CreatePaymentInput>
+    export type CreatePaymentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create a DOKU payment order and get checkout URL
+ */
+export const useCreatePayment = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPayment>>, TError,{data: BodyType<CreatePaymentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPayment>>,
+        TError,
+        {data: BodyType<CreatePaymentInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePaymentMutationOptions(options));
+    }
+
+export const getDokuNotifyUrl = () => {
+
+
+
+
+  return `/api/billing/payment/notify`
+}
+
+/**
+ * @summary DOKU payment webhook notification (called by DOKU server)
+ */
+export const dokuNotify = async ( options?: RequestInit): Promise<SuccessResponse> => {
+
+  return customFetch<SuccessResponse>(getDokuNotifyUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getDokuNotifyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dokuNotify>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof dokuNotify>>, TError,void, TContext> => {
+
+const mutationKey = ['dokuNotify'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof dokuNotify>>, void> = () => {
+
+
+          return  dokuNotify(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DokuNotifyMutationResult = NonNullable<Awaited<ReturnType<typeof dokuNotify>>>
+
+    export type DokuNotifyMutationError = ErrorType<unknown>
+
+    /**
+ * @summary DOKU payment webhook notification (called by DOKU server)
+ */
+export const useDokuNotify = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dokuNotify>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof dokuNotify>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDokuNotifyMutationOptions(options));
+    }
+
+export const getGetPaymentStatusUrl = (invoiceNumber: string,) => {
+
+
+
+
+  return `/api/billing/payment/${invoiceNumber}`
+}
+
+/**
+ * @summary Get payment order status by invoice number
+ */
+export const getPaymentStatus = async (invoiceNumber: string, options?: RequestInit): Promise<PaymentStatusResponse> => {
+
+  return customFetch<PaymentStatusResponse>(getGetPaymentStatusUrl(invoiceNumber),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPaymentStatusQueryKey = (invoiceNumber: string,) => {
+    return [
+    `/api/billing/payment/${invoiceNumber}`
+    ] as const;
+    }
+
+
+export const getGetPaymentStatusQueryOptions = <TData = Awaited<ReturnType<typeof getPaymentStatus>>, TError = ErrorType<ErrorResponse>>(invoiceNumber: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPaymentStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPaymentStatusQueryKey(invoiceNumber);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPaymentStatus>>> = ({ signal }) => getPaymentStatus(invoiceNumber, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(invoiceNumber), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPaymentStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPaymentStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getPaymentStatus>>>
+export type GetPaymentStatusQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get payment order status by invoice number
+ */
+
+export function useGetPaymentStatus<TData = Awaited<ReturnType<typeof getPaymentStatus>>, TError = ErrorType<ErrorResponse>>(
+ invoiceNumber: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPaymentStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPaymentStatusQueryOptions(invoiceNumber,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

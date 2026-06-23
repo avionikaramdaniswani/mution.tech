@@ -9,6 +9,8 @@
 export * from './activityLog';
 export * from './adminStats';
 export * from './authResponse';
+export * from './createPaymentInput';
+export * from './createPaymentResponse';
 export * from './creditTransaction';
 export * from './creditTransactionType';
 export * from './dailyCount';
@@ -22,6 +24,8 @@ export * from './envVarInput';
 export * from './errorResponse';
 export * from './healthStatus';
 export * from './loginInput';
+export * from './paymentStatusResponse';
+export * from './paymentStatusResponseStatus';
 export * from './project';
 export * from './projectDatabase';
 export * from './projectDatabaseStatus';

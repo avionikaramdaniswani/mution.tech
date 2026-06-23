@@ -403,6 +403,43 @@ export const GetDeploymentStatsResponse = zod.object({
 
 
 /**
+ * @summary Create a DOKU payment order and get checkout URL
+ */
+export const createPaymentBodyAmountMin = 1000;
+
+
+
+export const CreatePaymentBody = zod.object({
+  "amount": zod.number().min(createPaymentBodyAmountMin)
+})
+
+
+/**
+ * @summary DOKU payment webhook notification (called by DOKU server)
+ */
+export const DokuNotifyResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Get payment order status by invoice number
+ */
+export const GetPaymentStatusParams = zod.object({
+  "invoiceNumber": zod.coerce.string()
+})
+
+export const GetPaymentStatusResponse = zod.object({
+  "invoiceNumber": zod.string(),
+  "amount": zod.number(),
+  "status": zod.enum(['pending', 'paid', 'expired', 'failed']),
+  "paymentUrl": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "paidAt": zod.string().nullish()
+})
+
+
+/**
  * @summary Topup user credits
  */
 export const topupCreditsBodyAmountMin = 1000;
