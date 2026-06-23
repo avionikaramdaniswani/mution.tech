@@ -439,11 +439,43 @@ export const AdminListUsersResponseItem = zod.object({
   "email": zod.string(),
   "name": zod.string(),
   "role": zod.string(),
+  "credits": zod.number(),
   "createdAt": zod.string(),
   "projectCount": zod.number(),
-  "lastActive": zod.string().nullish()
+  "lastLoginAt": zod.string().nullish()
 })
 export const AdminListUsersResponse = zod.array(AdminListUsersResponseItem)
+
+
+/**
+ * @summary Get user detail (admin only)
+ */
+export const AdminGetUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminGetUserResponse = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "role": zod.string(),
+  "credits": zod.number(),
+  "createdAt": zod.string(),
+  "projectCount": zod.number(),
+  "lastLoginAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary Delete a user (admin only)
+ */
+export const AdminDeleteUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminDeleteUserResponse = zod.object({
+  "success": zod.boolean()
+})
 
 
 /**

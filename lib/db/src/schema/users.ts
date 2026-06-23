@@ -14,6 +14,7 @@ export const usersTable = pgTable("users", {
   githubAccessToken: text("github_access_token"),
   githubLogin: text("github_login"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastLoginAt: timestamp("last_login_at"),
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true });

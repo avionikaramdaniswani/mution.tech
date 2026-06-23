@@ -292,9 +292,10 @@ export interface UserWithStats {
   email: string;
   name: string;
   role: string;
+  credits: number;
   createdAt: string;
   projectCount: number;
   /** @nullable */
-  lastActive?: string | null;
+  lastLoginAt?: string | null;
 }
 

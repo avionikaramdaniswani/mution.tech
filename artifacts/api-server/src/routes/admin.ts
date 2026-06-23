@@ -8,6 +8,28 @@ const router = Router();
 
 router.use(requireAdmin);
 
+function formatUser(u: {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+  credits: number;
+  createdAt: Date;
+  lastLoginAt: Date | null;
+  projectCount: number;
+}) {
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    role: u.role,
+    credits: u.credits,
+    createdAt: u.createdAt.toISOString(),
+    lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
+    projectCount: u.projectCount,
+  };
+}
+
 // List all users with project count
 router.get("/admin/users", async (req, res): Promise<void> => {
   const users = await db
@@ -16,7 +38,9 @@ router.get("/admin/users", async (req, res): Promise<void> => {
       email: usersTable.email,
       name: usersTable.name,
       role: usersTable.role,
+      credits: usersTable.credits,
       createdAt: usersTable.createdAt,
+      lastLoginAt: usersTable.lastLoginAt,
       projectCount: sql<number>`count(${projectsTable.id})::int`,
     })
     .from(usersTable)
@@ -24,17 +48,46 @@ router.get("/admin/users", async (req, res): Promise<void> => {
     .groupBy(usersTable.id)
     .orderBy(desc(usersTable.createdAt));
 
-  res.json(
-    users.map((u) => ({
-      id: u.id,
-      email: u.email,
-      name: u.name,
-      role: u.role,
-      createdAt: u.createdAt.toISOString(),
-      projectCount: u.projectCount ?? 0,
-      lastActive: null,
-    }))
-  );
+  res.json(users.map((u) => formatUser({ ...u, projectCount: u.projectCount ?? 0 })));
+});
+
+// Get single user detail
+router.get("/admin/users/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [row] = await db
+    .select({
+      id: usersTable.id,
+      email: usersTable.email,
+      name: usersTable.name,
+      role: usersTable.role,
+      credits: usersTable.credits,
+      createdAt: usersTable.createdAt,
+      lastLoginAt: usersTable.lastLoginAt,
+      projectCount: sql<number>`count(${projectsTable.id})::int`,
+    })
+    .from(usersTable)
+    .leftJoin(projectsTable, eq(projectsTable.userId, usersTable.id))
+    .groupBy(usersTable.id)
+    .where(eq(usersTable.id, id));
+
+  if (!row) { res.status(404).json({ error: "User not found" }); return; }
+  res.json(formatUser({ ...row, projectCount: row.projectCount ?? 0 }));
+});
+
+// Delete a user
+router.delete("/admin/users/:id", async (req, res): Promise<void> => {
+  const admin = (req as any).user;
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (id === admin.id) { res.status(400).json({ error: "Cannot delete your own account" }); return; }
+
+  const [deleted] = await db.delete(usersTable).where(eq(usersTable.id, id)).returning();
+  if (!deleted) { res.status(404).json({ error: "User not found" }); return; }
+
+  await logActivity(admin.id, "admin.user.deleted", undefined, { targetEmail: deleted.email });
+  res.json({ success: true });
 });
 
 // List all projects with owner info
