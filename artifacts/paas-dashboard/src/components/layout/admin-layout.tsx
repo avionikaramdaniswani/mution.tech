@@ -1,16 +1,20 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { useLogout } from "@workspace/api-client-react";
+import { useLogout, useHealthCheck } from "@workspace/api-client-react";
 import {
-  LayoutDashboard,
-  Users,
-  Box,
-  LogOut,
-  ShieldAlert,
-  MoreHorizontal,
-  ArrowLeft,
-  Activity,
-} from "lucide-react";
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,164 +22,231 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  LayoutDashboard,
+  Users,
+  Box,
+  Activity,
+  LogOut,
+  ShieldAlert,
+  HeartPulse,
+  MoreHorizontal,
+  User,
+  CreditCard,
+  Wallet,
+} from "lucide-react";
 
-function UserAvatar({ name }: { name?: string }) {
+function formatCredits(credits?: number) {
+  if (credits === undefined || credits === null) return "Rp 0";
+  return "Rp " + credits.toLocaleString("id-ID");
+}
+
+function creditColor(credits?: number): string {
+  if (credits === undefined || credits === null || credits === 0) return "rgb(239,68,68)";
+  if (credits <= 1000) return "rgb(234,179,8)";
+  return "rgb(34,197,94)";
+}
+
+function UserAvatar({ name, size = "md" }: { name?: string; size?: "sm" | "md" }) {
   const initials = (name ?? "?")
     .split(" ")
     .map((w) => w[0])
     .slice(0, 2)
     .join("")
     .toUpperCase();
+  const dim = size === "sm" ? "h-8 w-8 text-xs" : "h-9 w-9 text-sm";
   return (
     <div
-      className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0"
-      style={{ background: "rgba(239,68,68,0.18)", color: "rgb(239,68,68)", border: "1px solid rgba(239,68,68,0.28)" }}
+      className={`${dim} rounded-full flex items-center justify-center font-bold flex-shrink-0`}
+      style={{ background: "rgba(249,115,22,0.18)", color: "rgb(249,115,22)", border: "1px solid rgba(249,115,22,0.28)" }}
     >
       {initials}
     </div>
   );
 }
 
-const navItems = [
+function AdminDropdownItems({ onLogout }: { onLogout: () => void }) {
+  return (
+    <>
+      <DropdownMenuItem asChild>
+        <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+          <User className="h-4 w-4" />
+          Profil
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <Link href="/billing" className="flex items-center gap-2 cursor-pointer">
+          <CreditCard className="h-4 w-4" />
+          Billing
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        onClick={onLogout}
+        className="flex items-center gap-2 text-destructive focus:text-destructive cursor-pointer"
+      >
+        <LogOut className="h-4 w-4" />
+        Keluar
+      </DropdownMenuItem>
+    </>
+  );
+}
+
+const adminNavItems = [
   { title: "Overview", url: "/admin", icon: LayoutDashboard, exact: true },
-  { title: "Pengguna", url: "/admin/users", icon: Users },
-  { title: "Proyek", url: "/admin/projects", icon: Box },
-  { title: "Aktivitas", url: "/admin/activity", icon: Activity },
+  { title: "Pengguna", url: "/admin/users", icon: Users, exact: false },
+  { title: "Proyek", url: "/admin/projects", icon: Box, exact: false },
+  { title: "Aktivitas", url: "/admin/activity", icon: Activity, exact: false },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const logoutMutation = useLogout();
+  const { data: health } = useHealthCheck({ query: { refetchInterval: 30000 } });
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, { onSuccess: () => logout() });
   };
 
-  const isActive = (item: typeof navItems[0]) => {
-    if (item.exact) return location === item.url;
-    return location.startsWith(item.url);
-  };
-
   return (
-    <div className="flex min-h-screen w-full dark text-foreground" style={{ background: "hsl(var(--background))" }}>
-      {/* ── Sidebar ── */}
-      <aside
-        className="w-60 flex-shrink-0 flex flex-col border-r"
-        style={{ borderColor: "rgba(239,68,68,0.12)", background: "rgba(10,5,5,0.98)" }}
-      >
-        {/* Logo / Brand */}
-        <div
-          className="flex items-center gap-3 px-5 h-16 border-b flex-shrink-0"
-          style={{ borderColor: "rgba(239,68,68,0.12)" }}
-        >
-          <div
-            className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.25)" }}
-          >
-            <ShieldAlert className="h-4 w-4" style={{ color: "rgb(239,68,68)" }} />
-          </div>
-          <div>
-            <p className="text-sm font-bold tracking-tight text-white">Admin Panel</p>
-            <p className="text-[10px]" style={{ color: "rgba(239,68,68,0.7)" }}>Mution Platform</p>
-          </div>
-        </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background dark text-foreground">
+        <Sidebar variant="inset" className="border-r border-border/50">
+          <SidebarHeader className="flex h-16 items-center px-4">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2.5">
+                <img src="/mution-logo.png" alt="Mution" className="h-8 w-auto" />
+                <span style={{ fontFamily: "'Space Grotesk', sans-serif" }} className="text-lg font-extrabold tracking-tight text-primary">
+                  Mution
+                </span>
+              </div>
+              {health?.status === "ok" ? (
+                <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full" title="Platform beroperasi normal">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Normal</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs font-medium text-destructive bg-destructive/10 px-2 py-1 rounded-full" title="Platform mengalami gangguan">
+                  <HeartPulse className="h-3 w-3" />
+                  <span>Gangguan</span>
+                </div>
+              )}
+            </div>
+          </SidebarHeader>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => {
-            const active = isActive(item);
-            return (
-              <Link key={item.url} href={item.url}>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Administrasi</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {adminNavItems.map((item) => {
+                    const active = item.exact ? location === item.url : location.startsWith(item.url);
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
+                          <Link href={item.url} className="flex items-center gap-3">
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Panel User</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Kembali ke Dashboard">
+                      <Link href="/dashboard" className="flex items-center gap-3">
+                        <LayoutDashboard className="h-4 w-4" />
+                        <span>Dashboard</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+
+          <SidebarFooter className="border-t border-border/50 p-3">
+            <div className="flex items-center gap-3">
+              <UserAvatar name={user?.name} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{user?.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors flex-shrink-0"
+                    title="Opsi akun"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="end" className="w-44 mb-1">
+                  <AdminDropdownItems onLogout={handleLogout} />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </SidebarFooter>
+        </Sidebar>
+
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border/50 px-4 md:px-6">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger />
+              <div className="flex items-center gap-1.5 text-xs font-medium text-destructive bg-destructive/10 px-2.5 py-1 rounded-full border border-destructive/20">
+                <ShieldAlert className="h-3 w-3" />
+                <span>Admin</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Link href="/billing">
                 <div
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer"
-                  style={
-                    active
-                      ? { background: "rgba(239,68,68,0.12)", color: "rgb(239,68,68)", border: "1px solid rgba(239,68,68,0.2)" }
-                      : { color: "rgba(255,255,255,0.45)", border: "1px solid transparent" }
-                  }
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/40"
+                  style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}
+                  title="Kredit kamu"
                 >
-                  <item.icon className="h-4 w-4 flex-shrink-0" />
-                  {item.title}
+                  <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-semibold tabular-nums" style={{ color: creditColor(user?.credits) }}>
+                    {formatCredits(user?.credits)}
+                  </span>
                 </div>
               </Link>
-            );
-          })}
-        </nav>
 
-        {/* Back to user panel */}
-        <div className="px-3 pb-3">
-          <Link href="/dashboard">
-            <div
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all cursor-pointer hover:bg-white/5"
-              style={{ color: "rgba(255,255,255,0.3)", border: "1px solid rgba(255,255,255,0.06)" }}
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Kembali ke Dashboard
+              <div className="md:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="outline-none">
+                      <UserAvatar name={user?.name} size="sm" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" align="end" className="w-44">
+                    <div className="px-2 py-1.5 mb-1">
+                      <p className="text-sm font-medium truncate">{user?.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <AdminDropdownItems onLogout={handleLogout} />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
-          </Link>
+          </header>
+
+          <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+            {children}
+          </main>
         </div>
-
-        {/* Footer / User */}
-        <div
-          className="border-t px-3 py-3 flex-shrink-0"
-          style={{ borderColor: "rgba(239,68,68,0.12)" }}
-        >
-          <div className="flex items-center gap-2.5">
-            <UserAvatar name={user?.name} />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold truncate text-white">{user?.name}</p>
-              <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{user?.email}</p>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="h-6 w-6 flex items-center justify-center rounded-md transition-colors hover:bg-white/10"
-                  style={{ color: "rgba(255,255,255,0.35)" }}
-                >
-                  <MoreHorizontal className="h-3.5 w-3.5" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="end" className="w-40 mb-1">
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 text-destructive focus:text-destructive cursor-pointer"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Keluar
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </aside>
-
-      {/* ── Main content ── */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top bar */}
-        <header
-          className="flex h-16 shrink-0 items-center justify-between gap-4 border-b px-6"
-          style={{ borderColor: "rgba(239,68,68,0.12)", background: "rgba(10,5,5,0.98)" }}
-        >
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4" style={{ color: "rgba(239,68,68,0.7)" }} />
-            <span className="text-xs font-medium" style={{ color: "rgba(239,68,68,0.7)" }}>
-              Mode Administrator
-            </span>
-          </div>
-          <div
-            className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
-            style={{ background: "rgba(239,68,68,0.1)", color: "rgba(239,68,68,0.7)", border: "1px solid rgba(239,68,68,0.18)" }}
-          >
-            Admin
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-auto p-6 lg:p-8">
-          {children}
-        </main>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
