@@ -401,6 +401,37 @@ export const GetDeploymentStatsResponse = zod.object({
 
 
 /**
+ * @summary Topup user credits
+ */
+export const topupCreditsBodyAmountMin = 1000;
+
+
+
+export const TopupCreditsBody = zod.object({
+  "amount": zod.number().min(topupCreditsBodyAmountMin)
+})
+
+export const TopupCreditsResponse = zod.object({
+  "credits": zod.number(),
+  "added": zod.number()
+})
+
+
+/**
+ * @summary List credit transactions for current user
+ */
+export const ListTransactionsResponseItem = zod.object({
+  "id": zod.number(),
+  "userId": zod.number(),
+  "type": zod.enum(['topup', 'usage', 'plan_credit']),
+  "amount": zod.number(),
+  "note": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListTransactionsResponse = zod.array(ListTransactionsResponseItem)
+
+
+/**
  * @summary List all users (admin only)
  */
 export const AdminListUsersResponseItem = zod.object({

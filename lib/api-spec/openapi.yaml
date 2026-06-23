@@ -541,6 +541,47 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeploymentStats"
 
+  # Billing
+  /billing/topup:
+    post:
+      operationId: topupCredits
+      tags: [billing]
+      summary: Topup user credits
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TopupInput"
+      responses:
+        "200":
+          description: Topup successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopupResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /billing/transactions:
+    get:
+      operationId: listTransactions
+      tags: [billing]
+      summary: List credit transactions for current user
+      responses:
+        "200":
+          description: Transaction list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CreditTransaction"
+
   # Admin
   /admin/users:
     get:
@@ -939,6 +980,41 @@ components:
           type: integer
         failedProjects:
           type: integer
+
+    TopupInput:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: integer
+          minimum: 1000
+
+    TopupResponse:
+      type: object
+      required: [credits, added]
+      properties:
+        credits:
+          type: integer
+        added:
+          type: integer
+
+    CreditTransaction:
+      type: object
+      required: [id, userId, type, amount, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        type:
+          type: string
+          enum: [topup, usage, plan_credit]
+        amount:
+          type: integer
+        note:
+          type: ["string", "null"]
+        createdAt:
+          type: string
 
     UserWithStats:
       type: object

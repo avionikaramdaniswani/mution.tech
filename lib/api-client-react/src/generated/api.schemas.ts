@@ -258,6 +258,35 @@ export interface AdminStats {
   failedProjects: number;
 }
 
+export interface TopupInput {
+  /** @minimum 1000 */
+  amount: number;
+}
+
+export interface TopupResponse {
+  credits: number;
+  added: number;
+}
+
+export type CreditTransactionType = typeof CreditTransactionType[keyof typeof CreditTransactionType];
+
+
+export const CreditTransactionType = {
+  topup: 'topup',
+  usage: 'usage',
+  plan_credit: 'plan_credit',
+} as const;
+
+export interface CreditTransaction {
+  id: number;
+  userId: number;
+  type: CreditTransactionType;
+  amount: number;
+  /** @nullable */
+  note?: string | null;
+  createdAt: string;
+}
+
 export interface UserWithStats {
   id: number;
   email: string;

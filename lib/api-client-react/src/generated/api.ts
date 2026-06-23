@@ -23,6 +23,7 @@ import type {
   ActivityLog,
   AdminStats,
   AuthResponse,
+  CreditTransaction,
   DashboardStats,
   Deployment,
   DeploymentStats,
@@ -39,6 +40,8 @@ import type {
   ProjectWithOwner,
   RegisterInput,
   SuccessResponse,
+  TopupInput,
+  TopupResponse,
   User,
   UserWithStats
 } from './api.schemas';
@@ -1888,6 +1891,154 @@ export function useGetDeploymentStats<TData = Awaited<ReturnType<typeof getDeplo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDeploymentStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getTopupCreditsUrl = () => {
+
+
+
+
+  return `/api/billing/topup`
+}
+
+/**
+ * @summary Topup user credits
+ */
+export const topupCredits = async (topupInput: TopupInput, options?: RequestInit): Promise<TopupResponse> => {
+
+  return customFetch<TopupResponse>(getTopupCreditsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      topupInput,)
+  }
+);}
+
+
+
+
+export const getTopupCreditsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof topupCredits>>, TError,{data: BodyType<TopupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof topupCredits>>, TError,{data: BodyType<TopupInput>}, TContext> => {
+
+const mutationKey = ['topupCredits'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof topupCredits>>, {data: BodyType<TopupInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  topupCredits(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TopupCreditsMutationResult = NonNullable<Awaited<ReturnType<typeof topupCredits>>>
+    export type TopupCreditsMutationBody = BodyType<TopupInput>
+    export type TopupCreditsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Topup user credits
+ */
+export const useTopupCredits = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof topupCredits>>, TError,{data: BodyType<TopupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof topupCredits>>,
+        TError,
+        {data: BodyType<TopupInput>},
+        TContext
+      > => {
+      return useMutation(getTopupCreditsMutationOptions(options));
+    }
+
+export const getListTransactionsUrl = () => {
+
+
+
+
+  return `/api/billing/transactions`
+}
+
+/**
+ * @summary List credit transactions for current user
+ */
+export const listTransactions = async ( options?: RequestInit): Promise<CreditTransaction[]> => {
+
+  return customFetch<CreditTransaction[]>(getListTransactionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTransactionsQueryKey = () => {
+    return [
+    `/api/billing/transactions`
+    ] as const;
+    }
+
+
+export const getListTransactionsQueryOptions = <TData = Awaited<ReturnType<typeof listTransactions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTransactionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransactions>>> = ({ signal }) => listTransactions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTransactions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTransactionsQueryResult = NonNullable<Awaited<ReturnType<typeof listTransactions>>>
+export type ListTransactionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List credit transactions for current user
+ */
+
+export function useListTransactions<TData = Awaited<ReturnType<typeof listTransactions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTransactionsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -9,6 +9,8 @@
 export * from './activityLog';
 export * from './adminStats';
 export * from './authResponse';
+export * from './creditTransaction';
+export * from './creditTransactionType';
 export * from './dailyCount';
 export * from './dashboardStats';
 export * from './deployment';
@@ -34,6 +36,8 @@ export * from './projectWithOwner';
 export * from './registerInput';
 export * from './statusCount';
 export * from './successResponse';
+export * from './topupInput';
+export * from './topupResponse';
 export * from './user';
 export * from './userRole';
 export * from './userWithStats';
