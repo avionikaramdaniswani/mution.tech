@@ -41,6 +41,7 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  credits: number;
   createdAt: string;
 }
 

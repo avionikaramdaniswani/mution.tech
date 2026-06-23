@@ -679,7 +679,7 @@ components:
 
     User:
       type: object
-      required: [id, email, name, role, createdAt]
+      required: [id, email, name, role, credits, createdAt]
       properties:
         id:
           type: integer
@@ -690,6 +690,8 @@ components:
         role:
           type: string
           enum: [user, admin]
+        credits:
+          type: integer
         createdAt:
           type: string
 

@@ -22,7 +22,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Activity, Box, LayoutDashboard, LogOut, ShieldAlert, HeartPulse, MoreHorizontal, User, CreditCard } from "lucide-react";
+import { Activity, Box, LayoutDashboard, LogOut, ShieldAlert, HeartPulse, MoreHorizontal, User, CreditCard, Wallet } from "lucide-react";
+
+function formatCredits(credits?: number) {
+  if (credits === undefined || credits === null) return "Rp 0";
+  return "Rp " + credits.toLocaleString("id-ID");
+}
 
 function UserAvatar({ name, size = "md" }: { name?: string; size?: "sm" | "md" }) {
   const initials = (name ?? "?")
@@ -189,23 +194,40 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border/50 px-4 md:px-6">
             <SidebarTrigger />
 
-            {/* Mobile avatar (hidden on md+, sidebar handles it there) */}
-            <div className="md:hidden">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="outline-none">
-                    <UserAvatar name={user?.name} size="sm" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent side="bottom" align="end" className="w-44">
-                  <div className="px-2 py-1.5 mb-1">
-                    <p className="text-sm font-medium truncate">{user?.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <UserDropdownItems onLogout={handleLogout} />
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {/* Right side — credits + avatar */}
+            <div className="flex items-center gap-3">
+              {/* Credit badge — always visible */}
+              <Link href="/billing">
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/40"
+                  style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}
+                  title="Kredit kamu"
+                >
+                  <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-semibold tabular-nums" style={{ color: user?.credits === 0 ? "rgb(239,68,68)" : "rgba(255,255,255,0.7)" }}>
+                    {formatCredits(user?.credits)}
+                  </span>
+                </div>
+              </Link>
+
+              {/* Mobile avatar (hidden on md+, sidebar handles it there) */}
+              <div className="md:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="outline-none">
+                      <UserAvatar name={user?.name} size="sm" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" align="end" className="w-44">
+                    <div className="px-2 py-1.5 mb-1">
+                      <p className="text-sm font-medium truncate">{user?.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <UserDropdownItems onLogout={handleLogout} />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </header>
 
