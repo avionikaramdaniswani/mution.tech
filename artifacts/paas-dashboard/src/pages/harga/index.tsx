@@ -16,10 +16,9 @@ const plans = [
     ctaHref: "/register",
     features: [
       "1 proyek aktif",
-      "Deploy manual",
+      "Deploy via GitHub",
       "Log real-time",
       "SSL otomatis",
-      "Proyek berhenti saat kredit habis",
       "Topup mulai Rp 1.000",
     ],
   },
@@ -37,7 +36,7 @@ const plans = [
     ctaHref: "/register",
     features: [
       "Proyek tidak terbatas",
-      "Deploy otomatis via GitHub",
+      "Deploy via GitHub",
       "Log real-time & monitoring",
       "SSL otomatis di semua domain",
       "Rollback 1 klik",
@@ -63,12 +62,22 @@ const plans = [
       "Kolaborasi tim (coming soon)",
       "Priority support",
       "Proyek tidak terbatas",
-      "Deploy otomatis via GitHub",
+      "Deploy via GitHub",
       "SSL otomatis di semua domain",
       "Rollback 1 klik",
       "Topup mulai Rp 1.000",
     ],
   },
+];
+
+const ramPlans = [
+  { ram: "256 MB",  perMenit: "Rp0,29",  perBulan: "Rp12.700" },
+  { ram: "512 MB",  perMenit: "Rp0,59",  perBulan: "Rp25.400", popular: true },
+  { ram: "768 MB",  perMenit: "Rp0,88",  perBulan: "Rp38.100" },
+  { ram: "1 GB",    perMenit: "Rp1,18",  perBulan: "Rp50.800" },
+  { ram: "2 GB",    perMenit: "Rp2,36",  perBulan: "Rp101.700" },
+  { ram: "4 GB",    perMenit: "Rp4,71",  perBulan: "Rp203.500" },
+  { ram: "8 GB",    perMenit: "Rp9,42",  perBulan: "Rp407.000" },
 ];
 
 const faqs = [
@@ -308,6 +317,109 @@ export default function HargaPage() {
                   </Link>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* ── RAM pricing card ── */}
+          <div
+            className="relative rounded-2xl overflow-hidden"
+            style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: "radial-gradient(ellipse at 30% 0%, rgba(249,115,22,0.05) 0%, transparent 55%)" }}
+            />
+
+            {/* Column headers */}
+            <div
+              className="relative z-10 grid"
+              style={{
+                gridTemplateColumns: "1fr 1fr 1fr",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                background: "rgba(255,255,255,0.015)",
+              }}
+            >
+              {[
+                { label: "RAM", align: "left" },
+                { label: "Per Menit", align: "center" },
+                { label: "Est. 30 Hari", align: "right" },
+              ].map((col, i) => (
+                <div
+                  key={col.label}
+                  className="px-8 sm:px-12 py-3.5"
+                  style={{
+                    borderRight: i < 2 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                    textAlign: col.align as React.CSSProperties["textAlign"],
+                  }}
+                >
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-widest"
+                    style={{ color: "rgba(255,255,255,0.2)" }}
+                  >
+                    {col.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Rows */}
+            <div className="relative z-10">
+              {ramPlans.map((plan, i) => (
+                <div
+                  key={plan.ram}
+                  className="grid"
+                  style={{
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    borderBottom: i < ramPlans.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                    background: plan.popular ? "rgba(249,115,22,0.055)" : "transparent",
+                    position: "relative",
+                  }}
+                >
+                  {plan.popular && (
+                    <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "3px", background: "rgb(249,115,22)" }} />
+                  )}
+                  <div
+                    className="px-8 sm:px-12 py-5 flex items-center gap-3"
+                    style={{ borderRight: "1px solid rgba(255,255,255,0.05)" }}
+                  >
+                    <span className="font-semibold text-sm" style={{ color: plan.popular ? "#fff" : "rgba(255,255,255,0.65)" }}>
+                      {plan.ram}
+                    </span>
+                    {plan.popular && (
+                      <span
+                        className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full hidden sm:inline-block"
+                        style={{ background: "rgba(249,115,22,0.15)", color: "rgb(249,115,22)", border: "1px solid rgba(249,115,22,0.22)" }}
+                      >
+                        Populer
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className="px-8 sm:px-12 py-5 flex items-center justify-center"
+                    style={{ borderRight: "1px solid rgba(255,255,255,0.05)" }}
+                  >
+                    <span className="font-mono font-bold text-base tabular-nums" style={{ color: plan.popular ? "rgb(249,115,22)" : "rgba(255,255,255,0.8)" }}>
+                      {plan.perMenit}
+                    </span>
+                  </div>
+                  <div className="px-8 sm:px-12 py-5 flex items-center justify-end">
+                    <span className="font-mono text-sm tabular-nums" style={{ color: "rgba(255,255,255,0.28)" }}>
+                      {plan.perBulan}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer note */}
+            <div
+              className="relative z-10 px-8 sm:px-12 py-4"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}
+            >
+              <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.18)" }}>
+                * Estimasi 30 hari dihitung nonstop (43.200 menit). Tagihan aktual biasanya lebih rendah karena proyek tidak selalu aktif 24 jam.
+                Kredit berkurang hanya saat container aktif — proyek berhenti otomatis saat kredit habis, berlaku untuk semua plan.
+              </p>
             </div>
           </div>
 
