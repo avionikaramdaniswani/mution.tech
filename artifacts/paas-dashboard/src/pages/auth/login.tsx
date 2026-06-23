@@ -41,7 +41,7 @@ export default function Login() {
       {
         onSuccess: (data) => {
           queryClient.setQueryData(getGetMeQueryKey(), data.user);
-          setLocation("/dashboard");
+          setLocation(data.user.role === "admin" ? "/admin" : "/dashboard");
         },
       }
     );
