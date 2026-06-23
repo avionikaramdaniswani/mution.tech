@@ -29,6 +29,12 @@ function formatCredits(credits?: number) {
   return "Rp " + credits.toLocaleString("id-ID");
 }
 
+function creditColor(credits?: number): string {
+  if (credits === undefined || credits === null || credits === 0) return "rgb(239,68,68)";
+  if (credits <= 1000) return "rgb(234,179,8)";
+  return "rgb(34,197,94)";
+}
+
 function UserAvatar({ name, size = "md" }: { name?: string; size?: "sm" | "md" }) {
   const initials = (name ?? "?")
     .split(" ")
@@ -204,7 +210,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   title="Kredit kamu"
                 >
                   <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs font-semibold tabular-nums" style={{ color: user?.credits === 0 ? "rgb(239,68,68)" : "rgba(255,255,255,0.7)" }}>
+                  <span className="text-xs font-semibold tabular-nums" style={{ color: creditColor(user?.credits) }}>
                     {formatCredits(user?.credits)}
                   </span>
                 </div>
