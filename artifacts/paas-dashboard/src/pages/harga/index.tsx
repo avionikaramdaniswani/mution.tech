@@ -33,8 +33,8 @@ const plans = [
     ctaHref: "/register",
     features: [
       "Unlimited slot proyek",
-      "Priority support",
       "RAM hingga 4 GB",
+      "Priority support",
     ],
   },
   {
