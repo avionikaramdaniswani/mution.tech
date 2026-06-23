@@ -4,33 +4,51 @@ Platform as a Service berbasis web, mirip Railway/Render — untuk deploy dan ma
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm --filter @workspace/paas-dashboard run dev` — run the frontend (dev)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 3001)
+- `pnpm --filter @workspace/paas-dashboard run dev` — run the frontend (port 5000)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `SUPABASE_DATABASE_URL` — Supabase Postgres connection string
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
+- pnpm workspaces, Node.js 20, TypeScript 5.9
 - Frontend: React + Vite + Wouter + TanStack Query
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
+- DB: **Supabase PostgreSQL** + Drizzle ORM
 - Auth: Session-based (cookie, httpOnly) + bcryptjs
-- Validation: Zod (`zod/v4`), `drizzle-zod`
+- Validation: Zod, `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Build: esbuild (ESM bundle)
+- Payment: DOKU payment gateway
+
+## Database — WAJIB BACA
+
+> **DATABASE INI SUPABASE. JANGAN PERNAH DIGANTI KE REPLIT DB ATAU DB LAIN.**
+>
+> - Koneksi database selalu menggunakan `SUPABASE_DATABASE_URL` (prioritas utama)
+> - `DATABASE_URL` hanya fallback jika `SUPABASE_DATABASE_URL` tidak ada
+> - Semua data pengguna, proyek, deployment, dan transaksi ada di Supabase
+> - Jangan jalankan `createDatabase()` atau ganti connection string ke Replit DB
+> - Jangan hapus atau timpa secret `SUPABASE_DATABASE_URL`
+> - SSL wajib aktif untuk koneksi Supabase (`rejectUnauthorized: false`)
+>
+> File yang mengatur koneksi DB:
+> - `lib/db/src/index.ts` — DB client (gunakan `SUPABASE_DATABASE_URL`)
+> - `lib/db/drizzle.config.ts` — Drizzle config (gunakan `SUPABASE_DATABASE_URL`)
 
 ## Where things live
 
 - `lib/api-spec/openapi.yaml` — source of truth for all API contracts
 - `lib/db/src/schema/` — Drizzle schema files (users, projects, deployments, env_vars, project_databases, activity_logs, sessions)
-- `artifacts/api-server/src/routes/` — auth, projects, deployments, stats, activity, admin
+- `artifacts/api-server/src/routes/` — auth, projects, deployments, stats, activity, admin, payment
 - `artifacts/api-server/src/lib/auth.ts` — session-based auth middleware
+- `artifacts/api-server/src/lib/doku.ts` — DOKU payment gateway helper
 - `artifacts/api-server/src/lib/activity.ts` — activity log helper
 - `artifacts/paas-dashboard/src/` — React frontend
+- `artifacts/paas-dashboard/src/pages/billing/` — billing & topup pages
 
 ## Architecture decisions
 
@@ -39,6 +57,7 @@ Platform as a Service berbasis web, mirip Railway/Render — untuk deploy dan ma
 - Env var values masked on all API responses (stored in plain text, shown as `***`)
 - Project database provisioning is simulated — ready for real Coolify API calls
 - Deployment pipeline is simulated with realistic build logs and status — ready for Coolify webhooks
+- Payment topup via DOKU checkout — user diarahkan ke halaman DOKU, kredit ditambah otomatis setelah webhook SUCCESS
 
 ## Product
 
@@ -48,24 +67,25 @@ Platform as a Service berbasis web, mirip Railway/Render — untuk deploy dan ma
 - Deployments: trigger, view logs, rollback
 - Activity log: per-user action history
 - Admin panel: all users, all projects, force stop/delete, platform stats
+- Billing: topup kredit via DOKU payment gateway, riwayat transaksi
 
-## Test accounts
+## Environment variables yang dibutuhkan
 
-- `admin@paas.local` / `admin123` — admin role (can access /admin panel)
-- `budi@example.com` / `user123` — regular user with 3 projects seeded
-- `sari@example.com` / `user123` — regular user with 1 project seeded
+- `SUPABASE_DATABASE_URL` — Supabase Postgres connection string (wajib)
+- `DOKU_CLIENT_ID` — DOKU production Client ID
+- `DOKU_SECRET_KEY` — DOKU production Secret Key
+- `DOKU_ENV` — set ke `production` untuk live, kosongkan untuk sandbox
 
 ## Gotchas
 
 - Always run `pnpm --filter @workspace/api-spec run codegen` after changing `openapi.yaml`
 - Run `pnpm --filter @workspace/db run push` after changing DB schema
 - Coolify integration routes need to be wired into the project stop/restart/deploy routes in `artifacts/api-server/src/routes/`
+- Import `z` dari `"zod"` bukan `"zod/v4"` — esbuild tidak bisa resolve sub-path `zod/v4`
+- `zod` harus jadi direct dependency di `artifacts/api-server/package.json` agar bisa di-bundle
 
 ## User preferences
 
+- Database: **Supabase** — tidak boleh diganti ke Replit DB atau DB lain apapun
 - Coolify integration to be added later (skipped on first build)
-- Stack: Express + React/Vite (not Next.js), Drizzle ORM (not Prisma), Replit DB (not Supabase)
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Stack: Express + React/Vite (not Next.js), Drizzle ORM (not Prisma)

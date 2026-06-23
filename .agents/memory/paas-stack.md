@@ -1,12 +1,25 @@
 ---
 name: PaaS Platform Stack Decision
-description: Why the PaaS platform uses a different stack than the user's original spec
+description: Stack pilihan proyek Mution — keputusan yang harus konsisten di semua sesi.
 ---
 
-User originally requested Next.js 14, Supabase, Prisma, and Supabase Auth. The Replit monorepo uses Express 5 + React/Vite + Drizzle ORM + Replit PostgreSQL instead.
+## Stack
 
-**Why:** Replit workspace is pre-configured with Express + Vite; Next.js would require a separate bootstrap. Replit DB is preferred over Supabase (built-in, no external dependency). Drizzle is the workspace ORM standard. Session-based auth (httpOnly cookie + bcryptjs) was chosen over Supabase Auth to avoid external service dependency.
+- **Frontend:** React + Vite + Wouter + TanStack Query (bukan Next.js)
+- **Backend:** Express 5 + TypeScript
+- **DB:** **Supabase PostgreSQL** + Drizzle ORM (bukan Prisma, BUKAN Replit DB)
+- **Auth:** Session-based httpOnly cookies + bcryptjs (bukan JWT, bukan Supabase Auth)
+- **Monorepo:** pnpm workspaces
+- **Codegen:** Orval dari OpenAPI spec (`lib/api-spec/openapi.yaml`)
+- **Payment:** DOKU payment gateway
 
-**How to apply:** If user asks to add Supabase or Next.js features, adapt to the existing stack. Auth is in `artifacts/api-server/src/lib/auth.ts`. Session cookie name is `paas_session`.
+**Why:** Dipilih oleh user. Database adalah Supabase yang sudah berisi data nyata — mengganti DB akan menghilangkan semua data user.
 
-Coolify integration is intentionally not built yet — the user said to skip it for the first build. Wire it into the stop/restart/deploy routes in `artifacts/api-server/src/routes/projects.ts` and `deployments.ts` when ready.
+**How to apply:**
+- Database WAJIB via `SUPABASE_DATABASE_URL` — lihat supabase-constraint.md
+- Selalu import `z` dari `"zod"` bukan `"zod/v4"` (esbuild tidak bisa resolve sub-path)
+- `zod` harus jadi direct dependency di `artifacts/api-server/package.json`
+- Setelah ubah `openapi.yaml`, jalankan `pnpm --filter @workspace/api-spec run codegen`
+- API server port 3001, frontend port 5000
+- DOKU: `DOKU_ENV=production` untuk production, kosong = sandbox
+- Coolify integration belum dibangun — skip dulu, wire ke routes projects/deployments nanti
