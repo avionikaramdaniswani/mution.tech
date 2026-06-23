@@ -542,6 +542,75 @@ paths:
                 $ref: "#/components/schemas/DeploymentStats"
 
   # Billing
+  /billing/payment/create:
+    post:
+      operationId: createPayment
+      tags: [billing]
+      summary: Create a DOKU payment order and get checkout URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentInput"
+      responses:
+        "201":
+          description: Payment order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatePaymentResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Payment gateway unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /billing/payment/notify:
+    post:
+      operationId: dokuNotify
+      tags: [billing]
+      summary: DOKU payment webhook notification (called by DOKU server)
+      responses:
+        "200":
+          description: Acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /billing/payment/{invoiceNumber}:
+    get:
+      operationId: getPaymentStatus
+      tags: [billing]
+      summary: Get payment order status by invoice number
+      parameters:
+        - name: invoiceNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Payment status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentStatusResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /billing/topup:
     post:
       operationId: topupCredits
@@ -1022,6 +1091,41 @@ components:
           type: string
         count:
           type: integer
+
+    CreatePaymentInput:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: integer
+          minimum: 1000
+
+    CreatePaymentResponse:
+      type: object
+      required: [paymentUrl, invoiceNumber]
+      properties:
+        paymentUrl:
+          type: string
+        invoiceNumber:
+          type: string
+
+    PaymentStatusResponse:
+      type: object
+      required: [invoiceNumber, amount, status, createdAt]
+      properties:
+        invoiceNumber:
+          type: string
+        amount:
+          type: integer
+        status:
+          type: string
+          enum: [pending, paid, expired, failed]
+        paymentUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        paidAt:
+          type: ["string", "null"]
 
     AdminStats:
       type: object
