@@ -3,6 +3,7 @@ import { db, usersTable, creditTransactionsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import { TopupCreditsBody } from "@workspace/api-zod";
+import { computePlan } from "../lib/plan";
 
 const router = Router();
 
@@ -15,12 +16,14 @@ router.post("/billing/topup", requireAuth, async (req, res): Promise<void> => {
 
   const { amount } = parsed.data;
   const user = (req as any).user;
+  const newCredits = user.credits + amount;
+  const newPlan = computePlan(newCredits);
 
   const [updated] = await db
     .update(usersTable)
-    .set({ credits: user.credits + amount })
+    .set({ credits: newCredits, plan: newPlan })
     .where(eq(usersTable.id, user.id))
-    .returning({ credits: usersTable.credits });
+    .returning({ credits: usersTable.credits, plan: usersTable.plan });
 
   await db.insert(creditTransactionsTable).values({
     userId: user.id,

@@ -40,6 +40,7 @@ export const LoginResponse = zod.object({
   "email": zod.string(),
   "name": zod.string(),
   "role": zod.enum(['user', 'admin']),
+  "plan": zod.enum(['hobby', 'pro', 'team']),
   "credits": zod.number(),
   "createdAt": zod.string()
 })
@@ -62,6 +63,7 @@ export const GetMeResponse = zod.object({
   "email": zod.string(),
   "name": zod.string(),
   "role": zod.enum(['user', 'admin']),
+  "plan": zod.enum(['hobby', 'pro', 'team']),
   "credits": zod.number(),
   "createdAt": zod.string()
 })
@@ -439,6 +441,7 @@ export const AdminListUsersResponseItem = zod.object({
   "email": zod.string(),
   "name": zod.string(),
   "role": zod.string(),
+  "plan": zod.enum(['hobby', 'pro', 'team']),
   "credits": zod.number(),
   "createdAt": zod.string(),
   "projectCount": zod.number(),
@@ -459,6 +462,7 @@ export const AdminGetUserResponse = zod.object({
   "email": zod.string(),
   "name": zod.string(),
   "role": zod.string(),
+  "plan": zod.enum(['hobby', 'pro', 'team']),
   "credits": zod.number(),
   "createdAt": zod.string(),
   "projectCount": zod.number(),

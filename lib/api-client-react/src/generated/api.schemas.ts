@@ -36,11 +36,21 @@ export const UserRole = {
   admin: 'admin',
 } as const;
 
+export type UserPlan = typeof UserPlan[keyof typeof UserPlan];
+
+
+export const UserPlan = {
+  hobby: 'hobby',
+  pro: 'pro',
+  team: 'team',
+} as const;
+
 export interface User {
   id: number;
   email: string;
   name: string;
   role: UserRole;
+  plan: UserPlan;
   credits: number;
   createdAt: string;
 }
@@ -287,11 +297,21 @@ export interface CreditTransaction {
   createdAt: string;
 }
 
+export type UserWithStatsPlan = typeof UserWithStatsPlan[keyof typeof UserWithStatsPlan];
+
+
+export const UserWithStatsPlan = {
+  hobby: 'hobby',
+  pro: 'pro',
+  team: 'team',
+} as const;
+
 export interface UserWithStats {
   id: number;
   email: string;
   name: string;
   role: string;
+  plan: UserWithStatsPlan;
   credits: number;
   createdAt: string;
   projectCount: number;

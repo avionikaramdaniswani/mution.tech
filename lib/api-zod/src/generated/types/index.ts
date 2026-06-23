@@ -39,5 +39,7 @@ export * from './successResponse';
 export * from './topupInput';
 export * from './topupResponse';
 export * from './user';
+export * from './userPlan';
 export * from './userRole';
 export * from './userWithStats';
+export * from './userWithStatsPlan';

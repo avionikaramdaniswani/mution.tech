@@ -774,7 +774,7 @@ components:
 
     User:
       type: object
-      required: [id, email, name, role, credits, createdAt]
+      required: [id, email, name, role, plan, credits, createdAt]
       properties:
         id:
           type: integer
@@ -785,6 +785,9 @@ components:
         role:
           type: string
           enum: [user, admin]
+        plan:
+          type: string
+          enum: [hobby, pro, team]
         credits:
           type: integer
         createdAt:
@@ -1072,7 +1075,7 @@ components:
 
     UserWithStats:
       type: object
-      required: [id, email, name, role, credits, createdAt, projectCount]
+      required: [id, email, name, role, plan, credits, createdAt, projectCount]
       properties:
         id:
           type: integer
@@ -1082,6 +1085,9 @@ components:
           type: string
         role:
           type: string
+        plan:
+          type: string
+          enum: [hobby, pro, team]
         credits:
           type: integer
         createdAt:

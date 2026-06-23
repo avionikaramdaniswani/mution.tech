@@ -5,13 +5,23 @@ import bcrypt from "bcryptjs";
 import {
   RegisterBody,
   LoginBody,
-  GetMeResponse,
-  AuthResponse,
-  LogoutResponse,
 } from "@workspace/api-zod";
-import { createSession, deleteSession, getSessionUser, requireAuth, SESSION_COOKIE, SESSION_DURATION_MS } from "../lib/auth";
+import { createSession, deleteSession, requireAuth, SESSION_COOKIE, SESSION_DURATION_MS } from "../lib/auth";
+import { computePlan } from "../lib/plan";
 
 const router = Router();
+
+function serializeUser(user: typeof usersTable.$inferSelect) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    plan: user.plan,
+    credits: user.credits,
+    createdAt: user.createdAt.toISOString(),
+  };
+}
 
 router.post("/auth/register", async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
@@ -31,7 +41,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const passwordHash = await bcrypt.hash(password, 12);
   const [user] = await db
     .insert(usersTable)
-    .values({ email, name, passwordHash, role: "user" })
+    .values({ email, name, passwordHash, role: "user", plan: "hobby" })
     .returning();
 
   const sessionId = await createSession(user.id);
@@ -42,16 +52,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     maxAge: SESSION_DURATION_MS,
   });
 
-  res.status(201).json({
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      credits: user.credits,
-      createdAt: user.createdAt.toISOString(),
-    },
-  });
+  res.status(201).json({ user: serializeUser(user) });
 });
 
 router.post("/auth/login", async (req, res): Promise<void> => {
@@ -75,7 +76,12 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  await db.update(usersTable).set({ lastLoginAt: new Date() }).where(eq(usersTable.email, email));
+  const newPlan = computePlan(user.credits);
+  const [updated] = await db
+    .update(usersTable)
+    .set({ lastLoginAt: new Date(), plan: newPlan })
+    .where(eq(usersTable.id, user.id))
+    .returning();
 
   const sessionId = await createSession(user.id);
   res.cookie(SESSION_COOKIE, sessionId, {
@@ -85,16 +91,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     maxAge: SESSION_DURATION_MS,
   });
 
-  res.json({
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      credits: user.credits,
-      createdAt: user.createdAt.toISOString(),
-    },
-  });
+  res.json({ user: serializeUser(updated) });
 });
 
 router.post("/auth/logout", async (req, res): Promise<void> => {
@@ -108,14 +105,7 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
 
 router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  res.json({
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-    credits: user.credits,
-    createdAt: user.createdAt.toISOString(),
-  });
+  res.json(serializeUser(user));
 });
 
 export default router;

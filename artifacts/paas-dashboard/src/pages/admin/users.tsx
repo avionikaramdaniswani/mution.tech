@@ -27,10 +27,10 @@ function creditColor(c: number): string {
   return "rgb(34,197,94)";
 }
 
-function planLabel(c: number) {
-  if (c >= 60000) return "Team";
-  if (c >= 25000) return "Pro";
-  return "Hobby";
+function planStyle(plan?: string) {
+  if (plan === "team") return { name: "Team", color: "rgba(139,92,246,0.8)" };
+  if (plan === "pro")  return { name: "Pro",  color: "rgb(249,115,22)" };
+  return { name: "Hobby", color: "rgba(255,255,255,0.4)" };
 }
 
 function UserAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg" }) {
@@ -113,7 +113,9 @@ function UserDetailSheet({ userId, open, onClose }: { userId: number | null; ope
               value={
                 <span style={{ color: creditColor(user.credits) }}>
                   {formatCredits(user.credits)}
-                  <span className="ml-2 text-xs text-muted-foreground font-normal">Plan {planLabel(user.credits)}</span>
+                  <span className="ml-2 text-xs font-semibold" style={{ color: planStyle(user.plan).color }}>
+                    {planStyle(user.plan).name}
+                  </span>
                 </span>
               }
             />

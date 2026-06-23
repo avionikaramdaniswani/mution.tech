@@ -3,6 +3,7 @@ import { db, usersTable, projectsTable, deploymentsTable } from "@workspace/db";
 import { eq, desc, sql, count } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
+import { computePlan } from "../lib/plan";
 
 const router = Router();
 
@@ -13,6 +14,7 @@ function formatUser(u: {
   email: string;
   name: string;
   role: string;
+  plan: string;
   credits: number;
   createdAt: Date;
   lastLoginAt: Date | null;
@@ -23,6 +25,7 @@ function formatUser(u: {
     email: u.email,
     name: u.name,
     role: u.role,
+    plan: u.plan,
     credits: u.credits,
     createdAt: u.createdAt.toISOString(),
     lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
@@ -30,19 +33,22 @@ function formatUser(u: {
   };
 }
 
+const userSelectFields = {
+  id: usersTable.id,
+  email: usersTable.email,
+  name: usersTable.name,
+  role: usersTable.role,
+  plan: usersTable.plan,
+  credits: usersTable.credits,
+  createdAt: usersTable.createdAt,
+  lastLoginAt: usersTable.lastLoginAt,
+  projectCount: sql<number>`count(${projectsTable.id})::int`,
+};
+
 // List all users with project count
 router.get("/admin/users", async (req, res): Promise<void> => {
   const users = await db
-    .select({
-      id: usersTable.id,
-      email: usersTable.email,
-      name: usersTable.name,
-      role: usersTable.role,
-      credits: usersTable.credits,
-      createdAt: usersTable.createdAt,
-      lastLoginAt: usersTable.lastLoginAt,
-      projectCount: sql<number>`count(${projectsTable.id})::int`,
-    })
+    .select(userSelectFields)
     .from(usersTable)
     .leftJoin(projectsTable, eq(projectsTable.userId, usersTable.id))
     .groupBy(usersTable.id)
@@ -57,16 +63,7 @@ router.get("/admin/users/:id", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [row] = await db
-    .select({
-      id: usersTable.id,
-      email: usersTable.email,
-      name: usersTable.name,
-      role: usersTable.role,
-      credits: usersTable.credits,
-      createdAt: usersTable.createdAt,
-      lastLoginAt: usersTable.lastLoginAt,
-      projectCount: sql<number>`count(${projectsTable.id})::int`,
-    })
+    .select(userSelectFields)
     .from(usersTable)
     .leftJoin(projectsTable, eq(projectsTable.userId, usersTable.id))
     .groupBy(usersTable.id)

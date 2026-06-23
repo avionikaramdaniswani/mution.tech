@@ -153,9 +153,9 @@ function TopupModal({ onClose, currentCredits }: { onClose: () => void; currentC
   );
 }
 
-function planLabel(credits: number) {
-  if (credits >= 60000) return { name: "Team", color: "rgba(139,92,246,0.8)" };
-  if (credits >= 25000) return { name: "Pro", color: "rgb(249,115,22)" };
+function planStyle(plan?: string) {
+  if (plan === "team") return { name: "Team", color: "rgba(139,92,246,0.8)" };
+  if (plan === "pro")  return { name: "Pro",  color: "rgb(249,115,22)" };
   return { name: "Hobby", color: "rgba(255,255,255,0.4)" };
 }
 
@@ -166,7 +166,7 @@ export default function BillingPage() {
   const { data: transactions, isLoading: txLoading } = useListTransactions();
 
   const credits = user?.credits ?? 0;
-  const plan = planLabel(credits);
+  const plan = planStyle(user?.plan);
   const pct = Math.min(100, Math.round((credits / 5000) * 100));
 
   return (

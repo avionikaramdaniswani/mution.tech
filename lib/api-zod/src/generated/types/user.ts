@@ -5,6 +5,7 @@
  * PaaS Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { UserPlan } from './userPlan';
 import type { UserRole } from './userRole';
 
 export interface User {
@@ -12,6 +13,7 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  plan: UserPlan;
   credits: number;
   createdAt: string;
 }

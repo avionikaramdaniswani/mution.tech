@@ -5,12 +5,14 @@
  * PaaS Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { UserWithStatsPlan } from './userWithStatsPlan';
 
 export interface UserWithStats {
   id: number;
   email: string;
   name: string;
   role: string;
+  plan: UserWithStatsPlan;
   credits: number;
   createdAt: string;
   projectCount: number;
