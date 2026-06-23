@@ -6,7 +6,7 @@ import { requireAuth } from "../lib/auth";
 import { createDokuPayment, verifyDokuNotifySignature, getDokuConfig } from "../lib/doku";
 import { computePlan } from "../lib/plan";
 import { logActivity } from "../lib/activity";
-import { z } from "zod/v4";
+import { z } from "zod";
 
 const router = Router();
 

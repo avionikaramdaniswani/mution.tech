@@ -1,6 +1,6 @@
 import { pgTable, text, serial, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
+import { z } from "zod";
 import { projectsTable } from "./projects";
 
 export const deploymentStatusEnum = pgEnum("deployment_status", [
