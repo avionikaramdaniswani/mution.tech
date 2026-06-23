@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout/app-layout";
+import { AdminLayout } from "@/components/layout/admin-layout";
 
 import Landing from "@/pages/landing";
 import Login from "@/pages/auth/login";
@@ -14,29 +15,27 @@ import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import NewProject from "@/pages/projects/new";
 import ProjectDetail from "@/pages/projects/detail";
-import AdminPanel from "@/pages/admin";
 import ActivityLog from "@/pages/activity";
 import GitHubCallback from "@/pages/github-callback";
 import HargaPage from "@/pages/harga";
 import ProfilePage from "@/pages/profile";
 import BillingPage from "@/pages/billing";
 
+import AdminOverview from "@/pages/admin/overview";
+import AdminUsers from "@/pages/admin/users";
+import AdminProjects from "@/pages/admin/projects";
+import AdminActivity from "@/pages/admin/activity";
+
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ component: Component, adminOnly = false }: { component: any, adminOnly?: boolean }) {
+function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center bg-background text-foreground dark">Loading...</div>;
   }
 
-  if (!user) {
-    return <Redirect to="/login" />;
-  }
-
-  if (adminOnly && user.role !== "admin") {
-    return <Redirect to="/dashboard" />;
-  }
+  if (!user) return <Redirect to="/login" />;
 
   return (
     <AppLayout>
@@ -45,8 +44,24 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
   );
 }
 
+function AdminRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center bg-background text-foreground dark">Loading...</div>;
+  }
+
+  if (!user) return <Redirect to="/login" />;
+  if (user.role !== "admin") return <Redirect to="/dashboard" />;
+
+  return (
+    <AdminLayout>
+      <Component />
+    </AdminLayout>
+  );
+}
+
 function Router() {
-  // Setup dark mode as default
   useEffect(() => {
     document.documentElement.classList.add("dark");
   }, []);
@@ -56,18 +71,23 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
-      
+
+      {/* User routes */}
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />
       <Route path="/projects/new" component={() => <ProtectedRoute component={NewProject} />} />
       <Route path="/projects/:id" component={() => <ProtectedRoute component={ProjectDetail} />} />
-      
-      <Route path="/admin" component={() => <ProtectedRoute component={AdminPanel} adminOnly />} />
       <Route path="/activity" component={() => <ProtectedRoute component={ActivityLog} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
       <Route path="/billing" component={() => <ProtectedRoute component={BillingPage} />} />
       <Route path="/github-callback" component={GitHubCallback} />
       <Route path="/harga" component={HargaPage} />
+
+      {/* Admin routes — dedicated layout */}
+      <Route path="/admin" component={() => <AdminRoute component={AdminOverview} />} />
+      <Route path="/admin/users" component={() => <AdminRoute component={AdminUsers} />} />
+      <Route path="/admin/projects" component={() => <AdminRoute component={AdminProjects} />} />
+      <Route path="/admin/activity" component={() => <AdminRoute component={AdminActivity} />} />
 
       <Route component={NotFound} />
     </Switch>
