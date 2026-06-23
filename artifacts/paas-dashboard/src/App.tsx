@@ -18,6 +18,8 @@ import AdminPanel from "@/pages/admin";
 import ActivityLog from "@/pages/activity";
 import GitHubCallback from "@/pages/github-callback";
 import HargaPage from "@/pages/harga";
+import ProfilePage from "@/pages/profile";
+import BillingPage from "@/pages/billing";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +64,8 @@ function Router() {
       
       <Route path="/admin" component={() => <ProtectedRoute component={AdminPanel} adminOnly />} />
       <Route path="/activity" component={() => <ProtectedRoute component={ActivityLog} />} />
+      <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
+      <Route path="/billing" component={() => <ProtectedRoute component={BillingPage} />} />
       <Route path="/github-callback" component={GitHubCallback} />
       <Route path="/harga" component={HargaPage} />
 

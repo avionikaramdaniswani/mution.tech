@@ -15,8 +15,61 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Activity, Box, LayoutDashboard, LogOut, ShieldAlert, HeartPulse } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Activity, Box, LayoutDashboard, LogOut, ShieldAlert, HeartPulse, MoreHorizontal, User, CreditCard } from "lucide-react";
+
+function UserAvatar({ name, size = "md" }: { name?: string; size?: "sm" | "md" }) {
+  const initials = (name ?? "?")
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  const dim = size === "sm" ? "h-8 w-8 text-xs" : "h-9 w-9 text-sm";
+
+  return (
+    <div
+      className={`${dim} rounded-full flex items-center justify-center font-bold flex-shrink-0`}
+      style={{ background: "rgba(249,115,22,0.18)", color: "rgb(249,115,22)", border: "1px solid rgba(249,115,22,0.28)" }}
+    >
+      {initials}
+    </div>
+  );
+}
+
+function UserDropdownItems({ onLogout }: { onLogout: () => void }) {
+  return (
+    <>
+      <DropdownMenuItem asChild>
+        <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+          <User className="h-4 w-4" />
+          Profil
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <Link href="/billing" className="flex items-center gap-2 cursor-pointer">
+          <CreditCard className="h-4 w-4" />
+          Billing
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        onClick={onLogout}
+        className="flex items-center gap-2 text-destructive focus:text-destructive cursor-pointer"
+      >
+        <LogOut className="h-4 w-4" />
+        Keluar
+      </DropdownMenuItem>
+    </>
+  );
+}
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -26,9 +79,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
-      onSuccess: () => {
-        logout();
-      },
+      onSuccess: () => logout(),
     });
   };
 
@@ -61,6 +112,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
           </SidebarHeader>
+
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupLabel>Platform</SidebarGroupLabel>
@@ -107,23 +159,56 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </SidebarContent>
 
-          <SidebarFooter className="border-t border-border/50 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col truncate">
-                <span className="text-sm font-medium">{user?.name}</span>
-                <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
+          {/* ── Sidebar footer (desktop) ── */}
+          <SidebarFooter className="border-t border-border/50 p-3">
+            <div className="flex items-center gap-3">
+              <UserAvatar name={user?.name} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{user?.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleLogout} title="Keluar">
-                <LogOut className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors flex-shrink-0"
+                    title="Opsi akun"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="end" className="w-44 mb-1">
+                  <UserDropdownItems onLogout={handleLogout} />
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </SidebarFooter>
         </Sidebar>
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border/50 px-4 md:px-6">
+          {/* ── Top header ── */}
+          <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border/50 px-4 md:px-6">
             <SidebarTrigger />
+
+            {/* Mobile avatar (hidden on md+, sidebar handles it there) */}
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="outline-none">
+                    <UserAvatar name={user?.name} size="sm" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="bottom" align="end" className="w-44">
+                  <div className="px-2 py-1.5 mb-1">
+                    <p className="text-sm font-medium truncate">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <UserDropdownItems onLogout={handleLogout} />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </header>
+
           <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
             {children}
           </main>
