@@ -428,13 +428,13 @@ export default function Landing() {
 
             {/* Email */}
             <a
-              href="mailto:support@mution.tech"
+              href="mailto:supportmution@gmail.com"
               className="text-xs transition-colors"
               style={{ color:"rgba(255,255,255,0.4)" }}
               onMouseEnter={e => (e.currentTarget.style.color = "rgb(249,115,22)")}
               onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
             >
-              support@mution.tech
+              supportmution@gmail.com
             </a>
 
             {/* Copyright + links */}
@@ -442,12 +442,17 @@ export default function Landing() {
               <p className="text-xs" style={{ color:"rgba(255,255,255,0.2)" }}>
                 © {new Date().getFullYear()} Mution. Dibuat di Indonesia.
               </p>
-              <div className="flex gap-4 text-xs" style={{ color:"rgba(255,255,255,0.25)" }}>
-                {["Privasi","Ketentuan","Status"].map(l => (
-                  <a key={l} href="#" className="transition-colors"
+              <div className="flex flex-wrap justify-center sm:justify-end gap-4 text-xs" style={{ color:"rgba(255,255,255,0.25)" }}>
+                {[
+                  { label: "FAQ", href: "/faq" },
+                  { label: "Ketentuan", href: "/terms-and-conditions" },
+                  { label: "Refund", href: "/refund-policy" },
+                  { label: "Kontak", href: "/kontak" },
+                ].map(l => (
+                  <a key={l.label} href={l.href} className="transition-colors"
                     onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
                     onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.25)")}
-                  >{l}</a>
+                  >{l.label}</a>
                 ))}
               </div>
             </div>
