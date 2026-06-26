@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import { PublicNavbar } from "@/components/public-navbar";
 import { Mail, Phone, MapPin, MessageCircle } from "lucide-react";
 
@@ -79,12 +80,12 @@ export default function KontakPage() {
           <p className="text-muted-foreground text-sm mb-5">
             Banyak pertanyaan umum sudah terjawab di halaman FAQ kami.
           </p>
-          <a
+          <Link
             href="/faq"
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             Lihat FAQ
-          </a>
+          </Link>
         </div>
       </main>
       <footer className="border-t border-border/50 py-8 text-center text-sm text-muted-foreground">

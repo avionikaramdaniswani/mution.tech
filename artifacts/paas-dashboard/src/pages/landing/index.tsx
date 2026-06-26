@@ -449,10 +449,10 @@ export default function Landing() {
                   { label: "Refund", href: "/refund-policy" },
                   { label: "Kontak", href: "/kontak" },
                 ].map(l => (
-                  <a key={l.label} href={l.href} className="transition-colors"
+                  <Link key={l.label} href={l.href} className="transition-colors"
                     onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
                     onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.25)")}
-                  >{l.label}</a>
+                  >{l.label}</Link>
                 ))}
               </div>
             </div>

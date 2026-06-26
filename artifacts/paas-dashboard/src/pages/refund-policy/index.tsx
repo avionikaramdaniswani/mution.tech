@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import { PublicNavbar } from "@/components/public-navbar";
 
 export default function RefundPolicyPage() {
@@ -68,9 +69,9 @@ export default function RefundPolicyPage() {
                 supportmution@gmail.com
               </a>{" "}
               atau melalui halaman{" "}
-              <a href="/kontak" className="text-primary hover:underline">
+              <Link href="/kontak" className="text-primary hover:underline">
                 Kontak
-              </a>.
+              </Link>.
             </p>
           </section>
         </div>

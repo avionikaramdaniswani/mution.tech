@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import { PublicNavbar } from "@/components/public-navbar";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
@@ -84,9 +85,9 @@ export default function FAQPage() {
           </h1>
           <p className="text-muted-foreground text-lg">
             Tidak menemukan jawaban yang kamu cari?{" "}
-            <a href="/kontak" className="text-primary hover:underline">
+            <Link href="/kontak" className="text-primary hover:underline">
               Hubungi kami
-            </a>
+            </Link>
             .
           </p>
         </div>
