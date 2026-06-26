@@ -21,6 +21,10 @@ import HargaPage from "@/pages/harga";
 import ProfilePage from "@/pages/profile";
 import BillingPage from "@/pages/billing";
 import PaymentSuccessPage from "@/pages/billing/success";
+import FAQPage from "@/pages/faq";
+import RefundPolicyPage from "@/pages/refund-policy";
+import TermsPage from "@/pages/terms";
+import KontakPage from "@/pages/kontak";
 
 import AdminOverview from "@/pages/admin/overview";
 import AdminUsers from "@/pages/admin/users";
@@ -84,6 +88,10 @@ function Router() {
       <Route path="/billing/payment/success" component={() => <ProtectedRoute component={PaymentSuccessPage} />} />
       <Route path="/github-callback" component={GitHubCallback} />
       <Route path="/harga" component={HargaPage} />
+      <Route path="/faq" component={FAQPage} />
+      <Route path="/refund-policy" component={RefundPolicyPage} />
+      <Route path="/terms-and-conditions" component={TermsPage} />
+      <Route path="/kontak" component={KontakPage} />
 
       {/* Admin routes — dedicated layout */}
       <Route path="/admin" component={() => <AdminRoute component={AdminOverview} />} />
