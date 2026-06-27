@@ -1,0 +1,25 @@
+pake solusi 1 kek gini
+
+23:51
+Jadi setelah deploy v32 (yang udah nambahin header), masih kena WAF challenge yang sama persis (aliyun_waf_aa/aliyun_waf_bb). Berarti opsi 1 (cuma nambah header) gak ngaruh — ini konfirmasi kuat bahwa blocking-nya emang berbasis IP/reputasi datacenter, bukan soal header request yang kurang "browser-like".
+
+Beberapa hal yang bisa dicek/dicoba sebelum lanjut ke opsi lain:
+
+1. Pastikan header yang ditambahin beneran terkirim ke AgentRouter, bukan cuma di kode
+Cek lagi — apakah perubahan kode v32 ini beneran nambahin User-Agent dkk ke request yang ke agentrouter.org, atau jangan-jangan cuma nambah header ke response Heroku ke client (beda hal). Bisa minta agent tunjukin snippet kode bagian yang bikin request ke AgentRouter (fetch/axios call-nya), biar kita pastiin headernya kekirim.
+
+2. Response time-nya mencurigakan (2-2.6 detik)
+Response time 1.9-2.6 detik buat dapet halaman challenge kosong itu lumayan lama. Ini konsisten dengan WAF yang ngecek reputasi IP dulu (lookup ke database IP datacenter) sebelum nge-serve challenge page. Ini nguatin teori IP-based blocking.
+
+3. Next step paling murah: test dari IP non-Heroku
+Daripada ngubek-ngubek header lagi, langsung aja test apakah masalahnya spesifik ke IP Heroku. Dari VM Oracle Cloud kamu, coba:
+
+bash
+curl -v -X POST https://agentrouter.org/v1/messages \
+  -H "x-api-key: <API_KEY_KAMU>" \
+  -H "content-type: application/json" \
+  -H "anthropic-version: 2023-06-01" \
+  -d '{"model":"claude-opus-4-8","max_tokens":100,"messages":[{"role":"user","content":"halo"}]}'
+Kalau dari VM Oracle Cloud hasilnya JSON normal (bukan HTML WAF), itu konfirmasi 100% IP Heroku yang kena flag, dan solusinya jadi jelas: pindahin proxy server ke VM Oracle Cloud kamu (yang udah ada, gratis, gak nambah biaya).
+
+Kalau dari Oracle Cloud juga kena WAF yang sama, berarti emang semua IP datacenter/cloud di-flag generik oleh Aliyun WAF, dan jalan keluarnya tinggal opsi 4 (kontak AgentRouter minta whitelist) atau opsi 3 (residential proxy).
