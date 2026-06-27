@@ -22,7 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Activity, Box, LayoutDashboard, LogOut, ShieldAlert, HeartPulse, MoreHorizontal, User, CreditCard, Wallet, KeyRound } from "lucide-react";
+import { Activity, Box, LayoutDashboard, LogOut, ShieldAlert, HeartPulse, MoreHorizontal, User, CreditCard, Wallet, KeyRound, BookOpen } from "lucide-react";
 
 function formatCredits(credits?: number) {
   if (credits === undefined || credits === null) return "Rp 0";
@@ -98,6 +98,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { title: "Beranda", url: "/dashboard", icon: LayoutDashboard },
     { title: "Proyek", url: "/projects", icon: Box },
     { title: "API Keys", url: "/api-keys", icon: KeyRound },
+    { title: "Dokumentasi", url: "/docs", icon: BookOpen },
     { title: "Aktivitas", url: "/activity", icon: Activity },
   ];
 

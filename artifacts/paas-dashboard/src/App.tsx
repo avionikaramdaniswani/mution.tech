@@ -22,6 +22,7 @@ import ProfilePage from "@/pages/profile";
 import BillingPage from "@/pages/billing";
 import PaymentSuccessPage from "@/pages/billing/success";
 import ApiKeysPage from "@/pages/api-keys";
+import DocsPage from "@/pages/docs";
 import FAQPage from "@/pages/faq";
 import RefundPolicyPage from "@/pages/refund-policy";
 import TermsPage from "@/pages/terms";
@@ -88,6 +89,7 @@ function Router() {
       <Route path="/billing" component={() => <ProtectedRoute component={BillingPage} />} />
       <Route path="/billing/payment/success" component={() => <ProtectedRoute component={PaymentSuccessPage} />} />
       <Route path="/api-keys" component={() => <ProtectedRoute component={ApiKeysPage} />} />
+      <Route path="/docs" component={() => <ProtectedRoute component={DocsPage} />} />
       <Route path="/github-callback" component={GitHubCallback} />
       <Route path="/harga" component={HargaPage} />
       <Route path="/faq" component={FAQPage} />
