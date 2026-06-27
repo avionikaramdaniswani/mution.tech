@@ -20,6 +20,10 @@ function getBaseUrl(): string {
   return `${raw}/v1`;
 }
 
+function isOpenRouter(): boolean {
+  return (process.env.AGENTROUTER_BASE_URL ?? "").includes("openrouter.ai");
+}
+
 function extractToken(req: Request): string | null {
   const auth = req.headers["authorization"];
   if (auth?.startsWith("Bearer ")) return auth.slice(7).trim();
@@ -80,7 +84,74 @@ async function authenticate(req: Request, res: Response): Promise<{ key: typeof 
   return row;
 }
 
-// ─── Anthropic Messages API — forward directly to AgentRouter ────────────────
+// ─── Format conversion helpers ───────────────────────────────────────────────
+
+function mapModelForOpenRouter(model: string): string {
+  if (model.startsWith("anthropic/")) return model;
+  if (model.startsWith("claude-")) return `anthropic/${model}`;
+  return model;
+}
+
+function anthropicToOpenAIBody(body: any): any {
+  const messages: any[] = [];
+
+  if (body.system) {
+    const systemText = typeof body.system === "string"
+      ? body.system
+      : Array.isArray(body.system)
+        ? body.system.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n")
+        : String(body.system);
+    messages.push({ role: "system", content: systemText });
+  }
+
+  for (const msg of body.messages ?? []) {
+    let content: string;
+    if (typeof msg.content === "string") {
+      content = msg.content;
+    } else if (Array.isArray(msg.content)) {
+      content = msg.content
+        .filter((b: any) => b.type === "text")
+        .map((b: any) => b.text)
+        .join("\n");
+    } else {
+      content = String(msg.content ?? "");
+    }
+    messages.push({ role: msg.role, content });
+  }
+
+  const converted: any = {
+    model: mapModelForOpenRouter(body.model ?? "claude-sonnet-4-5"),
+    messages,
+    max_tokens: body.max_tokens ?? 4096,
+    stream: body.stream,
+  };
+  if (body.temperature !== undefined) converted.temperature = body.temperature;
+  if (body.top_p !== undefined) converted.top_p = body.top_p;
+  return converted;
+}
+
+function openAIToAnthropicResponse(data: any, originalModel: string): any {
+  const choice = data.choices?.[0];
+  return {
+    id: data.id ?? `msg_${Date.now()}`,
+    type: "message",
+    role: "assistant",
+    content: [{ type: "text", text: choice?.message?.content ?? "" }],
+    model: originalModel,
+    stop_reason: choice?.finish_reason === "stop" ? "end_turn" : (choice?.finish_reason ?? "end_turn"),
+    stop_sequence: null,
+    usage: {
+      input_tokens: data.usage?.prompt_tokens ?? 0,
+      output_tokens: data.usage?.completion_tokens ?? 0,
+    },
+  };
+}
+
+function sseEvent(event: string, data: object): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+// ─── Anthropic /messages proxy ────────────────────────────────────────────────
 
 async function proxyMessages(req: Request, res: Response): Promise<void> {
   const row = await authenticate(req, res);
@@ -94,82 +165,182 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
   }
 
   const base = getBaseUrl();
+  const openRouter = isOpenRouter();
+  const originalModel = req.body?.model ?? "unknown";
   const isStream = req.body?.stream === true;
 
-  logger.info({ url: `${base}/messages`, model: req.body?.model }, "Proxying to AgentRouter /messages");
+  logger.info({ url: `${base}/messages`, model: originalModel, provider: openRouter ? "openrouter" : "agentrouter" }, "Proxying /messages");
 
   try {
-    const upstream = await fetch(`${base}/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": upstreamKey,
-        "anthropic-version": (req.headers["anthropic-version"] as string) ?? "2023-06-01",
-        ...(req.headers["anthropic-beta"] ? { "anthropic-beta": req.headers["anthropic-beta"] as string } : {}),
-      },
-      body: JSON.stringify(req.body),
-    });
+    if (openRouter) {
+      // ── OpenRouter: convert Anthropic → OpenAI format ──────────────────────
+      const openAIBody = anthropicToOpenAIBody(req.body);
 
-    if (isStream) {
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      res.setHeader("anthropic-version", "2023-06-01");
+      const upstream = await fetch(`${base}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${upstreamKey}`,
+          "HTTP-Referer": "https://mution.tech",
+          "X-Title": "Mution",
+        },
+        body: JSON.stringify(openAIBody),
+      });
 
-      const reader = upstream.body?.getReader();
-      if (!reader) { res.end(); return; }
+      if (isStream) {
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("anthropic-version", "2023-06-01");
 
-      let totalInputTokens = 0;
-      let totalOutputTokens = 0;
-      const decoder = new TextDecoder();
+        const msgId = `msg_${Date.now()}`;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        res.write(chunk);
+        res.write(sseEvent("message_start", {
+          type: "message_start",
+          message: { id: msgId, type: "message", role: "assistant", content: [], model: originalModel, stop_reason: null, usage: { input_tokens: 0, output_tokens: 0 } },
+        }));
+        res.write(sseEvent("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }));
+        res.write(sseEvent("ping", { type: "ping" }));
 
-        for (const line of chunk.split("\n")) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const d = JSON.parse(line.slice(6));
-            if (d.type === "message_start") {
-              totalInputTokens = d.message?.usage?.input_tokens ?? 0;
-            }
-            if (d.type === "message_delta") {
-              totalOutputTokens = d.usage?.output_tokens ?? 0;
-            }
-          } catch {}
+        const reader = upstream.body?.getReader();
+        if (!reader) { res.end(); return; }
+
+        let totalInputTokens = 0;
+        let totalOutputTokens = 0;
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const raw = line.slice(6).trim();
+            if (raw === "[DONE]") continue;
+            try {
+              const chunk = JSON.parse(raw);
+              const delta = chunk.choices?.[0]?.delta?.content;
+              if (delta) {
+                res.write(sseEvent("content_block_delta", {
+                  type: "content_block_delta",
+                  index: 0,
+                  delta: { type: "text_delta", text: delta },
+                }));
+                totalOutputTokens += Math.ceil(delta.length / 4);
+              }
+              if (chunk.usage) {
+                totalInputTokens = chunk.usage.prompt_tokens ?? totalInputTokens;
+                totalOutputTokens = chunk.usage.completion_tokens ?? totalOutputTokens;
+              }
+            } catch {}
+          }
         }
-      }
-      res.end();
 
-      const tokens = totalInputTokens + totalOutputTokens || Math.ceil(JSON.stringify(req.body).length / 4);
-      await deductCredits(user.id, key.id, tokens, req.body?.model ?? "unknown").catch((e) =>
-        logger.error({ err: e }, "deduct credits failed")
-      );
+        res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: 0 }));
+        res.write(sseEvent("message_delta", {
+          type: "message_delta",
+          delta: { stop_reason: "end_turn", stop_sequence: null },
+          usage: { output_tokens: totalOutputTokens },
+        }));
+        res.write(sseEvent("message_stop", { type: "message_stop" }));
+        res.end();
+
+        const tokens = (totalInputTokens + totalOutputTokens) || Math.ceil(JSON.stringify(req.body).length / 4);
+        await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
+          logger.error({ err: e }, "deduct credits failed")
+        );
+      } else {
+        const contentType = upstream.headers.get("content-type") ?? "";
+        if (!contentType.includes("application/json")) {
+          const text = await upstream.text();
+          logger.error({ status: upstream.status, body: text.slice(0, 500) }, "OpenRouter returned non-JSON");
+          res.status(502).json({ type: "error", error: { type: "api_error", message: `Upstream error (${upstream.status})` } });
+          return;
+        }
+
+        const data = await upstream.json() as any;
+        if (!upstream.ok) {
+          res.status(upstream.status).json({ type: "error", error: data.error ?? data });
+          return;
+        }
+
+        const anthropicResponse = openAIToAnthropicResponse(data, originalModel);
+        res.status(200).json(anthropicResponse);
+
+        const tokens = (data.usage?.prompt_tokens ?? 0) + (data.usage?.completion_tokens ?? 0) || Math.ceil(JSON.stringify(req.body).length / 4);
+        await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
+          logger.error({ err: e }, "deduct credits failed")
+        );
+      }
     } else {
-      const contentType = upstream.headers.get("content-type") ?? "";
-      if (!contentType.includes("application/json")) {
-        const text = await upstream.text();
-        logger.error({ status: upstream.status, body: text.slice(0, 500) }, "AgentRouter returned non-JSON");
-        res.status(502).json({ type: "error", error: { type: "api_error", message: `Upstream error (${upstream.status}): ${text.slice(0, 200)}` } });
-        return;
+      // ── AgentRouter: pass through Anthropic format as-is ──────────────────
+      const upstream = await fetch(`${base}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": upstreamKey,
+          "anthropic-version": (req.headers["anthropic-version"] as string) ?? "2023-06-01",
+          ...(req.headers["anthropic-beta"] ? { "anthropic-beta": req.headers["anthropic-beta"] as string } : {}),
+        },
+        body: JSON.stringify(req.body),
+      });
+
+      if (isStream) {
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("anthropic-version", "2023-06-01");
+
+        const reader = upstream.body?.getReader();
+        if (!reader) { res.end(); return; }
+
+        let totalInputTokens = 0;
+        let totalOutputTokens = 0;
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          res.write(chunk);
+          for (const line of chunk.split("\n")) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const d = JSON.parse(line.slice(6));
+              if (d.type === "message_start") totalInputTokens = d.message?.usage?.input_tokens ?? 0;
+              if (d.type === "message_delta") totalOutputTokens = d.usage?.output_tokens ?? 0;
+            } catch {}
+          }
+        }
+        res.end();
+
+        const tokens = totalInputTokens + totalOutputTokens || Math.ceil(JSON.stringify(req.body).length / 4);
+        await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
+          logger.error({ err: e }, "deduct credits failed")
+        );
+      } else {
+        const contentType = upstream.headers.get("content-type") ?? "";
+        if (!contentType.includes("application/json")) {
+          const text = await upstream.text();
+          logger.error({ status: upstream.status, body: text.slice(0, 500) }, "Upstream returned non-JSON (WAF block?)");
+          res.status(502).json({ type: "error", error: { type: "api_error", message: `Upstream blocked or unreachable (${upstream.status})` } });
+          return;
+        }
+
+        const data = await upstream.json() as any;
+        if (!upstream.ok) { res.status(upstream.status).json(data); return; }
+
+        res.status(200).json(data);
+        const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0) || Math.ceil(JSON.stringify(req.body).length / 4);
+        await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
+          logger.error({ err: e }, "deduct credits failed")
+        );
       }
-
-      const data = await upstream.json() as any;
-
-      if (!upstream.ok) {
-        res.status(upstream.status).json(data);
-        return;
-      }
-
-      res.status(200).json(data);
-
-      const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0) || Math.ceil(JSON.stringify(req.body).length / 4);
-      await deductCredits(user.id, key.id, tokens, data.model ?? req.body?.model ?? "unknown").catch((e) =>
-        logger.error({ err: e }, "deduct credits failed")
-      );
     }
   } catch (err) {
     logger.error({ err }, "Messages proxy error");
@@ -191,6 +362,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
   }
 
   const base = getBaseUrl();
+  const openRouter = isOpenRouter();
 
   try {
     const upstream = await fetch(`${base}${path}`, {
@@ -198,6 +370,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${upstreamKey}`,
+        ...(openRouter ? { "HTTP-Referer": "https://mution.tech", "X-Title": "Mution" } : {}),
       },
       body: req.method !== "GET" ? JSON.stringify(req.body) : undefined,
     });
@@ -239,7 +412,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
       }
     } else {
       const text = await upstream.text();
-      logger.error({ status: upstream.status, body: text.slice(0, 300) }, "AgentRouter non-JSON response");
+      logger.error({ status: upstream.status, body: text.slice(0, 300) }, "Upstream non-JSON response");
       res.status(502).json({ error: { message: `Upstream error (${upstream.status})`, type: "server_error" } });
     }
   } catch (err) {
