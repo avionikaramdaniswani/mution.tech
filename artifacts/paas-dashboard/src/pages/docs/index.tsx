@@ -259,24 +259,29 @@ console.log(response.choices[0].message.content);`} />
           secara penuh, termasuk streaming — sehingga Claude Code bisa langsung dipakai dengan API key Mution.
         </p>
 
+        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-400 space-y-1">
+          <p><strong>⚠️ Penting — baca dulu sebelum mulai:</strong></p>
+          <p>Claude Code v2+ akan menampilkan prompt login saat pertama dijalankan. Env var <strong>harus di-set sebelum</strong> menjalankan <code className="text-yellow-300">claude</code> agar login prompt tidak muncul. Kalau sudah terlanjur muncul, tekan <kbd className="bg-yellow-500/20 px-1 rounded">Esc</kbd> lalu set env var dulu, baru jalankan ulang.</p>
+        </div>
+
         <H3>1. Install Claude Code</H3>
         <CodeBlock lang="bash" code="npm install -g @anthropic-ai/claude-code" />
 
-        <H3>2. Set environment variable</H3>
-        <p>Pilih sistem operasi kamu:</p>
+        <H3>2. Set env var sebelum menjalankan claude</H3>
+        <p>Tiga variabel wajib di-set. Isi <code className="bg-muted px-1 py-0.5 rounded text-primary text-xs">mk_live_...</code> dengan API key Mution kamu:</p>
         <OsTabs
-          linux={`export ANTHROPIC_BASE_URL="${base}"\nexport ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"`}
-          powershell={`$env:ANTHROPIC_BASE_URL = "${base}"\n$env:ANTHROPIC_API_KEY = "mk_live_YOUR_KEY_HERE"`}
-          cmd={`set ANTHROPIC_BASE_URL=${base}\nset ANTHROPIC_API_KEY=mk_live_YOUR_KEY_HERE`}
+          linux={`export ANTHROPIC_BASE_URL="${base}"\nexport ANTHROPIC_AUTH_TOKEN="mk_live_YOUR_KEY_HERE"\nexport ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"`}
+          powershell={`$env:ANTHROPIC_BASE_URL = "${base}"\n$env:ANTHROPIC_AUTH_TOKEN = "mk_live_YOUR_KEY_HERE"\n$env:ANTHROPIC_API_KEY = "mk_live_YOUR_KEY_HERE"`}
+          cmd={`set ANTHROPIC_BASE_URL=${base}\nset ANTHROPIC_AUTH_TOKEN=mk_live_YOUR_KEY_HERE\nset ANTHROPIC_API_KEY=mk_live_YOUR_KEY_HERE`}
         />
 
         <p className="text-xs">
-          Agar permanen (tidak hilang setelah restart terminal), simpan ke profil shell:
+          Agar permanen (tidak perlu set ulang setiap buka terminal):
         </p>
         <OsTabs
-          linux={`echo 'export ANTHROPIC_BASE_URL="${base}"' >> ~/.zshrc\necho 'export ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc\nsource ~/.zshrc\n\n# Untuk bash:\n# echo 'export ANTHROPIC_BASE_URL="${base}"' >> ~/.bashrc\n# echo 'export ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"' >> ~/.bashrc\n# source ~/.bashrc`}
-          powershell={`# Simpan permanen ke profil PowerShell (berlaku untuk semua sesi)\n[System.Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL", "${base}", "User")\n[System.Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "mk_live_YOUR_KEY_HERE", "User")\n\n# Restart PowerShell setelah ini`}
-          cmd={`# Simpan permanen via System Properties\nsetx ANTHROPIC_BASE_URL "${base}"\nsetx ANTHROPIC_API_KEY "mk_live_YOUR_KEY_HERE"\n\nREM Buka CMD baru setelah menjalankan perintah di atas`}
+          linux={`echo 'export ANTHROPIC_BASE_URL="${base}"' >> ~/.zshrc\necho 'export ANTHROPIC_AUTH_TOKEN="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc\necho 'export ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc\nsource ~/.zshrc\n\n# Untuk bash ganti ~/.zshrc dengan ~/.bashrc`}
+          powershell={`# Simpan permanen untuk user ini (berlaku setelah restart PowerShell)\n[System.Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL", "${base}", "User")\n[System.Environment]::SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "mk_live_YOUR_KEY_HERE", "User")\n[System.Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "mk_live_YOUR_KEY_HERE", "User")\n\n# Tutup dan buka ulang PowerShell setelah ini`}
+          cmd={`setx ANTHROPIC_BASE_URL "${base}"\nsetx ANTHROPIC_AUTH_TOKEN "mk_live_YOUR_KEY_HERE"\nsetx ANTHROPIC_API_KEY "mk_live_YOUR_KEY_HERE"\n\nREM Buka jendela CMD baru setelah menjalankan perintah di atas`}
         />
 
         <H3>3. Jalankan Claude Code</H3>
@@ -286,9 +291,9 @@ console.log(response.choices[0].message.content);`} />
           cmd="claude"
         />
 
-        <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-xs text-blue-400">
-          <strong>Catatan:</strong> Claude Code akan terhubung ke <code className="text-blue-300">{base}/v1/messages</code> menggunakan Anthropic Messages API.
-          Kredit akan terpotong dari akun Mution kamu per penggunaan (10 kredit / 1.000 token).
+        <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-3 text-xs text-green-400 space-y-1">
+          <p><strong>✅ Kalau berhasil:</strong> Claude Code langsung masuk tanpa prompt login dan terhubung ke <code className="text-green-300">{base}/v1/messages</code>.</p>
+          <p>Kredit terpotong <strong>10 kredit per 1.000 token</strong> dari akun Mution kamu.</p>
         </div>
 
         <H3>Anthropic SDK (Python)</H3>
