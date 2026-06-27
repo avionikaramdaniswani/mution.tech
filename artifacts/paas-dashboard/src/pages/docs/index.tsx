@@ -1,7 +1,45 @@
 import { useState } from "react";
-import { Copy, Check, Key, Zap, Code, Terminal, BookOpen, ExternalLink } from "lucide-react";
+import { Copy, Check, Key, Zap, Code, Terminal, BookOpen, ExternalLink, Monitor } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
+
+type OsTab = "linux" | "powershell" | "cmd";
+
+function OsTabs({ linux, powershell, cmd }: { linux: string; powershell: string; cmd: string }) {
+  const [active, setActive] = useState<OsTab>("linux");
+  const tabs: { key: OsTab; label: string; icon: string }[] = [
+    { key: "linux", label: "Linux / macOS", icon: "🐧" },
+    { key: "powershell", label: "Windows PowerShell", icon: "🟦" },
+    { key: "cmd", label: "Windows CMD", icon: "⬛" },
+  ];
+  const code = active === "linux" ? linux : active === "powershell" ? powershell : cmd;
+  const lang = active === "linux" ? "bash" : active === "powershell" ? "powershell" : "cmd";
+  return (
+    <div className="rounded-lg border border-border/50 bg-[#0d1117] my-3 overflow-hidden">
+      <div className="flex border-b border-border/50">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setActive(t.key)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-medium transition-colors border-r border-border/50 last:border-0 ${
+              active === t.key
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
+            }`}
+          >
+            <span>{t.icon}</span>
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+      <div className="relative">
+        <span className="absolute top-2.5 right-10 text-[10px] text-muted-foreground font-mono">{lang}</span>
+        <CopyBtn text={code} />
+        <pre className="overflow-x-auto px-4 pt-4 pb-4 text-xs font-mono text-zinc-300 leading-relaxed">{code}</pre>
+      </div>
+    </div>
+  );
+}
 
 function CopyBtn({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -225,16 +263,28 @@ console.log(response.choices[0].message.content);`} />
         <CodeBlock lang="bash" code="npm install -g @anthropic-ai/claude-code" />
 
         <H3>2. Set environment variable</H3>
-        <CodeBlock lang="bash" code={`export ANTHROPIC_BASE_URL="${base}"
-export ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"`} />
+        <p>Pilih sistem operasi kamu:</p>
+        <OsTabs
+          linux={`export ANTHROPIC_BASE_URL="${base}"\nexport ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"`}
+          powershell={`$env:ANTHROPIC_BASE_URL = "${base}"\n$env:ANTHROPIC_API_KEY = "mk_live_YOUR_KEY_HERE"`}
+          cmd={`set ANTHROPIC_BASE_URL=${base}\nset ANTHROPIC_API_KEY=mk_live_YOUR_KEY_HERE`}
+        />
 
-        <p>Atau tambahkan ke <code className="bg-muted px-1 py-0.5 rounded text-xs">~/.bashrc</code> / <code className="bg-muted px-1 py-0.5 rounded text-xs">~/.zshrc</code> agar permanen:</p>
-        <CodeBlock lang="bash" code={`echo 'export ANTHROPIC_BASE_URL="${base}"' >> ~/.zshrc
-echo 'export ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc
-source ~/.zshrc`} />
+        <p className="text-xs">
+          Agar permanen (tidak hilang setelah restart terminal), simpan ke profil shell:
+        </p>
+        <OsTabs
+          linux={`echo 'export ANTHROPIC_BASE_URL="${base}"' >> ~/.zshrc\necho 'export ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc\nsource ~/.zshrc\n\n# Untuk bash:\n# echo 'export ANTHROPIC_BASE_URL="${base}"' >> ~/.bashrc\n# echo 'export ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"' >> ~/.bashrc\n# source ~/.bashrc`}
+          powershell={`# Simpan permanen ke profil PowerShell (berlaku untuk semua sesi)\n[System.Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL", "${base}", "User")\n[System.Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "mk_live_YOUR_KEY_HERE", "User")\n\n# Restart PowerShell setelah ini`}
+          cmd={`# Simpan permanen via System Properties\nsetx ANTHROPIC_BASE_URL "${base}"\nsetx ANTHROPIC_API_KEY "mk_live_YOUR_KEY_HERE"\n\nREM Buka CMD baru setelah menjalankan perintah di atas`}
+        />
 
         <H3>3. Jalankan Claude Code</H3>
-        <CodeBlock lang="bash" code="claude" />
+        <OsTabs
+          linux="claude"
+          powershell="claude"
+          cmd="claude"
+        />
 
         <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-xs text-blue-400">
           <strong>Catatan:</strong> Claude Code akan terhubung ke <code className="text-blue-300">{base}/v1/messages</code> menggunakan Anthropic Messages API.
