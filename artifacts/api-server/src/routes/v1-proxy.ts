@@ -283,6 +283,10 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json, text/plain, */*",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Accept-Encoding": "gzip, deflate, br",
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
           "x-api-key": upstreamKey,
           "anthropic-version": (req.headers["anthropic-version"] as string) ?? "2023-06-01",
           ...(req.headers["anthropic-beta"] ? { "anthropic-beta": req.headers["anthropic-beta"] as string } : {}),

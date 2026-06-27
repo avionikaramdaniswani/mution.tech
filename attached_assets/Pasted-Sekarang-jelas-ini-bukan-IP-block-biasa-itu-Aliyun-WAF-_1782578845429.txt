@@ -1,0 +1,21 @@
+Sekarang jelas, ini bukan IP block biasa — itu Aliyun WAF JS challenge page (aliyun_waf_aa/aliyun_waf_bb), bukan blokir 403 keras. Aliyun WAF biasanya ngasih halaman JS challenge dulu ke client yang dianggap "mencurigakan" (sering kena ke request dari datacenter/server tanpa browser fingerprint), lalu browser normal akan jalanin JS itu dan auto-redirect dengan token/cookie valid. Server-to-server request (kayak proxy kamu) gak bisa jalanin JS, jadi nyangkut di halaman challenge itu terus — makanya hasilnya HTML kosong, bukan JSON.
+Ini levelnya beda dari sekadar whitelist IP. Opsi yang realistis:
+1. Cek dulu apakah ini soal IP atau soal "looks like a bot"
+
+Aliyun WAF sering trigger berdasarkan kombinasi: IP datacenter + header request yang "kaku" (gak ada header umum browser, urutan header beda, gak ada TLS fingerprint mirip browser). Coba dulu hal simpel ini di kode proxy kamu sebelum nyerah ke whitelist:
+
+Tambahin header standar kayak User-Agent yang mirip browser asli, Accept, Accept-Language
+Pastikan request pakai HTTP/2 kalau Aliyun expect itu
+
+Kalau setelah nambah header masih kena challenge page, berarti memang IP-based, bukan header-based — lanjut ke opsi bawah.
+2. Pindah origin request ke luar IP range datacenter umum
+
+Karena WAF kemungkinan besar nge-flag IP range Heroku (datacenter AS, sering dipakai bot), pindah ke VM Oracle Cloud kamu sendiri bisa beda hasil kalau range IP Oracle Cloud kamu kebetulan belum di-flag — tapi gak ada garansi, Aliyun WAF juga sering flag IP cloud provider besar (AWS/GCP/OCI/Azure) secara umum, jadi VM Oracle Cloud kamu juga ada kemungkinan kena.
+3. Reverse proxy lewat residential/consumer IP
+
+Layanan kayak proxy residential (bukan datacenter IP) sering jadi solusi buat lewatin WAF kayak ini, karena IP residential dianggap "manusia asli". Tapi ini nambah biaya & kompleksitas, dan agak grey area kalau AgentRouter ToS-nya melarang circumvent WAF mereka — jadi saya gak saranin ini sebagai langkah pertama.
+4. Hubungi AgentRouter langsung (tetep ini yang paling bersih)
+
+Kasih tau mereka persis log yang kamu kasih saya ini — aliyun_waf_aa/aliyun_waf_bb challenge page, dari IP Heroku kamu, jam berapa, request ID berapa. Ini ngasih mereka info konkret buat whitelist atau kasih tau apakah ada cara resmi bypass WAF buat server-to-server (banyak provider expose endpoint khusus/API key header khusus yang otomatis skip WAF challenge untuk traffic API yang legit).
+Saran saya: coba opsi 1 dulu (paling murah, 5 menit), kalau gak ngaruh baru opsi 2 (test dari VM Oracle Cloud), baru opsi 4 kalau dua-duanya gagal.
+Mau saya bantu lihat kode proxy kamu buat nambahin header di opsi 1?
