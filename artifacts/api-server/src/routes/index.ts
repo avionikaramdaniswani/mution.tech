@@ -9,6 +9,7 @@ import adminRouter from "./admin";
 import githubRouter from "./github";
 import billingRouter from "./billing";
 import paymentRouter from "./payment";
+import apiKeysRouter from "./api-keys";
 
 const router: IRouter = Router();
 
@@ -21,6 +22,7 @@ router.use(statsRouter);
 router.use(activityRouter);
 router.use(billingRouter);
 router.use(paymentRouter);
+router.use(apiKeysRouter);
 router.use(adminRouter);
 
 export default router;

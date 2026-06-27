@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 import { existsSync } from "fs";
 import router from "./routes";
+import v1Router from "./routes/v1-proxy";
 import { logger } from "./lib/logger";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -44,6 +45,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use("/api", router);
+app.use("/v1", v1Router);
 
 if (existsSync(frontendDist)) {
   app.use(express.static(frontendDist));

@@ -21,6 +21,7 @@ import HargaPage from "@/pages/harga";
 import ProfilePage from "@/pages/profile";
 import BillingPage from "@/pages/billing";
 import PaymentSuccessPage from "@/pages/billing/success";
+import ApiKeysPage from "@/pages/api-keys";
 import FAQPage from "@/pages/faq";
 import RefundPolicyPage from "@/pages/refund-policy";
 import TermsPage from "@/pages/terms";
@@ -86,6 +87,7 @@ function Router() {
       <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
       <Route path="/billing" component={() => <ProtectedRoute component={BillingPage} />} />
       <Route path="/billing/payment/success" component={() => <ProtectedRoute component={PaymentSuccessPage} />} />
+      <Route path="/api-keys" component={() => <ProtectedRoute component={ApiKeysPage} />} />
       <Route path="/github-callback" component={GitHubCallback} />
       <Route path="/harga" component={HargaPage} />
       <Route path="/faq" component={FAQPage} />
