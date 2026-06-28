@@ -337,7 +337,10 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
         }
 
         const data = await upstream.json() as any;
-        if (!upstream.ok) { res.status(upstream.status).json(data); return; }
+        if (!upstream.ok) {
+          logger.error({ status: upstream.status, body: data }, "AgentRouter upstream error");
+          res.status(upstream.status).json(data); return;
+        }
 
         res.status(200).json(data);
         const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0) || Math.ceil(JSON.stringify(req.body).length / 4);
