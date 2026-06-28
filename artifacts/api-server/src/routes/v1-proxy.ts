@@ -8,23 +8,40 @@ const router = Router();
 
 const CREDITS_PER_1K_TOKENS = 10;
 
-// Key rotation — supports comma-separated list in AGENTROUTER_API_KEY
-let _keyIndex = 0;
-function getUpstreamKey(rotate = false): string {
+// Key pool with cooldown tracking
+const KEY_COOLDOWN_MS = 60_000; // 60 seconds cooldown after unauthorized_client_error
+const _keyCooldowns = new Map<string, number>(); // key → cooldown-until timestamp
+
+function getKeys(): string[] {
   const raw = process.env.AGENTROUTER_API_KEY ?? "";
   if (!raw) throw new Error("AGENTROUTER_API_KEY not configured");
-  const keys = raw.split(",").map(k => k.trim()).filter(Boolean);
-  if (keys.length === 1) return keys[0];
-  if (rotate) _keyIndex = (_keyIndex + 1) % keys.length;
-  const key = keys[_keyIndex];
-  return key;
+  return raw.split(",").map(k => k.trim()).filter(Boolean);
 }
 
-function rotateKey(): void {
-  const raw = process.env.AGENTROUTER_API_KEY ?? "";
-  const keys = raw.split(",").map(k => k.trim()).filter(Boolean);
-  if (keys.length > 1) _keyIndex = (_keyIndex + 1) % keys.length;
+function getUpstreamKey(): string {
+  const keys = getKeys();
+  const now = Date.now();
+  // pick first key not in cooldown
+  const available = keys.find(k => ((_keyCooldowns.get(k) ?? 0) < now));
+  if (available) return available;
+  // all keys in cooldown — pick the one with earliest cooldown expiry
+  let earliest = keys[0];
+  let earliestTs = _keyCooldowns.get(keys[0]) ?? 0;
+  for (const k of keys) {
+    const ts = _keyCooldowns.get(k) ?? 0;
+    if (ts < earliestTs) { earliest = k; earliestTs = ts; }
+  }
+  logger.warn({ cooldownMs: earliestTs - now }, "All AgentRouter keys in cooldown");
+  return earliest;
 }
+
+function markKeyCooldown(key: string): void {
+  const until = Date.now() + KEY_COOLDOWN_MS;
+  _keyCooldowns.set(key, until);
+  logger.warn({ keyHint: key.slice(-6), cooldownSec: KEY_COOLDOWN_MS / 1000 }, "Key put in cooldown");
+}
+
+function rotateKey(): void {} // kept for compatibility, no-op now
 
 function getBaseUrl(): string {
   const raw = (process.env.AGENTROUTER_BASE_URL ?? "https://agentrouter.org").replace(/\/+$/, "");
@@ -297,7 +314,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
       let upstream: Response | null = null;
       let usedKey = upstreamKey;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        usedKey = attempt === 0 ? upstreamKey : getUpstreamKey(true);
+        usedKey = getUpstreamKey();
         logger.info({ attempt: attempt + 1, keyHint: usedKey.slice(-6) }, "AgentRouter attempt");
 
         upstream = await fetch(`${base}/messages`, {
@@ -319,10 +336,9 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
         const ct = upstream.headers.get("content-type") ?? "";
         if (ct.includes("application/json")) {
           const errBody = await upstream.clone().json() as any;
-          if (errBody?.type === "unauthorized_client_error" && attempt < maxAttempts - 1) {
-            logger.warn({ attempt: attempt + 1, keyHint: usedKey.slice(-6) }, "unauthorized_client_error — rotating key");
-            rotateKey();
-            continue;
+          if (errBody?.type === "unauthorized_client_error") {
+            markKeyCooldown(usedKey);
+            if (attempt < maxAttempts - 1) continue;
           }
         }
         break;
