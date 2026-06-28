@@ -8,10 +8,22 @@ const router = Router();
 
 const CREDITS_PER_1K_TOKENS = 10;
 
-function getUpstreamKey(): string {
-  const key = process.env.AGENTROUTER_API_KEY;
-  if (!key) throw new Error("AGENTROUTER_API_KEY not configured");
+// Key rotation — supports comma-separated list in AGENTROUTER_API_KEY
+let _keyIndex = 0;
+function getUpstreamKey(rotate = false): string {
+  const raw = process.env.AGENTROUTER_API_KEY ?? "";
+  if (!raw) throw new Error("AGENTROUTER_API_KEY not configured");
+  const keys = raw.split(",").map(k => k.trim()).filter(Boolean);
+  if (keys.length === 1) return keys[0];
+  if (rotate) _keyIndex = (_keyIndex + 1) % keys.length;
+  const key = keys[_keyIndex];
   return key;
+}
+
+function rotateKey(): void {
+  const raw = process.env.AGENTROUTER_API_KEY ?? "";
+  const keys = raw.split(",").map(k => k.trim()).filter(Boolean);
+  if (keys.length > 1) _keyIndex = (_keyIndex + 1) % keys.length;
 }
 
 function getBaseUrl(): string {
@@ -278,21 +290,48 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
         );
       }
     } else {
-      // ── AgentRouter: pass through Anthropic format as-is ──────────────────
-      const upstream = await fetch(`${base}/messages`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json, text/plain, */*",
-          "Accept-Language": "en-US,en;q=0.9",
-          "Accept-Encoding": "gzip, deflate, br",
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-          "x-api-key": upstreamKey,
-          "anthropic-version": (req.headers["anthropic-version"] as string) ?? "2023-06-01",
-          ...(req.headers["anthropic-beta"] ? { "anthropic-beta": req.headers["anthropic-beta"] as string } : {}),
-        },
-        body: JSON.stringify(req.body),
-      });
+      // ── AgentRouter: pass through Anthropic format, with key rotation + retry ──
+      const rawKeys = (process.env.AGENTROUTER_API_KEY ?? "").split(",").map(k => k.trim()).filter(Boolean);
+      const maxAttempts = Math.max(1, rawKeys.length);
+
+      let upstream: Response | null = null;
+      let usedKey = upstreamKey;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        usedKey = attempt === 0 ? upstreamKey : getUpstreamKey(true);
+        logger.info({ attempt: attempt + 1, keyHint: usedKey.slice(-6) }, "AgentRouter attempt");
+
+        upstream = await fetch(`${base}/messages`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "x-api-key": usedKey,
+            "anthropic-version": (req.headers["anthropic-version"] as string) ?? "2023-06-01",
+            ...(req.headers["anthropic-beta"] ? { "anthropic-beta": req.headers["anthropic-beta"] as string } : {}),
+          },
+          body: JSON.stringify(req.body),
+        });
+
+        if (upstream.ok) break;
+
+        const ct = upstream.headers.get("content-type") ?? "";
+        if (ct.includes("application/json")) {
+          const errBody = await upstream.clone().json() as any;
+          if (errBody?.type === "unauthorized_client_error" && attempt < maxAttempts - 1) {
+            logger.warn({ attempt: attempt + 1, keyHint: usedKey.slice(-6) }, "unauthorized_client_error — rotating key");
+            rotateKey();
+            continue;
+          }
+        }
+        break;
+      }
+
+      if (!upstream) {
+        res.status(502).json({ type: "error", error: { type: "api_error", message: "Upstream request failed" } });
+        return;
+      }
 
       if (isStream) {
         res.setHeader("Content-Type", "text/event-stream");
