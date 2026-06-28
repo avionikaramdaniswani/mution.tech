@@ -1,0 +1,283 @@
+
+Cara Kerja
+Artikel
+Harga
+FAQ
+Panduan
+Integrasi
+Login
+Register
+Dengan Moota Anda Bisa Lebih Hemat, Karena..
+Anda akan mendapatkan kemudahan mirip payment gateway, tapi dengan harga lebih terjangkau. Cek tabel komparasi berikut:
+Tabel Komparasi
+Jumlah Transaksi/Bulan
+
+Payment Gateway
+10
+100.000
+50.000
+50
+100.000
+250.000
+100
+100.000
+500.000
+150
+100.000
+750.000
+200
+100.000
+1.000.000
+500
+100.000
+2.500.000
+1.000
+100.000
+5.000.000
+1.500
+100.000
+7.500.000
+2.000
+100.000
+10.000.000
+5.000
+100.000
+25.000.000
+10.000
+100.000
+50.000.000
+Keterangan : Simulasi harga moota menggunakan Bank BCA dengan ketentuan nilai 1 Poin sama dengan 1 Rupiah
+Mari simulasikan pada bagian yang di 'Hightlight' warna kuning, jika ada 1000 pesanan dalam 1 bulan, pada skenario berikut :
+
+Pakai Moota
+Dengan 1000x transaksi Anda akan mendapat benefit: Uang langsung masuk rekening tanpa proses pencairan dan tanpa fee/biaya di tiap transaksinya.
+Pakai Payment Gateway
+Dengan 1000x Anda harus menanggung Rp.5000 tiap transaksinya dan harus mengeluarkan Biaya 5 juta rupiah.tiap bulannya
+
+Gimana? Hemat Banget kan..
+Manfaat menggunakan data mutasi bukan hanya mencatat uang masuk atau tiap transaksi, tetapi juga mencatat keseluruhan alur keuangan dalam 1 akun bank.
+Masih Pingin Kenalan Dulu sama Moota?
+Bisa banget! Sobat Cuan bisa coba moota dengan paket harian terbatas Moota Dengan tiap 1 rekening
+
+Mulai dari
+1.500
+Poin/hari
+Tapi Sobat perlu tau,
+Kalau Benefit lengkap moota hanya bisa dinikmati dengan paket bulanan ya.
+Apa Keunggulan Bulanan daripada Harian?
+Sistem baru dari Moota ini menawarkan berbagai keunggulan, seperti:
+Meminimalisir Lupa Topup
+Bantu menghindari keterlambatan pembayaran dan saldo kosong.
+Lebih Banyak Fitur dan Benefit
+Akses dan nikmati fitur lebih keuangan Moota, termasuk ‘Terima Pembayaran’, untuk terima uang yang lebih ef.
+Fleksibilitas Interval
+Atur interval waktu cek mutasi sesuai kebutuhan, tanpa perlu upgrade layanan.
+Cek benefit lengkap dengan Paket Bulanan Moota:
+Klik DIsini
+Berikut Tabel Harga Lengkap Moota
+Nama Bank
+Bulanan
+Harian | Interval
+2 Menit Sekali
+Harian | Interval
+5 Menit Sekali
+Harian | Interval
+10 Menit Sekali
+Harian | Interval
+15 Menit Sekali
+Harian | Interval
+60 Menit Sekali
+Harian | Interval
+2 Menit/Sekali &
+Tidak Logout
+BCA Personal
+100.000
+-
+-
+3.400
+2.400
+-
+-
+BCA Giro
+100.000
+-
+-
+-
+-
+-
+3.500
+Mandiri MCM 2
+150.000
+5.000
+-
+3.000
+2.400
+1.900
+-
+BCA Syariah
+100.000
+-
+3.500
+3.000
+2.400
+1.900
+-
+IBBIZ BRI
+150.000
+-
+-
+-
+-
+-
+3.500
+BSI
+150.000
+5.000
+3.500
+3.000
+2.400
+1.900
+-
+BSI Giro
+100.000
+-
+3.500
+3.000
+2.400
+-
+-
+BCA SNAP
+225.000
+-
+1.500+100/hit
+1.500+100/hit
+1.500+100/hit
+1.500+100/hit
+-
+BJB Bisnis
+100.000
+-
+3.500
+-
+1.500
+-
+-
+BNI Syariah
+100.000
+-
+3.500
+-
+1.500
+-
+-
+BNI Bisnis
+Syariah
+100.000
+-
+3.500
+-
+1.500
+-
+-
+BNI Personal
+100.000
+-
+3.500
+-
+1.500
+-
+-
+BNI Bisnis
+150.000
+5.000
+3.500
+2.500
+1.500
+-
+-
+BRI CMS
+100.000
+-
+3.500
+-
+1.500
+-
+-
+BTN Bisnis
+100.000
+-
+3.500
+-
+1.500
+-
+-
+Maybank
+45.000
+-
+-
+-
+1.500
+-
+-
+Mega Syariah
+CMS
+45.000
+-
+-
+-
+1.500
+-
+-
+Muamalat
+45.000
+-
+-
+-
+1.500
+-
+-
+Mandiri Bisnis
+150.000
+5.000
+3.500
+2.500
+1.500
+-
+-
+Keterangan : Nilai 1 Poin sama dengan 1 Rupiah
+tabel Komparasi
+Mendukung Banyak Bank Nasional :
+
+Lebih dari
+7.200++
+Pebisnis Online
+Telah menggunakan Moota.co
+
+Sekarang saatnya giliran Anda.
+Daftar Sekarang
+Nikmati kemudahan otomasi transaksi sekarang juga!
+
+Aplikasi untuk pengecekkan mutasi dan saldo rekening Anda, dimana mutasi rekening Anda kami dapatkan dari akun iBanking Anda.
+Office
+Jl. Sunda, No 85, Kel. Kb. Pisang, Kec. Sumur Bandung, Kota Bandung, Jawa Barat 40112
+Workshop
+Jl Terusan Cikutra Baru No. 3B Kel. Neglasari Kec. Cibeunying Kaler Bandung
+Informasi
+Tentang Moota.co
+Artikel
+Testimoni
+Hubungi Kami
+Developer
+Payment Gateway
+Resources
+FAQ & Bantuan
+Syarat & Ketentuan
+Kebijakan Privasi
+Moota.co API v1
+Moota.co API.2
+Jam Layanan
+Senin-Jum'at
+09.00-17.00 WIB
+Sabtu
+09.00-14.00 WIB
+2025 © All rights reserved
