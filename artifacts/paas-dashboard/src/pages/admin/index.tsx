@@ -17,7 +17,7 @@ import { ProjectStatusBadge } from "../projects";
 interface ProviderStatus {
   id: string;
   openaiBase: string;
-  type: "conduit" | "openrouter" | "generic";
+  type: "conduit" | "generic";
   enabled: boolean;
   inCooldown: boolean;
   cooldownExpiresAt: string | null;
@@ -48,7 +48,7 @@ function ProviderStatusBadge({ provider }: { provider: ProviderStatus }) {
 }
 
 function ProviderTypeBadge({ type }: { type: string }) {
-  const map: Record<string, string> = { conduit: "bg-violet-500/10 text-violet-400", openrouter: "bg-blue-500/10 text-blue-400", generic: "bg-slate-500/10 text-slate-400" };
+  const map: Record<string, string> = { conduit: "bg-violet-500/10 text-violet-400", generic: "bg-slate-500/10 text-slate-400" };
   return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${map[type] ?? map.generic}`}>{type}</span>;
 }
 

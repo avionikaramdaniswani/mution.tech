@@ -13,7 +13,7 @@ interface Provider {
   id: string;
   openaiBase: string;  // full base for OpenAI calls, e.g. "https://conduit.ozdoev.net/v1"
   apiKey: string;
-  type: "conduit" | "openrouter" | "generic";
+  type: "conduit" | "generic";
 }
 
 const PROVIDER_COOLDOWN_MS = 60_000;
@@ -65,7 +65,6 @@ function buildOpenaiBase(rawUrl: string): string {
 
 function detectType(url: string): Provider["type"] {
   if (url.includes("conduit.ozdoev.net")) return "conduit";
-  if (url.includes("openrouter.ai")) return "openrouter";
   return "generic";
 }
 
@@ -211,13 +210,7 @@ async function authenticate(req: Request, res: Response): Promise<{ key: typeof 
 
 // ─── Format conversion helpers ────────────────────────────────────────────────
 
-function mapModelForOpenRouter(model: string): string {
-  if (model.startsWith("anthropic/")) return model;
-  if (model.startsWith("claude-")) return `anthropic/${model}`;
-  return model;
-}
-
-function anthropicToOpenAIBody(body: any, providerType: Provider["type"]): any {
+function anthropicToOpenAIBody(body: any): any {
   const messages: any[] = [];
 
   if (body.system) {
@@ -241,9 +234,7 @@ function anthropicToOpenAIBody(body: any, providerType: Provider["type"]): any {
     messages.push({ role: msg.role, content });
   }
 
-  const model = providerType === "openrouter"
-    ? mapModelForOpenRouter(body.model ?? "claude-sonnet-4-5")
-    : (body.model ?? "claude-sonnet-4-5");
+  const model = body.model ?? "claude-sonnet-4-5";
 
   const converted: any = { model, messages, max_tokens: body.max_tokens ?? 4096, stream: body.stream };
   if (body.temperature !== undefined) converted.temperature = body.temperature;
@@ -362,19 +353,14 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
         return;
 
       } else {
-        // ── OpenRouter / generic: convert Anthropic → OpenAI format ────────
-        const openAIBody = anthropicToOpenAIBody(req.body, provider.type);
-
-        const extraHeaders: Record<string, string> = provider.type === "openrouter"
-          ? { "HTTP-Referer": "https://mution.tech", "X-Title": "Mution" }
-          : {};
+        // ── Generic: convert Anthropic → OpenAI format ──────────────────────
+        const openAIBody = anthropicToOpenAIBody(req.body);
 
         const upstream = await fetch(`${provider.openaiBase}/chat/completions`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${provider.apiKey}`,
-            ...extraHeaders,
           },
           body: JSON.stringify(openAIBody),
         });
@@ -502,16 +488,11 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
     logger.info({ provider: provider.id, path }, "Proxying OpenAI call");
 
     try {
-      const extraHeaders: Record<string, string> = provider.type === "openrouter"
-        ? { "HTTP-Referer": "https://mution.tech", "X-Title": "Mution" }
-        : {};
-
       const upstream = await fetch(`${provider.openaiBase}${path}`, {
         method: req.method,
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${provider.apiKey}`,
-          ...extraHeaders,
         },
         body: req.method !== "GET" ? JSON.stringify(req.body) : undefined,
       });
