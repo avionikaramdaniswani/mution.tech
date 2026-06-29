@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Menu, X, ChevronDown } from "lucide-react";
 
 const dropdownLinks = [
-  { label: "Tentang Kami", href: "/tentang-kami" },
   { label: "FAQ", href: "/faq" },
   { label: "Kebijakan Privasi", href: "/privacy-policy" },
   { label: "Ketentuan Layanan", href: "/terms-and-conditions" },
@@ -60,6 +59,18 @@ export function PublicNavbar() {
               }`}
             >
               Harga
+            </Link>
+
+            {/* Tentang Kami — direct link */}
+            <Link
+              href="/tentang-kami"
+              className={`px-3 py-2 rounded-lg transition-colors ${
+                location === "/tentang-kami"
+                  ? "text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+              }`}
+            >
+              Tentang Kami
             </Link>
 
             {/* Dropdown */}
@@ -152,7 +163,20 @@ export function PublicNavbar() {
               Harga
             </Link>
 
-            {/* Semua dropdown links langsung tampil di mobile */}
+            {/* Tentang Kami */}
+            <Link
+              href="/tentang-kami"
+              onClick={() => setMobileOpen(false)}
+              className={`px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                location === "/tentang-kami"
+                  ? "bg-muted/40 text-foreground font-medium"
+                  : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+              }`}
+            >
+              Tentang Kami
+            </Link>
+
+            {/* Dropdown links tampil langsung di mobile */}
             <div className="mt-1 pt-2 border-t border-border/30">
               <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                 Lainnya
