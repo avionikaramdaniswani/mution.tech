@@ -34,6 +34,7 @@ import {
   User,
   CreditCard,
   Wallet,
+  Cpu,
 } from "lucide-react";
 
 function formatCredits(credits?: number) {
@@ -97,6 +98,7 @@ const adminNavItems = [
   { title: "Pengguna", url: "/admin/users", icon: Users, exact: false },
   { title: "Proyek", url: "/admin/projects", icon: Box, exact: false },
   { title: "Aktivitas", url: "/admin/activity", icon: Activity, exact: false },
+  { title: "AI Providers", url: "/admin/providers", icon: Cpu, exact: false },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {

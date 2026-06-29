@@ -31,6 +31,7 @@ import AdminOverview from "@/pages/admin/overview";
 import AdminUsers from "@/pages/admin/users";
 import AdminProjects from "@/pages/admin/projects";
 import AdminActivity from "@/pages/admin/activity";
+import AdminProviders from "@/pages/admin/providers";
 
 const queryClient = new QueryClient();
 
@@ -100,6 +101,7 @@ function Router() {
       <Route path="/admin/users" component={() => <AdminRoute component={AdminUsers} />} />
       <Route path="/admin/projects" component={() => <AdminRoute component={AdminProjects} />} />
       <Route path="/admin/activity" component={() => <AdminRoute component={AdminActivity} />} />
+      <Route path="/admin/providers" component={() => <AdminRoute component={AdminProviders} />} />
 
       <Route component={NotFound} />
     </Switch>
