@@ -27,7 +27,7 @@ const PAYMENT_METHODS = [
   { id: "BSIVA",     label: "BSI VA" },
 ];
 
-const MIN = 3_000;
+const MIN = 10;
 const MAX = 10_000_000;
 
 function formatRp(n: number) {

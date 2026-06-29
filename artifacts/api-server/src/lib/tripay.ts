@@ -27,7 +27,7 @@ export function verifyCallbackSignature(
   return expected === signature;
 }
 
-export const MIN_TOPUP_IDR = 3_000;
+export const MIN_TOPUP_IDR = 10;
 export const MAX_TOPUP_IDR = 10_000_000;
 
 export const TOPUP_PRESETS = [3_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000];
