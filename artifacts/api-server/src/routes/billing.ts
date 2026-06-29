@@ -4,6 +4,7 @@ import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import { TopupCreditsBody } from "@workspace/api-zod";
 import { computePlan } from "../lib/plan";
+import { logger } from "../lib/logger";
 import {
   getTripayBase,
   createOrderSignature,
@@ -137,9 +138,12 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
     .returning();
 
   const expiredTime = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
+  const base = getTripayBase();
+
+  logger.info({ base, method, amount, merchantCode, invoiceNumber }, "Calling Tripay API");
 
   try {
-    const tripayRes = await fetch(`${getTripayBase()}/transaction/create`, {
+    const tripayRes = await fetch(`${base}/transaction/create`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -166,6 +170,7 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
     });
 
     const tripayData = (await tripayRes.json()) as TripayCreateResponse;
+    logger.info({ tripayData }, "Tripay API response");
 
     if (!tripayData.success) {
       await db
@@ -182,14 +187,9 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
       .set({ paymentUrl })
       .where(eq(paymentOrdersTable.id, order.id));
 
-    res.json({
-      orderId: order.id,
-      invoiceNumber,
-      paymentUrl,
-      amount,
-      credits: amount,
-    });
-  } catch {
+    res.json({ orderId: order.id, invoiceNumber, paymentUrl, amount, credits: amount });
+  } catch (err) {
+    logger.error({ err }, "Tripay fetch error");
     await db
       .update(paymentOrdersTable)
       .set({ status: "failed" })

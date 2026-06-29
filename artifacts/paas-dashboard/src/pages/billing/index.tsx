@@ -3,9 +3,15 @@ import { useAuth } from "@/hooks/use-auth";
 import { useListTransactions } from "@workspace/api-client-react";
 import {
   Wallet, Zap, ArrowUpCircle, Clock, TrendingUp,
-  CreditCard, ExternalLink, Loader2, PenLine,
+  CreditCard, ExternalLink, Loader2, PenLine, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Link } from "wouter";
 
 const PRESETS = [3_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000];
@@ -25,39 +31,29 @@ const MAX = 10_000_000;
 function formatRp(n: number) {
   return "Rp " + n.toLocaleString("id-ID");
 }
-
 function shortRp(n: number) {
   if (n >= 1_000_000) return `${n / 1_000_000}jt`;
-  if (n >= 1_000)     return `${n / 1_000}rb`;
+  if (n >= 1_000) return `${n / 1_000}rb`;
   return String(n);
 }
-
 function creditColor(credits: number) {
-  if (credits === 0)    return "rgb(239,68,68)";
-  if (credits <= 1000)  return "rgb(234,179,8)";
+  if (credits === 0) return "rgb(239,68,68)";
+  if (credits <= 1000) return "rgb(234,179,8)";
   return "rgb(34,197,94)";
 }
-
 function planStyle(plan?: string) {
   if (plan === "team") return { name: "Team", color: "rgba(139,92,246,0.8)" };
-  if (plan === "pro")  return { name: "Pro",  color: "rgb(249,115,22)" };
+  if (plan === "pro") return { name: "Pro", color: "rgb(249,115,22)" };
   return { name: "Hobby", color: "rgba(255,255,255,0.4)" };
 }
 
-export default function BillingPage() {
-  const { user } = useAuth();
-  const { data: transactions, isLoading: txLoading } = useListTransactions();
-
+function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
-  const [customRaw, setCustomRaw]           = useState("");
-  const [isCustom, setIsCustom]             = useState(false);
-  const [method, setMethod]                 = useState("QRIS");
-  const [loading, setLoading]               = useState(false);
-  const [error, setError]                   = useState<string | null>(null);
-
-  const credits = user?.credits ?? 0;
-  const plan    = planStyle(user?.plan);
-  const pct     = Math.min(100, Math.round((credits / 5000) * 100));
+  const [customRaw, setCustomRaw] = useState("");
+  const [isCustom, setIsCustom] = useState(false);
+  const [method, setMethod] = useState("QRIS");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const resolvedAmount = (() => {
     if (isCustom) {
@@ -80,6 +76,7 @@ export default function BillingPage() {
     const digits = raw.replace(/\D/g, "");
     setCustomRaw(digits);
     setSelectedPreset(null);
+    setError(null);
   }
 
   function pickPreset(val: number) {
@@ -112,6 +109,7 @@ export default function BillingPage() {
         return;
       }
       window.open(data.paymentUrl, "_blank");
+      onClose();
     } catch {
       setError("Gagal terhubung ke server");
     } finally {
@@ -120,7 +118,174 @@ export default function BillingPage() {
   }
 
   return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent
+        className="max-w-sm p-0 overflow-hidden gap-0"
+        style={{
+          background: "rgb(10,10,12)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: "20px",
+        }}
+      >
+        <DialogHeader className="px-6 pt-6 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+              <DialogTitle className="text-sm font-semibold">Topup Kredit</DialogTitle>
+            </div>
+            <span
+              className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+              style={{ background: "rgba(249,115,22,0.12)", color: "rgb(249,115,22)", border: "1px solid rgba(249,115,22,0.2)" }}
+            >
+              via Tripay
+            </span>
+          </div>
+        </DialogHeader>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* Nominal */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Pilih nominal</p>
+
+            <div className="grid grid-cols-4 gap-2">
+              {PRESETS.map((val) => {
+                const active = !isCustom && selectedPreset === val;
+                return (
+                  <button
+                    key={val}
+                    onClick={() => pickPreset(val)}
+                    className="rounded-xl py-2.5 text-sm font-semibold transition-all"
+                    style={{
+                      border: active ? "1px solid rgba(249,115,22,0.7)" : "1px solid rgba(255,255,255,0.09)",
+                      background: active ? "rgba(249,115,22,0.12)" : "rgba(255,255,255,0.03)",
+                      color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.7)",
+                    }}
+                  >
+                    {shortRp(val)}
+                  </button>
+                );
+              })}
+            </div>
+
+            {!isCustom ? (
+              <button
+                onClick={openCustom}
+                className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all"
+                style={{ border: "1px dashed rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.4)" }}
+              >
+                <PenLine className="h-3.5 w-3.5" />
+                Nominal lain (custom)
+              </button>
+            ) : (
+              <div className="relative">
+                <span
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  Rp
+                </span>
+                <input
+                  autoFocus
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={customRaw ? parseInt(customRaw).toLocaleString("id-ID") : ""}
+                  onChange={(e) => handleCustomInput(e.target.value)}
+                  className="w-full rounded-xl pl-10 pr-10 py-3 text-sm font-bold bg-transparent outline-none"
+                  style={{
+                    border: amountError ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(249,115,22,0.5)",
+                    color: "white",
+                  }}
+                />
+                <button
+                  onClick={() => { setIsCustom(false); setCustomRaw(""); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  style={{ color: "rgba(255,255,255,0.3)" }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+
+            {amountError ? (
+              <p className="text-xs text-red-400">{amountError}</p>
+            ) : resolvedAmount && resolvedAmount >= MIN ? (
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                Kamu akan mendapat{" "}
+                <span className="font-bold" style={{ color: "rgb(34,197,94)" }}>
+                  {resolvedAmount.toLocaleString("id-ID")} kredit
+                </span>
+              </p>
+            ) : null}
+          </div>
+
+          {/* Metode */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Metode pembayaran</p>
+            <div className="grid grid-cols-3 gap-2">
+              {PAYMENT_METHODS.map((m) => {
+                const active = method === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => setMethod(m.id)}
+                    className="rounded-lg px-2 py-2 text-xs font-medium transition-all text-center"
+                    style={{
+                      border: active ? "1px solid rgba(249,115,22,0.6)" : "1px solid rgba(255,255,255,0.08)",
+                      background: active ? "rgba(249,115,22,0.08)" : "rgba(255,255,255,0.025)",
+                      color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.55)",
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {error && <p className="text-xs text-red-400">{error}</p>}
+
+          <button
+            onClick={handlePay}
+            disabled={!canPay}
+            className="w-full h-11 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
+            style={{
+              background: canPay ? "rgb(249,115,22)" : "rgba(255,255,255,0.06)",
+              color: canPay ? "white" : "rgba(255,255,255,0.25)",
+              cursor: canPay ? "pointer" : "not-allowed",
+              border: "none",
+            }}
+          >
+            {loading ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Memproses…</>
+            ) : resolvedAmount && resolvedAmount >= MIN ? (
+              <><ExternalLink className="h-4 w-4" /> Bayar {formatRp(resolvedAmount)} via {method}</>
+            ) : (
+              "Pilih nominal terlebih dahulu"
+            )}
+          </button>
+
+          <p className="text-[10px] text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
+            Kredit otomatis masuk setelah pembayaran dikonfirmasi · 1 kredit = Rp 1
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default function BillingPage() {
+  const { user } = useAuth();
+  const { data: transactions, isLoading: txLoading } = useListTransactions();
+  const [topupOpen, setTopupOpen] = useState(false);
+
+  const credits = user?.credits ?? 0;
+  const plan = planStyle(user?.plan);
+  const pct = Math.min(100, Math.round((credits / 5000) * 100));
+
+  return (
     <div className="space-y-4">
+      <TopupModal open={topupOpen} onClose={() => setTopupOpen(false)} />
 
       {/* ── Saldo & Plan ── */}
       <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -139,18 +304,37 @@ export default function BillingPage() {
                 {formatRp(credits)}
               </p>
               <p className="text-xs text-muted-foreground mt-1.5">
-                {credits === 0     ? "Kredit habis — proyek kamu dihentikan."
-                 : credits <= 1000 ? "Kredit hampir habis — segera topup."
-                 :                   "Kredit tersedia"}
+                {credits === 0 ? "Kredit habis — proyek kamu dihentikan."
+                  : credits <= 1000 ? "Kredit hampir habis — segera topup."
+                  : "Kredit tersedia"}
               </p>
             </div>
+
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Topup button */}
+              <button
+                onClick={() => setTopupOpen(true)}
+                className="flex items-center gap-2 text-sm font-semibold rounded-xl px-4 py-2.5 transition-all"
+                style={{
+                  border: "1px solid rgba(249,115,22,0.4)",
+                  color: "rgba(249,115,22,0.9)",
+                  background: "rgba(249,115,22,0.08)",
+                }}
+              >
+                <CreditCard className="h-4 w-4" />
+                Topup
+              </button>
+
               {plan.name === "Hobby" && (
                 <Link href="/harga">
                   <Button
                     variant="outline"
                     className="flex items-center gap-2 text-sm font-semibold rounded-xl px-4 py-2.5 h-auto"
-                    style={{ border: "1px solid rgba(139,92,246,0.4)", color: "rgba(139,92,246,0.9)", background: "rgba(139,92,246,0.08)" }}
+                    style={{
+                      border: "1px solid rgba(139,92,246,0.4)",
+                      color: "rgba(139,92,246,0.9)",
+                      background: "rgba(139,92,246,0.08)",
+                    }}
                   >
                     <TrendingUp className="h-4 w-4" />
                     Upgrade
@@ -190,159 +374,6 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* ── Topup Kredit ── */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-        <div
-          className="px-6 py-4 flex items-center gap-3"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}
-        >
-          <CreditCard className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-semibold">Topup Kredit</p>
-          <span
-            className="ml-auto text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
-            style={{ background: "rgba(249,115,22,0.12)", color: "rgb(249,115,22)", border: "1px solid rgba(249,115,22,0.2)" }}
-          >
-            via Tripay
-          </span>
-        </div>
-
-        <div className="px-6 py-5 space-y-5">
-
-          {/* Nominal */}
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Pilih nominal</p>
-
-            {/* Preset grid */}
-            <div className="grid grid-cols-4 gap-2">
-              {PRESETS.map((val) => {
-                const active = !isCustom && selectedPreset === val;
-                return (
-                  <button
-                    key={val}
-                    onClick={() => pickPreset(val)}
-                    className="rounded-xl py-2.5 text-sm font-semibold transition-all"
-                    style={{
-                      border: active ? "1px solid rgba(249,115,22,0.7)" : "1px solid rgba(255,255,255,0.09)",
-                      background: active ? "rgba(249,115,22,0.12)" : "rgba(255,255,255,0.03)",
-                      color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.7)",
-                    }}
-                  >
-                    {shortRp(val)}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Custom input toggle */}
-            {!isCustom ? (
-              <button
-                onClick={openCustom}
-                className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all"
-                style={{ border: "1px dashed rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.4)" }}
-              >
-                <PenLine className="h-3.5 w-3.5" />
-                Nominal lain (custom)
-              </button>
-            ) : (
-              <div className="relative">
-                <span
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none"
-                  style={{ color: "rgba(255,255,255,0.5)" }}
-                >
-                  Rp
-                </span>
-                <input
-                  autoFocus
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={customRaw ? parseInt(customRaw).toLocaleString("id-ID") : ""}
-                  onChange={(e) => handleCustomInput(e.target.value)}
-                  className="w-full rounded-xl pl-10 pr-4 py-3 text-sm font-bold bg-transparent outline-none"
-                  style={{
-                    border: amountError
-                      ? "1px solid rgba(239,68,68,0.5)"
-                      : "1px solid rgba(249,115,22,0.5)",
-                    color: "white",
-                  }}
-                />
-                <button
-                  onClick={() => { setIsCustom(false); setCustomRaw(""); }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs px-2 py-0.5 rounded"
-                  style={{ color: "rgba(255,255,255,0.35)" }}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-
-            {/* Error / info */}
-            {amountError ? (
-              <p className="text-xs text-red-400">{amountError}</p>
-            ) : resolvedAmount && resolvedAmount >= MIN ? (
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                Kamu akan mendapat{" "}
-                <span className="font-bold" style={{ color: "rgb(34,197,94)" }}>
-                  {resolvedAmount.toLocaleString("id-ID")} kredit
-                </span>
-              </p>
-            ) : null}
-          </div>
-
-          {/* Metode bayar */}
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Metode pembayaran</p>
-            <div className="grid grid-cols-3 gap-2">
-              {PAYMENT_METHODS.map((m) => {
-                const active = method === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => setMethod(m.id)}
-                    className="rounded-lg px-3 py-2 text-xs font-medium transition-all text-center"
-                    style={{
-                      border: active ? "1px solid rgba(249,115,22,0.6)" : "1px solid rgba(255,255,255,0.08)",
-                      background: active ? "rgba(249,115,22,0.08)" : "rgba(255,255,255,0.025)",
-                      color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.55)",
-                    }}
-                  >
-                    {m.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Error server */}
-          {error && <p className="text-xs text-red-400">{error}</p>}
-
-          {/* CTA */}
-          <button
-            onClick={handlePay}
-            disabled={!canPay}
-            className="w-full h-11 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
-            style={{
-              background: canPay ? "rgb(249,115,22)" : "rgba(255,255,255,0.06)",
-              color: canPay ? "white" : "rgba(255,255,255,0.25)",
-              cursor: canPay ? "pointer" : "not-allowed",
-              border: "none",
-            }}
-          >
-            {loading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Memproses…</>
-            ) : resolvedAmount && resolvedAmount >= MIN ? (
-              <><ExternalLink className="h-4 w-4" /> Bayar {formatRp(resolvedAmount)} via {method}</>
-            ) : (
-              "Pilih nominal terlebih dahulu"
-            )}
-          </button>
-
-          <p className="text-[10px] text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
-            Kredit otomatis masuk setelah pembayaran dikonfirmasi · Diproses via Tripay · 1 kredit = Rp 1
-          </p>
-        </div>
-      </div>
-
       {/* ── Riwayat Transaksi ── */}
       <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
         <div
@@ -374,13 +405,13 @@ export default function BillingPage() {
                     className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{
                       background: tx.type === "topup" ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.08)",
-                      border:     tx.type === "topup" ? "1px solid rgba(34,197,94,0.18)" : "1px solid rgba(239,68,68,0.15)",
+                      border: tx.type === "topup" ? "1px solid rgba(34,197,94,0.18)" : "1px solid rgba(239,68,68,0.15)",
                     }}
                   >
                     <ArrowUpCircle
                       className="h-3.5 w-3.5"
                       style={{
-                        color:     tx.type === "topup" ? "rgb(34,197,94)" : "rgb(239,68,68)",
+                        color: tx.type === "topup" ? "rgb(34,197,94)" : "rgb(239,68,68)",
                         transform: tx.type === "topup" ? "none" : "rotate(180deg)",
                       }}
                     />
