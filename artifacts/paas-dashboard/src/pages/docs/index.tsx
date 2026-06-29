@@ -401,7 +401,7 @@ console.log(message.content[0].type === "text" ? message.content[0].text : "");`
       {/* Footer */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t border-border/50">
         <ExternalLink className="h-3.5 w-3.5" />
-        <span>API ini didukung oleh <a href="https://agentrouter.org" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">AgentRouter</a> — LLM gateway open-source.</span>
+        <span>API ini didukung oleh <a href="https://conduit.ozdoev.net" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">Conduit</a> — one key, every model.</span>
       </div>
     </div>
   );
