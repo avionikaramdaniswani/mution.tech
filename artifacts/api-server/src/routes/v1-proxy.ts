@@ -70,39 +70,33 @@ function detectType(url: string): Provider["type"] {
 }
 
 /**
- * Default base URLs per named provider prefix.
- * If XXX_BASE_URL is not set, this is used as fallback.
- */
-const PROVIDER_DEFAULTS: Record<string, string> = {
-  CONDUIT: "https://conduit.ozdoev.net",
-  IYH: "https://v1.iyhapi.app",
-  OPENROUTER: "https://openrouter.ai/api/v1",
-};
-
-/**
  * Load all providers.
  *
- * Scans environment for named provider pairs:
- *   <PREFIX>_API_KEY  — required (e.g. CONDUIT_API_KEY, IYH_API_KEY)
- *   <PREFIX>_BASE_URL — optional, falls back to PROVIDER_DEFAULTS or skipped
+ * Scans environment for named provider pairs — both must be set:
+ *   <PREFIX>_API_KEY  — API key
+ *   <PREFIX>_BASE_URL — base URL (no hardcoded defaults)
  *
- * Known prefixes with built-in default URLs: CONDUIT, IYH, OPENROUTER.
- * Custom prefixes need <PREFIX>_BASE_URL set explicitly.
+ * Example secrets:
+ *   CONDUIT_API_KEY  + CONDUIT_BASE_URL
+ *   IYH_API_KEY      + IYH_BASE_URL
  *
- * Fallback: PROVIDER_POOL="url1|key1,url2|key2" (legacy / power-user format)
+ * Skips any prefix that doesn't have both _API_KEY and _BASE_URL set.
  */
 function getProviders(): Provider[] {
   const providers: Provider[] = [];
 
-  // 1. Scan for <PREFIX>_API_KEY pairs
+  // Scan for <PREFIX>_API_KEY, require matching <PREFIX>_BASE_URL
   for (const [envKey, envVal] of Object.entries(process.env)) {
     if (!envKey.endsWith("_API_KEY") || !envVal?.trim()) continue;
-    const prefix = envKey.slice(0, -"_API_KEY".length); // e.g. "CONDUIT", "IYH"
-    // Skip non-provider env vars (SESSION, etc.)
-    if (["SESSION", "DATABASE", "SUPABASE"].some((s) => prefix.includes(s))) continue;
+    const prefix = envKey.slice(0, -"_API_KEY".length);
+    // Skip unrelated env vars
+    if (["SESSION", "DATABASE", "SUPABASE", "AGENTROUTER"].some((s) => prefix.includes(s))) continue;
 
-    const rawUrl = (process.env[`${prefix}_BASE_URL`] ?? PROVIDER_DEFAULTS[prefix] ?? "").trim();
-    if (!rawUrl) continue; // no URL known — skip
+    const rawUrl = (process.env[`${prefix}_BASE_URL`] ?? "").trim();
+    if (!rawUrl) {
+      logger.warn({ prefix }, `${prefix}_API_KEY found but ${prefix}_BASE_URL not set — skipping`);
+      continue;
+    }
 
     providers.push({
       id: prefix.toLowerCase(),
@@ -112,30 +106,13 @@ function getProviders(): Provider[] {
     });
   }
 
-  if (providers.length > 0) return providers;
-
-  // 2. Fallback: PROVIDER_POOL="url|key,url|key"
-  const poolRaw = (process.env.PROVIDER_POOL ?? "").trim();
-  if (poolRaw) {
-    const from_pool = poolRaw.split(",").flatMap((entry) => {
-      const pipeIdx = entry.indexOf("|");
-      if (pipeIdx === -1) return [];
-      const rawUrl = entry.slice(0, pipeIdx).trim();
-      const key = entry.slice(pipeIdx + 1).trim();
-      if (!rawUrl || !key) return [];
-      return [{
-        id: urlToId(rawUrl),
-        openaiBase: buildOpenaiBase(rawUrl),
-        apiKey: key,
-        type: detectType(rawUrl),
-      } satisfies Provider];
-    });
-    if (from_pool.length > 0) return from_pool;
+  if (providers.length === 0) {
+    throw new Error(
+      "No providers configured. Each provider needs both <PREFIX>_API_KEY and <PREFIX>_BASE_URL set in Secrets."
+    );
   }
 
-  throw new Error(
-    "No providers configured. Set CONDUIT_API_KEY (and optionally IYH_API_KEY, etc.) in Secrets."
-  );
+  return providers;
 }
 
 /** Pick the best available provider (skips disabled + cooldown avoidance). */
