@@ -81,8 +81,8 @@ export default function TentangKamiPage() {
             <div className="space-y-3">
               {[
                 { year: "2024", event: "Mution mulai dikembangkan — mimpi platform PaaS lokal terbaik Indonesia" },
-                { year: "2025", event: "Versi Beta diluncurkan, onboarding pengguna awal dan proyek pertama" },
-                { year: "2025", event: "Rilis publik dengan dukungan multi-runtime, managed database, dan billing kredit" },
+                { year: "2025", event: "Versi Beta diluncurkan, onboarding pengguna awal dan proyek-proyek pertama" },
+                { year: "2026", event: "Rilis publik — multi-runtime, managed database, billing kredit, dan terus berkembang" },
               ].map((item, i) => (
                 <div key={i} className="flex gap-4 p-4 rounded-xl border border-border/50 bg-card/20">
                   <div className="flex-shrink-0 text-xs font-bold text-primary pt-0.5">{item.year}</div>
