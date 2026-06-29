@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useListTransactions } from "@workspace/api-client-react";
+import { useListTransactions, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import {
   Wallet, Zap, ArrowUpCircle, Clock, TrendingUp,
-  CreditCard, ExternalLink, Loader2, PenLine, X,
+  CreditCard, Loader2, PenLine, X, CheckCircle2, AlertCircle, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +47,15 @@ function planStyle(plan?: string) {
   if (plan === "team") return { name: "Team", color: "rgba(139,92,246,0.8)" };
   if (plan === "pro") return { name: "Pro", color: "rgb(249,115,22)" };
   return { name: "Hobby", color: "rgba(255,255,255,0.4)" };
+}
+
+type OrderStatus = "pending" | "paid" | "failed" | "expired";
+
+interface OrderPollResult {
+  id: number;
+  status: OrderStatus;
+  creditsAmount: number;
+  paymentUrl?: string | null;
 }
 
 function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -103,13 +114,15 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
         credentials: "include",
         body: JSON.stringify({ amount: resolvedAmount, method }),
       });
-      const data = await res.json() as { paymentUrl?: string; error?: string };
+      const data = await res.json() as { paymentUrl?: string; error?: string; orderId?: number };
       if (!res.ok || !data.paymentUrl) {
         setError(data.error ?? "Gagal membuat transaksi");
         return;
       }
-      window.open(data.paymentUrl, "_blank");
       onClose();
+      // Redirect tab ini ke Tripay — saat user selesai bayar, Tripay redirect balik ke return_url
+      // yang sudah ada orderId param, sehingga billing page bisa polling status
+      window.location.href = data.paymentUrl;
     } catch {
       setError("Gagal terhubung ke server");
     } finally {
@@ -146,7 +159,6 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
           {/* Nominal */}
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Pilih nominal</p>
-
             <div className="grid grid-cols-4 gap-2">
               {PRESETS.map((val) => {
                 const active = !isCustom && selectedPreset === val;
@@ -259,7 +271,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
             {loading ? (
               <><Loader2 className="h-4 w-4 animate-spin" /> Memproses…</>
             ) : resolvedAmount && resolvedAmount >= MIN ? (
-              <><ExternalLink className="h-4 w-4" /> Bayar {formatRp(resolvedAmount)} via {method}</>
+              <>Bayar {formatRp(resolvedAmount)} via {method}</>
             ) : (
               "Pilih nominal terlebih dahulu"
             )}
@@ -274,10 +286,114 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
+function PaymentStatusBanner({ orderId, onDone }: { orderId: number; onDone: () => void }) {
+  const [status, setStatus] = useState<OrderStatus | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
+  const [retries, setRetries] = useState(0);
+  const queryClient = useQueryClient();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxRetries = 24; // poll for up to ~2 minutes
+
+  const poll = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/billing/orders/${orderId}`, { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json() as OrderPollResult;
+      setStatus(data.status);
+      if (data.status === "paid") {
+        setCredits(data.creditsAmount);
+        // Refresh user data to show updated credit balance
+        await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+        onDone();
+      } else if (data.status === "pending" && retries < maxRetries) {
+        setRetries((r) => r + 1);
+        timerRef.current = setTimeout(poll, 5000);
+      }
+    } catch {
+      // ignore network errors, will retry
+      if (retries < maxRetries) {
+        setRetries((r) => r + 1);
+        timerRef.current = setTimeout(poll, 5000);
+      }
+    }
+  }, [orderId, retries, queryClient, onDone]);
+
+  useEffect(() => {
+    poll();
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  if (status === "paid") {
+    return (
+      <div
+        className="rounded-xl px-5 py-4 flex items-center gap-3"
+        style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)" }}
+      >
+        <CheckCircle2 className="h-5 w-5 flex-shrink-0" style={{ color: "rgb(34,197,94)" }} />
+        <div>
+          <p className="text-sm font-semibold" style={{ color: "rgb(34,197,94)" }}>Pembayaran berhasil!</p>
+          <p className="text-xs text-muted-foreground">
+            {credits !== null ? `${formatRp(credits)} kredit` : "Kredit"} sudah ditambahkan ke akunmu.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "failed" || status === "expired") {
+    return (
+      <div
+        className="rounded-xl px-5 py-4 flex items-center gap-3"
+        style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.18)" }}
+      >
+        <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-400" />
+        <div>
+          <p className="text-sm font-semibold text-red-400">Pembayaran {status === "expired" ? "kadaluarsa" : "gagal"}</p>
+          <p className="text-xs text-muted-foreground">Coba topup lagi jika perlu.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="rounded-xl px-5 py-4 flex items-center gap-3"
+      style={{ background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.18)" }}
+    >
+      <RefreshCw className="h-5 w-5 flex-shrink-0 animate-spin" style={{ color: "rgb(249,115,22)" }} />
+      <div>
+        <p className="text-sm font-semibold" style={{ color: "rgb(249,115,22)" }}>Menunggu konfirmasi pembayaran…</p>
+        <p className="text-xs text-muted-foreground">
+          Kredit akan masuk otomatis setelah Tripay mengonfirmasi.
+          {retries > 0 && ` (cek ke-${retries})`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function BillingPage() {
   const { user } = useAuth();
   const { data: transactions, isLoading: txLoading } = useListTransactions();
   const [topupOpen, setTopupOpen] = useState(false);
+  const [location, setLocation] = useLocation();
+  const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
+  const [pollDone, setPollDone] = useState(false);
+
+  // Detect return from Tripay via ?orderId=xxx URL param
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get("orderId");
+    if (orderId) {
+      const id = parseInt(orderId, 10);
+      if (!isNaN(id)) {
+        setPendingOrderId(id);
+        // Strip orderId from URL without reload
+        const clean = window.location.pathname;
+        window.history.replaceState({}, "", clean);
+      }
+    }
+  }, []);
 
   const credits = user?.credits ?? 0;
   const plan = planStyle(user?.plan);
@@ -286,6 +402,14 @@ export default function BillingPage() {
   return (
     <div className="space-y-4">
       <TopupModal open={topupOpen} onClose={() => setTopupOpen(false)} />
+
+      {/* Payment status banner */}
+      {pendingOrderId && !pollDone && (
+        <PaymentStatusBanner
+          orderId={pendingOrderId}
+          onDone={() => setPollDone(true)}
+        />
+      )}
 
       {/* ── Saldo & Plan ── */}
       <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -311,7 +435,6 @@ export default function BillingPage() {
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Topup button */}
               <button
                 onClick={() => setTopupOpen(true)}
                 className="flex items-center gap-2 text-sm font-semibold rounded-xl px-4 py-2.5 transition-all"

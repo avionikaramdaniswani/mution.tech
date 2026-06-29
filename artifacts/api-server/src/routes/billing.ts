@@ -72,6 +72,31 @@ router.get("/billing/transactions", requireAuth, async (req, res): Promise<void>
   );
 });
 
+router.get("/billing/orders/:id", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const orderId = parseInt(req.params.id, 10);
+  if (isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [order] = await db
+    .select()
+    .from(paymentOrdersTable)
+    .where(eq(paymentOrdersTable.id, orderId))
+    .limit(1);
+
+  if (!order || order.userId !== user.id) { res.status(404).json({ error: "Not found" }); return; }
+
+  res.json({
+    id: order.id,
+    invoiceNumber: order.invoiceNumber,
+    amount: order.amount,
+    creditsAmount: order.creditsAmount,
+    status: order.status,
+    paymentUrl: order.paymentUrl,
+    createdAt: order.createdAt.toISOString(),
+    paidAt: order.paidAt?.toISOString() ?? null,
+  });
+});
+
 router.get("/billing/orders", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
 
@@ -163,7 +188,7 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
             quantity: 1,
           },
         ],
-        return_url: "https://mution.tech/dashboard/billing",
+        return_url: `https://mution.tech/dashboard/billing?orderId=${order.id}`,
         expired_time: expiredTime,
         signature,
       }),
