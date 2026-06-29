@@ -43,10 +43,11 @@ app.use(
   })
 );
 
+// Webhook TriPay HARUS pakai raw body untuk verifikasi signature — daftarkan SEBELUM json/urlencoded
+app.use("/api/billing/tripay/webhook", express.raw({ type: "*/*" }));
+
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
-
-app.use("/api/billing/tripay/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "50mb" }));
 
 app.use("/api", router);

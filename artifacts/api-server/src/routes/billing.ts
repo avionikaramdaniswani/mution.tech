@@ -290,7 +290,18 @@ router.post("/billing/tripay/webhook", async (req, res): Promise<void> => {
     return;
   }
 
-  const rawBody = (req.body as Buffer).toString("utf-8");
+  // req.body harus Buffer (dari express.raw) — fallback ke string jika perlu
+  let rawBody: string;
+  if (Buffer.isBuffer(req.body)) {
+    rawBody = req.body.toString("utf-8");
+  } else if (typeof req.body === "string") {
+    rawBody = req.body;
+  } else {
+    logger.error({ bodyType: typeof req.body, body: req.body }, "Tripay webhook body bukan Buffer — raw middleware tidak jalan");
+    res.status(400).json({ error: "Cannot read raw body" });
+    return;
+  }
+
   let payload: TripayCallbackPayload;
   try {
     payload = JSON.parse(rawBody) as TripayCallbackPayload;
