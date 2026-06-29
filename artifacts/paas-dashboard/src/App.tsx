@@ -28,6 +28,7 @@ import TermsPage from "@/pages/terms";
 import KontakPage from "@/pages/kontak";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TentangKamiPage from "@/pages/tentang-kami";
+import LayananPage from "@/pages/layanan";
 
 import AdminOverview from "@/pages/admin/overview";
 import AdminUsers from "@/pages/admin/users";
@@ -101,6 +102,7 @@ function Router() {
       <Route path="/kontak" component={KontakPage} />
       <Route path="/privacy-policy" component={PrivacyPolicyPage} />
       <Route path="/tentang-kami" component={TentangKamiPage} />
+      <Route path="/layanan" component={LayananPage} />
 
       {/* Admin routes — dedicated layout */}
       <Route path="/admin/users" component={() => <AdminRoute component={AdminUsers} />} />

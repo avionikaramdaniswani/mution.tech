@@ -12,7 +12,7 @@ const kebijakanLinks = [
 ];
 
 const mainLinks = [
-  { label: "Fitur", href: "/#fitur" },
+  { label: "Layanan", href: "/layanan" },
   { label: "Harga", href: "/harga" },
   { label: "Kontak", href: "/kontak" },
 ];
