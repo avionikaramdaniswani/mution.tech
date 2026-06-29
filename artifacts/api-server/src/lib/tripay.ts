@@ -27,14 +27,10 @@ export function verifyCallbackSignature(
   return expected === signature;
 }
 
-export const CREDIT_PACKAGES = [
-  { id: "starter",    label: "Starter",    idr: 50_000,  credits: 50_000,  bonus: 0  },
-  { id: "basic",      label: "Basic",      idr: 100_000, credits: 110_000, bonus: 10 },
-  { id: "pro",        label: "Pro",        idr: 250_000, credits: 300_000, bonus: 20 },
-  { id: "enterprise", label: "Enterprise", idr: 500_000, credits: 650_000, bonus: 30 },
-] as const;
+export const MIN_TOPUP_IDR = 3_000;
+export const MAX_TOPUP_IDR = 10_000_000;
 
-export type PackageId = (typeof CREDIT_PACKAGES)[number]["id"];
+export const TOPUP_PRESETS = [3_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000];
 
 export interface TripayCreateResponse {
   success: boolean;

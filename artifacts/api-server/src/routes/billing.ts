@@ -8,15 +8,17 @@ import {
   getTripayBase,
   createOrderSignature,
   verifyCallbackSignature,
-  CREDIT_PACKAGES,
+  MIN_TOPUP_IDR,
+  MAX_TOPUP_IDR,
+  TOPUP_PRESETS,
   type TripayCreateResponse,
   type TripayCallbackPayload,
 } from "../lib/tripay";
 
 const router = Router();
 
-router.get("/billing/packages", (_req, res): void => {
-  res.json(CREDIT_PACKAGES);
+router.get("/billing/topup-config", (_req, res): void => {
+  res.json({ presets: TOPUP_PRESETS, min: MIN_TOPUP_IDR, max: MAX_TOPUP_IDR });
 });
 
 router.post("/billing/topup", requireAuth, async (req, res): Promise<void> => {
@@ -103,24 +105,32 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
     return;
   }
 
-  const { packageId, method = "QRIS" } = req.body as { packageId: string; method?: string };
-  const pkg = CREDIT_PACKAGES.find((p) => p.id === packageId);
-  if (!pkg) {
-    res.status(400).json({ error: "Paket tidak valid" });
+  const { amount, method = "QRIS" } = req.body as { amount: number; method?: string };
+
+  if (!amount || typeof amount !== "number" || !Number.isInteger(amount)) {
+    res.status(400).json({ error: "Nominal tidak valid" });
+    return;
+  }
+  if (amount < MIN_TOPUP_IDR) {
+    res.status(400).json({ error: `Minimal topup Rp ${MIN_TOPUP_IDR.toLocaleString("id-ID")}` });
+    return;
+  }
+  if (amount > MAX_TOPUP_IDR) {
+    res.status(400).json({ error: `Maksimal topup Rp ${MAX_TOPUP_IDR.toLocaleString("id-ID")}` });
     return;
   }
 
   const user = (req as any).user;
   const invoiceNumber = `MUTION-${Date.now()}-${user.id}`;
-  const signature = createOrderSignature(merchantCode, invoiceNumber, pkg.idr, privateKey);
+  const signature = createOrderSignature(merchantCode, invoiceNumber, amount, privateKey);
 
   const [order] = await db
     .insert(paymentOrdersTable)
     .values({
       userId: user.id,
       invoiceNumber,
-      amount: pkg.idr,
-      creditsAmount: pkg.credits,
+      amount,
+      creditsAmount: amount,
       provider: "tripay",
       status: "pending",
     })
@@ -138,14 +148,14 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
       body: JSON.stringify({
         method,
         merchant_ref: invoiceNumber,
-        amount: pkg.idr,
+        amount,
         customer_name: user.name,
         customer_email: user.email,
         customer_phone: "08123456789",
         order_items: [
           {
-            name: `${pkg.label} Package — ${pkg.credits.toLocaleString("id-ID")} Credits`,
-            price: pkg.idr,
+            name: `Topup Kredit Mution — ${amount.toLocaleString("id-ID")} Credits`,
+            price: amount,
             quantity: 1,
           },
         ],
@@ -176,8 +186,8 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
       orderId: order.id,
       invoiceNumber,
       paymentUrl,
-      amount: pkg.idr,
-      credits: pkg.credits,
+      amount,
+      credits: amount,
     });
   } catch {
     await db
