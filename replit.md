@@ -11,6 +11,8 @@ Platform as a Service berbasis web, mirip Railway/Render — untuk deploy dan ma
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `SUPABASE_DATABASE_URL` — Supabase Postgres connection string
+- `CONDUIT_API_KEY` — Conduit API key (sk-cdt-...)
+- `CONDUIT_BASE_URL` — Conduit base URL (default: https://conduit.ozdoev.net)
 
 ## Stack
 
@@ -22,7 +24,7 @@ Platform as a Service berbasis web, mirip Railway/Render — untuk deploy dan ma
 - Validation: Zod, `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (ESM bundle)
-- Payment: DOKU payment gateway
+- AI Proxy: Conduit (one key, every model)
 
 ## Database — WAJIB BACA
 
@@ -43,12 +45,11 @@ Platform as a Service berbasis web, mirip Railway/Render — untuk deploy dan ma
 
 - `lib/api-spec/openapi.yaml` — source of truth for all API contracts
 - `lib/db/src/schema/` — Drizzle schema files (users, projects, deployments, env_vars, project_databases, activity_logs, sessions)
-- `artifacts/api-server/src/routes/` — auth, projects, deployments, stats, activity, admin, payment
+- `artifacts/api-server/src/routes/` — auth, projects, deployments, stats, activity, admin, billing, api-keys
 - `artifacts/api-server/src/lib/auth.ts` — session-based auth middleware
-- `artifacts/api-server/src/lib/doku.ts` — DOKU payment gateway helper
 - `artifacts/api-server/src/lib/activity.ts` — activity log helper
 - `artifacts/paas-dashboard/src/` — React frontend
-- `artifacts/paas-dashboard/src/pages/billing/` — billing & topup pages
+- `artifacts/paas-dashboard/src/pages/billing/` — billing page (saldo & riwayat transaksi)
 
 ## Architecture decisions
 
@@ -57,7 +58,7 @@ Platform as a Service berbasis web, mirip Railway/Render — untuk deploy dan ma
 - Env var values masked on all API responses (stored in plain text, shown as `***`)
 - Project database provisioning is simulated — ready for real Coolify API calls
 - Deployment pipeline is simulated with realistic build logs and status — ready for Coolify webhooks
-- Payment topup via DOKU checkout — user diarahkan ke halaman DOKU, kredit ditambah otomatis setelah webhook SUCCESS
+- Billing: credit balance dan riwayat transaksi. Topup dikelola manual oleh admin.
 
 ## Product
 
@@ -67,14 +68,13 @@ Platform as a Service berbasis web, mirip Railway/Render — untuk deploy dan ma
 - Deployments: trigger, view logs, rollback
 - Activity log: per-user action history
 - Admin panel: all users, all projects, force stop/delete, platform stats
-- Billing: topup kredit via DOKU payment gateway, riwayat transaksi
+- Billing: credit balance, riwayat transaksi
 
 ## Environment variables yang dibutuhkan
 
 - `SUPABASE_DATABASE_URL` — Supabase Postgres connection string (wajib)
-- `DOKU_CLIENT_ID` — DOKU production Client ID
-- `DOKU_SECRET_KEY` — DOKU production Secret Key
-- `DOKU_ENV` — set ke `production` untuk live, kosongkan untuk sandbox
+- `CONDUIT_API_KEY` — Conduit API key (sk-cdt-...)
+- `CONDUIT_BASE_URL` — Conduit base URL (default: https://conduit.ozdoev.net)
 
 ## Gotchas
 

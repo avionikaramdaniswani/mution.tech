@@ -13,8 +13,8 @@ const KEY_COOLDOWN_MS = 60_000; // 60 seconds cooldown after unauthorized_client
 const _keyCooldowns = new Map<string, number>(); // key → cooldown-until timestamp
 
 function getKeys(): string[] {
-  const raw = process.env.AGENTROUTER_API_KEY ?? "";
-  if (!raw) throw new Error("AGENTROUTER_API_KEY not configured");
+  const raw = process.env.CONDUIT_API_KEY ?? "";
+  if (!raw) throw new Error("CONDUIT_API_KEY not configured");
   return raw.split(",").map(k => k.trim()).filter(Boolean);
 }
 
@@ -44,17 +44,18 @@ function markKeyCooldown(key: string): void {
 function rotateKey(): void {} // kept for compatibility, no-op now
 
 function getBaseUrl(): string {
-  const raw = (process.env.AGENTROUTER_BASE_URL ?? "https://conduit.ozdoev.net").replace(/\/+$/, "");
+  const raw = (process.env.CONDUIT_BASE_URL ?? "https://conduit.ozdoev.net").replace(/\/+$/, "");
   if (raw.endsWith("/v1")) return raw;
   return `${raw}/v1`;
 }
 
 function isOpenRouter(): boolean {
-  return (process.env.AGENTROUTER_BASE_URL ?? "").includes("openrouter.ai");
+  return (process.env.CONDUIT_BASE_URL ?? "").includes("openrouter.ai");
 }
 
 function isConduit(): boolean {
-  return (process.env.AGENTROUTER_BASE_URL ?? "").includes("conduit.ozdoev.net");
+  const url = process.env.CONDUIT_BASE_URL ?? "https://conduit.ozdoev.net";
+  return url.includes("conduit.ozdoev.net");
 }
 
 function extractToken(req: Request): string | null {
