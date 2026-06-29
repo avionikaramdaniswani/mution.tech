@@ -188,7 +188,7 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
             quantity: 1,
           },
         ],
-        return_url: `https://mution.tech/dashboard/billing?orderId=${order.id}`,
+        return_url: `https://mution.tech/billing?orderId=${order.id}`,
         expired_time: expiredTime,
         signature,
       }),
