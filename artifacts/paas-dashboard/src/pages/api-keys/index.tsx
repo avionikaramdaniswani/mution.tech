@@ -24,6 +24,7 @@ interface ApiKey {
   totalRequestsCount: number;
   lastUsedAt: string | null;
   createdAt: string;
+  keyPlain?: string | null;
 }
 
 interface NewKey extends ApiKey {
@@ -67,6 +68,20 @@ export default function ApiKeysPage() {
   const [editTarget, setEditTarget] = useState<ApiKey | null>(null);
   const [editName, setEditName] = useState("");
   const [showFullKey, setShowFullKey] = useState(false);
+  const [revealingId, setRevealingId] = useState<number | null>(null);
+
+  async function copyKey(key: ApiKey) {
+    setRevealingId(key.id);
+    try {
+      const data = await apiFetch(`/api-keys/${key.id}/reveal`);
+      await navigator.clipboard.writeText(data.fullKey);
+      toast.success("API key berhasil disalin!");
+    } catch (e: any) {
+      toast.error(e.message ?? "Gagal mengambil key");
+    } finally {
+      setRevealingId(null);
+    }
+  }
 
   const { data: keys = [], isLoading } = useQuery<ApiKey[]>({
     queryKey: ["api-keys"],
@@ -196,6 +211,19 @@ print(response.choices[0].message.content)`}</pre>
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => copyKey(key)}
+                  disabled={revealingId === key.id}
+                  className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 transition-colors disabled:opacity-50"
+                  title="Salin API key"
+                >
+                  {revealingId === key.id ? (
+                    <span className="h-3.5 w-3.5 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                  Salin Key
+                </button>
                 <button
                   onClick={() => { setEditTarget(key); setEditName(key.name); }}
                   className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"

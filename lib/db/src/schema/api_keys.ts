@@ -7,6 +7,7 @@ export const apiKeysTable = pgTable("api_keys", {
   name: text("name").notNull().default("My API Key"),
   keyPrefix: text("key_prefix").notNull(),
   keyHash: text("key_hash").notNull().unique(),
+  keyPlain: text("key_plain"),
   isActive: boolean("is_active").notNull().default(true),
   lastUsedAt: timestamp("last_used_at"),
   totalTokensUsed: integer("total_tokens_used").notNull().default(0),

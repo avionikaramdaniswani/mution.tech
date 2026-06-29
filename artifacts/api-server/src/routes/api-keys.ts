@@ -59,6 +59,7 @@ router.post("/api-keys", requireAuth, async (req, res): Promise<void> => {
       name: name?.trim() || "My API Key",
       keyPrefix: prefix,
       keyHash: hash,
+      keyPlain: fullKey,
     })
     .returning();
 
@@ -66,6 +67,27 @@ router.post("/api-keys", requireAuth, async (req, res): Promise<void> => {
     ...serializeKey(created),
     fullKey,
   });
+});
+
+router.get("/api-keys/:id/reveal", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const id = Number(req.params.id);
+
+  const [key] = await db
+    .select()
+    .from(apiKeysTable)
+    .where(and(eq(apiKeysTable.id, id), eq(apiKeysTable.userId, user.id)));
+
+  if (!key) {
+    res.status(404).json({ error: "API key tidak ditemukan" });
+    return;
+  }
+  if (!key.keyPlain) {
+    res.status(410).json({ error: "Key ini dibuat sebelum fitur reveal tersedia. Hapus dan buat key baru." });
+    return;
+  }
+
+  res.json({ fullKey: key.keyPlain });
 });
 
 router.patch("/api-keys/:id", requireAuth, async (req, res): Promise<void> => {
