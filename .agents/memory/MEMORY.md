@@ -1,2 +1,3 @@
 - [PaaS Platform Stack Decision](paas-stack.md) — uses Express+Vite (not Next.js), Drizzle (not Prisma), Supabase PostgreSQL (WAJIB via SUPABASE_DATABASE_URL), session cookies (not JWT)
 - [Supabase DB Constraint](supabase-constraint.md) — database HARUS Supabase, jangan pernah ganti ke Replit DB atau DB lain apapun
+- [AuthProvider publicRoutes guard](auth-public-routes.md) — use-auth.tsx redirects unauthenticated users to "/" for any route NOT in publicRoutes; always add new public pages there

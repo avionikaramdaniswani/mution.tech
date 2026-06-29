@@ -77,22 +77,23 @@ function Router() {
 
   return (
     <Switch>
-      <Route path="/" component={Landing} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
 
       {/* User routes */}
+      <Route path="/dashboard/billing" component={() => { window.location.replace("/billing" + window.location.search); return null; }} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
-      <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />
       <Route path="/projects/new" component={() => <ProtectedRoute component={NewProject} />} />
       <Route path="/projects/:id" component={() => <ProtectedRoute component={ProjectDetail} />} />
+      <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />
       <Route path="/activity" component={() => <ProtectedRoute component={ActivityLog} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
       <Route path="/billing" component={() => <ProtectedRoute component={BillingPage} />} />
-      <Route path="/dashboard/billing" component={() => { window.location.replace("/billing" + window.location.search); return null; }} />
       <Route path="/api-keys" component={() => <ProtectedRoute component={ApiKeysPage} />} />
       <Route path="/docs" component={() => <ProtectedRoute component={DocsPage} />} />
       <Route path="/github-callback" component={GitHubCallback} />
+
+      {/* Public static pages */}
       <Route path="/harga" component={HargaPage} />
       <Route path="/faq" component={FAQPage} />
       <Route path="/refund-policy" component={RefundPolicyPage} />
@@ -102,12 +103,14 @@ function Router() {
       <Route path="/tentang-kami" component={TentangKamiPage} />
 
       {/* Admin routes — dedicated layout */}
-      <Route path="/admin" component={() => <AdminRoute component={AdminOverview} />} />
       <Route path="/admin/users" component={() => <AdminRoute component={AdminUsers} />} />
       <Route path="/admin/projects" component={() => <AdminRoute component={AdminProjects} />} />
       <Route path="/admin/activity" component={() => <AdminRoute component={AdminActivity} />} />
       <Route path="/admin/providers" component={() => <AdminRoute component={AdminProviders} />} />
+      <Route path="/admin" component={() => <AdminRoute component={AdminOverview} />} />
 
+      {/* Root last — so it doesn't swallow every other path */}
+      <Route path="/" component={Landing} />
       <Route component={NotFound} />
     </Switch>
   );
