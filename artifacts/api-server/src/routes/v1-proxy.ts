@@ -5,58 +5,120 @@ import crypto from "crypto";
 import { logger } from "../lib/logger";
 
 const router = Router();
-
 const CREDITS_PER_1K_TOKENS = 10;
 
-// Key pool with cooldown tracking
-const KEY_COOLDOWN_MS = 60_000; // 60 seconds cooldown after unauthorized_client_error
-const _keyCooldowns = new Map<string, number>(); // key → cooldown-until timestamp
+// ─── Provider pool ────────────────────────────────────────────────────────────
 
-function getKeys(): string[] {
-  const raw = process.env.CONDUIT_API_KEY ?? "";
-  if (!raw) throw new Error("CONDUIT_API_KEY not configured");
-  return raw.split(",").map(k => k.trim()).filter(Boolean);
+interface Provider {
+  id: string;
+  openaiBase: string;  // full base for OpenAI calls, e.g. "https://conduit.ozdoev.net/v1"
+  apiKey: string;
+  type: "conduit" | "openrouter" | "generic";
 }
 
-function getUpstreamKey(): string {
-  const keys = getKeys();
-  const now = Date.now();
-  // pick first key not in cooldown
-  const available = keys.find(k => ((_keyCooldowns.get(k) ?? 0) < now));
-  if (available) return available;
-  // all keys in cooldown — pick the one with earliest cooldown expiry
-  let earliest = keys[0];
-  let earliestTs = _keyCooldowns.get(keys[0]) ?? 0;
-  for (const k of keys) {
-    const ts = _keyCooldowns.get(k) ?? 0;
-    if (ts < earliestTs) { earliest = k; earliestTs = ts; }
+const PROVIDER_COOLDOWN_MS = 60_000;
+const _cooldowns = new Map<string, number>();
+
+function urlToId(url: string): string {
+  try { return new URL(url).hostname; } catch { return url.slice(0, 30); }
+}
+
+/**
+ * Compute the OpenAI-style base URL from a raw URL.
+ * Rules:
+ *  - If it already ends with /v1        → use as-is
+ *  - If it has no path (just a domain)  → append /v1
+ *  - Otherwise (path already set)       → use as-is (user knows what they're doing)
+ */
+function buildOpenaiBase(rawUrl: string): string {
+  const url = rawUrl.replace(/\/+$/, "");
+  if (url.endsWith("/v1")) return url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.pathname === "/" || parsed.pathname === "") {
+      return `${url}/v1`;
+    }
+  } catch {}
+  return url;
+}
+
+function detectType(url: string): Provider["type"] {
+  if (url.includes("conduit.ozdoev.net")) return "conduit";
+  if (url.includes("openrouter.ai")) return "openrouter";
+  return "generic";
+}
+
+/**
+ * Load all providers.
+ *
+ * Primary source: PROVIDER_POOL env var
+ *   Format: "https://provider1.com|key1,https://provider2.com|key2"
+ *   Each entry: baseUrl|apiKey   (pipe-separated, commas between providers)
+ *
+ * Fallback (backward compat): CONDUIT_API_KEY + CONDUIT_BASE_URL
+ */
+function getProviders(): Provider[] {
+  const poolRaw = (process.env.PROVIDER_POOL ?? "").trim();
+
+  if (poolRaw) {
+    const providers = poolRaw.split(",").flatMap((entry) => {
+      const pipeIdx = entry.indexOf("|");
+      if (pipeIdx === -1) return [];
+      const rawUrl = entry.slice(0, pipeIdx).trim();
+      const key = entry.slice(pipeIdx + 1).trim();
+      if (!rawUrl || !key) return [];
+      return [{
+        id: urlToId(rawUrl),
+        openaiBase: buildOpenaiBase(rawUrl),
+        apiKey: key,
+        type: detectType(rawUrl),
+      } satisfies Provider];
+    });
+    if (providers.length > 0) return providers;
   }
-  logger.warn({ cooldownMs: earliestTs - now }, "All AgentRouter keys in cooldown");
-  return earliest;
+
+  // Fallback
+  const key = (process.env.CONDUIT_API_KEY ?? "").trim();
+  if (!key) throw new Error("No providers configured. Set PROVIDER_POOL or CONDUIT_API_KEY.");
+  const rawUrl = (process.env.CONDUIT_BASE_URL ?? "https://conduit.ozdoev.net").trim();
+  return [{
+    id: urlToId(rawUrl),
+    openaiBase: buildOpenaiBase(rawUrl),
+    apiKey: key,
+    type: detectType(rawUrl),
+  }];
 }
 
-function markKeyCooldown(key: string): void {
-  const until = Date.now() + KEY_COOLDOWN_MS;
-  _keyCooldowns.set(key, until);
-  logger.warn({ keyHint: key.slice(-6), cooldownSec: KEY_COOLDOWN_MS / 1000 }, "Key put in cooldown");
+/** Pick the best available provider (round-robin + cooldown avoidance). */
+function pickProvider(providers: Provider[]): Provider {
+  const now = Date.now();
+  const available = providers.find((p) => (_cooldowns.get(p.id) ?? 0) < now);
+  if (available) return available;
+  // All in cooldown — use the one with earliest expiry
+  let best = providers[0];
+  let bestTs = _cooldowns.get(providers[0].id) ?? 0;
+  for (const p of providers) {
+    const ts = _cooldowns.get(p.id) ?? 0;
+    if (ts < bestTs) { best = p; bestTs = ts; }
+  }
+  logger.warn({ ids: providers.map((p) => p.id) }, "All providers in cooldown, using earliest");
+  return best;
 }
 
-function rotateKey(): void {} // kept for compatibility, no-op now
-
-function getBaseUrl(): string {
-  const raw = (process.env.CONDUIT_BASE_URL ?? "https://conduit.ozdoev.net").replace(/\/+$/, "");
-  if (raw.endsWith("/v1")) return raw;
-  return `${raw}/v1`;
+/** Pick next available provider excluding the given one (for retry). */
+function pickNextProvider(providers: Provider[], exclude: Provider): Provider | null {
+  const now = Date.now();
+  const others = providers.filter((p) => p.id !== exclude.id);
+  if (others.length === 0) return null;
+  return others.find((p) => (_cooldowns.get(p.id) ?? 0) < now) ?? others[0];
 }
 
-function isOpenRouter(): boolean {
-  return (process.env.CONDUIT_BASE_URL ?? "").includes("openrouter.ai");
+function markCooldown(provider: Provider): void {
+  _cooldowns.set(provider.id, Date.now() + PROVIDER_COOLDOWN_MS);
+  logger.warn({ provider: provider.id, cooldownSec: PROVIDER_COOLDOWN_MS / 1000 }, "Provider put in cooldown");
 }
 
-function isConduit(): boolean {
-  const url = process.env.CONDUIT_BASE_URL ?? "https://conduit.ozdoev.net";
-  return url.includes("conduit.ozdoev.net");
-}
+// ─── Auth helpers ─────────────────────────────────────────────────────────────
 
 function extractToken(req: Request): string | null {
   const auth = req.headers["authorization"];
@@ -118,7 +180,7 @@ async function authenticate(req: Request, res: Response): Promise<{ key: typeof 
   return row;
 }
 
-// ─── Format conversion helpers ───────────────────────────────────────────────
+// ─── Format conversion helpers ────────────────────────────────────────────────
 
 function mapModelForOpenRouter(model: string): string {
   if (model.startsWith("anthropic/")) return model;
@@ -126,7 +188,7 @@ function mapModelForOpenRouter(model: string): string {
   return model;
 }
 
-function anthropicToOpenAIBody(body: any): any {
+function anthropicToOpenAIBody(body: any, providerType: Provider["type"]): any {
   const messages: any[] = [];
 
   if (body.system) {
@@ -143,22 +205,18 @@ function anthropicToOpenAIBody(body: any): any {
     if (typeof msg.content === "string") {
       content = msg.content;
     } else if (Array.isArray(msg.content)) {
-      content = msg.content
-        .filter((b: any) => b.type === "text")
-        .map((b: any) => b.text)
-        .join("\n");
+      content = msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n");
     } else {
       content = String(msg.content ?? "");
     }
     messages.push({ role: msg.role, content });
   }
 
-  const converted: any = {
-    model: mapModelForOpenRouter(body.model ?? "claude-sonnet-4-5"),
-    messages,
-    max_tokens: body.max_tokens ?? 4096,
-    stream: body.stream,
-  };
+  const model = providerType === "openrouter"
+    ? mapModelForOpenRouter(body.model ?? "claude-sonnet-4-5")
+    : (body.model ?? "claude-sonnet-4-5");
+
+  const converted: any = { model, messages, max_tokens: body.max_tokens ?? 4096, stream: body.stream };
   if (body.temperature !== undefined) converted.temperature = body.temperature;
   if (body.top_p !== undefined) converted.top_p = body.top_p;
   return converted;
@@ -192,285 +250,308 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
   if (!row) return;
   const { key, user } = row;
 
-  let upstreamKey: string;
-  try { upstreamKey = getUpstreamKey(); } catch {
-    res.status(503).json({ type: "error", error: { type: "api_error", message: "Upstream provider not configured" } });
+  let providers: Provider[];
+  try { providers = getProviders(); } catch (e: any) {
+    res.status(503).json({ type: "error", error: { type: "api_error", message: e.message } });
     return;
   }
 
-  const base = getBaseUrl();
-  const openRouter = isOpenRouter();
-  const conduit = isConduit();
   const originalModel = req.body?.model ?? "unknown";
   const isStream = req.body?.stream === true;
-  const provider = openRouter ? "openrouter" : conduit ? "conduit" : "agentrouter";
 
-  logger.info({ url: `${base}/messages`, model: originalModel, provider }, "Proxying /messages");
+  // Try providers with fallback on non-streaming failures
+  for (let attempt = 0; attempt < providers.length; attempt++) {
+    const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
 
-  try {
-    if (openRouter) {
-      // ── OpenRouter: convert Anthropic → OpenAI format ──────────────────────
-      const openAIBody = anthropicToOpenAIBody(req.body);
+    logger.info({ provider: provider.id, type: provider.type, model: originalModel }, "Proxying /messages");
 
-      const upstream = await fetch(`${base}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${upstreamKey}`,
-          "HTTP-Referer": "https://mution.tech",
-          "X-Title": "Mution",
-        },
-        body: JSON.stringify(openAIBody),
-      });
+    try {
+      if (provider.type === "conduit") {
+        // ── Conduit: native Anthropic pass-through ─────────────────────────
+        const upstream = await fetch(`${provider.openaiBase}/messages`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": provider.apiKey,
+            "anthropic-version": (req.headers["anthropic-version"] as string) ?? "2023-06-01",
+            ...(req.headers["anthropic-beta"] ? { "anthropic-beta": req.headers["anthropic-beta"] as string } : {}),
+          },
+          body: JSON.stringify(req.body),
+        });
 
-      if (isStream) {
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache");
-        res.setHeader("Connection", "keep-alive");
-        res.setHeader("anthropic-version", "2023-06-01");
+        if (!upstream.ok && !isStream) {
+          const status = upstream.status;
+          if (status === 429 || status >= 500) {
+            markCooldown(provider);
+            if (attempt < providers.length - 1) continue;
+          }
+          const data = await upstream.json().catch(() => ({}));
+          res.status(status).json(data);
+          return;
+        }
 
-        const msgId = `msg_${Date.now()}`;
+        if (isStream) {
+          res.setHeader("Content-Type", "text/event-stream");
+          res.setHeader("Cache-Control", "no-cache");
+          res.setHeader("Connection", "keep-alive");
+          res.setHeader("anthropic-version", "2023-06-01");
 
-        res.write(sseEvent("message_start", {
-          type: "message_start",
-          message: { id: msgId, type: "message", role: "assistant", content: [], model: originalModel, stop_reason: null, usage: { input_tokens: 0, output_tokens: 0 } },
-        }));
-        res.write(sseEvent("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }));
-        res.write(sseEvent("ping", { type: "ping" }));
+          const reader = upstream.body?.getReader();
+          if (!reader) { res.end(); return; }
+          let totalInputTokens = 0;
+          let totalOutputTokens = 0;
+          const decoder = new TextDecoder();
 
-        const reader = upstream.body?.getReader();
-        if (!reader) { res.end(); return; }
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            res.write(chunk);
+            for (const line of chunk.split("\n")) {
+              if (!line.startsWith("data: ")) continue;
+              try {
+                const d = JSON.parse(line.slice(6));
+                if (d.type === "message_start") totalInputTokens = d.message?.usage?.input_tokens ?? 0;
+                if (d.type === "message_delta") totalOutputTokens = d.usage?.output_tokens ?? 0;
+              } catch {}
+            }
+          }
+          res.end();
 
-        let totalInputTokens = 0;
-        let totalOutputTokens = 0;
-        const decoder = new TextDecoder();
-        let buffer = "";
+          const tokens = totalInputTokens + totalOutputTokens || Math.ceil(JSON.stringify(req.body).length / 4);
+          await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
+            logger.error({ err: e }, "deduct credits failed")
+          );
+        } else {
+          const data = await upstream.json() as any;
+          res.status(200).json(data);
+          const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0) || Math.ceil(JSON.stringify(req.body).length / 4);
+          await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
+            logger.error({ err: e }, "deduct credits failed")
+          );
+        }
+        return;
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
+      } else {
+        // ── OpenRouter / generic: convert Anthropic → OpenAI format ────────
+        const openAIBody = anthropicToOpenAIBody(req.body, provider.type);
 
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
+        const extraHeaders: Record<string, string> = provider.type === "openrouter"
+          ? { "HTTP-Referer": "https://mution.tech", "X-Title": "Mution" }
+          : {};
 
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const raw = line.slice(6).trim();
-            if (raw === "[DONE]") continue;
-            try {
-              const chunk = JSON.parse(raw);
-              const delta = chunk.choices?.[0]?.delta?.content;
-              if (delta) {
-                res.write(sseEvent("content_block_delta", {
-                  type: "content_block_delta",
-                  index: 0,
-                  delta: { type: "text_delta", text: delta },
-                }));
-                totalOutputTokens += Math.ceil(delta.length / 4);
-              }
-              if (chunk.usage) {
-                totalInputTokens = chunk.usage.prompt_tokens ?? totalInputTokens;
-                totalOutputTokens = chunk.usage.completion_tokens ?? totalOutputTokens;
-              }
-            } catch {}
+        const upstream = await fetch(`${provider.openaiBase}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${provider.apiKey}`,
+            ...extraHeaders,
+          },
+          body: JSON.stringify(openAIBody),
+        });
+
+        if (!upstream.ok && !isStream) {
+          const status = upstream.status;
+          if (status === 429 || status >= 500) {
+            markCooldown(provider);
+            if (attempt < providers.length - 1) continue;
           }
         }
 
-        res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: 0 }));
-        res.write(sseEvent("message_delta", {
-          type: "message_delta",
-          delta: { stop_reason: "end_turn", stop_sequence: null },
-          usage: { output_tokens: totalOutputTokens },
-        }));
-        res.write(sseEvent("message_stop", { type: "message_stop" }));
-        res.end();
+        if (isStream) {
+          res.setHeader("Content-Type", "text/event-stream");
+          res.setHeader("Cache-Control", "no-cache");
+          res.setHeader("Connection", "keep-alive");
+          res.setHeader("anthropic-version", "2023-06-01");
 
-        const tokens = (totalInputTokens + totalOutputTokens) || Math.ceil(JSON.stringify(req.body).length / 4);
-        await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
-          logger.error({ err: e }, "deduct credits failed")
-        );
-      } else {
-        const contentType = upstream.headers.get("content-type") ?? "";
-        if (!contentType.includes("application/json")) {
-          const text = await upstream.text();
-          logger.error({ status: upstream.status, body: text.slice(0, 500) }, "OpenRouter returned non-JSON");
-          res.status(502).json({ type: "error", error: { type: "api_error", message: `Upstream error (${upstream.status})` } });
-          return;
+          const msgId = `msg_${Date.now()}`;
+          res.write(sseEvent("message_start", {
+            type: "message_start",
+            message: { id: msgId, type: "message", role: "assistant", content: [], model: originalModel, stop_reason: null, usage: { input_tokens: 0, output_tokens: 0 } },
+          }));
+          res.write(sseEvent("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }));
+          res.write(sseEvent("ping", { type: "ping" }));
+
+          const reader = upstream.body?.getReader();
+          if (!reader) { res.end(); return; }
+          let totalInputTokens = 0;
+          let totalOutputTokens = 0;
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              const raw = line.slice(6).trim();
+              if (raw === "[DONE]") continue;
+              try {
+                const chunk = JSON.parse(raw);
+                const delta = chunk.choices?.[0]?.delta?.content;
+                if (delta) {
+                  res.write(sseEvent("content_block_delta", {
+                    type: "content_block_delta", index: 0,
+                    delta: { type: "text_delta", text: delta },
+                  }));
+                  totalOutputTokens += Math.ceil(delta.length / 4);
+                }
+                if (chunk.usage) {
+                  totalInputTokens = chunk.usage.prompt_tokens ?? totalInputTokens;
+                  totalOutputTokens = chunk.usage.completion_tokens ?? totalOutputTokens;
+                }
+              } catch {}
+            }
+          }
+
+          res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: 0 }));
+          res.write(sseEvent("message_delta", {
+            type: "message_delta",
+            delta: { stop_reason: "end_turn", stop_sequence: null },
+            usage: { output_tokens: totalOutputTokens },
+          }));
+          res.write(sseEvent("message_stop", { type: "message_stop" }));
+          res.end();
+
+          const tokens = (totalInputTokens + totalOutputTokens) || Math.ceil(JSON.stringify(req.body).length / 4);
+          await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
+            logger.error({ err: e }, "deduct credits failed")
+          );
+        } else {
+          const contentType = upstream.headers.get("content-type") ?? "";
+          if (!contentType.includes("application/json")) {
+            const text = await upstream.text();
+            logger.error({ provider: provider.id, status: upstream.status, body: text.slice(0, 500) }, "Provider returned non-JSON");
+            res.status(502).json({ type: "error", error: { type: "api_error", message: `Upstream error (${upstream.status})` } });
+            return;
+          }
+          const data = await upstream.json() as any;
+          if (!upstream.ok) {
+            res.status(upstream.status).json({ type: "error", error: data.error ?? data });
+            return;
+          }
+          const anthropicResponse = openAIToAnthropicResponse(data, originalModel);
+          res.status(200).json(anthropicResponse);
+
+          const tokens = (data.usage?.prompt_tokens ?? 0) + (data.usage?.completion_tokens ?? 0) || Math.ceil(JSON.stringify(req.body).length / 4);
+          await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
+            logger.error({ err: e }, "deduct credits failed")
+          );
         }
-
-        const data = await upstream.json() as any;
-        if (!upstream.ok) {
-          res.status(upstream.status).json({ type: "error", error: data.error ?? data });
-          return;
-        }
-
-        const anthropicResponse = openAIToAnthropicResponse(data, originalModel);
-        res.status(200).json(anthropicResponse);
-
-        const tokens = (data.usage?.prompt_tokens ?? 0) + (data.usage?.completion_tokens ?? 0) || Math.ceil(JSON.stringify(req.body).length / 4);
-        await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
-          logger.error({ err: e }, "deduct credits failed")
-        );
-      }
-    } else {
-      // ── Conduit / AgentRouter: pass through Anthropic format ──
-      const usedKey = conduit ? upstreamKey : (() => {
-        // AgentRouter: key rotation + retry
-        return getUpstreamKey();
-      })();
-
-      const upstream = await fetch(`${base}/messages`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": usedKey,
-          "anthropic-version": (req.headers["anthropic-version"] as string) ?? "2023-06-01",
-          ...(req.headers["anthropic-beta"] ? { "anthropic-beta": req.headers["anthropic-beta"] as string } : {}),
-        },
-        body: JSON.stringify(req.body),
-      });
-
-      if (!upstream) {
-        res.status(502).json({ type: "error", error: { type: "api_error", message: "Upstream request failed" } });
         return;
       }
-
-      if (isStream) {
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache");
-        res.setHeader("Connection", "keep-alive");
-        res.setHeader("anthropic-version", "2023-06-01");
-
-        const reader = upstream.body?.getReader();
-        if (!reader) { res.end(); return; }
-
-        let totalInputTokens = 0;
-        let totalOutputTokens = 0;
-        const decoder = new TextDecoder();
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          res.write(chunk);
-          for (const line of chunk.split("\n")) {
-            if (!line.startsWith("data: ")) continue;
-            try {
-              const d = JSON.parse(line.slice(6));
-              if (d.type === "message_start") totalInputTokens = d.message?.usage?.input_tokens ?? 0;
-              if (d.type === "message_delta") totalOutputTokens = d.usage?.output_tokens ?? 0;
-            } catch {}
-          }
-        }
-        res.end();
-
-        const tokens = totalInputTokens + totalOutputTokens || Math.ceil(JSON.stringify(req.body).length / 4);
-        await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
-          logger.error({ err: e }, "deduct credits failed")
-        );
-      } else {
-        const contentType = upstream.headers.get("content-type") ?? "";
-        if (!contentType.includes("application/json")) {
-          const text = await upstream.text();
-          logger.error({ status: upstream.status, body: text.slice(0, 500) }, "Upstream returned non-JSON (WAF block?)");
-          res.status(502).json({ type: "error", error: { type: "api_error", message: `Upstream blocked or unreachable (${upstream.status})` } });
-          return;
-        }
-
-        const data = await upstream.json() as any;
-        if (!upstream.ok) {
-          logger.error({ status: upstream.status, body: data }, "AgentRouter upstream error");
-          res.status(upstream.status).json(data); return;
-        }
-
-        res.status(200).json(data);
-        const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0) || Math.ceil(JSON.stringify(req.body).length / 4);
-        await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
-          logger.error({ err: e }, "deduct credits failed")
-        );
+    } catch (err) {
+      logger.error({ err, provider: provider.id }, "Messages proxy error");
+      markCooldown(provider);
+      if (attempt >= providers.length - 1) {
+        if (!res.headersSent) res.status(502).json({ type: "error", error: { type: "api_error", message: "All upstream providers failed" } });
+        return;
       }
     }
-  } catch (err) {
-    logger.error({ err }, "Messages proxy error");
-    if (!res.headersSent) res.status(502).json({ type: "error", error: { type: "api_error", message: "Upstream request failed" } });
   }
 }
 
-// ─── OpenAI-compatible proxy ─────────────────────────────────────────────────
+// ─── OpenAI-compatible proxy ──────────────────────────────────────────────────
 
 async function proxyOpenAI(req: Request, res: Response, path: string): Promise<void> {
   const row = await authenticate(req, res);
   if (!row) return;
   const { key, user } = row;
 
-  let upstreamKey: string;
-  try { upstreamKey = getUpstreamKey(); } catch {
-    res.status(503).json({ error: { message: "Upstream provider not configured", type: "server_error" } });
+  let providers: Provider[];
+  try { providers = getProviders(); } catch (e: any) {
+    res.status(503).json({ error: { message: e.message, type: "server_error" } });
     return;
   }
 
-  const base = getBaseUrl();
-  const openRouter = isOpenRouter();
+  for (let attempt = 0; attempt < providers.length; attempt++) {
+    const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
 
-  try {
-    const upstream = await fetch(`${base}${path}`, {
-      method: req.method,
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${upstreamKey}`,
-        ...(openRouter ? { "HTTP-Referer": "https://mution.tech", "X-Title": "Mution" } : {}),
-      },
-      body: req.method !== "GET" ? JSON.stringify(req.body) : undefined,
-    });
+    logger.info({ provider: provider.id, path }, "Proxying OpenAI call");
 
-    const contentType = upstream.headers.get("content-type") ?? "";
+    try {
+      const extraHeaders: Record<string, string> = provider.type === "openrouter"
+        ? { "HTTP-Referer": "https://mution.tech", "X-Title": "Mution" }
+        : {};
 
-    if (contentType.includes("text/event-stream")) {
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      const reader = upstream.body?.getReader();
-      if (!reader) { res.end(); return; }
-      let totalTokens = 0;
-      const decoder = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        res.write(chunk);
-        for (const line of chunk.split("\n")) {
-          if (line.startsWith("data: ") && !line.includes("[DONE]")) {
-            try { const d = JSON.parse(line.slice(6)); if (d.usage?.total_tokens) totalTokens = d.usage.total_tokens; } catch {}
+      const upstream = await fetch(`${provider.openaiBase}${path}`, {
+        method: req.method,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${provider.apiKey}`,
+          ...extraHeaders,
+        },
+        body: req.method !== "GET" ? JSON.stringify(req.body) : undefined,
+      });
+
+      const contentType = upstream.headers.get("content-type") ?? "";
+
+      if (contentType.includes("text/event-stream")) {
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        const reader = upstream.body?.getReader();
+        if (!reader) { res.end(); return; }
+        let totalTokens = 0;
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          res.write(chunk);
+          for (const line of chunk.split("\n")) {
+            if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+              try { const d = JSON.parse(line.slice(6)); if (d.usage?.total_tokens) totalTokens = d.usage.total_tokens; } catch {}
+            }
           }
         }
-      }
-      res.end();
-      const tokens = totalTokens || Math.ceil(JSON.stringify(req.body).length / 4);
-      await deductCredits(user.id, key.id, tokens, req.body?.model ?? "unknown").catch((e) =>
-        logger.error({ err: e }, "deduct credits failed")
-      );
-    } else if (contentType.includes("application/json")) {
-      const data = await upstream.json() as any;
-      res.status(upstream.status).json(data);
-      if (upstream.ok) {
-        const tokens = data.usage?.total_tokens ?? Math.ceil(JSON.stringify(req.body).length / 4);
-        await deductCredits(user.id, key.id, tokens, data.model ?? req.body?.model ?? "unknown").catch((e) =>
+        res.end();
+        const tokens = totalTokens || Math.ceil(JSON.stringify(req.body).length / 4);
+        await deductCredits(user.id, key.id, tokens, req.body?.model ?? "unknown").catch((e) =>
           logger.error({ err: e }, "deduct credits failed")
         );
+        return;
+
+      } else if (contentType.includes("application/json")) {
+        if (!upstream.ok && (upstream.status === 429 || upstream.status >= 500)) {
+          markCooldown(provider);
+          if (attempt < providers.length - 1) continue;
+        }
+        const data = await upstream.json() as any;
+        res.status(upstream.status).json(data);
+        if (upstream.ok) {
+          const tokens = data.usage?.total_tokens ?? Math.ceil(JSON.stringify(req.body).length / 4);
+          await deductCredits(user.id, key.id, tokens, data.model ?? req.body?.model ?? "unknown").catch((e) =>
+            logger.error({ err: e }, "deduct credits failed")
+          );
+        }
+        return;
+
+      } else {
+        const text = await upstream.text();
+        logger.error({ provider: provider.id, status: upstream.status, body: text.slice(0, 300) }, "Provider non-JSON response");
+        if (upstream.status === 429 || upstream.status >= 500) {
+          markCooldown(provider);
+          if (attempt < providers.length - 1) continue;
+        }
+        res.status(502).json({ error: { message: `Upstream error (${upstream.status})`, type: "server_error" } });
+        return;
       }
-    } else {
-      const text = await upstream.text();
-      logger.error({ status: upstream.status, body: text.slice(0, 300) }, "Upstream non-JSON response");
-      res.status(502).json({ error: { message: `Upstream error (${upstream.status})`, type: "server_error" } });
+    } catch (err) {
+      logger.error({ err, provider: provider.id }, "OpenAI proxy error");
+      markCooldown(provider);
+      if (attempt >= providers.length - 1) {
+        if (!res.headersSent) res.status(502).json({ error: { message: "All upstream providers failed", type: "server_error" } });
+        return;
+      }
     }
-  } catch (err) {
-    logger.error({ err }, "OpenAI proxy error");
-    if (!res.headersSent) res.status(502).json({ error: { message: "Upstream request failed", type: "server_error" } });
   }
 }
 
-// ─── Routes ──────────────────────────────────────────────────────────────────
+// ─── Routes ───────────────────────────────────────────────────────────────────
 
 router.post("/messages", (req, res) => proxyMessages(req, res));
 router.post("/chat/completions", (req, res) => proxyOpenAI(req, res, "/chat/completions"));
