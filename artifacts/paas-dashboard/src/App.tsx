@@ -87,6 +87,7 @@ function Router() {
       <Route path="/activity" component={() => <ProtectedRoute component={ActivityLog} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
       <Route path="/billing" component={() => <ProtectedRoute component={BillingPage} />} />
+      <Route path="/dashboard/billing" component={() => { window.location.replace("/billing" + window.location.search); return null; }} />
       <Route path="/api-keys" component={() => <ProtectedRoute component={ApiKeysPage} />} />
       <Route path="/docs" component={() => <ProtectedRoute component={DocsPage} />} />
       <Route path="/github-callback" component={GitHubCallback} />
