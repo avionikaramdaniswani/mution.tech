@@ -44,13 +44,17 @@ function markKeyCooldown(key: string): void {
 function rotateKey(): void {} // kept for compatibility, no-op now
 
 function getBaseUrl(): string {
-  const raw = (process.env.AGENTROUTER_BASE_URL ?? "https://agentrouter.org").replace(/\/+$/, "");
+  const raw = (process.env.AGENTROUTER_BASE_URL ?? "https://conduit.ozdoev.net").replace(/\/+$/, "");
   if (raw.endsWith("/v1")) return raw;
   return `${raw}/v1`;
 }
 
 function isOpenRouter(): boolean {
   return (process.env.AGENTROUTER_BASE_URL ?? "").includes("openrouter.ai");
+}
+
+function isConduit(): boolean {
+  return (process.env.AGENTROUTER_BASE_URL ?? "").includes("conduit.ozdoev.net");
 }
 
 function extractToken(req: Request): string | null {
@@ -195,10 +199,12 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
 
   const base = getBaseUrl();
   const openRouter = isOpenRouter();
+  const conduit = isConduit();
   const originalModel = req.body?.model ?? "unknown";
   const isStream = req.body?.stream === true;
+  const provider = openRouter ? "openrouter" : conduit ? "conduit" : "agentrouter";
 
-  logger.info({ url: `${base}/messages`, model: originalModel, provider: openRouter ? "openrouter" : "agentrouter" }, "Proxying /messages");
+  logger.info({ url: `${base}/messages`, model: originalModel, provider }, "Proxying /messages");
 
   try {
     if (openRouter) {
@@ -307,44 +313,22 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
         );
       }
     } else {
-      // ── AgentRouter: pass through Anthropic format, with key rotation + retry ──
-      const rawKeys = (process.env.AGENTROUTER_API_KEY ?? "").split(",").map(k => k.trim()).filter(Boolean);
-      const maxAttempts = Math.max(1, rawKeys.length);
+      // ── Conduit / AgentRouter: pass through Anthropic format ──
+      const usedKey = conduit ? upstreamKey : (() => {
+        // AgentRouter: key rotation + retry
+        return getUpstreamKey();
+      })();
 
-      let upstream: Response | null = null;
-      let usedKey = upstreamKey;
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        usedKey = getUpstreamKey();
-        logger.info({ attempt: attempt + 1, keyHint: usedKey.slice(-6) }, "AgentRouter attempt");
-
-        const systemToken = process.env.AGENTROUTER_SYSTEM_TOKEN?.trim();
-        upstream = await fetch(`${base}/messages`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/plain, */*",
-            "Accept-Language": "en-US,en;q=0.9",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            "x-api-key": usedKey,
-            "anthropic-version": (req.headers["anthropic-version"] as string) ?? "2023-06-01",
-            ...(req.headers["anthropic-beta"] ? { "anthropic-beta": req.headers["anthropic-beta"] as string } : {}),
-            ...(systemToken ? { "x-system-token": systemToken } : {}),
-          },
-          body: JSON.stringify(req.body),
-        });
-
-        if (upstream.ok) break;
-
-        const ct = upstream.headers.get("content-type") ?? "";
-        if (ct.includes("application/json")) {
-          const errBody = await upstream.clone().json() as any;
-          if (errBody?.type === "unauthorized_client_error") {
-            markKeyCooldown(usedKey);
-            if (attempt < maxAttempts - 1) continue;
-          }
-        }
-        break;
-      }
+      const upstream = await fetch(`${base}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": usedKey,
+          "anthropic-version": (req.headers["anthropic-version"] as string) ?? "2023-06-01",
+          ...(req.headers["anthropic-beta"] ? { "anthropic-beta": req.headers["anthropic-beta"] as string } : {}),
+        },
+        body: JSON.stringify(req.body),
+      });
 
       if (!upstream) {
         res.status(502).json({ type: "error", error: { type: "api_error", message: "Upstream request failed" } });

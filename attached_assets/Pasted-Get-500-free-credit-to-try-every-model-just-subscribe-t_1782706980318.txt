@@ -1,0 +1,417 @@
+Get $500 free credit to try every model — just subscribe to our channel { join @conduitapi }
+Conduit
+Models
+Pricing
+Security
+API Docs
+Dashboard
+
+RU
+
+Get Conduit
+•ᴗ•◠‿◠ᵕ̈*✦
+{
+$500 free credit
+·
+every frontier model, one key
+}
+One key
+Every model.
+Unlimited
+A single endpoint to every model from every major provider. Flat monthly price, no token metering, no surprises
+
+
+Get your key
+Browse models
+{
+Why Conduit
+}
+Stop juggling keys, dashboards and invoices
+One account, one key, one bill. Switch between Claude, GPT, Gemini and the rest by changing a single string
+
+0
+Providers
+0+
+Models
+1
+Key for all of them
+•ᴗ•◠‿◠ᵕ̈•‿•✦A calm design canvas for every model your team uses.
+{
+Highlights
+}
+Built like a creative workspace, wired like infrastructure
+Flat pricing, clean API compatibility, team controls and readable stats without a noisy enterprise UI.
+
+↗
+One route
+Use one base URL and switch models with a single model string.
+
+∞
+Flat usage
+No token spreadsheet for regular work. Your dashboard stays readable.
+
+⌁
+Streaming first
+Responses, Messages and Chat Completions stay smooth for coding clients.
+
+◎
+Team box
+Enterprise owners see member stats, keys and limits in their own cabinet.
+
+{
+Models
+}
+Every provider. One endpoint
+All flagship and workhorse models, kept current, behind one OpenAI-compatible API
+
+Anthropic
+Claude Opus 4.8
+Claude Sonnet 4.6
+Claude Haiku 4.5
+Fable 5
+OpenAI
+GPT-5
+GPT-5 mini
+o4
+GPT-4.1
+GPT-4o
+Google
+Gemini 3 Pro
+Gemini 2.5 Pro
+Gemini 2.5 Flash
+xAI
+Grok 4
+Grok 3
+Grok 3 mini
+Meta
+Llama 4 Maverick
+Llama 4 Scout
+Llama 3.3 70B
+Mistral
+Mistral Large 3
+Mixtral
+Codestral
+DeepSeek
+DeepSeek V3.2
+DeepSeek R1
+Qwen
+Qwen3 Max
+Qwen3 Coder
+{
+Pricing
+}
+One plan. Truly unlimited
+No per-token math. No tiers. A flat monthly key that never runs out
+
+Conduit Unlimited
+early price · −59%
+$20$49
+per month · billed monthly
+Unlimited requests across every model
+One OpenAI-compatible endpoint
+New models added automatically
+Streaming and tools support
+
+Start now
+Ultra Enterprise
+teams
+$200
+per month · for teams and 24/7 developers
+Team API keys with individual limits or unlimited access
+Private provider token pool
+Usage chart and statistics for every team member
+Multiple gateways for continuous team work
+
+Open cabinet
+{
+Loved by builders
+}
+A lighter way to run serious model work
+“The dashboard finally feels like something I can leave open all day. Quiet, fast, obvious.”
+A
+Artem
+Full-stack engineer
+“One key for Claude, GPT and Gemini removed a ridiculous amount of ops noise.”
+M
+Maya
+AI product lead
+“Enterprise limits are simple enough for clients and strict enough for my team.”
+D
+Daniil
+Automation studio
+{
+Security
+}
+The model can't touch your computer
+A common worry: that connecting our models to Claude Code, Codex or other agents lets the AI run commands, download malware or plant a RAT on your machine. It can't. Here is exactly how it works, in plain terms
+
+It only returns text
+Our API is a text service. It sends your request to the model and returns the answer as text — nothing more. It has no access to your files, your shell or your network. It physically cannot download or run anything on your computer.
+
+Agents ask before acting
+Tools like Claude Code and Codex run on your machine, not ours. They show you every command and every file change and wait for your approval. Nothing runs unless you allow it — that gate belongs to the tool you installed, and Conduit never removes it.
+
+You stay in control
+The model proposes; you decide. Read each suggested command, deny anything you don't like, or run the agent read-only or inside a sandbox or VM. Using Conduit instead of a provider's own key changes none of these local safeguards.
+
+Step 1
+You send a request
+From the agent on your computer
+Step 2
+Conduit returns text
+An answer or a suggested command — never an action
+Step 3
+The agent asks you
+Approve, deny or edit every command and file change
+Step 4
+Only then it runs
+On your machine, with your explicit yes
+In short: an AI model is not a program running on your PC — it's a remote text service. The scenario people fear, a model silently installing malware through the API, isn't technically possible. The only thing that ever runs locally is the agent tool you chose to install, and that tool always asks you first. We never execute your code, never store your files and have no agent on your side.
+
+Read the full security explainer →
+
+Conduit
+© 2026 Conduit · built by ozdoev
+API Docs
+Security
+Terms
+Privacy
+ozdoev.net ↗
+
+
+
+
+
+
+
+
+
+
+
+Conduit · API reference
+API Documentation
+OpenAI-compatible · one key, every model
+Quick start
+Conduit speaks the OpenAI Chat Completions format. If your code already talks to OpenAI, change two things: the base URL and your key. Everything else stays the same
+
+Base URL: https://conduit.ozdoev.net/api/v1
+Auth header: Authorization: Bearer sk-cdt-…
+Anthropic base URL (Claude Code, Anthropic SDK): https://conduit.ozdoev.net
+Get your key in the Dashboard. Every account starts with $500 of free trial credit — no card needed
+Send a message
+POST
+/api/v1/chat/completions
+Send a list of messages and pick any model by its id. Example with curl:
+
+curl https://conduit.ozdoev.net/api/v1/chat/completions \
+  -H "Authorization: Bearer sk-cdt-YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-opus-4-8",
+    "messages": [
+      { "role": "user", "content": "Hello, who are you?" }
+    ]
+  }'
+Response
+{
+  "id": "chatcmpl-...",
+  "object": "chat.completion",
+  "model": "claude-opus-4-8",
+  "choices": [
+    {
+      "index": 0,
+      "message": { "role": "assistant", "content": "Hi! I'm Claude Opus 4.8." },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": { "prompt_tokens": 12, "completion_tokens": 14, "total_tokens": 26 }
+}
+Model fidelity
+The requested model id is treated as a contract: successful responses echo the same public model id, unknown model ids return 400 instead of silently falling back, and internal routing details are never exposed to clients.
+
+JavaScript (OpenAI SDK)
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: "sk-cdt-YOUR_KEY",
+  baseURL: "https://conduit.ozdoev.net/api/v1",
+});
+
+const res = await client.chat.completions.create({
+  model: "gpt-5",
+  messages: [{ role: "user", content: "Write a haiku about APIs." }],
+});
+
+console.log(res.choices[0].message.content);
+Python (OpenAI SDK)
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="sk-cdt-YOUR_KEY",
+    base_url="https://conduit.ozdoev.net/api/v1",
+)
+
+res = client.chat.completions.create(
+    model="gemini-3-pro",
+    messages=[{"role": "user", "content": "Explain Conduit in one line."}],
+)
+
+print(res.choices[0].message.content)
+Streaming
+Add "stream": true to receive tokens as Server-Sent Events as they generate
+
+curl https://conduit.ozdoev.net/api/v1/chat/completions \
+  -H "Authorization: Bearer sk-cdt-YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-6",
+    "stream": true,
+    "messages": [{ "role": "user", "content": "Count to five." }]
+  }'
+Connect your tools
+Conduit exposes two compatible endpoint families — OpenAI-compatible routes on /v1 or /api/v1, and Anthropic Messages on /v1/messages. For Claude Code, use the root base URL, not /api.
+
+Claude Code
+First install it (needs Node.js 18+):
+
+npm install -g @anthropic-ai/claude-code
+Then point it at Conduit's Anthropic endpoint and run it:
+
+Linux / macOS (bash / zsh)
+
+unset ANTHROPIC_AUTH_TOKEN
+export ANTHROPIC_BASE_URL="https://conduit.ozdoev.net"
+export ANTHROPIC_API_KEY="sk-cdt-YOUR_KEY"
+export ANTHROPIC_MODEL="claude-opus-4-8"
+export CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK="1"
+claude
+Windows (PowerShell)
+
+Remove-Item Env:ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
+$env:ANTHROPIC_BASE_URL="https://conduit.ozdoev.net"
+$env:ANTHROPIC_API_KEY="sk-cdt-YOUR_KEY"
+$env:ANTHROPIC_MODEL="claude-opus-4-8"
+$env:CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK="1"
+claude
+Windows (CMD)
+
+set ANTHROPIC_AUTH_TOKEN=
+set ANTHROPIC_BASE_URL=https://conduit.ozdoev.net
+set ANTHROPIC_API_KEY=sk-cdt-YOUR_KEY
+set ANTHROPIC_MODEL=claude-opus-4-8
+set CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK=1
+claude
+Optional for /fast: Claude Code checks Anthropic usage credits locally. With Conduit, set CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK=1 so /fast can toggle instead of stopping on the usage-credits warning.
+
+Kilo Code
+Use Kilo Code's OpenAI-compatible provider. Its Base URL field must include /v1.
+
+Base URL: https://conduit.ozdoev.net/v1
+API key: sk-cdt-YOUR_KEY
+Model: claude-opus-4-8
+Codex CLI
+Install it:
+
+npm install -g @openai/codex
+Add Conduit as a model provider in your config (Linux/macOS: ~/.codex/config.toml · Windows: %USERPROFILE%\.codex\config.toml):
+
+model = "gpt-5"
+model_provider = "conduit"
+
+[model_providers.conduit]
+name = "Conduit"
+base_url = "https://conduit.ozdoev.net/api/v1"
+env_key = "CONDUIT_API_KEY"
+Then set your key and run codex:
+
+Linux / macOS
+
+export CONDUIT_API_KEY="sk-cdt-YOUR_KEY"
+codex
+Windows (PowerShell)
+
+$env:CONDUIT_API_KEY="sk-cdt-YOUR_KEY"
+codex
+Cursor
+Settings → Models → enable Override OpenAI Base URL
+Base URL: https://conduit.ozdoev.net/api/v1 · API key: your sk-cdt key
+Add a custom model name like gpt-5 or claude-opus-4-8, then Verify
+Cline / Continue (VS Code)
+Provider: OpenAI Compatible
+Base URL: https://conduit.ozdoev.net/api/v1 · API key: your sk-cdt key
+Model id: any from the list (gpt-5, claude-opus-4-8, grok-4, …)
+Aider
+Install: pip install aider-install && aider-install (or pipx install aider-chat). Then:
+
+Linux / macOS
+
+export OPENAI_API_BASE="https://conduit.ozdoev.net/api/v1"
+export OPENAI_API_KEY="sk-cdt-YOUR_KEY"
+aider --model openai/gpt-5
+Windows (PowerShell)
+
+$env:OPENAI_API_BASE="https://conduit.ozdoev.net/api/v1"
+$env:OPENAI_API_KEY="sk-cdt-YOUR_KEY"
+aider --model openai/gpt-5
+Open WebUI / LibreChat
+Add an OpenAI-compatible connection: API URL https://conduit.ozdoev.net/api/v1 and your sk-cdt key. Models appear automatically.
+
+Anthropic SDK
+from anthropic import Anthropic
+
+client = Anthropic(
+    base_url="https://conduit.ozdoev.net",
+    api_key="sk-cdt-YOUR_KEY",
+)
+msg = client.messages.create(
+    model="claude-opus-4-8",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+print(msg.content[0].text)
+Tool / function calling
+Full OpenAI and Anthropic tool calling is supported — pass tools and tool_choice exactly as you would with the official APIs; tool_calls come back in the standard shape. When you send no tools of your own, the model can search the web on its own.
+
+Thinking / reasoning mode
+Models that officially support extended thinking (Claude Opus 4.8, Sonnet 4.6, Haiku 4.5, GPT-5, GPT-5 mini, o4, Gemini 3 Pro, Gemini 2.5 Pro/Flash, Grok 4, Grok 3 mini, DeepSeek V3.2, DeepSeek R1, Qwen3 Max, Qwen3 Coder) can return a visible reasoning trace before the answer. The thinking stays fully in the model's own voice and never exposes any prompt.
+
+OpenAI route — set reasoning_effort:
+
+curl https://conduit.ozdoev.net/api/v1/chat/completions \
+  -H "Authorization: Bearer sk-cdt-YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-5",
+    "reasoning_effort": "high",
+    "messages": [{ "role": "user", "content": "Prove sqrt(2) is irrational." }]
+  }'
+# reasoning comes back in choices[0].message.reasoning_content
+# (and as delta.reasoning_content when stream:true)
+Anthropic route — enable thinking:
+
+curl https://conduit.ozdoev.net/v1/messages \
+  -H "x-api-key: sk-cdt-YOUR_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-opus-4-8",
+    "max_tokens": 2048,
+    "thinking": { "type": "enabled", "budget_tokens": 4096 },
+    "messages": [{ "role": "user", "content": "Prove sqrt(2) is irrational." }]
+  }'
+# a "thinking" content block precedes the "text" block in the response
+Parameters
+model - model id, e.g. claude-opus-4-8, gpt-5, gemini-3-pro, grok-4
+messages - array of { role, content }; role is system, user or assistant
+temperature - 0-2, creativity (optional)
+max_tokens - cap on the reply length (optional)
+stream - true for token streaming (optional)
+Errors
+401 - missing or invalid key
+402 - free trial balance spent; upgrade to ULTIMATE for unlimited
+403 - account blocked
+429 - fair-use throttling; slow down and retry
+Help
+Stuck? Message the maker on Telegram at t.me/ozdoyev06
+
+Copied
