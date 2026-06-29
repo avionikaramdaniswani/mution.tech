@@ -70,19 +70,54 @@ function detectType(url: string): Provider["type"] {
 }
 
 /**
+ * Default base URLs per named provider prefix.
+ * If XXX_BASE_URL is not set, this is used as fallback.
+ */
+const PROVIDER_DEFAULTS: Record<string, string> = {
+  CONDUIT: "https://conduit.ozdoev.net",
+  IYH: "https://v1.iyhapi.app",
+  OPENROUTER: "https://openrouter.ai/api/v1",
+};
+
+/**
  * Load all providers.
  *
- * Primary source: PROVIDER_POOL env var
- *   Format: "https://provider1.com|key1,https://provider2.com|key2"
- *   Each entry: baseUrl|apiKey   (pipe-separated, commas between providers)
+ * Scans environment for named provider pairs:
+ *   <PREFIX>_API_KEY  — required (e.g. CONDUIT_API_KEY, IYH_API_KEY)
+ *   <PREFIX>_BASE_URL — optional, falls back to PROVIDER_DEFAULTS or skipped
  *
- * Fallback (backward compat): CONDUIT_API_KEY + CONDUIT_BASE_URL
+ * Known prefixes with built-in default URLs: CONDUIT, IYH, OPENROUTER.
+ * Custom prefixes need <PREFIX>_BASE_URL set explicitly.
+ *
+ * Fallback: PROVIDER_POOL="url1|key1,url2|key2" (legacy / power-user format)
  */
 function getProviders(): Provider[] {
-  const poolRaw = (process.env.PROVIDER_POOL ?? "").trim();
+  const providers: Provider[] = [];
 
+  // 1. Scan for <PREFIX>_API_KEY pairs
+  for (const [envKey, envVal] of Object.entries(process.env)) {
+    if (!envKey.endsWith("_API_KEY") || !envVal?.trim()) continue;
+    const prefix = envKey.slice(0, -"_API_KEY".length); // e.g. "CONDUIT", "IYH"
+    // Skip non-provider env vars (SESSION, etc.)
+    if (["SESSION", "DATABASE", "SUPABASE"].some((s) => prefix.includes(s))) continue;
+
+    const rawUrl = (process.env[`${prefix}_BASE_URL`] ?? PROVIDER_DEFAULTS[prefix] ?? "").trim();
+    if (!rawUrl) continue; // no URL known — skip
+
+    providers.push({
+      id: prefix.toLowerCase(),
+      openaiBase: buildOpenaiBase(rawUrl),
+      apiKey: envVal.trim(),
+      type: detectType(rawUrl),
+    });
+  }
+
+  if (providers.length > 0) return providers;
+
+  // 2. Fallback: PROVIDER_POOL="url|key,url|key"
+  const poolRaw = (process.env.PROVIDER_POOL ?? "").trim();
   if (poolRaw) {
-    const providers = poolRaw.split(",").flatMap((entry) => {
+    const from_pool = poolRaw.split(",").flatMap((entry) => {
       const pipeIdx = entry.indexOf("|");
       if (pipeIdx === -1) return [];
       const rawUrl = entry.slice(0, pipeIdx).trim();
@@ -95,19 +130,12 @@ function getProviders(): Provider[] {
         type: detectType(rawUrl),
       } satisfies Provider];
     });
-    if (providers.length > 0) return providers;
+    if (from_pool.length > 0) return from_pool;
   }
 
-  // Fallback
-  const key = (process.env.CONDUIT_API_KEY ?? "").trim();
-  if (!key) throw new Error("No providers configured. Set PROVIDER_POOL or CONDUIT_API_KEY.");
-  const rawUrl = (process.env.CONDUIT_BASE_URL ?? "https://conduit.ozdoev.net").trim();
-  return [{
-    id: urlToId(rawUrl),
-    openaiBase: buildOpenaiBase(rawUrl),
-    apiKey: key,
-    type: detectType(rawUrl),
-  }];
+  throw new Error(
+    "No providers configured. Set CONDUIT_API_KEY (and optionally IYH_API_KEY, etc.) in Secrets."
+  );
 }
 
 /** Pick the best available provider (skips disabled + cooldown avoidance). */
