@@ -120,9 +120,14 @@ router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<v
   if (!apiKey) { res.status(503).json({ error: "Tripay tidak dikonfigurasi" }); return; }
 
   try {
+    // Gunakan tripayReference (DEV-xxx / T-xxx) milik TriPay, bukan invoiceNumber kita
+    // Jika reference belum tersimpan (order lama), fallback ke merchant_ref param
     const base = getTripayBase();
+    const refParam = order.tripayReference
+      ? `reference=${encodeURIComponent(order.tripayReference)}`
+      : `merchant_ref=${encodeURIComponent(order.invoiceNumber)}`;
     const tripayRes = await fetch(
-      `${base}/transaction/detail?reference=${encodeURIComponent(order.invoiceNumber)}`,
+      `${base}/transaction/detail?${refParam}`,
       { headers: { Authorization: `Bearer ${apiKey}` } }
     );
     const detail = await tripayRes.json() as TripayTransactionDetail;
@@ -267,12 +272,13 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
     }
 
     const paymentUrl = tripayData.data.checkout_url ?? tripayData.data.payment_url;
+    const tripayReference = tripayData.data.reference; // DEV-xxx / T-xxx — dipakai untuk sync
     await db
       .update(paymentOrdersTable)
-      .set({ paymentUrl })
+      .set({ paymentUrl, tripayReference })
       .where(eq(paymentOrdersTable.id, order.id));
 
-    res.json({ orderId: order.id, invoiceNumber, paymentUrl, amount, credits: amount });
+    res.json({ orderId: order.id, invoiceNumber, tripayReference, paymentUrl, amount, credits: amount });
   } catch (err) {
     logger.error({ err }, "Tripay fetch error");
     await db

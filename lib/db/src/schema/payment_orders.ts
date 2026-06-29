@@ -12,6 +12,7 @@ export const paymentOrdersTable = pgTable("payment_orders", {
   provider: text("provider").notNull().default("tripay"),
   status: paymentStatusEnum("status").notNull().default("pending"),
   paymentUrl: text("payment_url"),
+  tripayReference: text("tripay_reference"), // TriPay's own reference (DEV-xxx / T-xxx), dipakai untuk sync status
   createdAt: timestamp("created_at").notNull().defaultNow(),
   paidAt: timestamp("paid_at"),
 });
