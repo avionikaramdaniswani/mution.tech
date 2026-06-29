@@ -444,7 +444,9 @@ export default function Landing() {
               </p>
               <div className="flex flex-wrap justify-center sm:justify-end gap-4 text-xs" style={{ color:"rgba(255,255,255,0.25)" }}>
                 {[
+                  { label: "Tentang Kami", href: "/tentang-kami" },
                   { label: "FAQ", href: "/faq" },
+                  { label: "Kebijakan Privasi", href: "/privacy-policy" },
                   { label: "Ketentuan", href: "/terms-and-conditions" },
                   { label: "Refund", href: "/refund-policy" },
                   { label: "Kontak", href: "/kontak" },

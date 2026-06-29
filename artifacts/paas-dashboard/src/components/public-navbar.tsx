@@ -6,6 +6,7 @@ import { ArrowRight, Menu, X } from "lucide-react";
 
 const navLinks = [
   { label: "Harga", href: "/harga" },
+  { label: "Tentang Kami", href: "/tentang-kami" },
 ];
 
 export function PublicNavbar() {

@@ -26,6 +26,8 @@ import FAQPage from "@/pages/faq";
 import RefundPolicyPage from "@/pages/refund-policy";
 import TermsPage from "@/pages/terms";
 import KontakPage from "@/pages/kontak";
+import PrivacyPolicyPage from "@/pages/privacy-policy";
+import TentangKamiPage from "@/pages/tentang-kami";
 
 import AdminOverview from "@/pages/admin/overview";
 import AdminUsers from "@/pages/admin/users";
@@ -96,6 +98,8 @@ function Router() {
       <Route path="/refund-policy" component={RefundPolicyPage} />
       <Route path="/terms-and-conditions" component={TermsPage} />
       <Route path="/kontak" component={KontakPage} />
+      <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+      <Route path="/tentang-kami" component={TentangKamiPage} />
 
       {/* Admin routes — dedicated layout */}
       <Route path="/admin" component={() => <AdminRoute component={AdminOverview} />} />
