@@ -1,8 +1,25 @@
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useListTransactions } from "@workspace/api-client-react";
-import { Wallet, Zap, ArrowUpCircle, Clock, TrendingUp } from "lucide-react";
+import { Wallet, Zap, ArrowUpCircle, Clock, TrendingUp, ShoppingCart, ExternalLink, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+
+const PACKAGES = [
+  { id: "starter",    label: "Starter",    idr: 50_000,  credits: 50_000,  bonus: 0,  color: "rgba(255,255,255,0.15)" },
+  { id: "basic",      label: "Basic",      idr: 100_000, credits: 110_000, bonus: 10, color: "rgba(249,115,22,0.25)"  },
+  { id: "pro",        label: "Pro",        idr: 250_000, credits: 300_000, bonus: 20, color: "rgba(139,92,246,0.3)"  },
+  { id: "enterprise", label: "Enterprise", idr: 500_000, credits: 650_000, bonus: 30, color: "rgba(34,197,94,0.25)"  },
+] as const;
+
+const PAYMENT_METHODS = [
+  { id: "QRIS",      label: "QRIS" },
+  { id: "BRIVA",     label: "BRI Virtual Account" },
+  { id: "BNIVA",     label: "BNI Virtual Account" },
+  { id: "MANDIRIVA", label: "Mandiri Virtual Account" },
+  { id: "BCAVA",     label: "BCA Virtual Account" },
+  { id: "BSIVA",     label: "BSI Virtual Account" },
+];
 
 function formatRp(n: number) {
   return "Rp " + n.toLocaleString("id-ID");
@@ -24,9 +41,38 @@ export default function BillingPage() {
   const { user } = useAuth();
   const { data: transactions, isLoading: txLoading } = useListTransactions();
 
+  const [selectedPkg, setSelectedPkg] = useState<string | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState("QRIS");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const credits = user?.credits ?? 0;
   const plan = planStyle(user?.plan);
   const pct = Math.min(100, Math.round((credits / 5000) * 100));
+
+  async function handleTopup() {
+    if (!selectedPkg) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/billing/tripay/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ packageId: selectedPkg, method: selectedMethod }),
+      });
+      const data = await res.json() as { paymentUrl?: string; error?: string };
+      if (!res.ok || !data.paymentUrl) {
+        setError(data.error ?? "Gagal membuat transaksi");
+        return;
+      }
+      window.open(data.paymentUrl, "_blank");
+    } catch {
+      setError("Gagal terhubung ke server");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -57,7 +103,7 @@ export default function BillingPage() {
                 {credits === 0
                   ? "Kredit habis — proyek kamu dihentikan."
                   : credits <= 1000
-                  ? "Kredit hampir habis — hubungi admin untuk topup."
+                  ? "Kredit hampir habis — segera topup."
                   : "Kredit tersedia"}
               </p>
             </div>
@@ -112,6 +158,123 @@ export default function BillingPage() {
               </button>
             </Link>
           </div>
+        </div>
+      </div>
+
+      {/* ── Topup Kredit ── */}
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+      >
+        <div
+          className="px-6 py-4 flex items-center gap-3"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}
+        >
+          <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          <p className="text-sm font-semibold">Topup Kredit</p>
+          <span
+            className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ml-auto"
+            style={{ background: "rgba(249,115,22,0.12)", color: "rgb(249,115,22)", border: "1px solid rgba(249,115,22,0.2)" }}
+          >
+            via Tripay
+          </span>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {/* Package grid */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {PACKAGES.map((pkg) => {
+              const selected = selectedPkg === pkg.id;
+              return (
+                <button
+                  key={pkg.id}
+                  onClick={() => setSelectedPkg(pkg.id)}
+                  className="relative rounded-xl p-4 text-left transition-all"
+                  style={{
+                    border: selected
+                      ? "1px solid rgba(249,115,22,0.6)"
+                      : "1px solid rgba(255,255,255,0.08)",
+                    background: selected ? "rgba(249,115,22,0.08)" : pkg.color,
+                  }}
+                >
+                  {pkg.bonus > 0 && (
+                    <span
+                      className="absolute top-2 right-2 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full"
+                      style={{ background: "rgba(34,197,94,0.15)", color: "rgb(34,197,94)", border: "1px solid rgba(34,197,94,0.2)" }}
+                    >
+                      +{pkg.bonus}%
+                    </span>
+                  )}
+                  {selected && (
+                    <CheckCircle className="absolute top-2 right-2 h-3.5 w-3.5" style={{ color: "rgb(249,115,22)" }} />
+                  )}
+                  <p className="text-xs text-muted-foreground mb-1">{pkg.label}</p>
+                  <p className="text-sm font-bold">{formatRp(pkg.idr)}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>
+                    {pkg.credits.toLocaleString("id-ID")} kredit
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Payment method */}
+          {selectedPkg && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-medium">Metode Pembayaran</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {PAYMENT_METHODS.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setSelectedMethod(m.id)}
+                    className="rounded-lg px-3 py-2 text-left text-xs font-medium transition-all"
+                    style={{
+                      border: selectedMethod === m.id
+                        ? "1px solid rgba(249,115,22,0.6)"
+                        : "1px solid rgba(255,255,255,0.08)",
+                      background: selectedMethod === m.id ? "rgba(249,115,22,0.08)" : "rgba(255,255,255,0.03)",
+                      color: selectedMethod === m.id ? "rgb(249,115,22)" : "rgba(255,255,255,0.6)",
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <p className="text-xs text-red-400 px-1">{error}</p>
+          )}
+
+          <Button
+            onClick={handleTopup}
+            disabled={!selectedPkg || loading}
+            className="w-full h-10 text-sm font-semibold rounded-xl"
+            style={{
+              background: selectedPkg ? "rgb(249,115,22)" : "rgba(255,255,255,0.06)",
+              color: selectedPkg ? "white" : "rgba(255,255,255,0.3)",
+              border: "none",
+            }}
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Memproses…
+              </span>
+            ) : selectedPkg ? (
+              <span className="flex items-center gap-2">
+                <ExternalLink className="h-4 w-4" />
+                Bayar {formatRp(PACKAGES.find(p => p.id === selectedPkg)?.idr ?? 0)} via Tripay
+              </span>
+            ) : (
+              "Pilih paket terlebih dahulu"
+            )}
+          </Button>
+
+          <p className="text-[10px] text-muted-foreground/50 text-center">
+            Kredit otomatis masuk setelah pembayaran dikonfirmasi · Diproses via Tripay
+          </p>
         </div>
       </div>
 

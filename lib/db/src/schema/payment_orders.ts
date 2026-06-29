@@ -8,6 +8,8 @@ export const paymentOrdersTable = pgTable("payment_orders", {
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   invoiceNumber: text("invoice_number").notNull().unique(),
   amount: integer("amount").notNull(),
+  creditsAmount: integer("credits_amount").notNull().default(0),
+  provider: text("provider").notNull().default("tripay"),
   status: paymentStatusEnum("status").notNull().default("pending"),
   paymentUrl: text("payment_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
