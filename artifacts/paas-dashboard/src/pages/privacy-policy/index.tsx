@@ -1,23 +1,25 @@
 import { PublicNavbar } from "@/components/public-navbar";
+import { PageHero } from "@/components/page-hero";
+import { PageFooter } from "@/components/page-footer";
 import { Link } from "wouter";
 
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-background text-foreground dark">
       <PublicNavbar />
-      <main className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-20">
-        <div className="mb-10">
-          <h1 className="text-4xl font-extrabold tracking-tight mb-3">Kebijakan Privasi</h1>
-          <p className="text-muted-foreground text-sm">Terakhir diperbarui: Juni 2025</p>
-        </div>
 
+      <PageHero
+        eyebrow="Legal"
+        title="Kebijakan Privasi"
+        subtitle="Terakhir diperbarui: Juni 2026"
+      />
+
+      <main className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-16">
         <div className="space-y-8 text-sm leading-relaxed text-muted-foreground">
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">1. Pendahuluan</h2>
-            <p>
-              Mution ("kami", "kita") berkomitmen untuk melindungi privasi kamu. Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi kamu saat menggunakan layanan kami di mution.tech.
-            </p>
+            <p>Mution ("kami", "kita") berkomitmen untuk melindungi privasi kamu. Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi kamu saat menggunakan layanan kami di mution.tech.</p>
           </section>
 
           <section>
@@ -47,19 +49,13 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">4. Penyimpanan dan Keamanan Data</h2>
-            <p>
-              Data kamu disimpan di server yang berlokasi di Indonesia dan/atau wilayah Asia Tenggara. Kami menerapkan langkah-langkah keamanan teknis dan organisasional yang wajar, termasuk enkripsi data saat penyimpanan dan transmisi, akses terbatas berbasis peran, serta audit log keamanan rutin.
-            </p>
-            <p className="mt-3">
-              Environment variable proyek kamu disimpan dengan masking — nilai tidak pernah ditampilkan dalam bentuk teks biasa setelah disimpan.
-            </p>
+            <p>Data kamu disimpan di server yang berlokasi di Indonesia dan/atau wilayah Asia Tenggara. Kami menerapkan langkah-langkah keamanan teknis dan organisasional yang wajar, termasuk enkripsi data saat penyimpanan dan transmisi, akses terbatas berbasis peran, serta audit log keamanan rutin.</p>
+            <p className="mt-3">Environment variable proyek kamu disimpan dengan masking — nilai tidak pernah ditampilkan dalam bentuk teks biasa setelah disimpan.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">5. Berbagi Data dengan Pihak Ketiga</h2>
-            <p>
-              Kami <strong className="text-foreground">tidak menjual</strong> data pribadi kamu kepada pihak ketiga. Kami dapat berbagi informasi dalam situasi terbatas berikut:
-            </p>
+            <p>Kami <strong className="text-foreground">tidak menjual</strong> data pribadi kamu kepada pihak ketiga. Kami dapat berbagi informasi dalam situasi terbatas berikut:</p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li><strong className="text-foreground">Penyedia Infrastruktur:</strong> Layanan cloud yang kami gunakan untuk mengoperasikan platform (terikat oleh perjanjian kerahasiaan)</li>
               <li><strong className="text-foreground">Pemroses Pembayaran:</strong> Tripay untuk memproses transaksi topup kredit</li>
@@ -69,9 +65,7 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">6. Cookie dan Teknologi Pelacakan</h2>
-            <p>
-              Mution menggunakan cookie <em>httpOnly</em> yang aman untuk mengelola sesi login kamu. Cookie ini tidak dapat diakses oleh JavaScript dan tidak digunakan untuk pelacakan iklan. Kami tidak menggunakan cookie pihak ketiga untuk keperluan pemasaran.
-            </p>
+            <p>Mution menggunakan cookie <em>httpOnly</em> yang aman untuk mengelola sesi login kamu. Cookie ini tidak dapat diakses oleh JavaScript dan tidak digunakan untuk pelacakan iklan. Kami tidak menggunakan cookie pihak ketiga untuk keperluan pemasaran.</p>
           </section>
 
           <section>
@@ -83,53 +77,32 @@ export default function PrivacyPolicyPage() {
               <li><strong className="text-foreground">Penghapusan:</strong> Meminta penghapusan akun dan data terkait</li>
               <li><strong className="text-foreground">Portabilitas:</strong> Meminta ekspor data proyek dan aktivitas kamu</li>
             </ul>
-            <p className="mt-3">
-              Untuk menggunakan hak-hak ini, hubungi kami di{" "}
-              <a href="mailto:supportmution@gmail.com" className="text-primary hover:underline">
-                supportmution@gmail.com
-              </a>.
-            </p>
+            <p className="mt-3">Untuk menggunakan hak-hak ini, hubungi kami di <a href="mailto:supportmution@gmail.com" className="text-primary hover:underline">supportmution@gmail.com</a>.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">8. Retensi Data</h2>
-            <p>
-              Data akun aktif disimpan selama akun kamu aktif. Jika kamu menghapus akun, data akan dihapus dalam 30 hari, kecuali jika kami diwajibkan menyimpannya lebih lama oleh hukum (misalnya data transaksi keuangan).
-            </p>
+            <p>Data akun aktif disimpan selama akun kamu aktif. Jika kamu menghapus akun, data akan dihapus dalam 30 hari, kecuali jika kami diwajibkan menyimpannya lebih lama oleh hukum (misalnya data transaksi keuangan).</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">9. Perubahan Kebijakan Privasi</h2>
-            <p>
-              Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Jika ada perubahan signifikan, kami akan memberikan pemberitahuan melalui email atau notifikasi di platform. Penggunaan Layanan setelah perubahan dianggap sebagai penerimaan kebijakan baru.
-            </p>
+            <p>Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Jika ada perubahan signifikan, kami akan memberikan pemberitahuan melalui email atau notifikasi di platform. Penggunaan Layanan setelah perubahan dianggap sebagai penerimaan kebijakan baru.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">10. Hubungi Kami</h2>
-            <p>
-              Jika kamu memiliki pertanyaan atau kekhawatiran tentang Kebijakan Privasi ini, silakan hubungi kami:
-            </p>
-            <div className="mt-3 p-4 rounded-xl border border-border/60 bg-card/30 space-y-1">
-              <p><strong className="text-foreground">Email:</strong>{" "}
-                <a href="mailto:supportmution@gmail.com" className="text-primary hover:underline">
-                  supportmution@gmail.com
-                </a>
-              </p>
+            <p>Jika kamu memiliki pertanyaan atau kekhawatiran tentang Kebijakan Privasi ini, silakan hubungi kami:</p>
+            <div className="mt-3 p-4 rounded-xl space-y-1" style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
+              <p><strong className="text-foreground">Email:</strong>{" "}<a href="mailto:supportmution@gmail.com" className="text-primary hover:underline">supportmution@gmail.com</a></p>
               <p><strong className="text-foreground">Mution</strong> — Platform Infrastruktur Modern</p>
             </div>
           </section>
+
         </div>
       </main>
-      <footer className="border-t border-border/50 py-8">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} Mution. All rights reserved.</p>
-          <div className="flex gap-4">
-            <Link href="/terms-and-conditions" className="hover:text-foreground transition-colors">Ketentuan</Link>
-            <Link href="/tentang-kami" className="hover:text-foreground transition-colors">Tentang Kami</Link>
-          </div>
-        </div>
-      </footer>
+
+      <PageFooter />
     </div>
   );
 }

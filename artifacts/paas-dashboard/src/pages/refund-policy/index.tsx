@@ -1,30 +1,30 @@
 import { Link } from "wouter";
 import { PublicNavbar } from "@/components/public-navbar";
+import { PageHero } from "@/components/page-hero";
+import { PageFooter } from "@/components/page-footer";
 
 export default function RefundPolicyPage() {
   return (
     <div className="min-h-screen bg-background text-foreground dark">
       <PublicNavbar />
-      <main className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-20">
-        <div className="mb-10">
-          <h1 className="text-4xl font-extrabold tracking-tight mb-3">Kebijakan Refund</h1>
-          <p className="text-muted-foreground text-sm">Terakhir diperbarui: Juni 2025</p>
-        </div>
 
-        <div className="prose prose-invert max-w-none space-y-8 text-sm leading-relaxed text-muted-foreground">
+      <PageHero
+        eyebrow="Legal"
+        title="Kebijakan Refund"
+        subtitle="Terakhir diperbarui: Juni 2026"
+      />
+
+      <main className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-16">
+        <div className="space-y-8 text-sm leading-relaxed text-muted-foreground">
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">1. Umum</h2>
-            <p>
-              Mution berkomitmen untuk memberikan layanan terbaik kepada seluruh pengguna. Kebijakan refund ini menjelaskan kondisi dan prosedur pengembalian dana atas pembelian kredit yang dilakukan di platform Mution (mution.tech).
-            </p>
+            <p>Mution berkomitmen untuk memberikan layanan terbaik kepada seluruh pengguna. Kebijakan refund ini menjelaskan kondisi dan prosedur pengembalian dana atas pembelian kredit yang dilakukan di platform Mution (mution.tech).</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">2. Kredit yang Belum Digunakan</h2>
-            <p>
-              Pengguna dapat mengajukan refund untuk kredit yang belum digunakan dalam kondisi berikut:
-            </p>
+            <p>Pengguna dapat mengajukan refund untuk kredit yang belum digunakan dalam kondisi berikut:</p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li>Permintaan refund diajukan dalam 7 (tujuh) hari kalender sejak tanggal pembelian kredit.</li>
               <li>Kredit yang diminta refund belum pernah digunakan sama sekali.</li>
@@ -56,29 +56,22 @@ export default function RefundPolicyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">5. Gangguan Layanan</h2>
-            <p>
-              Jika terjadi gangguan layanan yang signifikan yang disebabkan oleh kesalahan di pihak Mution (downtime melebihi SLA yang dijanjikan), pengguna berhak mendapatkan kompensasi dalam bentuk kredit tambahan. Besaran kompensasi akan ditentukan berdasarkan durasi dan dampak gangguan.
-            </p>
+            <p>Jika terjadi gangguan layanan yang signifikan yang disebabkan oleh kesalahan di pihak Mution (downtime melebihi SLA yang dijanjikan), pengguna berhak mendapatkan kompensasi dalam bentuk kredit tambahan. Besaran kompensasi akan ditentukan berdasarkan durasi dan dampak gangguan.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">6. Kontak</h2>
             <p>
               Untuk pertanyaan lebih lanjut terkait kebijakan refund, silakan hubungi kami di{" "}
-              <a href="mailto:supportmution@gmail.com" className="text-primary hover:underline">
-                supportmution@gmail.com
-              </a>{" "}
-              atau melalui halaman{" "}
-              <Link href="/kontak" className="text-primary hover:underline">
-                Kontak
-              </Link>.
+              <a href="mailto:supportmution@gmail.com" className="text-primary hover:underline">supportmution@gmail.com</a>{" "}
+              atau melalui halaman <Link href="/kontak" className="text-primary hover:underline">Kontak</Link>.
             </p>
           </section>
+
         </div>
       </main>
-      <footer className="border-t border-border/50 py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Mution. All rights reserved.
-      </footer>
+
+      <PageFooter />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { PublicNavbar } from "@/components/public-navbar";
+import { PageFooter } from "@/components/page-footer";
 
 const plans = [
   {
@@ -451,15 +452,16 @@ export default function HargaPage() {
           <p className="mt-2 text-center text-xs" style={{ color: "rgba(255,255,255,0.18)" }}>
             Ada pertanyaan? Hubungi kami di{" "}
             <a
-              href="mailto:support@mution.tech"
+              href="mailto:supportmution@gmail.com"
               className="underline underline-offset-2"
               style={{ color: "rgba(255,255,255,0.3)" }}
             >
-              support@mution.tech
+              supportmution@gmail.com
             </a>
           </p>
         </div>
       </section>
+      <PageFooter />
     </div>
   );
 }

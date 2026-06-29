@@ -1,96 +1,113 @@
 import { Link } from "wouter";
 import { PublicNavbar } from "@/components/public-navbar";
-import { Mail, Phone, MapPin, MessageCircle } from "lucide-react";
+import { PageHero } from "@/components/page-hero";
+import { PageFooter } from "@/components/page-footer";
+import { Mail, Phone, MapPin, MessageCircle, ArrowRight } from "lucide-react";
+
+const contacts = [
+  {
+    href: "mailto:supportmution@gmail.com",
+    icon: Mail,
+    label: "Email",
+    value: "supportmution@gmail.com",
+    note: "Respons dalam 1–2 hari kerja",
+  },
+  {
+    href: "https://wa.me/6285709557572",
+    icon: MessageCircle,
+    label: "WhatsApp",
+    value: "+62 857-0955-7572",
+    note: "Untuk pertanyaan cepat",
+    external: true,
+  },
+  {
+    href: "tel:+6285709557572",
+    icon: Phone,
+    label: "Telepon",
+    value: "+62 857-0955-7572",
+    note: "Senin–Jumat, 09.00–17.00 WIB",
+  },
+];
+
+const cardStyle = { border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" };
 
 export default function KontakPage() {
   return (
     <div className="min-h-screen bg-background text-foreground dark">
       <PublicNavbar />
-      <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-20">
-        <div className="text-center mb-14">
-          <h1 className="text-4xl font-extrabold tracking-tight mb-4">Hubungi Kami</h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Ada pertanyaan, masalah, atau butuh bantuan? Tim kami siap membantu kamu.
-          </p>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <PageHero
+        eyebrow="Kontak"
+        title={<>Ada pertanyaan? <span className="text-primary">Kami siap membantu.</span></>}
+        subtitle="Tim Mution siap merespons pertanyaan, laporan masalah, atau permintaan kerjasama kamu."
+      />
 
-          <a
-            href="mailto:supportmution@gmail.com"
-            className="group flex items-start gap-4 rounded-xl border border-border/50 bg-card p-6 hover:border-primary/50 hover:bg-card/80 transition-all"
-          >
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-              <Mail className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground mb-1">Email</p>
-              <p className="text-sm text-primary">supportmution@gmail.com</p>
-              <p className="text-xs text-muted-foreground mt-1">Respons dalam 1–2 hari kerja</p>
-            </div>
-          </a>
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl">
 
-          <a
-            href="https://wa.me/6285709557572"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group flex items-start gap-4 rounded-xl border border-border/50 bg-card p-6 hover:border-primary/50 hover:bg-card/80 transition-all"
-          >
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-              <MessageCircle className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground mb-1">WhatsApp</p>
-              <p className="text-sm text-primary">+62 857-0955-7572</p>
-              <p className="text-xs text-muted-foreground mt-1">Untuk pertanyaan cepat</p>
-            </div>
-          </a>
+          {/* Contact cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+            {contacts.map(({ href, icon: Icon, label, value, note, external }) => (
+              <a
+                key={label}
+                href={href}
+                target={external ? "_blank" : undefined}
+                rel={external ? "noopener noreferrer" : undefined}
+                className="group flex flex-col gap-4 rounded-xl p-6 transition-all hover:border-primary/30 hover:bg-white/[0.04]"
+                style={cardStyle}
+              >
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-lg"
+                  style={{ background: "rgba(249,115,22,0.10)", border: "1px solid rgba(249,115,22,0.2)" }}
+                >
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>{label}</p>
+                  <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{value}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{note}</p>
+                </div>
+              </a>
+            ))}
+          </div>
 
-          <a
-            href="tel:+6285709557572"
-            className="group flex items-start gap-4 rounded-xl border border-border/50 bg-card p-6 hover:border-primary/50 hover:bg-card/80 transition-all"
-          >
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-              <Phone className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground mb-1">Telepon</p>
-              <p className="text-sm text-primary">+62 857-0955-7572</p>
-              <p className="text-xs text-muted-foreground mt-1">Senin–Jumat, 09.00–17.00 WIB</p>
-            </div>
-          </a>
-
-          <div className="group flex items-start gap-4 rounded-xl border border-border/50 bg-card p-6">
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <MapPin className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground mb-1">Alamat</p>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Jalan Kemang No. 81, Muntang Tapus<br />
-                Prabumulih Barat, Kota Prabumulih<br />
-                Sumatera Selatan, Indonesia 31121
-              </p>
+          {/* Address */}
+          <div className="rounded-xl p-6 mb-6" style={cardStyle}>
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: "rgba(249,115,22,0.10)", border: "1px solid rgba(249,115,22,0.2)" }}>
+                <MapPin className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Alamat</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Jalan Kemang No. 81, Muntang Tapus<br />
+                  Prabumulih Barat, Kota Prabumulih<br />
+                  Sumatera Selatan, Indonesia 31121
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="mt-12 rounded-xl border border-border/50 bg-card p-8 text-center">
-          <h2 className="text-xl font-semibold text-foreground mb-2">Cek FAQ dulu</h2>
-          <p className="text-muted-foreground text-sm mb-5">
-            Banyak pertanyaan umum sudah terjawab di halaman FAQ kami.
-          </p>
-          <Link
-            href="/faq"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          {/* FAQ CTA */}
+          <div
+            className="rounded-2xl p-10 text-center"
+            style={{ border: "1px solid rgba(255,255,255,0.08)", background: "radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.08) 0%, transparent 60%)" }}
           >
-            Lihat FAQ
-          </Link>
+            <h2 className="text-xl font-bold tracking-tight mb-2 text-white">Cek FAQ dulu</h2>
+            <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.5)" }}>
+              Banyak pertanyaan umum sudah terjawab di halaman FAQ kami.
+            </p>
+            <Link href="/faq">
+              <button className="inline-flex items-center gap-2 rounded-xl font-semibold text-sm px-5 py-2.5 transition-all duration-200" style={{ background: "rgb(249,115,22)", color: "#fff", boxShadow: "0 0 0 1px rgba(249,115,22,0.4), 0 4px 20px rgba(249,115,22,0.3)" }}>
+                Lihat FAQ <ArrowRight className="h-4 w-4" />
+              </button>
+            </Link>
+          </div>
+
         </div>
-      </main>
-      <footer className="border-t border-border/50 py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Mution. All rights reserved.
-      </footer>
+      </section>
+
+      <PageFooter />
     </div>
   );
 }
