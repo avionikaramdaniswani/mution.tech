@@ -317,6 +317,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
         usedKey = getUpstreamKey();
         logger.info({ attempt: attempt + 1, keyHint: usedKey.slice(-6) }, "AgentRouter attempt");
 
+        const systemToken = process.env.AGENTROUTER_SYSTEM_TOKEN?.trim();
         upstream = await fetch(`${base}/messages`, {
           method: "POST",
           headers: {
@@ -327,6 +328,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
             "x-api-key": usedKey,
             "anthropic-version": (req.headers["anthropic-version"] as string) ?? "2023-06-01",
             ...(req.headers["anthropic-beta"] ? { "anthropic-beta": req.headers["anthropic-beta"] as string } : {}),
+            ...(systemToken ? { "x-system-token": systemToken } : {}),
           },
           body: JSON.stringify(req.body),
         });
