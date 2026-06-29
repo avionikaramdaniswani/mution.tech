@@ -4,6 +4,7 @@ import { eq, desc, sql, count } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { computePlan } from "../lib/plan";
+import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider } from "./v1-proxy";
 
 const router = Router();
 
@@ -193,6 +194,30 @@ router.get("/admin/stats", async (req, res): Promise<void> => {
     runningProjects,
     failedProjects,
   });
+});
+
+// ─── Provider management ──────────────────────────────────────────────────────
+
+router.get("/admin/providers", (_req, res) => {
+  res.json(adminGetProviderStatuses());
+});
+
+router.patch("/admin/providers/:id/toggle", (req, res) => {
+  const id = decodeURIComponent(req.params.id);
+  const { enabled } = req.body;
+  if (typeof enabled !== "boolean") {
+    res.status(400).json({ error: "enabled must be boolean" });
+    return;
+  }
+  if (enabled) adminEnableProvider(id);
+  else adminDisableProvider(id);
+  res.json({ ok: true, id, enabled });
+});
+
+router.post("/admin/providers/:id/reset-cooldown", (req, res) => {
+  // Just return ok — cooldown resets naturally; this endpoint is for UI feedback
+  const id = decodeURIComponent(req.params.id);
+  res.json({ ok: true, id, message: "Cooldown will expire naturally or on next restart" });
 });
 
 export default router;

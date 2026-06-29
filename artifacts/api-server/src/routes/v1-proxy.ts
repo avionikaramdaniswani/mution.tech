@@ -19,6 +19,27 @@ interface Provider {
 const PROVIDER_COOLDOWN_MS = 60_000;
 const _cooldowns = new Map<string, number>();
 
+// ─── Admin toggle state (in-memory, resets on restart) ────────────────────────
+const _disabledProviders = new Set<string>();
+
+export function adminEnableProvider(id: string) { _disabledProviders.delete(id); }
+export function adminDisableProvider(id: string) { _disabledProviders.add(id); }
+export function adminGetProviderStatuses() {
+  let providers: Provider[];
+  try { providers = getProviders(); } catch { return []; }
+  const now = Date.now();
+  return providers.map((p) => ({
+    id: p.id,
+    openaiBase: p.openaiBase,
+    type: p.type,
+    enabled: !_disabledProviders.has(p.id),
+    inCooldown: (_cooldowns.get(p.id) ?? 0) > now,
+    cooldownExpiresAt: (_cooldowns.get(p.id) ?? 0) > now
+      ? new Date(_cooldowns.get(p.id)!).toISOString()
+      : null,
+  }));
+}
+
 function urlToId(url: string): string {
   try { return new URL(url).hostname; } catch { return url.slice(0, 30); }
 }
@@ -89,26 +110,29 @@ function getProviders(): Provider[] {
   }];
 }
 
-/** Pick the best available provider (round-robin + cooldown avoidance). */
+/** Pick the best available provider (skips disabled + cooldown avoidance). */
 function pickProvider(providers: Provider[]): Provider {
   const now = Date.now();
-  const available = providers.find((p) => (_cooldowns.get(p.id) ?? 0) < now);
-  if (available) return available;
-  // All in cooldown — use the one with earliest expiry
-  let best = providers[0];
-  let bestTs = _cooldowns.get(providers[0].id) ?? 0;
-  for (const p of providers) {
-    const ts = _cooldowns.get(p.id) ?? 0;
-    if (ts < bestTs) { best = p; bestTs = ts; }
+  // Prefer: enabled AND not in cooldown
+  const best = providers.find(
+    (p) => !_disabledProviders.has(p.id) && (_cooldowns.get(p.id) ?? 0) < now
+  );
+  if (best) return best;
+  // Fallback: enabled but in cooldown
+  const enabledAny = providers.find((p) => !_disabledProviders.has(p.id));
+  if (enabledAny) {
+    logger.warn({ id: enabledAny.id }, "Provider in cooldown but no other enabled provider");
+    return enabledAny;
   }
-  logger.warn({ ids: providers.map((p) => p.id) }, "All providers in cooldown, using earliest");
-  return best;
+  // All disabled — use first (fail gracefully)
+  logger.warn("All providers disabled, using first as fallback");
+  return providers[0];
 }
 
 /** Pick next available provider excluding the given one (for retry). */
 function pickNextProvider(providers: Provider[], exclude: Provider): Provider | null {
   const now = Date.now();
-  const others = providers.filter((p) => p.id !== exclude.id);
+  const others = providers.filter((p) => p.id !== exclude.id && !_disabledProviders.has(p.id));
   if (others.length === 0) return null;
   return others.find((p) => (_cooldowns.get(p.id) ?? 0) < now) ?? others[0];
 }
