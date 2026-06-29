@@ -14,6 +14,7 @@ import {
   TOPUP_PRESETS,
   type TripayCreateResponse,
   type TripayCallbackPayload,
+  type TripayTransactionDetail,
 } from "../lib/tripay";
 
 const router = Router();
@@ -95,6 +96,65 @@ router.get("/billing/orders/:id", requireAuth, async (req, res): Promise<void> =
     createdAt: order.createdAt.toISOString(),
     paidAt: order.paidAt?.toISOString() ?? null,
   });
+});
+
+router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const orderId = parseInt(req.params.id, 10);
+  if (isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [order] = await db
+    .select()
+    .from(paymentOrdersTable)
+    .where(eq(paymentOrdersTable.id, orderId))
+    .limit(1);
+
+  if (!order || order.userId !== user.id) { res.status(404).json({ error: "Not found" }); return; }
+
+  if (order.status === "paid") {
+    res.json({ status: "paid", creditsAmount: order.creditsAmount });
+    return;
+  }
+
+  const apiKey = process.env.TRIPAY_API_KEY;
+  if (!apiKey) { res.status(503).json({ error: "Tripay tidak dikonfigurasi" }); return; }
+
+  try {
+    const base = getTripayBase();
+    const tripayRes = await fetch(
+      `${base}/transaction/detail?reference=${encodeURIComponent(order.invoiceNumber)}`,
+      { headers: { Authorization: `Bearer ${apiKey}` } }
+    );
+    const detail = await tripayRes.json() as TripayTransactionDetail;
+    logger.info({ detail }, "Tripay sync detail");
+
+    if (!detail.success || detail.data.status !== "PAID") {
+      res.json({ status: order.status });
+      return;
+    }
+
+    // Status PAID di Tripay — update DB dan tambah kredit
+    await db.transaction(async (tx) => {
+      const [freshUser] = await tx.select().from(usersTable).where(eq(usersTable.id, user.id)).limit(1);
+      const newCredits = freshUser.credits + order.creditsAmount;
+      const newPlan = computePlan(newCredits);
+      await tx.update(usersTable).set({ credits: newCredits, plan: newPlan }).where(eq(usersTable.id, user.id));
+      await tx.update(paymentOrdersTable)
+        .set({ status: "paid", paidAt: new Date() })
+        .where(eq(paymentOrdersTable.id, order.id));
+      await tx.insert(creditTransactionsTable).values({
+        userId: user.id,
+        type: "topup",
+        amount: order.creditsAmount,
+        note: `Topup via Tripay (${detail.data.payment_name}) — ${order.invoiceNumber}`,
+      });
+    });
+
+    res.json({ status: "paid", creditsAmount: order.creditsAmount });
+  } catch (err) {
+    logger.error({ err }, "Tripay sync error");
+    res.status(502).json({ error: "Gagal cek status ke Tripay" });
+  }
 });
 
 router.get("/billing/orders", requireAuth, async (req, res): Promise<void> => {

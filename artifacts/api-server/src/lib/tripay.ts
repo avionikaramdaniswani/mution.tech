@@ -44,6 +44,19 @@ export interface TripayCreateResponse {
   };
 }
 
+export interface TripayTransactionDetail {
+  success: boolean;
+  message: string;
+  data: {
+    reference: string;
+    merchant_ref: string;
+    status: "UNPAID" | "PAID" | "FAILED" | "EXPIRED" | "REFUND";
+    payment_name: string;
+    total_amount: number;
+    paid_at?: number | null;
+  };
+}
+
 export interface TripayCallbackPayload {
   reference: string;
   merchant_ref: string;

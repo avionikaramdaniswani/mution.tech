@@ -289,37 +289,67 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 function PaymentStatusBanner({ orderId, onDone }: { orderId: number; onDone: () => void }) {
   const [status, setStatus] = useState<OrderStatus | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
   const [retries, setRetries] = useState(0);
   const queryClient = useQueryClient();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const maxRetries = 24; // poll for up to ~2 minutes
+  const maxAutoRetries = 6; // 30 detik auto-poll, lalu tunggu user klik manual
 
-  const poll = useCallback(async () => {
+  const syncNow = useCallback(async () => {
+    if (syncing) return;
+    setSyncing(true);
     try {
-      const res = await fetch(`/api/billing/orders/${orderId}`, { credentials: "include" });
+      const res = await fetch(`/api/billing/orders/${orderId}/sync`, {
+        method: "POST",
+        credentials: "include",
+      });
       if (!res.ok) return;
-      const data = await res.json() as OrderPollResult;
+      const data = await res.json() as { status: OrderStatus; creditsAmount?: number };
       setStatus(data.status);
       if (data.status === "paid") {
-        setCredits(data.creditsAmount);
-        // Refresh user data to show updated credit balance
+        setCredits(data.creditsAmount ?? null);
         await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
         onDone();
-      } else if (data.status === "pending" && retries < maxRetries) {
-        setRetries((r) => r + 1);
-        timerRef.current = setTimeout(poll, 5000);
       }
     } catch {
-      // ignore network errors, will retry
-      if (retries < maxRetries) {
-        setRetries((r) => r + 1);
-        timerRef.current = setTimeout(poll, 5000);
-      }
+      // ignore
+    } finally {
+      setSyncing(false);
     }
-  }, [orderId, retries, queryClient, onDone]);
+  }, [orderId, syncing, queryClient, onDone]);
+
+  const autoPoll = useCallback(async (attempt: number) => {
+    if (attempt > maxAutoRetries) {
+      setTimedOut(true);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/billing/orders/${orderId}/sync`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json() as { status: OrderStatus; creditsAmount?: number };
+        setStatus(data.status);
+        setRetries(attempt);
+        if (data.status === "paid") {
+          setCredits(data.creditsAmount ?? null);
+          await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+          onDone();
+          return;
+        }
+        if (data.status === "pending") {
+          timerRef.current = setTimeout(() => autoPoll(attempt + 1), 5000);
+        }
+      }
+    } catch {
+      timerRef.current = setTimeout(() => autoPoll(attempt + 1), 5000);
+    }
+  }, [orderId, queryClient, onDone]);
 
   useEffect(() => {
-    poll();
+    autoPoll(1);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
 
@@ -357,17 +387,41 @@ function PaymentStatusBanner({ orderId, onDone }: { orderId: number; onDone: () 
 
   return (
     <div
-      className="rounded-xl px-5 py-4 flex items-center gap-3"
+      className="rounded-xl px-5 py-4 flex items-start justify-between gap-4"
       style={{ background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.18)" }}
     >
-      <RefreshCw className="h-5 w-5 flex-shrink-0 animate-spin" style={{ color: "rgb(249,115,22)" }} />
-      <div>
-        <p className="text-sm font-semibold" style={{ color: "rgb(249,115,22)" }}>Menunggu konfirmasi pembayaran…</p>
-        <p className="text-xs text-muted-foreground">
-          Kredit akan masuk otomatis setelah Tripay mengonfirmasi.
-          {retries > 0 && ` (cek ke-${retries})`}
-        </p>
+      <div className="flex items-start gap-3">
+        <RefreshCw
+          className={`h-5 w-5 flex-shrink-0 mt-0.5 ${!timedOut ? "animate-spin" : ""}`}
+          style={{ color: "rgb(249,115,22)" }}
+        />
+        <div>
+          <p className="text-sm font-semibold" style={{ color: "rgb(249,115,22)" }}>
+            {timedOut ? "Pembayaran belum terkonfirmasi otomatis" : "Menunggu konfirmasi pembayaran…"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {timedOut
+              ? "Kalau sudah bayar, klik \"Cek Sekarang\" untuk memperbarui status secara manual."
+              : `Server sedang mengecek status ke Tripay${retries > 0 ? ` (cek ke-${retries})` : ""}…`}
+          </p>
+        </div>
       </div>
+      <button
+        onClick={syncNow}
+        disabled={syncing}
+        className="flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+        style={{
+          border: "1px solid rgba(249,115,22,0.4)",
+          color: syncing ? "rgba(249,115,22,0.4)" : "rgb(249,115,22)",
+          background: "rgba(249,115,22,0.08)",
+          cursor: syncing ? "not-allowed" : "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {syncing
+          ? <><Loader2 className="h-3 w-3 animate-spin" /> Mengecek…</>
+          : <><RefreshCw className="h-3 w-3" /> Cek Sekarang</>}
+      </button>
     </div>
   );
 }
