@@ -6,6 +6,7 @@ import { useLocation } from "wouter";
 import {
   Wallet, Zap, ArrowUpCircle, Clock, TrendingUp,
   CreditCard, Loader2, PenLine, X, CheckCircle2, AlertCircle, RefreshCw,
+  ChevronLeft, ChevronRight, Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +49,209 @@ function planStyle(plan?: string) {
   if (plan === "pro") return { name: "Pro", color: "rgb(249,115,22)" };
   return { name: "Hobby", color: "rgba(255,255,255,0.4)" };
 }
+
+// ── Plan card configs ──────────────────────────────────────────────────────
+const PLAN_CARDS = [
+  {
+    id: "hobby",
+    name: "Hobby",
+    tagline: "Mulai dari sini",
+    bg: "linear-gradient(140deg, #0d0e12 0%, #13141a 60%, #0f1016 100%)",
+    accent: "#94a3b8",
+    accentRgb: "148,163,184",
+    glowColor: "rgba(148,163,184,0.07)",
+    chipFrom: "#c0c8d4", chipMid: "#8896a8", chipTo: "#5a6a7e",
+    circleA: "rgba(148,163,184,0.1)", circleB: "rgba(100,116,139,0.07)",
+    borderColor: "rgba(148,163,184,0.14)",
+    PatternEl: () => (
+      <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.12 }}>
+        <defs>
+          <pattern id="ph" x="0" y="0" width="1" height="20" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="1000" y2="0" stroke="rgba(255,255,255,0.6)" strokeWidth="0.6" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#ph)" />
+      </svg>
+    ),
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    tagline: "Untuk developer serius",
+    bg: "linear-gradient(140deg, #0e0b07 0%, #1a1008 60%, #110d06 100%)",
+    accent: "#f97316",
+    accentRgb: "249,115,22",
+    glowColor: "rgba(249,115,22,0.11)",
+    chipFrom: "#e8c55a", chipMid: "#d4a827", chipTo: "#b8960c",
+    circleA: "rgba(249,115,22,0.13)", circleB: "rgba(249,115,22,0.07)",
+    borderColor: "rgba(249,115,22,0.18)",
+    PatternEl: () => (
+      <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.15 }}>
+        <defs>
+          <pattern id="pp" x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="0.9" fill="rgba(255,255,255,0.55)" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#pp)" />
+      </svg>
+    ),
+  },
+  {
+    id: "team",
+    name: "Team",
+    tagline: "Untuk tim profesional",
+    bg: "linear-gradient(140deg, #09080f 0%, #110d1e 60%, #0d0a18 100%)",
+    accent: "#8b5cf6",
+    accentRgb: "139,92,246",
+    glowColor: "rgba(139,92,246,0.11)",
+    chipFrom: "#c4b5fd", chipMid: "#a78bfa", chipTo: "#7c3aed",
+    circleA: "rgba(139,92,246,0.14)", circleB: "rgba(109,40,217,0.07)",
+    borderColor: "rgba(139,92,246,0.18)",
+    PatternEl: () => (
+      <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.1 }}>
+        <defs>
+          <pattern id="pt" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="28" x2="28" y2="0" stroke="rgba(255,255,255,0.7)" strokeWidth="0.6" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#pt)" />
+      </svg>
+    ),
+  },
+] as const;
+
+type PlanCardConfig = typeof PLAN_CARDS[number];
+
+function PlanCard({
+  cfg, isOwned, credits, userName,
+}: {
+  cfg: PlanCardConfig;
+  isOwned: boolean;
+  credits: number;
+  userName?: string;
+}) {
+  const { PatternEl } = cfg;
+  return (
+    <div
+      className="relative w-full rounded-2xl overflow-hidden select-none"
+      style={{
+        aspectRatio: "1.586 / 1",
+        background: cfg.bg,
+        border: `1px solid ${cfg.borderColor}`,
+        boxShadow: isOwned
+          ? `0 20px 60px rgba(0,0,0,0.55), 0 0 40px ${cfg.glowColor}`
+          : "0 8px 24px rgba(0,0,0,0.4)",
+        filter: isOwned ? "none" : "grayscale(60%) brightness(0.55)",
+        transition: "filter 0.3s, box-shadow 0.3s",
+      }}
+    >
+      {/* Pattern */}
+      <PatternEl />
+
+      {/* Glow */}
+      <div className="absolute pointer-events-none" style={{
+        top: "-50%", left: "-25%", width: "70%", height: "150%",
+        background: `radial-gradient(ellipse, ${cfg.glowColor.replace("0.11","0.18")} 0%, transparent 65%)`,
+      }} />
+
+      {/* Decorative circles — bottom right */}
+      <div className="absolute" style={{ bottom: "-20%", right: "-8%", opacity: 0.9 }}>
+        <svg width="110" height="90" viewBox="0 0 110 90">
+          <circle cx="38" cy="45" r="38" fill="none" stroke={cfg.circleA} strokeWidth="1" />
+          <circle cx="72" cy="45" r="38" fill="none" stroke={cfg.circleA} strokeWidth="1" />
+          <circle cx="38" cy="45" r="38" fill={cfg.circleB} />
+          <circle cx="72" cy="45" r="38" fill={cfg.circleB} />
+        </svg>
+      </div>
+
+      {/* Card content */}
+      <div className="absolute inset-0 flex flex-col justify-between p-[7%]">
+        {/* Top: logo + plan badge */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-1.5">
+            <img src="/mution-logo.png" alt="" className="h-5 w-auto brightness-110" />
+            <span className="font-extrabold text-white tracking-tight" style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14 }}>
+              Mution
+            </span>
+          </div>
+          <span style={{
+            fontSize: 9, fontWeight: 700, letterSpacing: "0.16em",
+            color: cfg.accent, border: `1px solid ${cfg.accent}44`,
+            background: `${cfg.accent}1a`, padding: "2px 7px", borderRadius: 99,
+          }}>
+            {cfg.name.toUpperCase()}
+          </span>
+        </div>
+
+        {/* Middle: chip */}
+        <div style={{ width: 34 }}>
+          <svg viewBox="0 0 42 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%">
+            <rect width="42" height="32" rx="4" fill={cfg.chipTo} />
+            <defs>
+              <linearGradient id={`cg-${cfg.id}`} x1="0" y1="0" x2="42" y2="32" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor={cfg.chipFrom} />
+                <stop offset="45%" stopColor={cfg.chipMid} />
+                <stop offset="100%" stopColor={cfg.chipTo} />
+              </linearGradient>
+            </defs>
+            <rect x="1" y="1" width="40" height="30" rx="3.2" fill={`url(#cg-${cfg.id})`} />
+            <line x1="14" y1="1" x2="14" y2="31" stroke="rgba(0,0,0,0.22)" strokeWidth="0.7" />
+            <line x1="28" y1="1" x2="28" y2="31" stroke="rgba(0,0,0,0.22)" strokeWidth="0.7" />
+            <line x1="1" y1="11" x2="41" y2="11" stroke="rgba(0,0,0,0.22)" strokeWidth="0.7" />
+            <line x1="1" y1="21" x2="41" y2="21" stroke="rgba(0,0,0,0.22)" strokeWidth="0.7" />
+            <rect x="14.5" y="11.5" width="13" height="9" rx="1.5" fill="rgba(0,0,0,0.16)" />
+          </svg>
+        </div>
+
+        {/* Bottom: balance (owned) or tagline (locked) + name */}
+        <div className="flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            {isOwned ? (
+              <>
+                <p style={{ fontSize: 8, letterSpacing: "0.1em", color: "rgba(255,255,255,0.38)", marginBottom: 2 }}>
+                  SALDO TERSEDIA
+                </p>
+                <p className="font-extrabold tabular-nums leading-none" style={{ fontSize: 20, color: creditColor(credits) }}>
+                  {formatRp(credits)}
+                </p>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: 8, letterSpacing: "0.1em", color: "rgba(255,255,255,0.28)", marginBottom: 2 }}>
+                  PLAN
+                </p>
+                <p className="font-semibold leading-none" style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                  {cfg.tagline}
+                </p>
+              </>
+            )}
+            <p className="font-semibold truncate mt-2" style={{ fontSize: 10, letterSpacing: "0.05em", color: "rgba(255,255,255,0.35)" }}>
+              {isOwned ? (userName ?? "—").toUpperCase() : "— — — — — —"}
+            </p>
+          </div>
+          <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.22em", color: "rgba(255,255,255,0.2)", flexShrink: 0 }}>
+            DEBIT
+          </p>
+        </div>
+      </div>
+
+      {/* Lock overlay for non-owned plans */}
+      {!isOwned && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5"
+          style={{ background: "rgba(0,0,0,0.18)" }}>
+          <div className="rounded-full p-2" style={{ background: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <Lock className="h-4 w-4" style={{ color: "rgba(255,255,255,0.35)" }} />
+          </div>
+          <p style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", fontWeight: 600 }}>
+            BELUM DIAKTIFKAN
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── End plan card ───────────────────────────────────────────────────────────
 
 type OrderStatus = "pending" | "paid" | "failed" | "expired";
 
@@ -453,6 +657,13 @@ export default function BillingPage() {
   const plan = planStyle(user?.plan);
   const pct = Math.min(100, Math.round((credits / 5000) * 100));
 
+  const userPlanIndex = PLAN_CARDS.findIndex((p) => p.id === (user?.plan ?? "hobby"));
+  const [cardIndex, setCardIndex] = useState(userPlanIndex === -1 ? 0 : userPlanIndex);
+  const prevCard = () => setCardIndex((i) => (i - 1 + PLAN_CARDS.length) % PLAN_CARDS.length);
+  const nextCard = () => setCardIndex((i) => (i + 1) % PLAN_CARDS.length);
+  const currentCard = PLAN_CARDS[cardIndex];
+  const isOwned = currentCard.id === (user?.plan ?? "hobby");
+
   return (
     <div className="space-y-4">
       <TopupModal open={topupOpen} onClose={() => setTopupOpen(false)} />
@@ -465,195 +676,99 @@ export default function BillingPage() {
         />
       )}
 
-      {/* ── Kartu Mution ── */}
-      <div className="w-full max-w-sm mx-auto sm:max-w-none">
-        {/* Card */}
-        <div
-          className="relative w-full rounded-2xl overflow-hidden select-none"
-          style={{
-            aspectRatio: "1.7 / 1",
-            background: "linear-gradient(135deg, rgb(13,12,17) 0%, rgb(20,17,26) 55%, rgb(16,14,22) 100%)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset",
-          }}
-        >
-          {/* ── Background: dot grid ── */}
-          <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.18 }}>
-            <defs>
-              <pattern id="dotgrid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-                <circle cx="1" cy="1" r="1" fill="rgba(255,255,255,0.5)" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#dotgrid)" />
-          </svg>
+      {/* ── Card Carousel ── */}
+      <div className="flex flex-col items-center gap-3">
 
-          {/* ── Orange glow top-left ── */}
-          <div className="absolute pointer-events-none" style={{
-            top: "-40%", left: "-20%",
-            width: "65%", height: "140%",
-            background: "radial-gradient(ellipse, rgba(249,115,22,0.13) 0%, transparent 65%)",
-          }} />
+        {/* Carousel row */}
+        <div className="flex items-center gap-3 w-full max-w-xs">
+          {/* Prev */}
+          <button
+            onClick={prevCard}
+            className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center transition-colors"
+            style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)" }}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
 
-          {/* ── Decorative circles — bottom right (subtle Mastercard vibe) ── */}
-          <div className="absolute" style={{ bottom: "-18%", right: "-6%", opacity: 0.12 }}>
-            <svg width="160" height="120" viewBox="0 0 160 120">
-              <circle cx="60" cy="60" r="55" fill="none" stroke="rgba(249,115,22,1)" strokeWidth="1" />
-              <circle cx="100" cy="60" r="55" fill="none" stroke="rgba(249,115,22,1)" strokeWidth="1" />
-            </svg>
-          </div>
-          <div className="absolute" style={{ bottom: "-10%", right: "0%", opacity: 0.07 }}>
-            <svg width="120" height="90" viewBox="0 0 120 90">
-              <circle cx="45" cy="45" r="40" fill="rgba(249,115,22,0.6)" />
-              <circle cx="75" cy="45" r="40" fill="rgba(249,115,22,0.6)" />
-            </svg>
+          {/* Card */}
+          <div className="flex-1">
+            <PlanCard
+              cfg={currentCard}
+              isOwned={isOwned}
+              credits={credits}
+              userName={user?.name}
+            />
           </div>
 
-          {/* ── Card content ── */}
-          <div className="absolute inset-0 flex flex-col justify-between p-[6%]">
-
-            {/* Top row */}
-            <div className="flex items-start justify-between">
-              {/* Logo */}
-              <div className="flex items-center gap-2">
-                <img src="/mution-logo.png" alt="Mution" className="h-6 w-auto brightness-110" />
-                <span className="font-extrabold tracking-tight text-white" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: "clamp(13px, 2vw, 18px)" }}>
-                  Mution
-                </span>
-              </div>
-
-              {/* Plan badge */}
-              <span
-                className="font-bold uppercase tracking-widest"
-                style={{
-                  fontSize: "clamp(8px, 1.2vw, 11px)",
-                  color: plan.color,
-                  border: `1px solid ${plan.color}44`,
-                  background: `${plan.color}18`,
-                  padding: "2px 8px",
-                  borderRadius: "99px",
-                  letterSpacing: "0.14em",
-                }}
-              >
-                {plan.name}
-              </span>
-            </div>
-
-            {/* Chip + balance */}
-            <div className="flex flex-col gap-[5%]">
-              {/* EMV Chip */}
-              <div style={{ width: "clamp(28px, 5%, 42px)" }}>
-                <svg viewBox="0 0 42 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%">
-                  <rect width="42" height="32" rx="4" fill="#b8960c" />
-                  <rect x="1" y="1" width="40" height="30" rx="3.2" fill="url(#chipGold)" />
-                  {/* Grid lines */}
-                  <line x1="14" y1="1" x2="14" y2="31" stroke="rgba(0,0,0,0.25)" strokeWidth="0.7" />
-                  <line x1="28" y1="1" x2="28" y2="31" stroke="rgba(0,0,0,0.25)" strokeWidth="0.7" />
-                  <line x1="1" y1="11" x2="41" y2="11" stroke="rgba(0,0,0,0.25)" strokeWidth="0.7" />
-                  <line x1="1" y1="21" x2="41" y2="21" stroke="rgba(0,0,0,0.25)" strokeWidth="0.7" />
-                  {/* Center contact */}
-                  <rect x="14.5" y="11.5" width="13" height="9" rx="1.5" fill="rgba(0,0,0,0.18)" />
-                  <defs>
-                    <linearGradient id="chipGold" x1="0" y1="0" x2="42" y2="32" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stopColor="#e8c55a" />
-                      <stop offset="40%" stopColor="#d4a827" />
-                      <stop offset="100%" stopColor="#b8960c" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-
-              {/* Balance */}
-              <div>
-                <p className="text-white/40 font-medium mb-0.5" style={{ fontSize: "clamp(8px, 1.1vw, 11px)", letterSpacing: "0.08em" }}>
-                  SALDO TERSEDIA
-                </p>
-                <p
-                  className="font-extrabold tabular-nums tracking-tight leading-none"
-                  style={{ fontSize: "clamp(18px, 3.5vw, 34px)", color: creditColor(credits) }}
-                >
-                  {formatRp(credits)}
-                </p>
-              </div>
-            </div>
-
-            {/* Bottom row */}
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-white/35 font-medium mb-0.5" style={{ fontSize: "clamp(7px, 1vw, 10px)", letterSpacing: "0.1em" }}>
-                  PEMEGANG KARTU
-                </p>
-                <p className="text-white font-semibold truncate max-w-[180px]" style={{ fontSize: "clamp(10px, 1.6vw, 14px)", letterSpacing: "0.04em" }}>
-                  {(user?.name ?? "—").toUpperCase()}
-                </p>
-              </div>
-              <p className="text-white/25 font-bold tracking-widest" style={{ fontSize: "clamp(7px, 1vw, 10px)", letterSpacing: "0.2em" }}>
-                DEBIT
-              </p>
-            </div>
-          </div>
+          {/* Next */}
+          <button
+            onClick={nextCard}
+            className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center transition-colors"
+            style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)" }}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
 
-        {/* ── Actions + info di bawah kartu ── */}
-        <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
+        {/* Dots */}
+        <div className="flex items-center gap-1.5">
+          {PLAN_CARDS.map((p, i) => (
+            <button
+              key={p.id}
+              onClick={() => setCardIndex(i)}
+              className="rounded-full transition-all duration-200"
+              style={{
+                width: i === cardIndex ? 16 : 6,
+                height: 6,
+                background: i === cardIndex ? currentCard.accent : "rgba(255,255,255,0.15)",
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Plan label */}
+        <p className="text-xs font-medium" style={{ color: isOwned ? currentCard.accent : "rgba(255,255,255,0.25)" }}>
+          {isOwned ? `Plan aktif kamu · ${currentCard.name}` : `${currentCard.name} — belum diaktifkan`}
+        </p>
+      </div>
+
+      {/* ── Actions + credit bar ── */}
+      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="px-5 py-4 space-y-4">
+          {/* Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setTopupOpen(true)}
-              className="flex items-center gap-2 text-sm font-semibold rounded-xl px-4 py-2.5 transition-all"
-              style={{
-                border: "1px solid rgba(249,115,22,0.4)",
-                color: "rgba(249,115,22,0.9)",
-                background: "rgba(249,115,22,0.08)",
-              }}
+              className="flex items-center gap-2 text-sm font-semibold rounded-xl px-4 py-2 transition-all"
+              style={{ border: "1px solid rgba(249,115,22,0.4)", color: "rgba(249,115,22,0.9)", background: "rgba(249,115,22,0.07)" }}
             >
               <CreditCard className="h-4 w-4" />
               Topup Saldo
             </button>
-
-            {plan.name === "Hobby" && (
+            {plan.name !== "Team" && (
               <Link href="/harga">
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2 text-sm font-semibold rounded-xl px-4 py-2.5 h-auto"
-                  style={{
-                    border: "1px solid rgba(139,92,246,0.4)",
-                    color: "rgba(139,92,246,0.9)",
-                    background: "rgba(139,92,246,0.08)",
-                  }}
-                >
+                <Button variant="outline" className="flex items-center gap-2 text-sm font-semibold rounded-xl px-4 py-2 h-auto"
+                  style={{ border: "1px solid rgba(139,92,246,0.4)", color: "rgba(139,92,246,0.9)", background: "rgba(139,92,246,0.07)" }}>
                   <TrendingUp className="h-4 w-4" />
-                  Upgrade
+                  Upgrade Plan
                 </Button>
               </Link>
             )}
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <Zap className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Plan</span>
-            <span className="text-xs font-bold" style={{ color: plan.color }}>{plan.name}</span>
-            <Link href="/harga">
-              <span className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer">
-                Lihat plan →
-              </span>
-            </Link>
+          {/* Credit bar */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-muted-foreground">Saldo tersedia</span>
+              <span className="text-xs font-bold tabular-nums" style={{ color: creditColor(credits) }}>{formatRp(credits)}</span>
+            </div>
+            <div className="w-full h-1 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: creditColor(credits) }} />
+            </div>
+            <p className="text-[10px] text-muted-foreground/40 mt-1.5">
+              {credits === 0 ? "Kredit habis — proyek dihentikan." : credits <= 1000 ? "Kredit hampir habis — segera topup." : "Kredit tersedia · 1 kredit = Rp 1"}
+            </p>
           </div>
-        </div>
-
-        {/* ── Credit bar ── */}
-        <div className="mt-3">
-          <div className="w-full h-1 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${pct}%`, background: creditColor(credits) }}
-            />
-          </div>
-          <p className="text-[10px] text-muted-foreground/40 mt-1.5">
-            {credits === 0
-              ? "Kredit habis — proyek dihentikan."
-              : credits <= 1000
-              ? "Kredit hampir habis — segera topup."
-              : `${formatRp(credits)} tersedia`}
-          </p>
         </div>
       </div>
 
