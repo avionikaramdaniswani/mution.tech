@@ -53,25 +53,22 @@ function planStyle(plan?: string) {
 // ── Plan card configs ──────────────────────────────────────────────────────
 const PLAN_PERKS: Record<string, string[]> = {
   hobby: [
-    "Deploy hingga 2 proyek aktif",
-    "512 MB RAM per proyek",
-    "Subdomain Mution gratis",
-    "Log penggunaan dasar",
-    "Support via komunitas",
+    "2 slot deploy proyek",
+    "RAM 256 MB – 1 GB",
+    "5.000 kredit saat daftar",
   ],
   pro: [
-    "Deploy hingga 10 proyek aktif",
-    "2 GB RAM per proyek",
-    "Custom domain sendiri",
-    "Dedicated CPU — performa lebih stabil",
+    "Unlimited slot proyek",
+    "RAM hingga 4 GB",
     "Priority support",
+    "25.000 kredit per siklus, rollover saat upgrade",
   ],
   team: [
-    "Proyek tak terbatas",
-    "8 GB RAM per proyek",
-    "Multi-user & manajemen tim",
-    "SLA uptime 99.9%",
-    "Dedicated support langsung",
+    "Unlimited slot proyek",
+    "Multi user",
+    "Shared proyek",
+    "Priority support",
+    "60.000 kredit per siklus, rollover saat upgrade",
   ],
 };
 
@@ -764,58 +761,63 @@ export default function BillingPage() {
       {/* ── Plan benefits ── */}
       <div
         key={cardIndex}
-        className="rounded-xl px-4 py-3.5 space-y-2"
+        className="rounded-xl px-4 py-3.5"
         style={{
           background: "rgba(255,255,255,0.03)",
           border: "1px solid rgba(255,255,255,0.07)",
           animation: "fadeSlideIn 0.22s ease",
         }}
       >
-        <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.25)" }}>
-          {currentCard.name}
-        </p>
-        {PLAN_PERKS[currentCard.id].map((perk, i) => (
-          <div key={i} className="flex items-center gap-2.5">
-            <div
-              className="h-1 w-1 rounded-full flex-shrink-0"
-              style={{ background: isUnlocked ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.15)" }}
-            />
-            <span className="text-sm" style={{ color: isUnlocked ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.2)" }}>
-              {perk}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Action buttons ── */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setTopupOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.97]"
-          style={{
-            background: "rgba(249,115,22,0.12)",
-            border: "1px solid rgba(249,115,22,0.25)",
-            color: "rgb(251,146,60)",
-          }}
-        >
-          <Wallet className="h-3.5 w-3.5" />
-          Topup
-        </button>
-        {plan.name !== "Team" && (
-          <Link href="/harga">
+        {/* Header row: plan name + action buttons */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.25)" }}>
+            {currentCard.name}
+          </p>
+          <div className="flex items-center gap-1.5">
             <button
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.97]"
+              onClick={() => setTopupOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all active:scale-[0.97]"
               style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: "rgba(255,255,255,0.45)",
+                background: "rgba(249,115,22,0.1)",
+                border: "1px solid rgba(249,115,22,0.22)",
+                color: "rgb(251,146,60)",
               }}
             >
-              <TrendingUp className="h-3.5 w-3.5" />
-              Upgrade Plan
+              <Wallet className="h-3 w-3" />
+              Topup
             </button>
-          </Link>
-        )}
+            {plan.name !== "Team" && (
+              <Link href="/harga">
+                <button
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all active:scale-[0.97]"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.09)",
+                    color: "rgba(255,255,255,0.4)",
+                  }}
+                >
+                  <TrendingUp className="h-3 w-3" />
+                  Upgrade
+                </button>
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* Perks list */}
+        <div className="space-y-2">
+          {PLAN_PERKS[currentCard.id].map((perk, i) => (
+            <div key={i} className="flex items-center gap-2.5">
+              <div
+                className="h-1 w-1 rounded-full flex-shrink-0"
+                style={{ background: isUnlocked ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.12)" }}
+              />
+              <span className="text-sm" style={{ color: isUnlocked ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.18)" }}>
+                {perk}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
