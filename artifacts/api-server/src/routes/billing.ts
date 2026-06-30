@@ -9,6 +9,7 @@ import {
   getTripayBase,
   createOrderSignature,
   verifyCallbackSignature,
+  getPaymentChannels,
   MIN_TOPUP_IDR,
   MAX_TOPUP_IDR,
   TOPUP_PRESETS,
@@ -21,6 +22,28 @@ const router = Router();
 
 router.get("/billing/topup-config", (_req, res): void => {
   res.json({ presets: TOPUP_PRESETS, min: MIN_TOPUP_IDR, max: MAX_TOPUP_IDR });
+});
+
+router.get("/billing/payment-channels", async (_req, res): Promise<void> => {
+  const apiKey = process.env.TRIPAY_API_KEY;
+  if (!apiKey) {
+    res.status(503).json({ error: "Tripay belum dikonfigurasi" });
+    return;
+  }
+  try {
+    const channels = await getPaymentChannels(apiKey, getTripayBase());
+    res.json(channels.map((c) => ({
+      code: c.code,
+      name: c.name,
+      group: c.group,
+      icon_url: c.icon_url,
+      minimum_amount: c.minimum_amount,
+      maximum_amount: c.maximum_amount,
+    })));
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch payment channels");
+    res.status(502).json({ error: "Gagal mengambil daftar channel pembayaran" });
+  }
 });
 
 router.post("/billing/topup", requireAuth, async (req, res): Promise<void> => {

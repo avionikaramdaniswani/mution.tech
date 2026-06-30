@@ -19,17 +19,37 @@ import { Link } from "wouter";
 
 const PRESETS = [3_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000];
 
-const PAYMENT_METHODS = [
-  { id: "QRIS",      label: "QRIS" },
-  { id: "BRIVA",     label: "BRI VA" },
-  { id: "BNIVA",     label: "BNI VA" },
-  { id: "MANDIRIVA", label: "Mandiri VA" },
-  { id: "BCAVA",     label: "BCA VA" },
-  { id: "BSIVA",     label: "BSI VA" },
-];
-
-const MIN = 10;
+const MIN = 3_000;
 const MAX = 10_000_000;
+
+interface PaymentChannel {
+  code: string;
+  name: string;
+  group: string;
+  icon_url: string;
+  minimum_amount: number;
+  maximum_amount: number;
+}
+
+function usePaymentChannels() {
+  const [channels, setChannels] = useState<PaymentChannel[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/billing/payment-channels", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data: PaymentChannel[] | { error: string }) => {
+        if (Array.isArray(data)) setChannels(data);
+        else setError((data as { error: string }).error ?? "Gagal memuat channel");
+      })
+      .catch(() => setError("Gagal memuat channel pembayaran"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { channels, loading, error };
+}
 
 function formatRp(n: number) {
   return "Rp " + n.toLocaleString("id-ID");
@@ -294,6 +314,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [method, setMethod] = useState("QRIS");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { channels, loading: chLoading, error: chError } = usePaymentChannels();
 
   useEffect(() => {
     if (open) {
@@ -323,7 +344,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   })();
 
   const canAdvanceStep1 = resolvedAmount != null && resolvedAmount >= MIN && !amountError;
-  const selectedMethodLabel = PAYMENT_METHODS.find(m => m.id === method)?.label ?? method;
+  const selectedMethodLabel = channels.find(c => c.code === method)?.name.replace(" Virtual Account", " VA") ?? method;
 
   function handleCustomInput(raw: string) {
     const digits = raw.replace(/\D/g, "");
@@ -510,71 +531,92 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
           {/* Step 2 — Metode */}
           {step === 2 && (
-            <div className="space-y-2">
-              {/* QRIS — featured */}
-              {(() => {
-                const active = method === "QRIS";
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-0.5">
+              {chLoading && (
+                <div className="flex items-center justify-center py-8 gap-2" style={{ color: "rgba(255,255,255,0.3)" }}>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-xs">Memuat channel…</span>
+                </div>
+              )}
+              {chError && !chLoading && (
+                <p className="text-xs text-center py-4 text-red-400">{chError}</p>
+              )}
+              {!chLoading && !chError && channels.length === 0 && (
+                <p className="text-xs text-center py-4" style={{ color: "rgba(255,255,255,0.3)" }}>Tidak ada channel tersedia</p>
+              )}
+              {!chLoading && channels.length > 0 && (() => {
+                const qris = channels.find(c => c.code === "QRIS");
+                const others = channels.filter(c => c.code !== "QRIS");
+                const groups: Record<string, PaymentChannel[]> = {};
+                others.forEach(c => {
+                  if (!groups[c.group]) groups[c.group] = [];
+                  groups[c.group].push(c);
+                });
                 return (
-                  <button
-                    onClick={() => setMethod("QRIS")}
-                    className="w-full flex items-center gap-3 rounded-xl px-4 py-3.5 transition-all text-left"
-                    style={{
-                      border: active ? "1px solid rgba(249,115,22,0.55)" : "1px solid rgba(255,255,255,0.08)",
-                      background: active ? "rgba(249,115,22,0.07)" : "rgba(255,255,255,0.025)",
-                    }}
-                  >
-                    <div className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: active ? "rgba(249,115,22,0.14)" : "rgba(255,255,255,0.05)" }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <rect x="3" y="3" width="7" height="7" rx="1.2" stroke={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.4)"} strokeWidth="1.5"/>
-                        <rect x="5" y="5" width="3" height="3" fill={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.4)"}/>
-                        <rect x="14" y="3" width="7" height="7" rx="1.2" stroke={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.4)"} strokeWidth="1.5"/>
-                        <rect x="16" y="5" width="3" height="3" fill={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.4)"}/>
-                        <rect x="3" y="14" width="7" height="7" rx="1.2" stroke={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.4)"} strokeWidth="1.5"/>
-                        <rect x="5" y="16" width="3" height="3" fill={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.4)"}/>
-                        <rect x="14" y="14" width="2" height="2" fill={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.35)"}/>
-                        <rect x="17" y="14" width="4" height="2" fill={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.35)"}/>
-                        <rect x="14" y="17" width="2" height="4" fill={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.35)"}/>
-                        <rect x="17" y="17" width="2" height="2" fill={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.35)"}/>
-                        <rect x="20" y="20" width="1" height="1" fill={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.35)"}/>
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.8)" }}>QRIS</p>
-                      <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.3)" }}>GoPay · OVO · Dana · ShopeePay & semua e-wallet</p>
-                    </div>
-                    {active && (
-                      <div className="h-4 w-4 rounded-full flex-shrink-0 flex items-center justify-center" style={{ background: "rgb(249,115,22)" }}>
-                        <CheckCircle2 className="h-3 w-3 text-white" />
+                  <>
+                    {qris && (() => {
+                      const active = method === qris.code;
+                      return (
+                        <button
+                          key={qris.code}
+                          onClick={() => setMethod(qris.code)}
+                          className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all text-left"
+                          style={{
+                            border: active ? "1px solid rgba(249,115,22,0.55)" : "1px solid rgba(255,255,255,0.08)",
+                            background: active ? "rgba(249,115,22,0.07)" : "rgba(255,255,255,0.025)",
+                          }}
+                        >
+                          <div className="h-8 w-8 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0"
+                            style={{ background: "rgba(255,255,255,0.06)" }}>
+                            <img src={qris.icon_url} alt={qris.name} className="h-7 w-7 object-contain"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.85)" }}>{qris.name}</p>
+                            <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>GoPay · OVO · Dana · ShopeePay & semua e-wallet</p>
+                          </div>
+                          {active && (
+                            <CheckCircle2 className="h-4 w-4 flex-shrink-0" style={{ color: "rgb(249,115,22)" }} />
+                          )}
+                        </button>
+                      );
+                    })()}
+
+                    {Object.entries(groups).map(([group, chs]) => (
+                      <div key={group}>
+                        <p className="text-[9px] font-semibold uppercase tracking-widest mb-1.5 mt-2"
+                          style={{ color: "rgba(255,255,255,0.22)" }}>{group}</p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {chs.map((c) => {
+                            const active = method === c.code;
+                            return (
+                              <button
+                                key={c.code}
+                                onClick={() => setMethod(c.code)}
+                                className="flex items-center gap-2 rounded-xl px-3 py-2 transition-all text-left"
+                                style={{
+                                  border: active ? "1px solid rgba(249,115,22,0.5)" : "1px solid rgba(255,255,255,0.07)",
+                                  background: active ? "rgba(249,115,22,0.06)" : "rgba(255,255,255,0.02)",
+                                }}
+                              >
+                                <div className="h-6 w-6 rounded-md overflow-hidden flex items-center justify-center flex-shrink-0"
+                                  style={{ background: "rgba(255,255,255,0.06)" }}>
+                                  <img src={c.icon_url} alt={c.name} className="h-5 w-5 object-contain"
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                                </div>
+                                <span className="text-xs font-medium leading-tight truncate"
+                                  style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.65)" }}>
+                                  {c.name.replace(" Virtual Account", " VA")}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    )}
-                  </button>
+                    ))}
+                  </>
                 );
               })()}
-
-              {/* VA Banks — 2 col grid */}
-              <div className="grid grid-cols-2 gap-2">
-                {PAYMENT_METHODS.filter(m => m.id !== "QRIS").map((m) => {
-                  const active = method === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => setMethod(m.id)}
-                      className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all"
-                      style={{
-                        border: active ? "1px solid rgba(249,115,22,0.5)" : "1px solid rgba(255,255,255,0.07)",
-                        background: active ? "rgba(249,115,22,0.06)" : "rgba(255,255,255,0.02)",
-                      }}
-                    >
-                      <div className="h-7 w-7 rounded-md flex items-center justify-center flex-shrink-0 text-[8px] font-black tracking-wide"
-                        style={{ background: active ? "rgba(249,115,22,0.15)" : "rgba(255,255,255,0.06)", color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.4)" }}>
-                        VA
-                      </div>
-                      <span className="text-xs font-medium" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.6)" }}>{m.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
           )}
 
