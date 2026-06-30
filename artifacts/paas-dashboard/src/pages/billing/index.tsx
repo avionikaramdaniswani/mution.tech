@@ -51,27 +51,27 @@ function planStyle(plan?: string) {
 }
 
 // ── Plan card configs ──────────────────────────────────────────────────────
-const PLAN_PERKS: Record<string, { icon: string; text: string }[]> = {
+const PLAN_PERKS: Record<string, string[]> = {
   hobby: [
-    { icon: "🚀", text: "Deploy hingga 2 proyek aktif" },
-    { icon: "💾", text: "512 MB RAM per proyek" },
-    { icon: "🌐", text: "Subdomain Mution gratis" },
-    { icon: "📊", text: "Log penggunaan dasar" },
-    { icon: "💬", text: "Support via komunitas" },
+    "Deploy hingga 2 proyek aktif",
+    "512 MB RAM per proyek",
+    "Subdomain Mution gratis",
+    "Log penggunaan dasar",
+    "Support via komunitas",
   ],
   pro: [
-    { icon: "🚀", text: "Deploy hingga 10 proyek aktif" },
-    { icon: "💾", text: "2 GB RAM per proyek" },
-    { icon: "🌐", text: "Custom domain sendiri" },
-    { icon: "⚡", text: "Dedicated CPU — performa lebih stabil" },
-    { icon: "🔔", text: "Priority support" },
+    "Deploy hingga 10 proyek aktif",
+    "2 GB RAM per proyek",
+    "Custom domain sendiri",
+    "Dedicated CPU — performa lebih stabil",
+    "Priority support",
   ],
   team: [
-    { icon: "🚀", text: "Proyek tak terbatas" },
-    { icon: "💾", text: "8 GB RAM per proyek" },
-    { icon: "👥", text: "Multi-user & manajemen tim" },
-    { icon: "🛡️", text: "SLA uptime 99.9%" },
-    { icon: "🎯", text: "Dedicated support langsung" },
+    "Proyek tak terbatas",
+    "8 GB RAM per proyek",
+    "Multi-user & manajemen tim",
+    "SLA uptime 99.9%",
+    "Dedicated support langsung",
   ],
 };
 
@@ -764,51 +764,54 @@ export default function BillingPage() {
       {/* ── Plan benefits ── */}
       <div
         key={cardIndex}
-        className="rounded-2xl px-5 py-4 space-y-2.5"
+        className="rounded-xl px-4 py-3.5 space-y-2"
         style={{
-          background: `linear-gradient(160deg, ${currentCard.glowColor.replace("0.07", "0.06")} 0%, rgba(255,255,255,0.02) 100%)`,
-          border: `1px solid ${currentCard.borderColor}`,
-          animation: "fadeSlideIn 0.25s ease",
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          animation: "fadeSlideIn 0.22s ease",
         }}
       >
-        <p className="text-[11px] font-semibold tracking-widest uppercase mb-1" style={{ color: currentCard.accent + "99" }}>
-          Yang kamu dapat di {currentCard.name}
+        <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.25)" }}>
+          {currentCard.name}
         </p>
         {PLAN_PERKS[currentCard.id].map((perk, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <span className="text-base leading-none flex-shrink-0">{perk.icon}</span>
-            <span className="text-sm" style={{ color: isUnlocked ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.35)" }}>
-              {perk.text}
+          <div key={i} className="flex items-center gap-2.5">
+            <div
+              className="h-1 w-1 rounded-full flex-shrink-0"
+              style={{ background: isUnlocked ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.15)" }}
+            />
+            <span className="text-sm" style={{ color: isUnlocked ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.2)" }}>
+              {perk}
             </span>
           </div>
         ))}
       </div>
 
       {/* ── Action buttons ── */}
-      <div className="flex flex-col gap-2.5 sm:flex-row">
+      <div className="flex items-center gap-2">
         <button
           onClick={() => setTopupOpen(true)}
-          className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all active:scale-[0.98]"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.97]"
           style={{
-            background: "linear-gradient(135deg, rgb(249,115,22) 0%, rgb(234,88,12) 100%)",
-            boxShadow: "0 4px 24px rgba(249,115,22,0.3), inset 0 1px 0 rgba(255,255,255,0.15)",
-            color: "#fff",
+            background: "rgba(249,115,22,0.12)",
+            border: "1px solid rgba(249,115,22,0.25)",
+            color: "rgb(251,146,60)",
           }}
         >
-          <Wallet className="h-4 w-4" />
-          Topup Saldo
+          <Wallet className="h-3.5 w-3.5" />
+          Topup
         </button>
         {plan.name !== "Team" && (
-          <Link href="/harga" className="flex-1">
+          <Link href="/harga">
             <button
-              className="w-full flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all active:scale-[0.98]"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.97]"
               style={{
-                background: "rgba(139,92,246,0.07)",
-                border: "1px solid rgba(139,92,246,0.28)",
-                color: "rgb(167,139,250)",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "rgba(255,255,255,0.45)",
               }}
             >
-              <TrendingUp className="h-4 w-4" />
+              <TrendingUp className="h-3.5 w-3.5" />
               Upgrade Plan
             </button>
           </Link>
