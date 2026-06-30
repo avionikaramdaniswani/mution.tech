@@ -699,8 +699,8 @@ export default function BillingPage() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const GAP = 12;
-  const CARD_RATIO = 0.78;
+  const GAP = 16;
+  const CARD_RATIO = 0.70;
   const cardWidth = containerWidth * CARD_RATIO;
   const sideOffset = (containerWidth - cardWidth) / 2;
   const trackX = sideOffset - cardIndex * (cardWidth + GAP);
@@ -741,8 +741,8 @@ export default function BillingPage() {
                   style={{
                     width: cardWidth,
                     flexShrink: 0,
-                    opacity: isActive ? 1 : 0.42,
-                    transform: isActive ? "scale(1)" : "scale(0.94)",
+                    opacity: isActive ? 1 : 0.65,
+                    transform: isActive ? "scale(1)" : "scale(0.96)",
                     transformOrigin: i < cardIndex ? "right center" : "left center",
                     transition: "opacity 0.38s, transform 0.38s",
                     cursor: isActive ? "default" : "pointer",
