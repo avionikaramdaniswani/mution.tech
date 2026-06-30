@@ -131,24 +131,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Kanan: status platform + saldo + profil */}
           <div className="flex items-center gap-2.5">
 
-            {/* Status indicator */}
-            {health?.status === "ok" ? (
-              <div
-                className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full"
-                title="Platform beroperasi normal"
-              >
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Normal</span>
-              </div>
-            ) : (
-              <div
-                className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-destructive bg-destructive/10 px-2.5 py-1 rounded-full"
-                title="Platform mengalami gangguan"
-              >
-                <div className="h-1.5 w-1.5 rounded-full bg-destructive" />
-                <span>Gangguan</span>
-              </div>
-            )}
+            {/* Status dot — hanya titik, tanpa tulisan */}
+            <div
+              className={`h-2 w-2 rounded-full flex-shrink-0 ${health?.status === "ok" ? "bg-emerald-500 animate-pulse" : "bg-destructive"}`}
+              title={health?.status === "ok" ? "Platform beroperasi normal" : "Platform mengalami gangguan"}
+            />
 
             {/* Saldo */}
             <Link href="/billing">
@@ -209,7 +196,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* ── Body: sidebar + content, digeser 64px ke bawah navbar ── */}
         <div className="flex pt-16 min-h-screen">
-          <Sidebar variant="sidebar" className="border-r border-border/50 top-16 h-[calc(100svh-4rem)]">
+          <Sidebar variant="sidebar" collapsible="icon" className="border-r border-border/50 top-16 h-[calc(100svh-4rem)]">
             <SidebarContent>
               <SidebarGroup>
                 <SidebarGroupLabel>Platform</SidebarGroupLabel>
