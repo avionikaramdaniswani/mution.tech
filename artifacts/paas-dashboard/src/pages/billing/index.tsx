@@ -51,6 +51,181 @@ function usePaymentChannels() {
   return { channels, loading, error };
 }
 
+interface OrderItem {
+  id: number;
+  invoiceNumber: string;
+  amount: number;
+  creditsAmount: number;
+  status: "pending" | "paid" | "failed" | "expired";
+  paymentUrl: string | null;
+  createdAt: string;
+  paidAt: string | null;
+}
+
+function useOrderHistory(refreshKey: number) {
+  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/billing/orders", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setOrders(data); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [refreshKey]);
+
+  return { orders, loading };
+}
+
+function StatusBadge({ status }: { status: OrderItem["status"] }) {
+  const cfg = {
+    paid:    { label: "Berhasil", bg: "rgba(34,197,94,0.1)",   border: "rgba(34,197,94,0.25)",   color: "rgb(34,197,94)" },
+    pending: { label: "Menunggu", bg: "rgba(249,115,22,0.1)",  border: "rgba(249,115,22,0.25)",  color: "rgb(249,115,22)" },
+    failed:  { label: "Gagal",    bg: "rgba(239,68,68,0.09)",  border: "rgba(239,68,68,0.22)",   color: "rgb(239,68,68)" },
+    expired: { label: "Expired",  bg: "rgba(100,116,139,0.1)", border: "rgba(100,116,139,0.22)", color: "rgba(148,163,184,0.7)" },
+  }[status];
+  return (
+    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+      style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color }}>
+      {cfg.label}
+    </span>
+  );
+}
+
+function OrderHistorySection({ refreshKey, onSynced }: { refreshKey: number; onSynced: () => void }) {
+  const { orders, loading } = useOrderHistory(refreshKey);
+  const [syncingId, setSyncingId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+
+  async function syncOrder(id: number) {
+    if (syncingId !== null) return;
+    setSyncingId(id);
+    try {
+      const res = await fetch(`/api/billing/orders/${id}/sync`, { method: "POST", credentials: "include" });
+      if (res.ok) {
+        const data = await res.json() as { status: string };
+        if (data.status === "paid") {
+          await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+          onSynced();
+        } else {
+          onSynced();
+        }
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setSyncingId(null);
+    }
+  }
+
+  if (loading && orders.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-8 gap-2" style={{ color: "rgba(255,255,255,0.25)" }}>
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <span className="text-xs">Memuat riwayat order…</span>
+      </div>
+    );
+  }
+
+  if (!loading && orders.length === 0) return null;
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.22)" }}>
+          Riwayat Order
+        </p>
+        <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.2)" }}>{orders.length} order</span>
+      </div>
+
+      <div className="space-y-2">
+        {orders.map((order) => {
+          const date = new Date(order.createdAt);
+          const dateStr = date.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+          const timeStr = date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+          const isSyncing = syncingId === order.id;
+
+          return (
+            <div
+              key={order.id}
+              className="rounded-xl px-4 py-3 flex flex-col gap-2.5"
+              style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
+            >
+              {/* Row 1: date + status */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.55)" }}>
+                    {dateStr} <span style={{ color: "rgba(255,255,255,0.25)" }}>·</span> {timeStr}
+                  </p>
+                  <p className="text-[10px] truncate mt-0.5 font-mono" style={{ color: "rgba(255,255,255,0.2)" }}>
+                    {order.invoiceNumber}
+                  </p>
+                </div>
+                <StatusBadge status={order.status} />
+              </div>
+
+              {/* Row 2: amount + credits */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.2)" }}>Bayar</p>
+                    <p className="text-sm font-bold text-white">{formatRp(order.amount)}</p>
+                  </div>
+                  <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.07)" }} />
+                  <div>
+                    <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.2)" }}>Kredit</p>
+                    <p className="text-sm font-bold" style={{ color: order.status === "paid" ? "rgb(34,197,94)" : "rgba(255,255,255,0.4)" }}>
+                      {order.status === "paid" ? "+" : ""}{order.creditsAmount.toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1.5">
+                  {order.status === "pending" && order.paymentUrl && (
+                    <a
+                      href={order.paymentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all"
+                      style={{ background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.3)", color: "rgb(249,115,22)" }}
+                    >
+                      Bayar
+                    </a>
+                  )}
+                  {order.status === "pending" && (
+                    <button
+                      onClick={() => syncOrder(order.id)}
+                      disabled={isSyncing}
+                      className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
+                      style={{
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        color: isSyncing ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.4)",
+                        cursor: isSyncing ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {isSyncing
+                        ? <><Loader2 className="h-3 w-3 animate-spin" /> Cek…</>
+                        : <><RefreshCw className="h-3 w-3" /> Cek</>}
+                    </button>
+                  )}
+                  {order.status === "paid" && order.paidAt && (
+                    <p className="text-[10px]" style={{ color: "rgba(34,197,94,0.6)" }}>
+                      Lunas {new Date(order.paidAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function formatRp(n: number) {
   return "Rp " + n.toLocaleString("id-ID");
 }
@@ -830,6 +1005,7 @@ export default function BillingPage() {
   const [location, setLocation] = useLocation();
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [pollDone, setPollDone] = useState(false);
+  const [orderRefreshKey, setOrderRefreshKey] = useState(0);
 
   // Detect return from Tripay via ?orderId=xxx URL param
   useEffect(() => {
@@ -882,9 +1058,15 @@ export default function BillingPage() {
       {pendingOrderId && !pollDone && (
         <PaymentStatusBanner
           orderId={pendingOrderId}
-          onDone={() => setPollDone(true)}
+          onDone={() => { setPollDone(true); setOrderRefreshKey(k => k + 1); }}
         />
       )}
+
+      {/* Order history */}
+      <OrderHistorySection
+        refreshKey={orderRefreshKey}
+        onSynced={() => setOrderRefreshKey(k => k + 1)}
+      />
 
       {/* ── Card Carousel (peek style) ── */}
       <div className="flex flex-col items-center gap-3">
