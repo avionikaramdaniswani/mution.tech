@@ -123,10 +123,11 @@ const PLAN_CARDS = [
 type PlanCardConfig = typeof PLAN_CARDS[number];
 
 function PlanCard({
-  cfg, isOwned, credits, userName,
+  cfg, isCurrentPlan, isUnlocked, credits, userName,
 }: {
   cfg: PlanCardConfig;
-  isOwned: boolean;
+  isCurrentPlan: boolean;
+  isUnlocked: boolean;
   credits: number;
   userName?: string;
 }) {
@@ -138,10 +139,12 @@ function PlanCard({
         aspectRatio: "1.586 / 1",
         background: cfg.bg,
         border: `1px solid ${cfg.borderColor}`,
-        boxShadow: isOwned
+        boxShadow: isCurrentPlan
           ? `0 20px 60px rgba(0,0,0,0.55), 0 0 40px ${cfg.glowColor}`
+          : isUnlocked
+          ? `0 12px 32px rgba(0,0,0,0.45), 0 0 20px ${cfg.glowColor}`
           : "0 8px 24px rgba(0,0,0,0.4)",
-        filter: isOwned ? "none" : "grayscale(60%) brightness(0.55)",
+        filter: isUnlocked ? "none" : "grayscale(60%) brightness(0.55)",
         transition: "filter 0.3s, box-shadow 0.3s",
       }}
     >
@@ -203,10 +206,10 @@ function PlanCard({
           </svg>
         </div>
 
-        {/* Bottom: balance (owned) or tagline (locked) + name */}
+        {/* Bottom: balance (current plan) or tagline + name */}
         <div className="flex items-end justify-between gap-2">
           <div className="min-w-0">
-            {isOwned ? (
+            {isCurrentPlan ? (
               <>
                 <p style={{ fontSize: 8, letterSpacing: "0.1em", color: "rgba(255,255,255,0.38)", marginBottom: 2 }}>
                   SALDO TERSEDIA
@@ -217,16 +220,16 @@ function PlanCard({
               </>
             ) : (
               <>
-                <p style={{ fontSize: 8, letterSpacing: "0.1em", color: "rgba(255,255,255,0.28)", marginBottom: 2 }}>
-                  PLAN
+                <p style={{ fontSize: 8, letterSpacing: "0.1em", color: isUnlocked ? "rgba(255,255,255,0.38)" : "rgba(255,255,255,0.28)", marginBottom: 2 }}>
+                  {isUnlocked ? "TERMASUK" : "PLAN"}
                 </p>
-                <p className="font-semibold leading-none" style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                <p className="font-semibold leading-none" style={{ fontSize: 12, color: isUnlocked ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.45)" }}>
                   {cfg.tagline}
                 </p>
               </>
             )}
             <p className="font-semibold truncate mt-2" style={{ fontSize: 10, letterSpacing: "0.05em", color: "rgba(255,255,255,0.35)" }}>
-              {isOwned ? (userName ?? "—").toUpperCase() : "— — — — — —"}
+              {isCurrentPlan ? (userName ?? "—").toUpperCase() : "— — — — — —"}
             </p>
           </div>
           <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.22em", color: "rgba(255,255,255,0.2)", flexShrink: 0 }}>
@@ -235,8 +238,8 @@ function PlanCard({
         </div>
       </div>
 
-      {/* Lock overlay for non-owned plans */}
-      {!isOwned && (
+      {/* Lock overlay — only for plans above current tier */}
+      {!isUnlocked && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5"
           style={{ background: "rgba(0,0,0,0.18)" }}>
           <div className="rounded-full p-2" style={{ background: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.1)" }}>
@@ -662,7 +665,8 @@ export default function BillingPage() {
   const prevCard = () => setCardIndex((i) => (i - 1 + PLAN_CARDS.length) % PLAN_CARDS.length);
   const nextCard = () => setCardIndex((i) => (i + 1) % PLAN_CARDS.length);
   const currentCard = PLAN_CARDS[cardIndex];
-  const isOwned = currentCard.id === (user?.plan ?? "hobby");
+  const isCurrentPlan = currentCard.id === (user?.plan ?? "hobby");
+  const isUnlocked = cardIndex <= (userPlanIndex === -1 ? 0 : userPlanIndex);
 
   return (
     <div className="space-y-4">
@@ -680,7 +684,7 @@ export default function BillingPage() {
       <div className="flex flex-col items-center gap-3">
 
         {/* Carousel row */}
-        <div className="flex items-center gap-3 w-full max-w-xs">
+        <div className="flex items-center gap-3 w-full max-w-xs sm:max-w-sm md:max-w-md">
           {/* Prev */}
           <button
             onClick={prevCard}
@@ -694,7 +698,8 @@ export default function BillingPage() {
           <div className="flex-1">
             <PlanCard
               cfg={currentCard}
-              isOwned={isOwned}
+              isCurrentPlan={isCurrentPlan}
+              isUnlocked={isUnlocked}
               credits={credits}
               userName={user?.name}
             />
@@ -727,8 +732,8 @@ export default function BillingPage() {
         </div>
 
         {/* Plan label */}
-        <p className="text-xs font-medium" style={{ color: isOwned ? currentCard.accent : "rgba(255,255,255,0.25)" }}>
-          {isOwned ? `Plan aktif kamu · ${currentCard.name}` : `${currentCard.name} — belum diaktifkan`}
+        <p className="text-xs font-medium" style={{ color: isCurrentPlan ? currentCard.accent : isUnlocked ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.25)" }}>
+          {isCurrentPlan ? `Plan aktif kamu · ${currentCard.name}` : isUnlocked ? `${currentCard.name} · termasuk di plan kamu` : `${currentCard.name} — belum diaktifkan`}
         </p>
       </div>
 
