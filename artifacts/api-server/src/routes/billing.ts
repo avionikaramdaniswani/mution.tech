@@ -142,15 +142,16 @@ router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<v
   const apiKey = process.env.TRIPAY_API_KEY;
   if (!apiKey) { res.status(503).json({ error: "Tripay tidak dikonfigurasi" }); return; }
 
+  // Order lama tanpa tripayReference tidak bisa di-sync (TriPay hanya terima reference T-xxx)
+  if (!order.tripayReference) {
+    res.json({ status: order.status, cannotSync: true });
+    return;
+  }
+
   try {
-    // Gunakan tripayReference (DEV-xxx / T-xxx) milik TriPay, bukan invoiceNumber kita
-    // Jika reference belum tersimpan (order lama), fallback ke merchant_ref param
     const base = getTripayBase();
-    const refParam = order.tripayReference
-      ? `reference=${encodeURIComponent(order.tripayReference)}`
-      : `merchant_ref=${encodeURIComponent(order.invoiceNumber)}`;
     const tripayRes = await fetch(
-      `${base}/transaction/detail?${refParam}`,
+      `${base}/transaction/detail?reference=${encodeURIComponent(order.tripayReference)}`,
       { headers: { Authorization: `Bearer ${apiKey}` } }
     );
     const detail = await tripayRes.json() as TripayTransactionDetail;
