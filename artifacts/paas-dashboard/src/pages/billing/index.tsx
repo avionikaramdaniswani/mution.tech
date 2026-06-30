@@ -6,7 +6,7 @@ import { useLocation } from "wouter";
 import {
   Wallet, Zap, TrendingUp,
   CreditCard, Loader2, PenLine, X, CheckCircle2, AlertCircle, RefreshCw,
-  ChevronLeft, ChevronRight, Lock,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -683,11 +683,27 @@ export default function BillingPage() {
 
   const userPlanIndex = PLAN_CARDS.findIndex((p) => p.id === (user?.plan ?? "hobby"));
   const [cardIndex, setCardIndex] = useState(userPlanIndex === -1 ? 0 : userPlanIndex);
-  const prevCard = () => setCardIndex((i) => (i - 1 + PLAN_CARDS.length) % PLAN_CARDS.length);
-  const nextCard = () => setCardIndex((i) => (i + 1) % PLAN_CARDS.length);
   const currentCard = PLAN_CARDS[cardIndex];
   const isCurrentPlan = currentCard.id === (user?.plan ?? "hobby");
   const isUnlocked = cardIndex <= (userPlanIndex === -1 ? 0 : userPlanIndex);
+
+  // Peek carousel sizing
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(320);
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const update = () => setContainerWidth(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const GAP = 12;
+  const CARD_RATIO = 0.78;
+  const cardWidth = containerWidth * CARD_RATIO;
+  const sideOffset = (containerWidth - cardWidth) / 2;
+  const trackX = sideOffset - cardIndex * (cardWidth + GAP);
 
   return (
     <div className="space-y-4">
@@ -701,39 +717,59 @@ export default function BillingPage() {
         />
       )}
 
-      {/* ── Card Carousel ── */}
+      {/* ── Card Carousel (peek style) ── */}
       <div className="flex flex-col items-center gap-3">
 
-        {/* Carousel row */}
-        <div className="flex items-center gap-3 w-full max-w-xs sm:max-w-sm md:max-w-md">
-          {/* Prev */}
-          <button
-            onClick={prevCard}
-            className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center transition-colors"
-            style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)" }}
+        {/* Peek track */}
+        <div ref={carouselRef} className="relative w-full overflow-hidden" style={{ maxWidth: "32rem", margin: "0 auto" }}>
+          {/* Sliding track */}
+          <div
+            className="flex"
+            style={{
+              gap: GAP,
+              transform: `translateX(${trackX}px)`,
+              transition: "transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+            }}
           >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-
-          {/* Card */}
-          <div className="flex-1">
-            <PlanCard
-              cfg={currentCard}
-              isCurrentPlan={isCurrentPlan}
-              isUnlocked={isUnlocked}
-              credits={credits}
-              userName={user?.name}
-            />
+            {PLAN_CARDS.map((card, i) => {
+              const isActive = i === cardIndex;
+              const isUnlockedCard = i <= (userPlanIndex === -1 ? 0 : userPlanIndex);
+              return (
+                <div
+                  key={card.id}
+                  onClick={() => !isActive && setCardIndex(i)}
+                  style={{
+                    width: cardWidth,
+                    flexShrink: 0,
+                    opacity: isActive ? 1 : 0.42,
+                    transform: isActive ? "scale(1)" : "scale(0.94)",
+                    transformOrigin: i < cardIndex ? "right center" : "left center",
+                    transition: "opacity 0.38s, transform 0.38s",
+                    cursor: isActive ? "default" : "pointer",
+                  }}
+                >
+                  <PlanCard
+                    cfg={card}
+                    isCurrentPlan={card.id === (user?.plan ?? "hobby")}
+                    isUnlocked={isUnlockedCard}
+                    credits={credits}
+                    userName={user?.name}
+                  />
+                </div>
+              );
+            })}
           </div>
 
-          {/* Next */}
-          <button
-            onClick={nextCard}
-            className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center transition-colors"
-            style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)" }}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          {/* Edge fade — left */}
+          <div
+            className="absolute inset-y-0 left-0 pointer-events-none"
+            style={{ width: "11%", background: "linear-gradient(to right, hsl(var(--background)) 0%, transparent 100%)" }}
+          />
+          {/* Edge fade — right */}
+          <div
+            className="absolute inset-y-0 right-0 pointer-events-none"
+            style={{ width: "11%", background: "linear-gradient(to left, hsl(var(--background)) 0%, transparent 100%)" }}
+          />
         </div>
 
         {/* Dots */}
