@@ -369,7 +369,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
-        className="max-w-sm p-0 overflow-hidden gap-0"
+        className="w-[calc(100vw-1.5rem)] sm:w-full max-w-sm p-0 overflow-hidden gap-0"
         style={{
           background: "rgb(10,10,12)",
           border: "1px solid rgba(255,255,255,0.1)",
@@ -377,15 +377,22 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
         }}
       >
         {/* ── Header ── */}
-        <DialogHeader className="px-6 pt-6 pb-5">
-          <div className="flex items-center justify-between mb-5">
+        <DialogHeader className="px-5 pt-5 pb-4">
+          {/* Title row — back arrow when step > 1 */}
+          <div className="flex items-center gap-2.5 mb-4">
+            {step > 1 && (
+              <button
+                onClick={() => setStep(s => s - 1)}
+                aria-label="Kembali"
+                className="h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.55)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 18l-6-6 6-6"/>
+                </svg>
+              </button>
+            )}
             <DialogTitle className="text-sm font-semibold">Topup Kredit</DialogTitle>
-            <span
-              className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
-              style={{ background: "rgba(249,115,22,0.12)", color: "rgb(249,115,22)", border: "1px solid rgba(249,115,22,0.2)" }}
-            >
-              via Tripay
-            </span>
           </div>
 
           {/* Step indicator */}
@@ -423,10 +430,10 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
           </div>
         </DialogHeader>
 
-        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 24px" }} />
+        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 20px" }} />
 
         {/* ── Step content ── */}
-        <div className="px-6 py-5">
+        <div className="px-5 py-4">
 
           {/* Step 1 — Nominal */}
           {step === 1 && (
@@ -518,7 +525,6 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                   >
                     <div className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0"
                       style={{ background: active ? "rgba(249,115,22,0.14)" : "rgba(255,255,255,0.05)" }}>
-                      {/* QR icon */}
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                         <rect x="3" y="3" width="7" height="7" rx="1.2" stroke={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.4)"} strokeWidth="1.5"/>
                         <rect x="5" y="5" width="3" height="3" fill={active ? "rgb(249,115,22)" : "rgba(255,255,255,0.4)"}/>
@@ -534,16 +540,11 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.8)" }}>
-                        QRIS
-                      </p>
-                      <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.3)" }}>
-                        GoPay · OVO · Dana · ShopeePay & semua e-wallet
-                      </p>
+                      <p className="text-sm font-semibold" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.8)" }}>QRIS</p>
+                      <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.3)" }}>GoPay · OVO · Dana · ShopeePay & semua e-wallet</p>
                     </div>
                     {active && (
-                      <div className="h-4 w-4 rounded-full flex-shrink-0 flex items-center justify-center"
-                        style={{ background: "rgb(249,115,22)" }}>
+                      <div className="h-4 w-4 rounded-full flex-shrink-0 flex items-center justify-center" style={{ background: "rgb(249,115,22)" }}>
                         <CheckCircle2 className="h-3 w-3 text-white" />
                       </div>
                     )}
@@ -565,18 +566,11 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                         background: active ? "rgba(249,115,22,0.06)" : "rgba(255,255,255,0.02)",
                       }}
                     >
-                      <div
-                        className="h-7 w-7 rounded-md flex items-center justify-center flex-shrink-0 text-[8px] font-black tracking-wide"
-                        style={{
-                          background: active ? "rgba(249,115,22,0.15)" : "rgba(255,255,255,0.06)",
-                          color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.4)",
-                        }}
-                      >
+                      <div className="h-7 w-7 rounded-md flex items-center justify-center flex-shrink-0 text-[8px] font-black tracking-wide"
+                        style={{ background: active ? "rgba(249,115,22,0.15)" : "rgba(255,255,255,0.06)", color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.4)" }}>
                         VA
                       </div>
-                      <span className="text-xs font-medium" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.6)" }}>
-                        {m.label}
-                      </span>
+                      <span className="text-xs font-medium" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.6)" }}>{m.label}</span>
                     </button>
                   );
                 })}
@@ -586,108 +580,62 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
           {/* Step 3 — Konfirmasi */}
           {step === 3 && (
-            <div className="space-y-4">
-              {/* Summary card */}
-              <div className="rounded-2xl p-4 space-y-3"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Nominal</span>
-                  <span className="text-sm font-bold text-white">{formatRp(resolvedAmount!)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Kredit didapat</span>
-                  <span className="text-sm font-bold" style={{ color: "rgb(34,197,94)" }}>
-                    +{resolvedAmount!.toLocaleString("id-ID")}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Metode</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                    style={{ background: "rgba(249,115,22,0.1)", color: "rgb(249,115,22)", border: "1px solid rgba(249,115,22,0.2)" }}>
-                    {selectedMethodLabel}
-                  </span>
-                </div>
-                <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white">Total bayar</span>
-                  <span className="text-lg font-extrabold text-white">{formatRp(resolvedAmount!)}</span>
-                </div>
+            <div className="rounded-2xl p-4 space-y-3"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Nominal</span>
+                <span className="text-sm font-bold text-white">{formatRp(resolvedAmount!)}</span>
               </div>
-
-              {error && <p className="text-xs text-red-400">{error}</p>}
-
-              <button
-                onClick={handlePay}
-                disabled={loading || !resolvedAmount || !!amountError}
-                className="w-full h-11 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
-                style={{
-                  background: resolvedAmount && !amountError ? "rgb(249,115,22)" : "rgba(255,255,255,0.06)",
-                  color: resolvedAmount && !amountError ? "white" : "rgba(255,255,255,0.22)",
-                  opacity: loading ? 0.7 : 1,
-                  cursor: (loading || !resolvedAmount || !!amountError) ? "not-allowed" : "pointer",
-                }}
-              >
-                {loading
-                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Memproses…</>
-                  : <>Bayar Sekarang · {formatRp(resolvedAmount!)}</>
-                }
-              </button>
-
-              <p className="text-[10px] text-center" style={{ color: "rgba(255,255,255,0.18)" }}>
-                Kredit otomatis masuk setelah pembayaran dikonfirmasi · 1 kredit = Rp 1
-              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Kredit didapat</span>
+                <span className="text-sm font-bold" style={{ color: "rgb(34,197,94)" }}>+{resolvedAmount!.toLocaleString("id-ID")}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Metode</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(249,115,22,0.1)", color: "rgb(249,115,22)", border: "1px solid rgba(249,115,22,0.2)" }}>
+                  {selectedMethodLabel}
+                </span>
+              </div>
+              <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-white">Total bayar</span>
+                <span className="text-lg font-extrabold text-white">{formatRp(resolvedAmount!)}</span>
+              </div>
             </div>
           )}
         </div>
 
-        {/* ── Navigation footer ── */}
-        {step < 3 && (
-          <div className="px-6 pb-5 flex items-center gap-2">
-            {step > 1 && (
-              <button
-                onClick={() => setStep(s => s - 1)}
-                className="flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
-                style={{
-                  border: "1px solid rgba(255,255,255,0.09)",
-                  background: "rgba(255,255,255,0.03)",
-                  color: "rgba(255,255,255,0.45)",
-                }}
-              >
-                ← Kembali
-              </button>
-            )}
-            <button
-              onClick={() => { if (step === 1 && canAdvanceStep1) setStep(2); else if (step === 2) setStep(3); }}
-              disabled={step === 1 && !canAdvanceStep1}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
-              style={{
-                background: (step === 1 ? canAdvanceStep1 : true) ? "rgb(249,115,22)" : "rgba(255,255,255,0.06)",
-                color: (step === 1 ? canAdvanceStep1 : true) ? "white" : "rgba(255,255,255,0.22)",
-                cursor: (step === 1 && !canAdvanceStep1) ? "not-allowed" : "pointer",
-              }}
-            >
-              {step === 1
-                ? canAdvanceStep1 ? `Lanjut · ${formatRp(resolvedAmount!)}` : "Pilih nominal dulu"
-                : "Lanjut →"}
-            </button>
-          </div>
-        )}
+        {/* ── Unified CTA footer ── */}
+        <div className="px-5 pb-5 space-y-2.5">
+          {error && <p className="text-xs text-red-400">{error}</p>}
 
-        {step === 3 && (
-          <div className="px-6 pb-5">
-            <button
-              onClick={() => setStep(2)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-              style={{
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.02)",
-                color: "rgba(255,255,255,0.38)",
-              }}
-            >
-              ← Ganti metode
-            </button>
-          </div>
-        )}
+          <button
+            onClick={() => {
+              if (step === 1 && canAdvanceStep1) setStep(2);
+              else if (step === 2) setStep(3);
+              else handlePay();
+            }}
+            disabled={(step === 1 && !canAdvanceStep1) || (step === 3 && (loading || !resolvedAmount || !!amountError))}
+            className="w-full h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+            style={{
+              background: (step < 3 ? (step === 1 ? canAdvanceStep1 : true) : (resolvedAmount && !amountError)) ? "rgb(249,115,22)" : "rgba(255,255,255,0.06)",
+              color: (step < 3 ? (step === 1 ? canAdvanceStep1 : true) : (resolvedAmount && !amountError)) ? "white" : "rgba(255,255,255,0.22)",
+              opacity: loading ? 0.7 : 1,
+              cursor: ((step === 1 && !canAdvanceStep1) || (step === 3 && (loading || !resolvedAmount || !!amountError))) ? "not-allowed" : "pointer",
+            }}
+          >
+            {step === 1 && (canAdvanceStep1 ? `Lanjut · ${formatRp(resolvedAmount!)}` : "Pilih nominal dulu")}
+            {step === 2 && "Lanjut →"}
+            {step === 3 && (loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memproses…</> : `Bayar Sekarang · ${formatRp(resolvedAmount!)}`)}
+          </button>
+
+          {step === 3 && (
+            <p className="text-[10px] text-center" style={{ color: "rgba(255,255,255,0.18)" }}>
+              Kredit masuk otomatis setelah pembayaran dikonfirmasi
+            </p>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
