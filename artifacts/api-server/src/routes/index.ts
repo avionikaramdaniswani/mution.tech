@@ -15,12 +15,12 @@ const router: IRouter = Router();
 router.use(healthRouter);
 router.use(authRouter);
 router.use(githubRouter);
+router.use(billingRouter);
+router.use(apiKeysRouter);
 router.use(projectsRouter);
 router.use(deploymentsRouter);
 router.use(statsRouter);
 router.use(activityRouter);
-router.use(billingRouter);
-router.use(apiKeysRouter);
 router.use(adminRouter);
 
 export default router;
