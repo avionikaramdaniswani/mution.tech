@@ -737,103 +737,192 @@ export default function BillingPage() {
         </p>
       </div>
 
-      {/* ── Actions + credit bar ── */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-        <div className="px-5 py-4 space-y-4">
-          {/* Buttons */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setTopupOpen(true)}
-              className="flex items-center gap-2 text-sm font-semibold rounded-xl px-4 py-2 transition-all"
-              style={{ border: "1px solid rgba(249,115,22,0.4)", color: "rgba(249,115,22,0.9)", background: "rgba(249,115,22,0.07)" }}
+      {/* ── Wallet panel ── */}
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{
+          background: "linear-gradient(160deg, #111318 0%, #0d0f14 100%)",
+          border: "1px solid rgba(255,255,255,0.07)",
+        }}
+      >
+        {/* Balance display */}
+        <div className="px-6 pt-6 pb-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="text-xs font-semibold tracking-widest uppercase mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                Saldo Tersedia
+              </p>
+              <p
+                className="font-extrabold tabular-nums leading-none"
+                style={{
+                  fontSize: "clamp(1.75rem, 5vw, 2.5rem)",
+                  color: creditColor(credits),
+                  textShadow: credits > 0 ? `0 0 32px ${creditColor(credits)}55` : "none",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {formatRp(credits)}
+              </p>
+            </div>
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg flex-shrink-0 mt-1"
+              style={{
+                background: plan.color.replace("0.8", "0.1").replace("rgb(", "rgba(").replace(")", ", 0.1)"),
+                border: `1px solid ${plan.color.replace("0.8", "0.2")}`,
+              }}
             >
-              <CreditCard className="h-4 w-4" />
-              Topup Saldo
-            </button>
-            {plan.name !== "Team" && (
-              <Link href="/harga">
-                <Button variant="outline" className="flex items-center gap-2 text-sm font-semibold rounded-xl px-4 py-2 h-auto"
-                  style={{ border: "1px solid rgba(139,92,246,0.4)", color: "rgba(139,92,246,0.9)", background: "rgba(139,92,246,0.07)" }}>
-                  <TrendingUp className="h-4 w-4" />
-                  Upgrade Plan
-                </Button>
-              </Link>
-            )}
+              <span className="text-[11px] font-bold" style={{ color: plan.color }}>
+                {plan.name}
+              </span>
+            </div>
           </div>
 
           {/* Credit bar */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-muted-foreground">Saldo tersedia</span>
-              <span className="text-xs font-bold tabular-nums" style={{ color: creditColor(credits) }}>{formatRp(credits)}</span>
+          <div className="space-y-1.5">
+            <div className="w-full rounded-full overflow-hidden" style={{ height: 5, background: "rgba(255,255,255,0.06)" }}>
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${pct}%`,
+                  background: credits === 0
+                    ? "rgb(239,68,68)"
+                    : credits <= 1000
+                    ? "linear-gradient(90deg, rgb(234,179,8), rgb(249,115,22))"
+                    : "linear-gradient(90deg, rgb(34,197,94), rgb(16,185,129))",
+                  boxShadow: credits > 0 ? `0 0 8px ${creditColor(credits)}66` : "none",
+                }}
+              />
             </div>
-            <div className="w-full h-1 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
-              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: creditColor(credits) }} />
-            </div>
-            <p className="text-[10px] text-muted-foreground/40 mt-1.5">
-              {credits === 0 ? "Kredit habis — proyek dihentikan." : credits <= 1000 ? "Kredit hampir habis — segera topup." : "Kredit tersedia · 1 kredit = Rp 1"}
+            <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.25)" }}>
+              {credits === 0
+                ? "⚠ Kredit habis — proyek dihentikan"
+                : credits <= 1000
+                ? "⚠ Kredit hampir habis — segera topup"
+                : `${pct}% dari 5.000 kredit target · 1 kredit = Rp 1`}
             </p>
           </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="p-4 flex flex-col gap-2.5 sm:flex-row">
+          <button
+            onClick={() => setTopupOpen(true)}
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all active:scale-[0.98]"
+            style={{
+              background: "linear-gradient(135deg, rgb(249,115,22) 0%, rgb(234,88,12) 100%)",
+              boxShadow: "0 4px 20px rgba(249,115,22,0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
+              color: "#fff",
+            }}
+          >
+            <Wallet className="h-4 w-4" />
+            Topup Saldo
+          </button>
+          {plan.name !== "Team" && (
+            <Link href="/harga" className="flex-1">
+              <button
+                className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all active:scale-[0.98]"
+                style={{
+                  background: "rgba(139,92,246,0.08)",
+                  border: "1px solid rgba(139,92,246,0.3)",
+                  color: "rgb(167,139,250)",
+                  boxShadow: "0 2px 12px rgba(139,92,246,0.12)",
+                }}
+              >
+                <TrendingUp className="h-4 w-4" />
+                Upgrade Plan
+              </button>
+            </Link>
+          )}
         </div>
       </div>
 
       {/* ── Riwayat Transaksi ── */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-        <div
-          className="px-6 py-4 flex items-center gap-3"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}
-        >
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-semibold">Riwayat Transaksi</p>
+      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "#0d0f14" }}>
+        {/* Header */}
+        <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center gap-2.5">
+            <div className="h-7 w-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-semibold">Riwayat Transaksi</p>
+          </div>
+          {transactions && transactions.length > 0 && (
+            <span className="text-xs tabular-nums px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.35)" }}>
+              {transactions.length} entri
+            </span>
+          )}
         </div>
 
         {txLoading ? (
-          <div className="px-6 py-8 text-center text-sm text-muted-foreground">Memuat…</div>
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Memuat…
+          </div>
         ) : !transactions || transactions.length === 0 ? (
-          <div className="px-6 py-10 flex flex-col items-center text-center gap-2">
-            <Clock className="h-8 w-8 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">Belum ada transaksi</p>
-            <p className="text-xs text-muted-foreground/50">Riwayat topup dan penggunaan kredit akan muncul di sini.</p>
+          <div className="flex flex-col items-center justify-center gap-3 py-14 px-6 text-center">
+            <div className="h-14 w-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <Clock className="h-6 w-6" style={{ color: "rgba(255,255,255,0.2)" }} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Belum ada transaksi</p>
+              <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.2)" }}>Riwayat topup dan penggunaan kredit muncul di sini</p>
+            </div>
           </div>
         ) : (
           <div>
-            {transactions.map((tx, i) => (
-              <div
-                key={tx.id}
-                className="flex items-center justify-between px-6 py-4"
-                style={{ borderBottom: i < transactions.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}
-              >
-                <div className="flex items-center gap-3">
+            {transactions.map((tx, i) => {
+              const isTopup = tx.type === "topup";
+              return (
+                <div
+                  key={tx.id}
+                  className="flex items-center gap-3.5 px-5 py-4 transition-colors hover:bg-white/[0.02]"
+                  style={{ borderBottom: i < transactions.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}
+                >
+                  {/* Icon badge */}
                   <div
-                    className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{
-                      background: tx.type === "topup" ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.08)",
-                      border: tx.type === "topup" ? "1px solid rgba(34,197,94,0.18)" : "1px solid rgba(239,68,68,0.15)",
+                      background: isTopup ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.08)",
+                      border: isTopup ? "1px solid rgba(34,197,94,0.2)" : "1px solid rgba(239,68,68,0.18)",
                     }}
                   >
                     <ArrowUpCircle
-                      className="h-3.5 w-3.5"
+                      className="h-4 w-4"
                       style={{
-                        color: tx.type === "topup" ? "rgb(34,197,94)" : "rgb(239,68,68)",
-                        transform: tx.type === "topup" ? "none" : "rotate(180deg)",
+                        color: isTopup ? "rgb(34,197,94)" : "rgb(239,68,68)",
+                        transform: isTopup ? "none" : "rotate(180deg)",
                       }}
                     />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">{tx.note ?? (tx.type === "topup" ? "Topup" : "Penggunaan")}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(tx.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+
+                  {/* Description */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {tx.note ?? (isTopup ? "Topup Saldo" : "Penggunaan Kredit")}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                      {new Date(tx.createdAt).toLocaleDateString("id-ID", {
+                        day: "numeric", month: "short", year: "numeric",
+                        hour: "2-digit", minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+
+                  {/* Amount */}
+                  <div className="text-right flex-shrink-0">
+                    <span
+                      className="text-sm font-bold tabular-nums"
+                      style={{ color: isTopup ? "rgb(34,197,94)" : "rgb(239,68,68)" }}
+                    >
+                      {isTopup ? "+" : "−"}{formatRp(tx.amount)}
+                    </span>
+                    <p className="text-[10px] mt-0.5 font-medium uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.2)" }}>
+                      {isTopup ? "masuk" : "keluar"}
                     </p>
                   </div>
                 </div>
-                <span
-                  className="text-sm font-bold tabular-nums"
-                  style={{ color: tx.type === "topup" ? "rgb(34,197,94)" : "rgb(239,68,68)" }}
-                >
-                  {tx.type === "topup" ? "+" : "-"}{formatRp(tx.amount)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
