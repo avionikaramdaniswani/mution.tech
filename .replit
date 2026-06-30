@@ -55,3 +55,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 DOKU_ENV = "production"
+TRIPAY_MODE = "production"
