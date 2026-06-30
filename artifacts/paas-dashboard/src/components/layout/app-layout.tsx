@@ -179,8 +179,41 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {/* ── Top navbar — gaya landing page ── */}
           <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border/50 px-4 md:px-6 bg-background/80 backdrop-blur-md">
 
-            {/* Left: sidebar trigger */}
-            <SidebarTrigger />
+            {/* Left: sidebar trigger + logo */}
+            <div className="flex items-center gap-3">
+              <SidebarTrigger />
+              <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
+                <img src="/mution-logo.png" alt="Mution" className="h-7 w-auto" />
+                <span
+                  style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+                  className="text-base font-extrabold tracking-tight text-primary hidden sm:block"
+                >
+                  Mution
+                </span>
+              </Link>
+
+              {/* Center nav links */}
+              <nav className="hidden md:flex items-center gap-0.5 ml-2">
+                {[
+                  { label: "Home",       href: "/" },
+                  { label: "Dashboard",  href: "/dashboard" },
+                  { label: "Pricing",    href: "/harga" },
+                  { label: "Changelog",  href: "/docs" },
+                ].map(({ label, href }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                      location === href
+                        ? "text-foreground font-medium bg-muted/30"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
 
             {/* Right: credits + profile */}
             <div className="flex items-center gap-2.5">
