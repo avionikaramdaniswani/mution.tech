@@ -22,6 +22,7 @@ import ProfilePage from "@/pages/profile";
 import BillingPage from "@/pages/billing";
 import ApiKeysPage from "@/pages/api-keys";
 import DocsPage from "@/pages/docs";
+import UsagePage from "@/pages/usage";
 import FAQPage from "@/pages/faq";
 import RefundPolicyPage from "@/pages/refund-policy";
 import TermsPage from "@/pages/terms";
@@ -92,6 +93,7 @@ function Router() {
       <Route path="/billing" component={() => <ProtectedRoute component={BillingPage} />} />
       <Route path="/api-keys" component={() => <ProtectedRoute component={ApiKeysPage} />} />
       <Route path="/docs" component={() => <ProtectedRoute component={DocsPage} />} />
+      <Route path="/usage" component={() => <ProtectedRoute component={UsagePage} />} />
       <Route path="/github-callback" component={GitHubCallback} />
 
       {/* Public static pages */}

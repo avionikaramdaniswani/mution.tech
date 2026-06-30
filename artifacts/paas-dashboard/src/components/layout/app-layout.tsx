@@ -4,7 +4,6 @@ import { useLogout, useHealthCheck } from "@workspace/api-client-react";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -22,7 +21,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Activity, Box, LayoutDashboard, LogOut, ShieldAlert, HeartPulse, MoreHorizontal, User, CreditCard, Wallet, KeyRound, BookOpen } from "lucide-react";
+import {
+  Activity,
+  LayoutDashboard,
+  LogOut,
+  ShieldAlert,
+  HeartPulse,
+  User,
+  CreditCard,
+  Wallet,
+  KeyRound,
+  BookOpen,
+  Server,
+  BarChart3,
+  ChevronDown,
+} from "lucide-react";
 
 function formatCredits(credits?: number) {
   if (credits === undefined || credits === null) return "Rp 0";
@@ -55,33 +68,6 @@ function UserAvatar({ name, size = "md" }: { name?: string; size?: "sm" | "md" }
   );
 }
 
-function UserDropdownItems({ onLogout }: { onLogout: () => void }) {
-  return (
-    <>
-      <DropdownMenuItem asChild>
-        <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
-          <User className="h-4 w-4" />
-          Profil
-        </Link>
-      </DropdownMenuItem>
-      <DropdownMenuItem asChild>
-        <Link href="/billing" className="flex items-center gap-2 cursor-pointer">
-          <CreditCard className="h-4 w-4" />
-          Billing
-        </Link>
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem
-        onClick={onLogout}
-        className="flex items-center gap-2 text-destructive focus:text-destructive cursor-pointer"
-      >
-        <LogOut className="h-4 w-4" />
-        Keluar
-      </DropdownMenuItem>
-    </>
-  );
-}
-
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [location] = useLocation();
@@ -95,30 +81,44 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
 
   const navItems = [
-    { title: "Beranda", url: "/dashboard", icon: LayoutDashboard },
-    { title: "Proyek", url: "/projects", icon: Box },
-    { title: "API Keys", url: "/api-keys", icon: KeyRound },
-    { title: "Dokumentasi", url: "/docs", icon: BookOpen },
-    { title: "Aktivitas", url: "/activity", icon: Activity },
+    { title: "Beranda",          url: "/dashboard",  icon: LayoutDashboard },
+    { title: "Hosting",          url: "/projects",   icon: Server },
+    { title: "API Token",        url: "/api-keys",   icon: KeyRound },
+    { title: "Log Penggunaan",   url: "/usage",      icon: BarChart3 },
+    { title: "Dokumentasi",      url: "/docs",       icon: BookOpen },
+    { title: "Aktivitas",        url: "/activity",   icon: Activity },
   ];
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background dark text-foreground">
         <Sidebar variant="inset" className="border-r border-border/50">
+
+          {/* ── Sidebar header ── */}
           <SidebarHeader className="flex h-16 items-center px-4">
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2.5">
                 <img src="/mution-logo.png" alt="Mution" className="h-8 w-auto" />
-                <span style={{ fontFamily: "'Space Grotesk', sans-serif" }} className="text-lg font-extrabold tracking-tight text-primary">Mution</span>
+                <span
+                  style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+                  className="text-lg font-extrabold tracking-tight text-primary"
+                >
+                  Mution
+                </span>
               </div>
               {health?.status === "ok" ? (
-                <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full" title="Platform beroperasi normal">
+                <div
+                  className="flex items-center gap-1.5 text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full"
+                  title="Platform beroperasi normal"
+                >
                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span>Normal</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 text-xs font-medium text-destructive bg-destructive/10 px-2 py-1 rounded-full" title="Platform mengalami gangguan">
+                <div
+                  className="flex items-center gap-1.5 text-xs font-medium text-destructive bg-destructive/10 px-2 py-1 rounded-full"
+                  title="Platform mengalami gangguan"
+                >
                   <HeartPulse className="h-3 w-3" />
                   <span>Gangguan</span>
                 </div>
@@ -126,6 +126,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </SidebarHeader>
 
+          {/* ── Sidebar nav ── */}
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupLabel>Platform</SidebarGroupLabel>
@@ -171,40 +172,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarGroup>
             )}
           </SidebarContent>
-
-          {/* ── Sidebar footer (desktop) ── */}
-          <SidebarFooter className="border-t border-border/50 p-3">
-            <div className="flex items-center gap-3">
-              <UserAvatar name={user?.name} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user?.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors flex-shrink-0"
-                    title="Opsi akun"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent side="top" align="end" className="w-44 mb-1">
-                  <UserDropdownItems onLogout={handleLogout} />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </SidebarFooter>
         </Sidebar>
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          {/* ── Top header ── */}
-          <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border/50 px-4 md:px-6">
+
+          {/* ── Top navbar — gaya landing page ── */}
+          <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border/50 px-4 md:px-6 bg-background/80 backdrop-blur-md">
+
+            {/* Left: sidebar trigger */}
             <SidebarTrigger />
 
-            {/* Right side — credits + avatar */}
-            <div className="flex items-center gap-3">
-              {/* Credit badge — always visible */}
+            {/* Right: credits + profile */}
+            <div className="flex items-center gap-2.5">
+
+              {/* Credit badge */}
               <Link href="/billing">
                 <div
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/40"
@@ -212,30 +193,59 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   title="Kredit kamu"
                 >
                   <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs font-semibold tabular-nums" style={{ color: creditColor(user?.credits) }}>
+                  <span
+                    className="text-xs font-semibold tabular-nums"
+                    style={{ color: creditColor(user?.credits) }}
+                  >
                     {formatCredits(user?.credits)}
                   </span>
                 </div>
               </Link>
 
-              {/* Mobile avatar (hidden on md+, sidebar handles it there) */}
-              <div className="md:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="outline-none">
-                      <UserAvatar name={user?.name} size="sm" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent side="bottom" align="end" className="w-44">
-                    <div className="px-2 py-1.5 mb-1">
-                      <p className="text-sm font-medium truncate">{user?.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              {/* Profile dropdown — always visible */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-xl transition-colors hover:bg-muted/40 outline-none"
+                    style={{ border: "1px solid rgba(255,255,255,0.07)" }}
+                  >
+                    <UserAvatar name={user?.name} size="sm" />
+                    <div className="hidden sm:block text-left min-w-0">
+                      <p className="text-xs font-semibold truncate max-w-[120px] leading-tight">{user?.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate max-w-[120px] leading-tight">{user?.email}</p>
                     </div>
-                    <DropdownMenuSeparator />
-                    <UserDropdownItems onLogout={handleLogout} />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block flex-shrink-0" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="bottom" align="end" className="w-48 mt-1">
+                  {/* Info di mobile (nama/email tidak tampil di button) */}
+                  <div className="sm:hidden px-2 py-1.5 mb-1">
+                    <p className="text-sm font-medium truncate">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                    <DropdownMenuSeparator className="mt-1.5" />
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+                      <User className="h-4 w-4" />
+                      Profil
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/billing" className="flex items-center gap-2 cursor-pointer">
+                      <CreditCard className="h-4 w-4" />
+                      Billing
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 text-destructive focus:text-destructive cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Keluar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
 
