@@ -185,6 +185,32 @@ router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<v
   }
 });
 
+router.post("/billing/orders/:id/cancel", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const orderId = parseInt(req.params.id, 10);
+  if (isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [order] = await db
+    .select()
+    .from(paymentOrdersTable)
+    .where(eq(paymentOrdersTable.id, orderId))
+    .limit(1);
+
+  if (!order || order.userId !== user.id) { res.status(404).json({ error: "Not found" }); return; }
+  if (order.status !== "pending") {
+    res.status(400).json({ error: "Hanya order dengan status pending yang bisa dibatalkan" });
+    return;
+  }
+
+  await db
+    .update(paymentOrdersTable)
+    .set({ status: "expired" })
+    .where(eq(paymentOrdersTable.id, order.id));
+
+  logger.info({ orderId: order.id, userId: user.id }, "Order cancelled by user");
+  res.json({ ok: true, status: "expired" });
+});
+
 router.get("/billing/orders", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
 
