@@ -1,7 +1,7 @@
 import { pgTable, serial, integer, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
-export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "expired", "failed"]);
+export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "expired", "failed", "cancelled"]);
 
 export const paymentOrdersTable = pgTable("payment_orders", {
   id: serial("id").primaryKey(),

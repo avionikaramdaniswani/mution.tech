@@ -205,11 +205,11 @@ router.post("/billing/orders/:id/cancel", requireAuth, async (req, res): Promise
 
   await db
     .update(paymentOrdersTable)
-    .set({ status: "expired" })
+    .set({ status: "cancelled" })
     .where(eq(paymentOrdersTable.id, order.id));
 
   logger.info({ orderId: order.id, userId: user.id }, "Order cancelled by user");
-  res.json({ ok: true, status: "expired" });
+  res.json({ ok: true, status: "cancelled" });
 });
 
 router.get("/billing/orders", requireAuth, async (req, res): Promise<void> => {
