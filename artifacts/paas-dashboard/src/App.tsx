@@ -21,6 +21,7 @@ import HargaPage from "@/pages/harga";
 import ProfilePage from "@/pages/profile";
 import BillingPage from "@/pages/billing";
 import RiwayatOrderPage from "@/pages/billing/riwayat";
+import RiwayatDetailPage from "@/pages/billing/riwayat-detail";
 import ApiKeysPage from "@/pages/api-keys";
 import DocsPage from "@/pages/docs";
 import UsagePage from "@/pages/usage";
@@ -92,6 +93,7 @@ function Router() {
       <Route path="/activity" component={() => <ProtectedRoute component={ActivityLog} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
       <Route path="/billing" component={() => <ProtectedRoute component={BillingPage} />} />
+      <Route path="/billing/riwayat/:id" component={() => <ProtectedRoute component={RiwayatDetailPage} />} />
       <Route path="/billing/riwayat" component={() => <ProtectedRoute component={RiwayatOrderPage} />} />
       <Route path="/api-keys" component={() => <ProtectedRoute component={ApiKeysPage} />} />
       <Route path="/docs" component={() => <ProtectedRoute component={DocsPage} />} />

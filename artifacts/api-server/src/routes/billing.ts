@@ -109,15 +109,63 @@ router.get("/billing/orders/:id", requireAuth, async (req, res): Promise<void> =
 
   if (!order || order.userId !== user.id) { res.status(404).json({ error: "Not found" }); return; }
 
+  const apiKey = process.env.TRIPAY_API_KEY;
+  let tx: Record<string, unknown> | null = null;
+
+  if (apiKey && order.status !== "cancelled") {
+    try {
+      const base = getTripayBase();
+      // Prefer direct detail lookup by reference if available
+      if (order.tripayReference) {
+        const r = await fetch(`${base}/transaction/detail?reference=${encodeURIComponent(order.tripayReference)}`, {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        });
+        const d = await r.json() as { success: boolean; data?: Record<string, unknown> };
+        if (d.success && d.data) tx = d.data;
+      } else {
+        // Fall back to list scan
+        const r = await fetch(`${base}/merchant/transactions?per_page=100`, {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        });
+        const d = await r.json() as { success: boolean; data?: Record<string, unknown>[] };
+        if (d.success && Array.isArray(d.data)) {
+          tx = d.data.find((t) => t.merchant_ref === order.invoiceNumber) ?? null;
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  let status: string = order.status;
+  if (tx && order.status !== "cancelled") {
+    const ts = String(tx.status ?? "");
+    if (ts === "PAID") status = "paid";
+    else if (ts === "EXPIRED") status = "expired";
+    else if (ts === "FAILED") status = "failed";
+    else status = "pending";
+  }
+
   res.json({
     id: order.id,
     invoiceNumber: order.invoiceNumber,
+    reference: (tx?.reference as string) ?? order.tripayReference ?? null,
+    paymentMethod: (tx?.payment_method as string) ?? null,
+    paymentName: (tx?.payment_name as string) ?? null,
     amount: order.amount,
+    feeMerchant: (tx?.fee_merchant as number) ?? null,
+    feeCustomer: (tx?.fee_customer as number) ?? null,
+    totalFee: (tx?.total_fee as number) ?? null,
+    amountReceived: (tx?.amount_received as number) ?? null,
     creditsAmount: order.creditsAmount,
-    status: order.status,
-    paymentUrl: order.paymentUrl,
+    payCode: (tx?.pay_code as string | number) ?? null,
+    payUrl: (tx?.pay_url as string) ?? null,
+    checkoutUrl: (tx?.checkout_url as string) ?? order.paymentUrl ?? null,
+    status,
     createdAt: order.createdAt.toISOString(),
-    paidAt: order.paidAt?.toISOString() ?? null,
+    expiredAt: tx?.expired_at ? new Date((tx.expired_at as number) * 1000).toISOString() : null,
+    paidAt: tx?.paid_at
+      ? new Date((tx.paid_at as number) * 1000).toISOString()
+      : (order.paidAt?.toISOString() ?? null),
+    orderItems: (tx?.order_items as { name: string; price: number; quantity: number; subtotal: number }[]) ?? [],
   });
 });
 
