@@ -214,26 +214,74 @@ router.post("/billing/orders/:id/cancel", requireAuth, async (req, res): Promise
 
 router.get("/billing/orders", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
+  const apiKey = process.env.TRIPAY_API_KEY;
 
-  const orders = await db
+  const dbOrders = await db
     .select()
     .from(paymentOrdersTable)
     .where(eq(paymentOrdersTable.userId, user.id))
     .orderBy(desc(paymentOrdersTable.createdAt))
-    .limit(20);
+    .limit(50);
 
-  res.json(
-    orders.map((o) => ({
+  // Fetch TriPay merchant transactions for enrichment
+  const tripayMap = new Map<string, Record<string, unknown>>();
+  if (apiKey && dbOrders.length > 0) {
+    try {
+      const base = getTripayBase();
+      const r = await fetch(`${base}/merchant/transactions?per_page=100`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      const data = await r.json() as { success: boolean; data?: Record<string, unknown>[] };
+      if (data.success && Array.isArray(data.data)) {
+        for (const tx of data.data) {
+          tripayMap.set(tx.merchant_ref as string, tx);
+        }
+      }
+    } catch {
+      // ignore — DB only fallback
+    }
+  }
+
+  const result = dbOrders.map((o) => {
+    const tx = tripayMap.get(o.invoiceNumber);
+
+    let status: string = o.status;
+    if (tx && o.status !== "cancelled") {
+      const ts = String(tx.status ?? "");
+      if (ts === "PAID") status = "paid";
+      else if (ts === "EXPIRED") status = "expired";
+      else if (ts === "FAILED") status = "failed";
+      else status = "pending";
+    }
+
+    return {
       id: o.id,
       invoiceNumber: o.invoiceNumber,
+      reference: (tx?.reference as string) ?? o.tripayReference ?? null,
+      paymentMethod: (tx?.payment_method as string) ?? null,
+      paymentName: (tx?.payment_name as string) ?? null,
       amount: o.amount,
+      feeMerchant: (tx?.fee_merchant as number) ?? null,
+      feeCustomer: (tx?.fee_customer as number) ?? null,
+      totalFee: (tx?.total_fee as number) ?? null,
+      amountReceived: (tx?.amount_received as number) ?? null,
       creditsAmount: o.creditsAmount,
-      status: o.status,
-      paymentUrl: o.paymentUrl,
+      payCode: (tx?.pay_code as string | number) ?? null,
+      payUrl: (tx?.pay_url as string) ?? null,
+      checkoutUrl: (tx?.checkout_url as string) ?? o.paymentUrl ?? null,
+      status,
       createdAt: o.createdAt.toISOString(),
-      paidAt: o.paidAt?.toISOString() ?? null,
-    }))
-  );
+      expiredAt: tx?.expired_at
+        ? new Date((tx.expired_at as number) * 1000).toISOString()
+        : null,
+      paidAt: tx?.paid_at
+        ? new Date((tx.paid_at as number) * 1000).toISOString()
+        : (o.paidAt?.toISOString() ?? null),
+      orderItems: (tx?.order_items as { name: string; price: number; quantity: number; subtotal: number }[]) ?? [],
+    };
+  });
+
+  res.json(result);
 });
 
 router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<void> => {
