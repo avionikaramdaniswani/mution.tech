@@ -434,19 +434,7 @@ export default function RiwayatDetailPage() {
 
       {/* Ringkasan Pembayaran */}
       <Section title="Ringkasan Pembayaran">
-        <Row label="Nominal" value={rp(order.amount)} />
-        {order.totalFee !== null && order.totalFee > 0 && (
-          <Row
-            label={`Biaya${order.feeMerchant !== null && order.feeCustomer !== null ? ` (merchant + customer)` : ""}`}
-            value={<span style={{ color: "rgba(239,68,68,0.75)" }}>−{rp(order.totalFee)}</span>}
-          />
-        )}
-        {order.amountReceived !== null && (
-          <Row
-            label="Diterima Merchant"
-            value={<span style={{ color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>{rp(order.amountReceived)}</span>}
-          />
-        )}
+        <Row label="Nominal Topup" value={rp(order.amount)} />
         <div
           className="flex items-center justify-between gap-4 px-4 py-3.5 mx-0"
           style={{ background: "rgba(255,255,255,0.03)", borderTop: "1px solid rgba(255,255,255,0.06)" }}
