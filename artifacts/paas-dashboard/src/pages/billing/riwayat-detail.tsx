@@ -10,6 +10,11 @@ import {
 
 type OrderStatus = "pending" | "paid" | "failed" | "expired" | "cancelled";
 
+interface Instruction {
+  title: string;
+  steps: string[];
+}
+
 interface OrderDetail {
   id: number;
   invoiceNumber: string;
@@ -30,6 +35,7 @@ interface OrderDetail {
   expiredAt: string | null;
   paidAt: string | null;
   orderItems: { name: string; price: number; quantity: number; subtotal: number }[];
+  instructions: Instruction[];
 }
 
 const STATUS_CONFIG: Record<OrderStatus, {
@@ -171,6 +177,7 @@ export default function RiwayatDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [instrTab, setInstrTab] = useState(0);
 
   function showToast(msg: string, ok: boolean) {
     setToast({ msg, ok });
@@ -403,6 +410,58 @@ export default function RiwayatDetailPage() {
             )}
           </div>
         </Section>
+      )}
+
+      {/* Cara Pembayaran — hanya muncul kalau ada instructions dari TriPay */}
+      {isPending && order.instructions.length > 0 && (
+        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+          {/* Header seksi */}
+          <div className="px-4 py-2.5" style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>Cara Pembayaran</p>
+          </div>
+
+          {/* Tab channel */}
+          <div
+            className="flex gap-0 overflow-x-auto"
+            style={{ background: "rgba(255,255,255,0.015)", borderBottom: "1px solid rgba(255,255,255,0.06)", scrollbarWidth: "none" }}
+          >
+            {order.instructions.map((instr, i) => (
+              <button
+                key={i}
+                onClick={() => setInstrTab(i)}
+                className="px-4 py-2.5 text-xs font-medium whitespace-nowrap transition-all"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: `2px solid ${instrTab === i ? "#F97316" : "transparent"}`,
+                  color: instrTab === i ? "#F97316" : "rgba(255,255,255,0.35)",
+                  cursor: "pointer",
+                }}
+              >
+                {instr.title}
+              </button>
+            ))}
+          </div>
+
+          {/* Steps */}
+          <div className="px-4 py-4 space-y-3" style={{ background: "rgba(255,255,255,0.015)" }}>
+            {order.instructions[instrTab]?.steps.map((step, i) => (
+              <div key={i} className="flex gap-3">
+                <div
+                  className="h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-[10px] font-bold"
+                  style={{ background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.2)", color: "#F97316" }}
+                >
+                  {i + 1}
+                </div>
+                <p
+                  className="text-sm leading-relaxed"
+                  style={{ color: "rgba(255,255,255,0.55)" }}
+                  dangerouslySetInnerHTML={{ __html: step }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Item */}

@@ -161,11 +161,17 @@ router.get("/billing/orders/:id", requireAuth, async (req, res): Promise<void> =
     checkoutUrl: (tx?.checkout_url as string) ?? order.paymentUrl ?? null,
     status,
     createdAt: order.createdAt.toISOString(),
-    expiredAt: tx?.expired_at ? new Date((tx.expired_at as number) * 1000).toISOString() : null,
+    // detail endpoint uses expired_time; list endpoint uses expired_at
+    expiredAt: tx?.expired_time
+      ? new Date((tx.expired_time as number) * 1000).toISOString()
+      : tx?.expired_at
+        ? new Date((tx.expired_at as number) * 1000).toISOString()
+        : null,
     paidAt: tx?.paid_at
       ? new Date((tx.paid_at as number) * 1000).toISOString()
       : (order.paidAt?.toISOString() ?? null),
     orderItems: (tx?.order_items as { name: string; price: number; quantity: number; subtotal: number }[]) ?? [],
+    instructions: (tx?.instructions as { title: string; steps: string[] }[]) ?? [],
   });
 });
 
