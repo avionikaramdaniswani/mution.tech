@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, apiKeysTable } from "@workspace/db";
+import { cleanupInactiveApiKeys, db, deleteApiKeyForUser, apiKeysTable } from "@workspace/db";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import crypto from "crypto";
@@ -37,6 +37,7 @@ router.get("/api-keys", requireAuth, async (req, res): Promise<void> => {
     .update(apiKeysTable)
     .set({ keyPlain: null })
     .where(and(eq(apiKeysTable.userId, user.id), isNotNull(apiKeysTable.keyPlain)));
+  await cleanupInactiveApiKeys({ userId: user.id });
 
   const keys = await db
     .select()
@@ -117,13 +118,9 @@ router.delete("/api-keys/:id", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
   const id = Number(req.params.id);
 
-  const [revoked] = await db
-    .update(apiKeysTable)
-    .set({ isActive: false })
-    .where(and(eq(apiKeysTable.id, id), eq(apiKeysTable.userId, user.id)))
-    .returning();
+  const deleted = await deleteApiKeyForUser({ id, userId: user.id });
 
-  if (!revoked) {
+  if (!deleted) {
     res.status(404).json({ error: "API key tidak ditemukan" });
     return;
   }

@@ -5,7 +5,13 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "cleanup:inactive-api-keys": "tsx ./src/api-key-maintenance.ts cleanup-inactive-api-keys",
+    "db:check-api-usage-key-fk": "tsx ./src/api-key-maintenance.ts check-api-usage-key-fk",
+    "db:fix-api-usage-key-fk": "tsx ./src/api-key-maintenance.ts fix-api-usage-key-fk",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

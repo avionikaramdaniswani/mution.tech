@@ -109,7 +109,7 @@ router.get("/api-usage", requireAuth, async (req, res): Promise<void> => {
       );
       res.send(toCsv(csvRows.map((row) => ({
         created_at: row.createdAt.toISOString(),
-        api_key: row.apiKeyName ?? "Deleted Key",
+        api_key: row.apiKeyName ?? "Deleted API Key",
         model: row.model,
         prompt_tokens: row.promptTokens,
         completion_tokens: row.completionTokens,
@@ -172,7 +172,7 @@ router.get("/api-usage", requireAuth, async (req, res): Promise<void> => {
         isActive: apiKeysTable.isActive,
       })
       .from(apiKeysTable)
-      .where(eq(apiKeysTable.userId, userId))
+      .where(and(eq(apiKeysTable.userId, userId), eq(apiKeysTable.isActive, true)))
       .orderBy(desc(apiKeysTable.createdAt));
 
     const totalItems = Number(totalCountResult?.count || 0);
@@ -188,6 +188,7 @@ router.get("/api-usage", requireAuth, async (req, res): Promise<void> => {
       },
       data: usageList.map((item) => ({
         ...item,
+        apiKeyName: item.apiKeyName ?? "Deleted API Key",
         createdAt: item.createdAt.toISOString(),
       })),
       daily: daily.map((item) => ({

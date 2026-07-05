@@ -326,7 +326,13 @@ export default function ApiUsagePage() {
                           {format(new Date(item.createdAt), "dd MMM yyyy, HH:mm", { locale: id })}
                         </td>
                         <td className="px-6 py-4">
-                          <span className="font-medium">{item.apiKeyName || "Deleted Key"}</span>
+                          {item.keyId === null || item.apiKeyName === "Deleted API Key" ? (
+                            <Badge variant="outline" className="border-muted-foreground/30 text-muted-foreground">
+                              Deleted API Key
+                            </Badge>
+                          ) : (
+                            <span className="font-medium">{item.apiKeyName}</span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <Badge variant="outline" className="font-mono text-xs font-normal">

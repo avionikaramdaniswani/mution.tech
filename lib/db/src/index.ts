@@ -49,3 +49,5 @@ export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
     return (getDb() as any)[prop];
   },
 });
+
+export * from "./maintenance/api_keys";

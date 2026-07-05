@@ -115,7 +115,7 @@ export default function ApiKeysPage() {
   const [newKeyUnlimitedCredit, setNewKeyUnlimitedCredit] = useState(true);
 
   const [newKeyResult, setNewKeyResult] = useState<NewKey | null>(null);
-  const [revokeTarget, setRevokeTarget] = useState<ApiKey | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ApiKey | null>(null);
   
   const [editTarget, setEditTarget] = useState<ApiKey | null>(null);
   const [editName, setEditName] = useState("");
@@ -173,12 +173,12 @@ export default function ApiKeysPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const revokeMutation = useMutation({
+  const deleteMutation = useMutation({
     mutationFn: (id: number) => apiFetch(`/api-keys/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["api-keys"] });
-      setRevokeTarget(null);
-      toast.success("API key berhasil dinonaktifkan");
+      setDeleteTarget(null);
+      toast.success("API key berhasil dihapus");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -265,9 +265,9 @@ export default function ApiKeysPage() {
                   <Pencil className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => setRevokeTarget(key)}
+                  onClick={() => setDeleteTarget(key)}
                   className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  title="Nonaktifkan"
+                  title="Hapus API Key"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -512,24 +512,24 @@ export default function ApiKeysPage() {
         </div>
       </ResponsivePanel>
 
-      {/* Revoke confirm dialog */}
-      <Dialog open={!!revokeTarget} onOpenChange={() => setRevokeTarget(null)}>
+      {/* Delete confirm dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nonaktifkan API Key</DialogTitle>
+            <DialogTitle>Hapus API Key</DialogTitle>
             <DialogDescription>
-              Key <span className="font-semibold text-foreground">"{revokeTarget?.name}"</span> akan dinonaktifkan permanen.
-              Aplikasi yang menggunakan key ini akan berhenti bekerja.
+              Key <span className="font-semibold text-foreground">"{deleteTarget?.name}"</span> akan dihapus permanen.
+              Histori usage tetap tersimpan, tetapi aplikasi yang menggunakan key ini akan berhenti bekerja.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRevokeTarget(null)}>Batal</Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Batal</Button>
             <Button
               variant="destructive"
-              onClick={() => revokeTarget && revokeMutation.mutate(revokeTarget.id)}
-              disabled={revokeMutation.isPending}
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              disabled={deleteMutation.isPending}
             >
-              {revokeMutation.isPending ? "Menonaktifkan..." : "Ya, Nonaktifkan"}
+              {deleteMutation.isPending ? "Menghapus..." : "Ya, Hapus Permanen"}
             </Button>
           </DialogFooter>
         </DialogContent>
