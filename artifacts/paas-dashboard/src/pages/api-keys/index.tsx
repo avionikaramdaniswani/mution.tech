@@ -3,7 +3,6 @@ import { Copy, Eye, EyeOff, Key, Plus, Trash2, Pencil, Check, AlertTriangle } fr
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -32,7 +31,6 @@ interface ApiKey {
   expiresAt: string | null;
   creditLimit: number | null;
   allowedModels: string[] | null;
-  keyPlain?: string | null;
 }
 
 interface NewKey extends ApiKey {
@@ -113,7 +111,6 @@ function ResponsivePanel({ open, onOpenChange, title, description, children, foo
 }
 
 export default function ApiKeysPage() {
-  const { user } = useAuth();
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
@@ -133,7 +130,6 @@ export default function ApiKeysPage() {
   const [editUnlimitedCredit, setEditUnlimitedCredit] = useState(true);
 
   const [showFullKey, setShowFullKey] = useState(false);
-  const [revealingId, setRevealingId] = useState<number | null>(null);
 
   const openCreateDialog = () => {
     setNewKeyName("");
@@ -152,19 +148,6 @@ export default function ApiKeysPage() {
     setEditUnlimitedCredit(key.creditLimit === null);
     setEditAllowedModels(key.allowedModels || []);
   };
-
-  async function copyKey(key: ApiKey) {
-    setRevealingId(key.id);
-    try {
-      const data = await apiFetch(`/api-keys/${key.id}/reveal`);
-      await navigator.clipboard.writeText(data.fullKey);
-      toast.success("API key berhasil disalin!");
-    } catch (e: any) {
-      toast.error(e.message ?? "Gagal mengambil key");
-    } finally {
-      setRevealingId(null);
-    }
-  }
 
   const { data: keys = [], isLoading } = useQuery<ApiKey[]>({
     queryKey: ["api-keys"],
@@ -204,8 +187,6 @@ export default function ApiKeysPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
-  const baseUrl = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : "https://mution.tech";
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -277,22 +258,10 @@ export default function ApiKeysPage() {
                   ) : (
                     <span className="bg-muted px-1.5 py-0.5 rounded">Semua Model</span>
                   )}
+                  <span>Full key hanya muncul saat dibuat</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => copyKey(key)}
-                  disabled={revealingId === key.id}
-                  className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 transition-colors disabled:opacity-50"
-                  title="Salin API key"
-                >
-                  {revealingId === key.id ? (
-                    <span className="h-3.5 w-3.5 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
-                  Salin Key
-                </button>
                 <button
                   onClick={() => openEditDialog(key)}
                   className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
@@ -552,7 +521,7 @@ export default function ApiKeysPage() {
       <Dialog open={!!revokeTarget} onOpenChange={() => setRevokeTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nonaktifkan API Keyx</DialogTitle>
+            <DialogTitle>Nonaktifkan API Key</DialogTitle>
             <DialogDescription>
               Key <span className="font-semibold text-foreground">"{revokeTarget?.name}"</span> akan dinonaktifkan permanen.
               Aplikasi yang menggunakan key ini akan berhenti bekerja.

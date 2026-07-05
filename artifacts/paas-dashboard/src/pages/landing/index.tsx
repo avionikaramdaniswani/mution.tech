@@ -54,7 +54,7 @@ const terminalLines = [
 
 const faqs = [
   {
-    q: "Apakah ada biaya tersembunyix",
+    q: "Apakah ada biaya tersembunyi?",
     a: "Tidak. Kamu hanya membayar sesuai resource yang dipakai. Tidak ada biaya setup, tidak ada biaya egress tersembunyi.",
   },
   {
@@ -62,7 +62,7 @@ const faqs = [
     a: "Rata-rata 15-30 detik dari git push sampai aplikasi live. Build yang lebih besar dengan banyak dependencies bisa 60-90 detik.",
   },
   {
-    q: "Apakah saya bisa pakai domain sendirix",
+    q: "Apakah saya bisa pakai domain sendiri?",
     a: "Ya. Kamu bisa menghubungkan domain custom di plan Pro ke atas. SSL/HTTPS diaktifkan otomatis tanpa konfigurasi manual.",
   },
   {
@@ -74,7 +74,7 @@ const faqs = [
     a: "Kamu ditagih berdasarkan CPU dan RAM aktual yang dipakai per menit. Jika aplikasi tidak berjalan, tidak ada tagihan.",
   },
   {
-    q: "Apakah ada jaminan uptimex",
+    q: "Apakah ada jaminan uptime?",
     a: "Plan Pro dan Enterprise mendapatkan SLA 99.9% uptime. Kamu bisa memantau status platform real-time di status.mution.tech.",
   },
 ];

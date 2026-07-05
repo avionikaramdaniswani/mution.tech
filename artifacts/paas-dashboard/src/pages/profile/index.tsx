@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, Mail, ShieldCheck, KeyRound } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 
 function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value?: string }) {
   return (
@@ -29,6 +30,7 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const initials = (user?.name ?? "x")
     .split(" ")
@@ -37,7 +39,7 @@ export default function ProfilePage() {
     .join("")
     .toUpperCase();
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwError("");
     setPwSuccess(false);
@@ -53,10 +55,21 @@ export default function ProfilePage() {
       setPwError("Konfirmasi password tidak cocok.");
       return;
     }
-    setPwSuccess(true);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+    try {
+      setIsChangingPassword(true);
+      await apiFetch("/auth/password", {
+        method: "POST",
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      setPwSuccess(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      setPwError(err instanceof Error ? err.message : "Gagal memperbarui password.");
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   return (
@@ -165,7 +178,9 @@ export default function ProfilePage() {
           )}
 
           <div className="flex justify-end pt-1">
-            <Button type="submit" size="sm">Simpan Password</Button>
+            <Button type="submit" size="sm" disabled={isChangingPassword}>
+              {isChangingPassword ? "Menyimpan..." : "Simpan Password"}
+            </Button>
           </div>
         </form>
       </div>

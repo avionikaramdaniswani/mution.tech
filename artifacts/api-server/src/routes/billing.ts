@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, usersTable, creditTransactionsTable, paymentOrdersTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import { TopupCreditsBody } from "@workspace/api-zod";
 import { computePlan } from "../lib/plan";
@@ -20,6 +20,59 @@ import {
 } from "../lib/tripay";
 
 const router = Router();
+
+type PaymentOrderRow = typeof paymentOrdersTable.$inferSelect;
+
+async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: string) {
+  return db.transaction(async (tx) => {
+    const [claimed] = await tx
+      .update(paymentOrdersTable)
+      .set({ status: "paid", paidAt: new Date() })
+      .where(and(eq(paymentOrdersTable.id, order.id), ne(paymentOrdersTable.status, "paid")))
+      .returning();
+
+    if (!claimed) {
+      return {
+        processed: false,
+        userId: order.userId,
+        orderId: order.id,
+        creditsAmount: order.creditsAmount,
+      };
+    }
+
+    const [freshUser] = await tx
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, claimed.userId))
+      .limit(1);
+
+    if (!freshUser) {
+      throw new Error(`User ${claimed.userId} not found for paid order ${claimed.id}`);
+    }
+
+    const newCredits = freshUser.credits + claimed.creditsAmount;
+    const newPlan = computePlan(newCredits);
+
+    await tx
+      .update(usersTable)
+      .set({ credits: newCredits, plan: newPlan })
+      .where(eq(usersTable.id, claimed.userId));
+
+    await tx.insert(creditTransactionsTable).values({
+      userId: claimed.userId,
+      type: "topup",
+      amount: claimed.creditsAmount,
+      note: `Topup via Tripay (${paymentName}) - ${claimed.invoiceNumber}`,
+    });
+
+    return {
+      processed: true,
+      userId: claimed.userId,
+      orderId: claimed.id,
+      creditsAmount: claimed.creditsAmount,
+    };
+  });
+}
 
 router.get("/billing/topup-config", (_req, res): void => {
   res.json({ presets: TOPUP_PRESETS, min: MIN_TOPUP_IDR, max: MAX_TOPUP_IDR });
@@ -217,27 +270,14 @@ router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<v
       return;
     }
 
-    // Status PAID di Tripay — update DB dan tambah kredit
-    await db.transaction(async (tx) => {
-      const [freshUser] = await tx.select().from(usersTable).where(eq(usersTable.id, user.id)).limit(1);
-      const newCredits = freshUser.credits + order.creditsAmount;
-      const newPlan = computePlan(newCredits);
-      await tx.update(usersTable).set({ credits: newCredits, plan: newPlan }).where(eq(usersTable.id, user.id));
-      await tx.update(paymentOrdersTable)
-        .set({ status: "paid", paidAt: new Date() })
-        .where(eq(paymentOrdersTable.id, order.id));
-      await tx.insert(creditTransactionsTable).values({
-        userId: user.id,
-        type: "topup",
-        amount: order.creditsAmount,
-        note: `Topup via Tripay (${detail.data.payment_name}) — ${order.invoiceNumber}`,
-      });
-    });
+    const result = await creditPaidOrderOnce(order, detail.data.payment_name);
 
-    broadcastToUser(user.id, { type: "credits.changed", amount: order.creditsAmount });
-    broadcastAdmin({ type: "order.paid", userId: user.id, orderId: order.id });
+    if (result.processed) {
+      broadcastToUser(result.userId, { type: "credits.changed", amount: result.creditsAmount });
+      broadcastAdmin({ type: "order.paid", userId: result.userId, orderId: result.orderId });
+    }
 
-    res.json({ status: "paid", creditsAmount: order.creditsAmount });
+    res.json({ status: "paid", creditsAmount: result.creditsAmount, processed: result.processed });
   } catch (err) {
     logger.error({ err }, "Tripay sync error");
     res.status(502).json({ error: "Gagal cek status ke Tripay" });
@@ -498,38 +538,14 @@ router.post("/billing/tripay/webhook", async (req, res): Promise<void> => {
     return;
   }
 
-  await db.transaction(async (tx) => {
-    const [user] = await tx
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, order.userId))
-      .limit(1);
+  const result = await creditPaidOrderOnce(order, payload.payment_name);
 
-    const newCredits = user.credits + order.creditsAmount;
-    const newPlan = computePlan(newCredits);
+  if (result.processed) {
+    broadcastToUser(result.userId, { type: "credits.changed", amount: result.creditsAmount });
+    broadcastAdmin({ type: "order.paid", userId: result.userId, orderId: result.orderId });
+  }
 
-    await tx
-      .update(usersTable)
-      .set({ credits: newCredits, plan: newPlan })
-      .where(eq(usersTable.id, order.userId));
-
-    await tx
-      .update(paymentOrdersTable)
-      .set({ status: "paid", paidAt: new Date() })
-      .where(eq(paymentOrdersTable.id, order.id));
-
-    await tx.insert(creditTransactionsTable).values({
-      userId: order.userId,
-      type: "topup",
-      amount: order.creditsAmount,
-      note: `Topup via Tripay (${payload.payment_name}) — ${order.invoiceNumber}`,
-    });
-  });
-
-  broadcastToUser(order.userId, { type: "credits.changed", amount: order.creditsAmount });
-  broadcastAdmin({ type: "order.paid", userId: order.userId, orderId: order.id });
-
-  res.json({ success: true });
+  res.json({ success: true, processed: result.processed });
 });
 
 export default router;

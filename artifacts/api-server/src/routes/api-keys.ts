@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, usersTable, apiKeysTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, apiKeysTable } from "@workspace/db";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import crypto from "crypto";
 
@@ -33,6 +33,11 @@ function serializeKey(key: typeof apiKeysTable.$inferSelect) {
 
 router.get("/api-keys", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
+  await db
+    .update(apiKeysTable)
+    .set({ keyPlain: null })
+    .where(and(eq(apiKeysTable.userId, user.id), isNotNull(apiKeysTable.keyPlain)));
+
   const keys = await db
     .select()
     .from(apiKeysTable)
@@ -63,7 +68,6 @@ router.post("/api-keys", requireAuth, async (req, res): Promise<void> => {
       name: name?.trim() || "My API Key",
       keyPrefix: prefix,
       keyHash: hash,
-      keyPlain: fullKey,
       expiresAt: expiresAt ? new Date(expiresAt) : null,
       creditLimit: creditLimit === null ? null : typeof creditLimit === "number" ? creditLimit : null,
       allowedModels: allowedModels === null ? null : (Array.isArray(allowedModels) && allowedModels.length > 0 ? allowedModels : null),
@@ -77,24 +81,7 @@ router.post("/api-keys", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.get("/api-keys/:id/reveal", requireAuth, async (req, res): Promise<void> => {
-  const user = (req as any).user;
-  const id = Number(req.params.id);
-
-  const [key] = await db
-    .select()
-    .from(apiKeysTable)
-    .where(and(eq(apiKeysTable.id, id), eq(apiKeysTable.userId, user.id)));
-
-  if (!key) {
-    res.status(404).json({ error: "API key tidak ditemukan" });
-    return;
-  }
-  if (!key.keyPlain) {
-    res.status(410).json({ error: "Key ini dibuat sebelum fitur reveal tersedia. Hapus dan buat key baru." });
-    return;
-  }
-
-  res.json({ fullKey: key.keyPlain });
+  res.status(410).json({ error: "Full API key hanya ditampilkan sekali saat dibuat. Buat key baru jika key lama hilang." });
 });
 
 router.patch("/api-keys/:id", requireAuth, async (req, res): Promise<void> => {

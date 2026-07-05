@@ -121,7 +121,7 @@ export default function NewProject() {
     setDetectingRuntime(true);
 
     apiFetch<{ runtime: string; confidence: string }>(
-      `/api/github/detect-runtimexrepo=${encodeURIComponent(selectedRepo.fullName)}`,
+      `/api/github/detect-runtime?repo=${encodeURIComponent(selectedRepo.fullName)}`,
     )
       .then((result) => {
         setDetectedRuntime(result);

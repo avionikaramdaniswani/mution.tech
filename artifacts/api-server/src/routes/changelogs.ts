@@ -6,6 +6,11 @@ import { requireAdmin } from "../lib/auth";
 
 const router = Router();
 
+function parseRouteId(param: string | string[]): number {
+  const raw = Array.isArray(param) ? param[0] : param;
+  return parseInt(raw, 10);
+}
+
 // Public route to get all changelogs
 router.get("/changelog", async (req, res) => {
   try {
@@ -34,7 +39,7 @@ router.post("/admin/changelog", requireAdmin, async (req, res) => {
 
 router.put("/admin/changelog/:id", requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseRouteId(req.params.id);
     const data = insertChangelogSchema.partial().parse(req.body);
     
     // Ensure changes array is well-formed if it exists
@@ -50,32 +55,36 @@ router.put("/admin/changelog/:id", requireAdmin, async (req, res) => {
       .returning();
       
     if (!updated) {
-      return res.status(404).json({ error: "Changelog not found" });
+      res.status(404).json({ error: "Changelog not found" });
+      return;
     }
     res.json(updated);
     return;
   } catch (error) {
     console.error("Error updating changelog:", error);
     res.status(400).json({ error: "Invalid data or internal error" });
+    return;
   }
 });
 
 router.delete("/admin/changelog/:id", requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseRouteId(req.params.id);
     const [deleted] = await db
       .delete(changelogsTable)
       .where(eq(changelogsTable.id, id))
       .returning();
       
     if (!deleted) {
-      return res.status(404).json({ error: "Changelog not found" });
+      res.status(404).json({ error: "Changelog not found" });
+      return;
     }
     res.json(deleted);
     return;
   } catch (error) {
     console.error("Error deleting changelog:", error);
     res.status(500).json({ error: "Internal server error" });
+    return;
   }
 });
 

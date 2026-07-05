@@ -59,7 +59,8 @@ if (existsSync(frontendDist)) {
   app.get(/(.*)/, (_req: Request, res: Response) => {
     // Skip API routes - they're already handled above
     if (_req.path === "/api" || _req.path.startsWith("/api/") || _req.path === "/v1" || _req.path.startsWith("/v1/")) {
-      return res.status(404).json({ error: "Not found" });
+      res.status(404).json({ error: "Not found" });
+      return;
     }
     res.sendFile(path.join(frontendDist, "index.html"));
   });

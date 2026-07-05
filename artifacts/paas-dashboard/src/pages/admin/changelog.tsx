@@ -137,7 +137,7 @@ export default function AdminChangelog() {
                     <Edit2 className="h-4 w-4" />
                   </Button>
                   <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-500/10" onClick={() => {
-                    if (confirm("Yakin ingin menghapus changelog inix")) {
+                    if (confirm("Yakin ingin menghapus changelog ini?")) {
                       deleteMutation.mutate(c.id);
                     }
                   }}>

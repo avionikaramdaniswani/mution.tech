@@ -232,7 +232,7 @@ response = client.chat.completions.create(
     model="claude-opus-4-6",
     messages=[
         {"role": "system", "content": "Kamu adalah asisten yang helpful."},
-        {"role": "user", "content": "Apa itu machine learningx"}
+        {"role": "user", "content": "Apa itu machine learning?"}
     ],
     max_tokens=1024
 )
@@ -272,7 +272,7 @@ const response = await client.chat.completions.create({
   model: "claude-opus-4-6",
   messages: [
     { role: "system", content: "Kamu adalah asisten yang helpful." },
-    { role: "user", content: "Apa itu TypeScriptx" },
+    { role: "user", content: "Apa itu TypeScript?" },
   ],
 });
 
@@ -355,7 +355,7 @@ message = client.messages.create(
     max_tokens=1024,
     system="Kamu adalah asisten yang helpful.",
     messages=[
-        {"role": "user", "content": "Halo! Siapa kamux"}
+        {"role": "user", "content": "Halo! Siapa kamu?"}
     ]
 )
 

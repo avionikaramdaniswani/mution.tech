@@ -556,7 +556,7 @@ export default function RiwayatDetailPage() {
               style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}
             >
               <p className="text-sm text-center" style={{ color: "rgba(255,255,255,0.6)" }}>
-                Batalkan order inix Tindakan ini tidak bisa diurungkan.
+                Batalkan order ini? Tindakan ini tidak bisa diurungkan.
               </p>
               <div className="flex gap-2">
                 <button
