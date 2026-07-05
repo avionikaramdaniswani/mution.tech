@@ -8,20 +8,20 @@ import {
 } from "lucide-react";
 
 const hostingFeatures = [
-  { icon: Server, title: "Deploy dari Git", desc: "Hubungkan repo GitHub kamu, push — Mution langsung build dan deploy otomatis." },
+  { icon: Server, title: "Deploy dari Git", desc: "Hubungkan repo GitHub kamu, push - Mution langsung build dan deploy otomatis." },
   { icon: Layers, title: "Multi-runtime", desc: "Node.js, Python, Go, PHP, Ruby, dan Docker image custom didukung penuh." },
-  { icon: Database, title: "Managed Database", desc: "PostgreSQL dan MySQL terkelola — backup otomatis, akses mudah lewat dashboard." },
+  { icon: Database, title: "Managed Database", desc: "PostgreSQL dan MySQL terkelola - backup otomatis, akses mudah lewat dashboard." },
   { icon: Globe, title: "Domain & SSL", desc: "Subdomain gratis bawaan Mution, atau hubungkan domain sendiri dengan SSL otomatis." },
-  { icon: Shield, title: "Isolasi Container", desc: "Setiap proyek berjalan di container terisolasi — aman, stabil, tidak saling ganggu." },
+  { icon: Shield, title: "Isolasi Container", desc: "Setiap proyek berjalan di container terisolasi - aman, stabil, tidak saling ganggu." },
   { icon: Zap, title: "Auto-scaling", desc: "Resource naik saat traffic lonjak, turun saat sepi. Bayar apa yang kamu pakai." },
 ];
 
 const aiFeatures = [
-  { icon: Bot, title: "Satu Key, Semua Model", desc: "GPT-4o, Claude 3.5, Gemini 1.5, Llama 3, Mistral — akses lewat satu API key." },
-  { icon: BrainCircuit, title: "OpenAI-Compatible", desc: "Endpoint kompatibel OpenAI. Tidak perlu ubah kode — ganti base URL, langsung jalan." },
+  { icon: Bot, title: "Satu Key, Semua Model", desc: "GPT-4o, Claude 3.5, Gemini 1.5, Llama 3, Mistral - akses lewat satu API key." },
+  { icon: BrainCircuit, title: "OpenAI-Compatible", desc: "Endpoint kompatibel OpenAI. Tidak perlu ubah kode - ganti base URL, langsung jalan." },
   { icon: Cpu, title: "Tanpa Manajemen Quota", desc: "Tidak perlu daftar ke puluhan provider. Kami kelola rate limit dan fallback untuk kamu." },
   { icon: Key, title: "API Key Terkelola", desc: "Buat dan revoke key kapan saja lewat dashboard. Setiap key bisa dibatasi scope-nya." },
-  { icon: BarChart3, title: "Usage Tracking", desc: "Pantau token yang dipakai per key, per model, per hari — transparan dan real-time." },
+  { icon: BarChart3, title: "Usage Tracking", desc: "Pantau token yang dipakai per key, per model, per hari - transparan dan real-time." },
   { icon: Shield, title: "Harga Kredit Transparan", desc: "Pakai kredit yang sama dengan layanan hosting. Satu saldo, semua layanan." },
 ];
 
@@ -42,7 +42,7 @@ export default function LayananPage() {
       <PageHero
         eyebrow="Layanan Mution"
         title={<>Dua layanan, satu platform, <span className="text-primary">satu saldo.</span></>}
-        subtitle="Mution menyediakan infrastruktur hosting modern dan akses AI multi-model — semuanya terintegrasi dalam satu dashboard dan satu sistem kredit."
+        subtitle="Mution menyediakan infrastruktur hosting modern dan akses AI multi-model - semuanya terintegrasi dalam satu dashboard dan satu sistem kredit."
       />
 
       {/* Hosting */}
@@ -59,7 +59,7 @@ export default function LayananPage() {
               </div>
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Hosting & Deployment</h2>
               <p className="text-muted-foreground text-sm max-w-xl leading-relaxed">
-                Deploy aplikasimu dalam hitungan detik. Infrastruktur container modern berbasis VM sendiri — tidak ada cold start, tidak ada kejutan biaya.
+                Deploy aplikasimu dalam hitungan detik. Infrastruktur container modern berbasis VM sendiri - tidak ada cold start, tidak ada kejutan biaya.
               </p>
             </div>
             <Link href="/register">
@@ -106,7 +106,7 @@ export default function LayananPage() {
               </div>
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">AI API Gateway</h2>
               <p className="text-muted-foreground text-sm max-w-xl leading-relaxed">
-                Akses puluhan model AI terbaik dunia lewat satu endpoint. Kompatibel OpenAI — tinggal ganti base URL, tidak perlu ubah kode lama kamu.
+                Akses puluhan model AI terbaik dunia lewat satu endpoint. Kompatibel OpenAI - tinggal ganti base URL, tidak perlu ubah kode lama kamu.
               </p>
             </div>
             <Link href="/register">

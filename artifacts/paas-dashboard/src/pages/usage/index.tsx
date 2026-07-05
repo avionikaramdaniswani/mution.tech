@@ -11,9 +11,9 @@ export default function UsagePage() {
       {/* Placeholder cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { icon: Cpu,       label: "CPU",       value: "—", unit: "rata-rata" },
-          { icon: HardDrive, label: "Memori",    value: "—", unit: "dipakai" },
-          { icon: Wifi,      label: "Bandwidth", value: "—", unit: "bulan ini" },
+          { icon: Cpu,       label: "CPU",       value: "-", unit: "rata-rata" },
+          { icon: HardDrive, label: "Memori",    value: "-", unit: "dipakai" },
+          { icon: Wifi,      label: "Bandwidth", value: "-", unit: "bulan ini" },
         ].map(({ icon: Icon, label, value, unit }) => (
           <div
             key={label}

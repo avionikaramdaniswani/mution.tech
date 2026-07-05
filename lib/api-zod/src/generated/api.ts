@@ -582,3 +582,129 @@ export const GetAdminStatsResponse = zod.object({
 })
 
 
+/**
+ * @summary Update a user's role and/or plan (admin only)
+ */
+export const AdminUpdateUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminUpdateUserBody = zod.object({
+  "role": zod.enum(['user', 'admin']).optional(),
+  "plan": zod.enum(['hobby', 'pro', 'team']).optional()
+})
+
+export const AdminUpdateUserResponse = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "role": zod.string(),
+  "plan": zod.enum(['hobby', 'pro', 'team']),
+  "credits": zod.number(),
+  "createdAt": zod.string(),
+  "projectCount": zod.number(),
+  "lastLoginAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary Manually adjust a user's credit balance (admin only)
+ */
+export const AdminAdjustCreditsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AdminAdjustCreditsBody = zod.object({
+  "amount": zod.number().describe('Jumlah kredit yang ditambah (positif) atau dikurangi (negatif).'),
+  "note": zod.string().optional().describe('Catatan alasan penyesuaian.')
+})
+
+export const AdminAdjustCreditsResponse = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "role": zod.string(),
+  "plan": zod.enum(['hobby', 'pro', 'team']),
+  "credits": zod.number(),
+  "createdAt": zod.string(),
+  "projectCount": zod.number(),
+  "lastLoginAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary List all payment/topup orders across users (admin only)
+ */
+export const AdminListOrdersResponseItem = zod.object({
+  "id": zod.number(),
+  "userId": zod.number(),
+  "invoiceNumber": zod.string(),
+  "amount": zod.number(),
+  "creditsAmount": zod.number(),
+  "provider": zod.string(),
+  "status": zod.enum(['pending', 'paid', 'expired', 'failed', 'cancelled']),
+  "createdAt": zod.string(),
+  "paidAt": zod.string().nullish(),
+  "ownerEmail": zod.string(),
+  "ownerName": zod.string()
+})
+export const AdminListOrdersResponse = zod.array(AdminListOrdersResponseItem)
+
+
+/**
+ * @summary Get revenue summary across the platform (admin only)
+ */
+export const AdminGetRevenueResponse = zod.object({
+  "totalRevenue": zod.number().describe('Total nominal dari order berstatus paid (sepanjang waktu).'),
+  "todayRevenue": zod.number(),
+  "monthRevenue": zod.number(),
+  "paidCount": zod.number(),
+  "pendingCount": zod.number(),
+  "failedCount": zod.number()
+})
+
+
+/**
+ * @summary Get AI-proxy usage analytics (admin only)
+ */
+export const adminGetUsageQueryDaysMax = 365;
+
+
+
+export const AdminGetUsageQueryParams = zod.object({
+  "days": zod.coerce.number().min(1).max(adminGetUsageQueryDaysMax).optional().describe('Rentang waktu ke belakang dalam hari (1–365). Default 30.')
+})
+
+export const AdminGetUsageResponse = zod.object({
+  "rangeDays": zod.number(),
+  "since": zod.coerce.date(),
+  "totals": zod.object({
+  "requests": zod.number(),
+  "totalTokens": zod.number(),
+  "promptTokens": zod.number(),
+  "completionTokens": zod.number(),
+  "credits": zod.number()
+}),
+  "byModel": zod.array(zod.object({
+  "model": zod.string(),
+  "requests": zod.number(),
+  "totalTokens": zod.number(),
+  "credits": zod.number()
+})),
+  "topUsers": zod.array(zod.object({
+  "userId": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "requests": zod.number(),
+  "totalTokens": zod.number(),
+  "credits": zod.number()
+})),
+  "daily": zod.array(zod.object({
+  "day": zod.string().describe('Tanggal dalam format YYYY-MM-DD.'),
+  "requests": zod.number(),
+  "totalTokens": zod.number(),
+  "credits": zod.number()
+}))
+})
+
+

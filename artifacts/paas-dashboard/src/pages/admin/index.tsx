@@ -12,7 +12,7 @@ import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { ProjectStatusBadge } from "../projects";
 
-// ─── Provider types ───────────────────────────────────────────────────────────
+// --- Provider types -----------------------------------------------------------
 
 interface ProviderStatus {
   id: string;
@@ -39,7 +39,7 @@ async function toggleProvider(id: string, enabled: boolean): Promise<void> {
   if (!res.ok) throw new Error("Failed to toggle provider");
 }
 
-// ─── Provider status badge ────────────────────────────────────────────────────
+// --- Provider status badge ----------------------------------------------------
 
 function ProviderStatusBadge({ provider }: { provider: ProviderStatus }) {
   if (!provider.enabled) return <Badge variant="secondary" className="gap-1"><XCircle className="h-3 w-3" /> Disabled</Badge>;
@@ -52,7 +52,7 @@ function ProviderTypeBadge({ type }: { type: string }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${map[type] ?? map.generic}`}>{type}</span>;
 }
 
-// ─── Providers Tab ────────────────────────────────────────────────────────────
+// --- Providers Tab ------------------------------------------------------------
 
 function ProvidersTab() {
   const { toast } = useToast();
@@ -137,7 +137,7 @@ function ProvidersTab() {
       <Card className="border-border/50 border-amber-500/20 bg-amber-500/5">
         <CardContent className="pt-4">
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-amber-500">Catatan:</span> Toggle bersifat in-memory — akan reset ke semua aktif saat server restart. Untuk menonaktifkan provider secara permanen, hapus dari env var <code className="bg-muted px-1 rounded">PROVIDER_POOL</code>.
+            <span className="font-semibold text-amber-500">Catatan:</span> Toggle bersifat in-memory - akan reset ke semua aktif saat server restart. Untuk menonaktifkan provider secara permanen, hapus dari env var <code className="bg-muted px-1 rounded">PROVIDER_POOL</code>.
           </p>
         </CardContent>
       </Card>
@@ -145,7 +145,7 @@ function ProvidersTab() {
   );
 }
 
-// ─── Main Admin Panel ─────────────────────────────────────────────────────────
+// --- Main Admin Panel ---------------------------------------------------------
 
 export default function AdminPanel() {
   const { data: stats, isLoading: isLoadingStats } = useGetAdminStats();
@@ -167,7 +167,7 @@ export default function AdminPanel() {
   };
 
   const handleDeleteProject = (id: number) => {
-    if (confirm("Are you sure you want to delete this project globally?")) {
+    if (confirm("Are you sure you want to delete this project globallyx")) {
       deleteProject.mutate({ id }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getAdminListProjectsQueryKey() });

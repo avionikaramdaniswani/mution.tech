@@ -12,7 +12,11 @@ export const apiKeysTable = pgTable("api_keys", {
   lastUsedAt: timestamp("last_used_at"),
   totalTokensUsed: integer("total_tokens_used").notNull().default(0),
   totalRequestsCount: integer("total_requests_count").notNull().default(0),
+  totalCreditsUsed: integer("total_credits_used").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at"),
+  creditLimit: integer("credit_limit"),
+  allowedModels: text("allowed_models").array(),
 });
 
 export type ApiKey = typeof apiKeysTable.$inferSelect;

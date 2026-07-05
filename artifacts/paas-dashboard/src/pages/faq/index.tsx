@@ -6,18 +6,18 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 const faqs = [
-  { q: "Apa itu Mution?", a: "Mution adalah platform infrastruktur modern yang memungkinkan kamu untuk deploy, scale, dan memantau aplikasi containerized tanpa perlu mengurus server atau konfigurasi yang rumit." },
-  { q: "Bagaimana cara mulai menggunakan Mution?", a: "Daftar akun gratis, buat proyek baru, sambungkan repository GitHub kamu, dan deploy. Proses dari awal sampai aplikasi live rata-rata kurang dari 5 menit." },
-  { q: "Runtime apa saja yang didukung?", a: "Mution mendukung Node.js, Python, PHP, Go, Ruby, Java, Rust, Deno, Bun, .NET, dan Docker. Hampir semua stack modern didukung out-of-the-box." },
-  { q: "Apakah ada biaya tersembunyi?", a: "Tidak ada. Kamu hanya membayar sesuai resource yang dipakai. Tidak ada biaya setup, tidak ada biaya egress tersembunyi, tidak ada kejutan di tagihan." },
-  { q: "Berapa lama waktu deploy rata-rata?", a: "Rata-rata 15–30 detik dari push sampai aplikasi live. Build yang lebih besar dengan banyak dependencies bisa 60–90 detik." },
-  { q: "Apakah saya bisa pakai domain sendiri?", a: "Ya. Kamu bisa menghubungkan domain custom di plan Pro ke atas. SSL/HTTPS diaktifkan otomatis tanpa konfigurasi manual." },
-  { q: "Database apa yang didukung?", a: "Mution mendukung managed PostgreSQL per proyek. Provisioning cukup satu klik, backup otomatis setiap hari." },
-  { q: "Bagaimana cara kerja sistem kredit?", a: "Kamu melakukan top-up kredit terlebih dahulu, lalu kredit tersebut digunakan sesuai resource yang dipakai (CPU, RAM, storage). Tidak ada tagihan mendadak — kamu selalu tahu berapa kredit yang tersisa." },
-  { q: "Apakah ada jaminan uptime?", a: "Plan Pro dan Enterprise mendapatkan SLA 99.9% uptime. Kamu bisa memantau status platform real-time di status.mution.tech." },
-  { q: "Bagaimana jika saya butuh bantuan teknis?", a: "Kamu bisa menghubungi tim support kami melalui email di supportmution@gmail.com atau WhatsApp di +62 857-0955-7572. Kami siap membantu." },
-  { q: "Apakah data saya aman?", a: "Ya. Semua data dienkripsi saat transit dan saat disimpan. Kami menggunakan infrastruktur yang ter-isolasi per pengguna untuk memastikan privasi dan keamanan data kamu." },
-  { q: "Bisakah saya rollback ke versi sebelumnya?", a: "Ya. Mution menyimpan riwayat deployment sehingga kamu bisa rollback ke versi manapun dengan satu klik." },
+  { q: "Apa itu Mutionx", a: "Mution adalah platform infrastruktur modern yang memungkinkan kamu untuk deploy, scale, dan memantau aplikasi containerized tanpa perlu mengurus server atau konfigurasi yang rumit." },
+  { q: "Bagaimana cara mulai menggunakan Mutionx", a: "Daftar akun gratis, buat proyek baru, sambungkan repository GitHub kamu, dan deploy. Proses dari awal sampai aplikasi live rata-rata kurang dari 5 menit." },
+  { q: "Runtime apa saja yang didukungx", a: "Mution mendukung Node.js, Python, PHP, Go, Ruby, Java, Rust, Deno, Bun, .NET, dan Docker. Hampir semua stack modern didukung out-of-the-bo?." },
+  { q: "Apakah ada biaya tersembunyix", a: "Tidak ada. Kamu hanya membayar sesuai resource yang dipakai. Tidak ada biaya setup, tidak ada biaya egress tersembunyi, tidak ada kejutan di tagihan." },
+  { q: "Berapa lama waktu deploy rata-ratax", a: "Rata-rata 15-30 detik dari push sampai aplikasi live. Build yang lebih besar dengan banyak dependencies bisa 60-90 detik." },
+  { q: "Apakah saya bisa pakai domain sendirix", a: "Ya. Kamu bisa menghubungkan domain custom di plan Pro ke atas. SSL/HTTPS diaktifkan otomatis tanpa konfigurasi manual." },
+  { q: "Database apa yang didukungx", a: "Mution mendukung managed PostgreSQL per proyek. Provisioning cukup satu klik, backup otomatis setiap hari." },
+  { q: "Bagaimana cara kerja sistem kreditx", a: "Kamu melakukan top-up kredit terlebih dahulu, lalu kredit tersebut digunakan sesuai resource yang dipakai (CPU, RAM, storage). Tidak ada tagihan mendadak - kamu selalu tahu berapa kredit yang tersisa." },
+  { q: "Apakah ada jaminan uptimex", a: "Plan Pro dan Enterprise mendapatkan SLA 99.9% uptime. Kamu bisa memantau status platform real-time di status.mution.tech." },
+  { q: "Bagaimana jika saya butuh bantuan teknisx", a: "Kamu bisa menghubungi tim support kami melalui email di supportmution@gmail.com atau WhatsApp di +62 857-0955-7572. Kami siap membantu." },
+  { q: "Apakah data saya amanx", a: "Ya. Semua data dienkripsi saat transit dan saat disimpan. Kami menggunakan infrastruktur yang ter-isolasi per pengguna untuk memastikan privasi dan keamanan data kamu." },
+  { q: "Bisakah saya rollback ke versi sebelumnyax", a: "Ya. Mution menyimpan riwayat deployment sehingga kamu bisa rollback ke versi manapun dengan satu klik." },
 ];
 
 function FAQItem({ q, a }: { q: string; a: string }) {
@@ -57,7 +57,7 @@ export default function FAQPage() {
       <PageHero
         eyebrow="Bantuan"
         title={<>Pertanyaan yang <span className="text-primary">sering ditanyakan</span></>}
-        subtitle={`Tidak menemukan jawaban yang kamu cari? Hubungi kami di supportmution@gmail.com.`}
+        subtitle={`Tidak menemukan jawaban yang kamu carix Hubungi kami di supportmution@gmail.com.`}
       />
 
       <section className="py-20 px-4 sm:px-6 lg:px-8">
@@ -68,7 +68,7 @@ export default function FAQPage() {
         </div>
         <div className="mx-auto max-w-3xl mt-12 text-center">
           <p className="text-sm text-muted-foreground">
-            Masih ada pertanyaan?{" "}
+            Masih ada pertanyaanx{" "}
             <Link href="/kontak" className="text-primary hover:underline">Hubungi tim kami</Link>
           </p>
         </div>

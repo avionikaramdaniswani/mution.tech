@@ -5,6 +5,7 @@ import { requireAuth } from "../lib/auth";
 import { TopupCreditsBody } from "@workspace/api-zod";
 import { computePlan } from "../lib/plan";
 import { logger } from "../lib/logger";
+import { broadcastToUser, broadcastAdmin } from "../lib/events";
 import {
   getTripayBase,
   createOrderSignature,
@@ -98,7 +99,7 @@ router.get("/billing/transactions", requireAuth, async (req, res): Promise<void>
 
 router.get("/billing/orders/:id", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const orderId = parseInt(req.params.id, 10);
+  const orderId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   if (isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [order] = await db
@@ -177,7 +178,7 @@ router.get("/billing/orders/:id", requireAuth, async (req, res): Promise<void> =
 
 router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const orderId = parseInt(req.params.id, 10);
+  const orderId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   if (isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [order] = await db
@@ -233,6 +234,9 @@ router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<v
       });
     });
 
+    broadcastToUser(user.id, { type: "credits.changed", amount: order.creditsAmount });
+    broadcastAdmin({ type: "order.paid", userId: user.id, orderId: order.id });
+
     res.json({ status: "paid", creditsAmount: order.creditsAmount });
   } catch (err) {
     logger.error({ err }, "Tripay sync error");
@@ -242,7 +246,7 @@ router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<v
 
 router.post("/billing/orders/:id/cancel", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const orderId = parseInt(req.params.id, 10);
+  const orderId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   if (isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [order] = await db
@@ -521,6 +525,9 @@ router.post("/billing/tripay/webhook", async (req, res): Promise<void> => {
       note: `Topup via Tripay (${payload.payment_name}) — ${order.invoiceNumber}`,
     });
   });
+
+  broadcastToUser(order.userId, { type: "credits.changed", amount: order.creditsAmount });
+  broadcastAdmin({ type: "order.paid", userId: order.userId, orderId: order.id });
 
   res.json({ success: true });
 });

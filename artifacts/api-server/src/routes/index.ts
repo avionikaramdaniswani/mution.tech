@@ -6,9 +6,12 @@ import deploymentsRouter from "./deployments";
 import statsRouter from "./stats";
 import activityRouter from "./activity";
 import adminRouter from "./admin";
+import eventsRouter from "./events";
 import githubRouter from "./github";
 import billingRouter from "./billing";
 import apiKeysRouter from "./api-keys";
+import apiUsageRouter from "./api-usage";
+import changelogsRouter from "./changelogs";
 
 const router: IRouter = Router();
 
@@ -22,5 +25,8 @@ router.use(deploymentsRouter);
 router.use(statsRouter);
 router.use(activityRouter);
 router.use(adminRouter);
+router.use(eventsRouter);
+router.use(apiUsageRouter);
+router.use(changelogsRouter);
 
 export default router;

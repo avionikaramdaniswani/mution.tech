@@ -88,7 +88,7 @@ export default function AdminActivity() {
                     <p className="text-sm truncate">{actionLabel(log.action)}</p>
                   </div>
                   <div className="col-span-4 min-w-0">
-                    <p className="text-xs text-muted-foreground truncate">{meta || "—"}</p>
+                    <p className="text-xs text-muted-foreground truncate">{meta || "-"}</p>
                   </div>
                   <div className="col-span-3 text-right">
                     <span className="text-xs text-muted-foreground">

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect } from "react";
+import React, { createContext, useContext } from "react";
 import { useGetMe, getGetMeQueryKey, type User } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,22 +12,15 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  
-  const { data: user = null, isLoading, error } = useGetMe({
+
+  const { data: user = null, isLoading } = useGetMe({
     query: {
+      queryKey: getGetMeQueryKey(),
       retry: false,
     }
   });
-
-  const publicRoutes = ["/", "/login", "/register", "/harga", "/faq", "/refund-policy", "/terms-and-conditions", "/kontak", "/tentang-kami", "/privacy-policy", "/layanan"];
-
-  useEffect(() => {
-    if (!isLoading && !user && !publicRoutes.includes(location)) {
-      setLocation("/");
-    }
-  }, [user, isLoading, location, setLocation]);
 
   const logout = () => {
     queryClient.setQueryData(getGetMeQueryKey(), null);

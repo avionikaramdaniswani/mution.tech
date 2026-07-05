@@ -24,7 +24,10 @@ import RiwayatOrderPage from "@/pages/billing/riwayat";
 import RiwayatDetailPage from "@/pages/billing/riwayat-detail";
 import ApiKeysPage from "@/pages/api-keys";
 import DocsPage from "@/pages/docs";
+import ChangelogPage from "@/pages/changelog";
 import UsagePage from "@/pages/usage";
+import ApiUsagePage from "@/pages/api-usage";
+import ProvidersPage from "@/pages/providers";
 import FAQPage from "@/pages/faq";
 import RefundPolicyPage from "@/pages/refund-policy";
 import TermsPage from "@/pages/terms";
@@ -38,6 +41,9 @@ import AdminUsers from "@/pages/admin/users";
 import AdminProjects from "@/pages/admin/projects";
 import AdminActivity from "@/pages/admin/activity";
 import AdminProviders from "@/pages/admin/providers";
+import AdminPayments from "@/pages/admin/payments";
+import AdminUsage from "@/pages/admin/usage";
+import AdminChangelog from "@/pages/admin/changelog";
 
 const queryClient = new QueryClient();
 
@@ -98,10 +104,13 @@ function Router() {
       <Route path="/api-keys" component={() => <ProtectedRoute component={ApiKeysPage} />} />
       <Route path="/docs" component={() => <ProtectedRoute component={DocsPage} />} />
       <Route path="/usage" component={() => <ProtectedRoute component={UsagePage} />} />
+      <Route path="/api-usage" component={() => <ProtectedRoute component={ApiUsagePage} />} />
+      <Route path="/providers" component={() => <ProtectedRoute component={ProvidersPage} />} />
       <Route path="/github-callback" component={GitHubCallback} />
 
       {/* Public static pages */}
       <Route path="/harga" component={HargaPage} />
+      <Route path="/changelog" component={ChangelogPage} />
       <Route path="/faq" component={FAQPage} />
       <Route path="/refund-policy" component={RefundPolicyPage} />
       <Route path="/terms-and-conditions" component={TermsPage} />
@@ -110,14 +119,17 @@ function Router() {
       <Route path="/tentang-kami" component={TentangKamiPage} />
       <Route path="/layanan" component={LayananPage} />
 
-      {/* Admin routes — dedicated layout */}
+      {/* Admin routes - dedicated layout */}
       <Route path="/admin/users" component={() => <AdminRoute component={AdminUsers} />} />
       <Route path="/admin/projects" component={() => <AdminRoute component={AdminProjects} />} />
+      <Route path="/admin/payments" component={() => <AdminRoute component={AdminPayments} />} />
       <Route path="/admin/activity" component={() => <AdminRoute component={AdminActivity} />} />
       <Route path="/admin/providers" component={() => <AdminRoute component={AdminProviders} />} />
+      <Route path="/admin/usage" component={() => <AdminRoute component={AdminUsage} />} />
+      <Route path="/admin/changelog" component={() => <AdminRoute component={AdminChangelog} />} />
       <Route path="/admin" component={() => <AdminRoute component={AdminOverview} />} />
 
-      {/* Root last — so it doesn't swallow every other path */}
+      {/* Root last - so it doesn't swallow every other path */}
       <Route path="/" component={Landing} />
       <Route component={NotFound} />
     </Switch>

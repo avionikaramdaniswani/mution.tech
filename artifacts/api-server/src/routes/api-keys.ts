@@ -22,8 +22,12 @@ function serializeKey(key: typeof apiKeysTable.$inferSelect) {
     isActive: key.isActive,
     totalTokensUsed: key.totalTokensUsed,
     totalRequestsCount: key.totalRequestsCount,
+    totalCreditsUsed: key.totalCreditsUsed,
     lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
     createdAt: key.createdAt.toISOString(),
+    expiresAt: key.expiresAt?.toISOString() ?? null,
+    creditLimit: key.creditLimit,
+    allowedModels: key.allowedModels,
   };
 }
 
@@ -38,7 +42,7 @@ router.get("/api-keys", requireAuth, async (req, res): Promise<void> => {
 
 router.post("/api-keys", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const { name } = req.body;
+  const { name, expiresAt, creditLimit, allowedModels } = req.body;
 
   const existing = await db
     .select()
@@ -60,6 +64,9 @@ router.post("/api-keys", requireAuth, async (req, res): Promise<void> => {
       keyPrefix: prefix,
       keyHash: hash,
       keyPlain: fullKey,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      creditLimit: creditLimit === null ? null : typeof creditLimit === "number" ? creditLimit : null,
+      allowedModels: allowedModels === null ? null : (Array.isArray(allowedModels) && allowedModels.length > 0 ? allowedModels : null),
     })
     .returning();
 
@@ -93,7 +100,7 @@ router.get("/api-keys/:id/reveal", requireAuth, async (req, res): Promise<void> 
 router.patch("/api-keys/:id", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
   const id = Number(req.params.id);
-  const { name } = req.body;
+  const { name, expiresAt, creditLimit, allowedModels } = req.body;
 
   if (!name?.trim()) {
     res.status(400).json({ error: "Nama tidak boleh kosong" });
@@ -102,7 +109,12 @@ router.patch("/api-keys/:id", requireAuth, async (req, res): Promise<void> => {
 
   const [updated] = await db
     .update(apiKeysTable)
-    .set({ name: name.trim() })
+    .set({ 
+      name: name.trim(),
+      expiresAt: expiresAt === null ? null : expiresAt ? new Date(expiresAt) : undefined,
+      creditLimit: creditLimit === null ? null : typeof creditLimit === "number" ? creditLimit : undefined,
+      allowedModels: allowedModels === null ? null : (Array.isArray(allowedModels) && allowedModels.length > 0 ? allowedModels : undefined),
+    })
     .where(and(eq(apiKeysTable.id, id), eq(apiKeysTable.userId, user.id)))
     .returning();
 

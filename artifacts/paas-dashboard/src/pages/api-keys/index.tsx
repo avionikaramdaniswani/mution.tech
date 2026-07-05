@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Copy, Eye, EyeOff, Key, Plus, Trash2, Pencil, Check, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -14,6 +15,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 
 interface ApiKey {
   id: number;
@@ -22,8 +26,12 @@ interface ApiKey {
   isActive: boolean;
   totalTokensUsed: number;
   totalRequestsCount: number;
+  totalCreditsUsed: number;
   lastUsedAt: string | null;
   createdAt: string;
+  expiresAt: string | null;
+  creditLimit: number | null;
+  allowedModels: string[] | null;
   keyPlain?: string | null;
 }
 
@@ -58,17 +66,92 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+const AVAILABLE_MODELS = [
+  "claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8",
+  "claude-sonnet-4-6", "claude-sonnet-4-7", "claude-sonnet-5",
+  "gpt-5-4", "gpt-5-5", "glm-5-2"
+];
+
+function ResponsivePanel({ open, onOpenChange, title, description, children, footer }: { open: boolean; onOpenChange: (open: boolean) => void; title: React.ReactNode; description?: React.ReactNode; children: React.ReactNode; footer: React.ReactNode }) {
+  const isMobile = useIsMobile();
+  
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[90vh]">
+          <DrawerHeader className="text-left">
+            <DrawerTitle>{title}</DrawerTitle>
+            {description && <DrawerDescription>{description}</DrawerDescription>}
+          </DrawerHeader>
+          <div className="px-4 overflow-y-auto">
+            {children}
+          </div>
+          <DrawerFooter className="pt-4 flex-row gap-2">
+            {footer}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="overflow-y-auto sm:max-w-md w-full">
+        <SheetHeader>
+          <SheetTitle>{title}</SheetTitle>
+          {description && <SheetDescription>{description}</SheetDescription>}
+        </SheetHeader>
+        <div className="py-6">
+          {children}
+        </div>
+        <SheetFooter className="mt-4 flex-col sm:flex-row gap-2">
+          {footer}
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export default function ApiKeysPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyExpiresAt, setNewKeyExpiresAt] = useState("");
+  const [newKeyCreditLimit, setNewKeyCreditLimit] = useState("");
+  const [newKeyAllowedModels, setNewKeyAllowedModels] = useState<string[]>([]);
+  const [newKeyUnlimitedCredit, setNewKeyUnlimitedCredit] = useState(true);
+
   const [newKeyResult, setNewKeyResult] = useState<NewKey | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<ApiKey | null>(null);
+  
   const [editTarget, setEditTarget] = useState<ApiKey | null>(null);
   const [editName, setEditName] = useState("");
+  const [editExpiresAt, setEditExpiresAt] = useState("");
+  const [editCreditLimit, setEditCreditLimit] = useState("");
+  const [editAllowedModels, setEditAllowedModels] = useState<string[]>([]);
+  const [editUnlimitedCredit, setEditUnlimitedCredit] = useState(true);
+
   const [showFullKey, setShowFullKey] = useState(false);
   const [revealingId, setRevealingId] = useState<number | null>(null);
+
+  const openCreateDialog = () => {
+    setNewKeyName("");
+    setNewKeyExpiresAt("");
+    setNewKeyCreditLimit("");
+    setNewKeyAllowedModels([]);
+    setNewKeyUnlimitedCredit(true);
+    setShowCreate(true);
+  };
+
+  const openEditDialog = (key: ApiKey) => {
+    setEditTarget(key);
+    setEditName(key.name);
+    setEditExpiresAt(key.expiresAt ? new Date(key.expiresAt).toISOString().split('T')[0] : "");
+    setEditCreditLimit(key.creditLimit !== null ? String(key.creditLimit) : "");
+    setEditUnlimitedCredit(key.creditLimit === null);
+    setEditAllowedModels(key.allowedModels || []);
+  };
 
   async function copyKey(key: ApiKey) {
     setRevealingId(key.id);
@@ -91,7 +174,7 @@ export default function ApiKeysPage() {
   const activeKeys = keys.filter((k) => k.isActive);
 
   const createMutation = useMutation({
-    mutationFn: (name: string) => apiFetch("/api-keys", { method: "POST", body: JSON.stringify({ name }) }),
+    mutationFn: (payload: any) => apiFetch("/api-keys", { method: "POST", body: JSON.stringify(payload) }),
     onSuccess: (data: NewKey) => {
       qc.invalidateQueries({ queryKey: ["api-keys"] });
       setNewKeyResult(data);
@@ -102,8 +185,8 @@ export default function ApiKeysPage() {
   });
 
   const renameMutation = useMutation({
-    mutationFn: ({ id, name }: { id: number; name: string }) =>
-      apiFetch(`/api-keys/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+    mutationFn: (payload: any) =>
+      apiFetch(`/api-keys/${payload.id}`, { method: "PATCH", body: JSON.stringify(payload) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["api-keys"] });
       setEditTarget(null);
@@ -131,47 +214,16 @@ export default function ApiKeysPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">API Keys</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Generate key untuk akses Mution AI API — compatible dengan OpenAI SDK.
+            Generate key untuk akses Mution AI API - compatible dengan OpenAI SDK.
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="gap-2">
+        <Button onClick={openCreateDialog} className="gap-2">
           <Plus className="h-4 w-4" />
           Buat Key Baru
         </Button>
       </div>
 
-      {/* Usage info */}
-      <div className="rounded-xl border border-border/50 bg-card p-5 space-y-3">
-        <h2 className="font-semibold text-sm flex items-center gap-2">
-          <Key className="h-4 w-4 text-primary" />
-          Cara Menggunakan
-        </h2>
-        <div className="space-y-2 text-xs text-muted-foreground">
-          <p>Base URL API kamu:</p>
-          <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2 font-mono text-foreground">
-            <span className="flex-1">{baseUrl}/v1</span>
-            <CopyButton text={`${baseUrl}/v1`} />
-          </div>
-          <p className="mt-2">Contoh penggunaan dengan Python:</p>
-          <pre className="rounded-md bg-muted/50 px-3 py-2 text-xs overflow-x-auto text-foreground">{`from openai import OpenAI
-
-client = OpenAI(
-    api_key="mk_live_...",  # API key kamu
-    base_url="${baseUrl}/v1"
-)
-
-response = client.chat.completions.create(
-    model="claude-opus-4-6",
-    messages=[{"role": "user", "content": "Halo!"}]
-)
-print(response.choices[0].message.content)`}</pre>
-          <p className="pt-1">
-            <span className="font-medium text-yellow-500">Tarif:</span> 10 kredit per 1.000 token digunakan.
-            Kredit kamu saat ini:{" "}
-            <span className="font-semibold text-foreground">Rp {(user?.credits ?? 0).toLocaleString("id-ID")}</span>
-          </p>
-        </div>
-      </div>
+      {/* Usage info removed - now in docs */}
 
       {/* Keys list */}
       <div className="space-y-3">
@@ -202,11 +254,28 @@ print(response.choices[0].message.content)`}</pre>
                 <div className="flex items-center gap-2">
                   <code className="text-xs text-muted-foreground font-mono">{key.keyPrefix}</code>
                 </div>
-                <div className="flex gap-4 mt-1.5 text-xs text-muted-foreground">
-                  <span>{key.totalRequestsCount.toLocaleString()} request</span>
-                  <span>{key.totalTokensUsed.toLocaleString()} token</span>
-                  {key.lastUsedAt && (
-                    <span>Terakhir: {new Date(key.lastUsedAt).toLocaleDateString("id-ID")}</span>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs text-muted-foreground">
+                  <span>{(key.totalRequestsCount || 0).toLocaleString()} reqs</span>
+                  {key.creditLimit ? (
+                    <span className={(key.totalCreditsUsed || 0) >= key.creditLimit ? "text-red-500 font-medium" : ""}>
+                      Pemakaian: {(key.totalCreditsUsed || 0).toLocaleString()} / {key.creditLimit.toLocaleString()} kredit
+                    </span>
+                  ) : (
+                    <span>Pemakaian: {(key.totalCreditsUsed || 0).toLocaleString()} kredit</span>
+                  )}
+                  {key.expiresAt ? (
+                    <span className={new Date(key.expiresAt) < new Date() ? "text-red-500 font-medium" : ""}>
+                      Kedaluwarsa: {new Date(key.expiresAt).toLocaleDateString("id-ID")}
+                    </span>
+                  ) : (
+                    <span>Masa Aktif: Selamanya</span>
+                  )}
+                  {Array.isArray(key.allowedModels) && key.allowedModels.length > 0 ? (
+                    <span className="bg-muted px-1.5 py-0.5 rounded" title={key.allowedModels.join(", ")}>
+                      {key.allowedModels.length} Model Diizinkan
+                    </span>
+                  ) : (
+                    <span className="bg-muted px-1.5 py-0.5 rounded">Semua Model</span>
                   )}
                 </div>
               </div>
@@ -225,9 +294,9 @@ print(response.choices[0].message.content)`}</pre>
                   Salin Key
                 </button>
                 <button
-                  onClick={() => { setEditTarget(key); setEditName(key.name); }}
+                  onClick={() => openEditDialog(key)}
                   className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-                  title="Ubah nama"
+                  title="Ubah API Key"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
@@ -245,32 +314,102 @@ print(response.choices[0].message.content)`}</pre>
       </div>
 
       {/* Create dialog */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Buat API Key Baru</DialogTitle>
-            <DialogDescription>
-              Berikan nama yang mudah dikenali untuk key ini.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            placeholder="Contoh: My App, Testing, Production"
-            value={newKeyName}
-            onChange={(e) => setNewKeyName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && createMutation.mutate(newKeyName)}
-            autoFocus
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>Batal</Button>
+      <ResponsivePanel
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        title="Buat API Key Baru"
+        description="Berikan nama yang mudah dikenali untuk key ini."
+        footer={
+          <>
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setShowCreate(false)}>Batal</Button>
             <Button
-              onClick={() => createMutation.mutate(newKeyName)}
+              className="flex-1 sm:flex-none"
+              onClick={() => createMutation.mutate({
+                name: newKeyName,
+                expiresAt: newKeyExpiresAt || null,
+                creditLimit: newKeyUnlimitedCredit ? null : (parseInt(newKeyCreditLimit) || null),
+                allowedModels: newKeyAllowedModels.length > 0 ? newKeyAllowedModels : null,
+              })}
               disabled={createMutation.isPending}
             >
               {createMutation.isPending ? "Membuat..." : "Buat Key"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Nama Key</label>
+            <Input
+              placeholder="Contoh: My App, Testing, Production"
+              value={newKeyName}
+              onChange={(e) => setNewKeyName(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Kedaluwarsa (Opsional)</label>
+            <Input
+              type="date"
+              value={newKeyExpiresAt}
+              onChange={(e) => setNewKeyExpiresAt(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => {
+                const d = new Date(); d.setDate(d.getDate() + 7);
+                setNewKeyExpiresAt(d.toISOString().split('T')[0]);
+              }}>1 Minggu</Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => {
+                const d = new Date(); d.setMonth(d.getMonth() + 1);
+                setNewKeyExpiresAt(d.toISOString().split('T')[0]);
+              }}>1 Bulan</Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => {
+                const d = new Date(); d.setFullYear(d.getFullYear() + 1);
+                setNewKeyExpiresAt(d.toISOString().split('T')[0]);
+              }}>1 Tahun</Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => {
+                setNewKeyExpiresAt('');
+              }}>Selamanya</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Kosongkan jika aktif selamanya.</p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Batas Kredit (Opsional)</label>
+            <div className="flex items-center gap-2 mb-1">
+              <Switch id="unlimitedCreate" checked={newKeyUnlimitedCredit} onCheckedChange={setNewKeyUnlimitedCredit} />
+              <label htmlFor="unlimitedCreate" className="text-xs text-muted-foreground cursor-pointer select-none">Unlimited (Mengikuti saldo utama)</label>
+            </div>
+            {!newKeyUnlimitedCredit && (
+              <Input
+                type="number"
+                placeholder="Maksimal kredit yang bisa dipakai..."
+                value={newKeyCreditLimit}
+                onChange={(e) => setNewKeyCreditLimit(e.target.value)}
+              />
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Akses Model (Opsional)</label>
+            <p className="text-xs text-muted-foreground mb-2">Pilih model yang diizinkan, atau biarkan kosong untuk semua model.</p>
+            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border border-border/50 rounded-lg">
+              {AVAILABLE_MODELS.map((m) => (
+                <label key={m} className="flex items-center gap-2 text-xs cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="accent-primary"
+                    checked={newKeyAllowedModels.includes(m)}
+                    onChange={(e) => {
+                      if (e.target.checked) setNewKeyAllowedModels(prev => [...prev, m]);
+                      else setNewKeyAllowedModels(prev => prev.filter(x => x !== m));
+                    }}
+                  />
+                  {m}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      </ResponsivePanel>
 
       {/* New key reveal dialog */}
       <Dialog open={!!newKeyResult} onOpenChange={() => setNewKeyResult(null)}>
@@ -281,7 +420,7 @@ print(response.choices[0].message.content)`}</pre>
               API Key Berhasil Dibuat
             </DialogTitle>
             <DialogDescription>
-              Simpan key ini sekarang — kamu tidak akan bisa melihatnya lagi setelah dialog ini ditutup.
+              Simpan key ini sekarang - kamu tidak akan bisa melihatnya lagi setelah dialog ini ditutup.
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 flex items-start gap-2">
@@ -295,7 +434,7 @@ print(response.choices[0].message.content)`}</pre>
               <label className="text-xs text-muted-foreground font-medium">API Key kamu:</label>
               <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2">
                 <code className="flex-1 text-xs font-mono break-all">
-                  {showFullKey ? newKeyResult.fullKey : "mk_live_" + "•".repeat(32)}
+                  {showFullKey ? newKeyResult.fullKey : "mk_live_" + "*".repeat(32)}
                 </code>
                 <button onClick={() => setShowFullKey(!showFullKey)} className="text-muted-foreground hover:text-foreground">
                   {showFullKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -313,34 +452,107 @@ print(response.choices[0].message.content)`}</pre>
       </Dialog>
 
       {/* Rename dialog */}
-      <Dialog open={!!editTarget} onOpenChange={() => setEditTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Ubah Nama API Key</DialogTitle>
-          </DialogHeader>
-          <Input
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && editTarget && renameMutation.mutate({ id: editTarget.id, name: editName })}
-            autoFocus
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditTarget(null)}>Batal</Button>
+      <ResponsivePanel
+        open={!!editTarget}
+        onOpenChange={() => setEditTarget(null)}
+        title="Ubah Pengaturan API Key"
+        footer={
+          <>
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setEditTarget(null)}>Batal</Button>
             <Button
-              onClick={() => editTarget && renameMutation.mutate({ id: editTarget.id, name: editName })}
+              className="flex-1 sm:flex-none"
+              onClick={() => editTarget && renameMutation.mutate({
+                id: editTarget.id,
+                name: editName,
+                expiresAt: editExpiresAt || null,
+                creditLimit: editUnlimitedCredit ? null : (parseInt(editCreditLimit) || null),
+                allowedModels: editAllowedModels.length > 0 ? editAllowedModels : null,
+              })}
               disabled={renameMutation.isPending}
             >
               Simpan
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Nama Key</label>
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Kedaluwarsa (Opsional)</label>
+            <Input
+              type="date"
+              value={editExpiresAt}
+              onChange={(e) => setEditExpiresAt(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => {
+                const d = new Date(); d.setDate(d.getDate() + 7);
+                setEditExpiresAt(d.toISOString().split('T')[0]);
+              }}>1 Minggu</Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => {
+                const d = new Date(); d.setMonth(d.getMonth() + 1);
+                setEditExpiresAt(d.toISOString().split('T')[0]);
+              }}>1 Bulan</Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => {
+                const d = new Date(); d.setFullYear(d.getFullYear() + 1);
+                setEditExpiresAt(d.toISOString().split('T')[0]);
+              }}>1 Tahun</Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => {
+                setEditExpiresAt('');
+              }}>Selamanya</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Kosongkan jika aktif selamanya.</p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Batas Kredit (Opsional)</label>
+            <div className="flex items-center gap-2 mb-1">
+              <Switch id="unlimitedEdit" checked={editUnlimitedCredit} onCheckedChange={setEditUnlimitedCredit} />
+              <label htmlFor="unlimitedEdit" className="text-xs text-muted-foreground cursor-pointer select-none">Unlimited (Mengikuti saldo utama)</label>
+            </div>
+            {!editUnlimitedCredit && (
+              <Input
+                type="number"
+                placeholder="Maksimal kredit yang bisa dipakai..."
+                value={editCreditLimit}
+                onChange={(e) => setEditCreditLimit(e.target.value)}
+              />
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Akses Model (Opsional)</label>
+            <p className="text-xs text-muted-foreground mb-2">Pilih model yang diizinkan, atau biarkan kosong untuk semua model.</p>
+            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border border-border/50 rounded-lg">
+              {AVAILABLE_MODELS.map((m) => (
+                <label key={m} className="flex items-center gap-2 text-xs cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="accent-primary"
+                    checked={editAllowedModels.includes(m)}
+                    onChange={(e) => {
+                      if (e.target.checked) setEditAllowedModels(prev => [...prev, m]);
+                      else setEditAllowedModels(prev => prev.filter(x => x !== m));
+                    }}
+                  />
+                  {m}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      </ResponsivePanel>
 
       {/* Revoke confirm dialog */}
       <Dialog open={!!revokeTarget} onOpenChange={() => setRevokeTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nonaktifkan API Key?</DialogTitle>
+            <DialogTitle>Nonaktifkan API Keyx</DialogTitle>
             <DialogDescription>
               Key <span className="font-semibold text-foreground">"{revokeTarget?.name}"</span> akan dinonaktifkan permanen.
               Aplikasi yang menggunakan key ini akan berhenti bekerja.

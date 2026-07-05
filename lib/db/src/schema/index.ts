@@ -8,3 +8,5 @@ export * from "./sessions";
 export * from "./credit_transactions";
 export * from "./payment_orders";
 export * from "./api_keys";
+export * from "./api_usage";
+export * from "./changelogs";

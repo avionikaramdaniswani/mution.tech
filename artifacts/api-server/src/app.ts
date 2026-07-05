@@ -55,7 +55,12 @@ app.use("/v1", v1Router);
 
 if (existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
-  app.get(/.*/, (_req: Request, res: Response) => {
+  // SPA fallback: serve index.html for all non-API routes
+  app.get(/(.*)/, (_req: Request, res: Response) => {
+    // Skip API routes - they're already handled above
+    if (_req.path === "/api" || _req.path.startsWith("/api/") || _req.path === "/v1" || _req.path.startsWith("/v1/")) {
+      return res.status(404).json({ error: "Not found" });
+    }
     res.sendFile(path.join(frontendDist, "index.html"));
   });
 }

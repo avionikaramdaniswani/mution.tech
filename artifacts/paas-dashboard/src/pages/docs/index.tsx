@@ -1,41 +1,40 @@
 import { useState } from "react";
-import { Copy, Check, Key, Zap, Code, Terminal, BookOpen, ExternalLink, Monitor } from "lucide-react";
+import { Copy, Check, Key, Code, Terminal, BookOpen, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
 
 type OsTab = "linux" | "powershell" | "cmd";
+type ActiveTab = "quickstart" | "openai" | "openai-node" | "claude-code" | "curl";
 
 function OsTabs({ linux, powershell, cmd }: { linux: string; powershell: string; cmd: string }) {
   const [active, setActive] = useState<OsTab>("linux");
-  const tabs: { key: OsTab; label: string; icon: string }[] = [
-    { key: "linux", label: "Linux / macOS", icon: "🐧" },
-    { key: "powershell", label: "Windows PowerShell", icon: "🟦" },
-    { key: "cmd", label: "Windows CMD", icon: "⬛" },
+  const tabs: { key: OsTab; label: string }[] = [
+    { key: "linux", label: "Linux / macOS" },
+    { key: "powershell", label: "PowerShell" },
+    { key: "cmd", label: "CMD" },
   ];
   const code = active === "linux" ? linux : active === "powershell" ? powershell : cmd;
   const lang = active === "linux" ? "bash" : active === "powershell" ? "powershell" : "cmd";
   return (
-    <div className="rounded-lg border border-border/50 bg-[#0d1117] my-3 overflow-hidden">
-      <div className="flex border-b border-border/50">
+    <div className="rounded-lg border border-border bg-card my-4 overflow-hidden">
+      <div className="flex border-b border-border bg-muted/30">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setActive(t.key)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-medium transition-colors border-r border-border/50 last:border-0 ${
+            className={`px-3 py-2 text-xs font-medium transition-colors border-r border-border last:border-0 ${
               active === t.key
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
+                ? "bg-background text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <span>{t.icon}</span>
-            <span>{t.label}</span>
+            {t.label}
           </button>
         ))}
       </div>
-      <div className="relative">
-        <span className="absolute top-2.5 right-10 text-[10px] text-muted-foreground font-mono">{lang}</span>
+      <div className="relative bg-muted/20">
         <CopyBtn text={code} />
-        <pre className="overflow-x-auto px-4 pt-4 pb-4 text-xs font-mono text-zinc-300 leading-relaxed">{code}</pre>
+        <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed text-foreground/90">{code}</pre>
       </div>
     </div>
   );
@@ -46,157 +45,183 @@ function CopyBtn({ text }: { text: string }) {
   return (
     <button
       onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      className="absolute top-3 right-3 h-7 w-7 flex items-center justify-center rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+      className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded border border-border bg-background hover:bg-muted transition-colors"
+      aria-label="Copy code"
     >
-      {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
   );
 }
 
 function CodeBlock({ code, lang = "bash" }: { code: string; lang?: string }) {
   return (
-    <div className="relative rounded-lg bg-[#0d1117] border border-border/50 my-3">
-      <div className="absolute top-2.5 left-3 flex gap-1.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-red-500/50" />
-        <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/50" />
-        <span className="h-2.5 w-2.5 rounded-full bg-green-500/50" />
-        <span className="ml-1 text-[10px] text-muted-foreground font-mono">{lang}</span>
+    <div className="relative rounded-lg border border-border bg-card my-4 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
+        <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">{lang}</span>
+        <CopyBtn text={code} />
       </div>
-      <CopyBtn text={code} />
-      <pre className="overflow-x-auto px-4 pt-9 pb-4 text-xs font-mono text-zinc-300 leading-relaxed">{code}</pre>
+      <div className="bg-muted/20">
+        <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed text-foreground/90">{code}</pre>
+      </div>
     </div>
   );
 }
 
-function Section({ id, title, icon: Icon, children }: { id: string; title: string; icon: any; children: React.ReactNode }) {
-  return (
-    <section id={id} className="scroll-mt-6">
-      <h2 className="flex items-center gap-2.5 text-lg font-semibold mb-4 pb-2 border-b border-border/50">
-        <Icon className="h-5 w-5 text-primary" />
-        {title}
-      </h2>
-      <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">{children}</div>
-    </section>
-  );
+function H3({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-base font-semibold text-foreground mt-6 mb-3">{children}</h3>;
 }
 
-function H3({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-sm font-semibold text-foreground mt-5 mb-2">{children}</h3>;
+function TableOfContents({ activeTab, onTabChange }: { activeTab: ActiveTab; onTabChange: (tab: ActiveTab) => void }) {
+  const sections: { id: ActiveTab; label: string; icon: any }[] = [
+    { id: "quickstart", label: "Quick Start", icon: Zap },
+    { id: "openai", label: "Python", icon: Code },
+    { id: "openai-node", label: "Node.js", icon: Code },
+    { id: "claude-code", label: "Claude Code", icon: Terminal },
+    { id: "curl", label: "cURL", icon: Terminal },
+  ];
+
+  return (
+    <nav className="sticky top-20">
+      <div className="space-y-0.5">
+        <div className="px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+          Menu
+        </div>
+        {sections.map((section) => {
+          const isActive = activeTab === section.id;
+          return (
+            <button
+              key={section.id}
+              onClick={() => onTabChange(section.id)}
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors ${
+                isActive
+                  ? "bg-muted text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              <section.icon className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="truncate">{section.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
 }
 
 export default function DocsPage() {
   const { user } = useAuth();
   const base = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : "https://mution.tech";
+  const [activeTab, setActiveTab] = useState<ActiveTab>("quickstart");
 
   return (
-    <div className="max-w-3xl mx-auto space-y-10">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-          <BookOpen className="h-3.5 w-3.5" />
-          <span>Dokumentasi</span>
+    <div className="flex gap-6 max-w-6xl mx-auto">
+      {/* Main Content */}
+      <main className="flex-1 min-w-0 pb-16">
+        {/* Header */}
+        <div className="mb-10">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+            <BookOpen className="h-3.5 w-3.5" />
+            <span>Dokumentasi API</span>
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight mb-3">Mution AI API</h1>
+          <p className="text-base text-muted-foreground leading-relaxed">
+            API yang kompatibel dengan OpenAI SDK dan Claude Code. Satu key, semua model.
+          </p>
+          {(!user?.credits || user.credits <= 0) && (
+            <div className="mt-5 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
+              <p className="text-muted-foreground">
+                Kredit kamu habis. <Link href="/billing" className="text-foreground underline underline-offset-2">Top up di sini {"->"}</Link>
+              </p>
+            </div>
+          )}
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">Mution AI API</h1>
-        <p className="text-muted-foreground mt-2">
-          API yang kompatibel dengan OpenAI SDK dan Claude Code. Satu key, semua model.
-        </p>
-        {!user?.credits || user.credits <= 0 ? (
-          <div className="mt-4 flex items-center gap-2 text-xs text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2">
-            ⚠️ Kredit kamu habis. <Link href="/billing" className="underline underline-offset-2">Top up di sini →</Link>
-          </div>
-        ) : (
-          <div className="mt-4 flex items-center gap-2 text-xs text-green-500 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
-            ✅ Kredit aktif: <span className="font-semibold">Rp {(user.credits).toLocaleString("id-ID")}</span> — siap digunakan.
-          </div>
-        )}
-      </div>
 
-      {/* Quick start */}
-      <Section id="quickstart" title="Quick Start" icon={Zap}>
-        <p>Dua langkah untuk mulai:</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Link href="/api-keys">
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 cursor-pointer hover:bg-primary/10 transition-colors">
-              <div className="flex items-center gap-2 text-primary font-medium mb-1">
-                <Key className="h-4 w-4" />
-                1. Generate API Key
+        {/* Content Sections */}
+        <div className="prose prose-sm max-w-none">
+          {activeTab === "quickstart" && (
+            <div>
+              <h2 className="text-2xl font-bold mb-5 text-foreground">Quick Start</h2>
+              <p className="text-foreground/70 mb-5">Dua langkah untuk mulai menggunakan Mution AI API:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-6">
+                <Link href="/api-keys">
+                  <div className="rounded-lg border border-border bg-card p-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-2 font-semibold mb-1 text-foreground">
+                      <Key className="h-4 w-4" />
+                      <span>1. Generate API Key</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Buat key di halaman API Keys</p>
+                  </div>
+                </Link>
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <div className="flex items-center gap-2 font-semibold mb-1 text-foreground">
+                    <Code className="h-4 w-4" />
+                    <span>2. Gunakan di kode</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Ikuti contoh di bagian SDK</p>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">Buat key di halaman API Keys →</p>
+
+              <H3>Base URL & Endpoint</H3>
+              <div className="rounded-lg border border-border bg-card overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="text-left px-4 py-2.5 font-semibold text-foreground">Endpoint</th>
+                      <th className="text-left px-4 py-2.5 font-semibold text-foreground">Kompatibel</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      [`${base}/v1/chat/completions`, "OpenAI SDK, LangChain, LlamaIndex, dll"],
+                      [`${base}/v1/messages`, "Anthropic SDK, Claude Code"],
+                      [`${base}/v1/models`, "List model tersedia"],
+                      [`${base}/v1/embeddings`, "Embedding API"],
+                    ].map(([ep, compat]) => (
+                      <tr key={ep} className="border-b border-border last:border-0">
+                        <td className="px-4 py-2.5 font-mono text-xs text-foreground/90">{ep}</td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{compat}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <H3>Model Tersedia</H3>
+              <div className="rounded-lg border border-border bg-card overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="text-left px-4 py-2.5 font-semibold text-foreground">Model ID</th>
+                      <th className="text-left px-4 py-2.5 font-semibold text-foreground">Provider</th>
+                      <th className="text-left px-4 py-2.5 font-semibold text-foreground">Keterangan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      ["claude-opus-4-6", "Anthropic", "Claude terbaru"],
+                      ["claude-opus-4-5", "Anthropic", "Claude Opus 4.5"],
+                      ["gpt-5.5", "OpenAI", "GPT terbaru"],
+                      ["glm-5.2", "Zhipu AI", "Model cepat & hemat"],
+                    ].map(([model, prov, desc]) => (
+                      <tr key={model} className="border-b border-border last:border-0">
+                        <td className="px-4 py-2.5 font-mono text-xs text-foreground/90">{model}</td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{prov}</td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{desc}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </Link>
-          <div className="rounded-xl border border-border/50 bg-card p-4">
-            <div className="flex items-center gap-2 font-medium mb-1 text-foreground">
-              <Code className="h-4 w-4 text-muted-foreground" />
-              2. Gunakan di kode kamu
-            </div>
-            <p className="text-xs text-muted-foreground">Ikuti contoh di bawah ini.</p>
-          </div>
-        </div>
+          )}
 
-        <H3>Base URL & Endpoint</H3>
-        <div className="rounded-lg border border-border/50 bg-card overflow-hidden">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border/50 bg-muted/30">
-                <th className="text-left px-4 py-2 font-medium text-foreground">Endpoint</th>
-                <th className="text-left px-4 py-2 font-medium text-foreground">Kompatibel</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                [`${base}/v1/chat/completions`, "OpenAI SDK, LangChain, LlamaIndex, dll"],
-                [`${base}/v1/messages`, "Anthropic SDK, Claude Code"],
-                [`${base}/v1/models`, "List model tersedia"],
-                [`${base}/v1/embeddings`, "Embedding API"],
-              ].map(([ep, compat]) => (
-                <tr key={ep} className="border-b border-border/50 last:border-0">
-                  <td className="px-4 py-2 font-mono text-primary">{ep}</td>
-                  <td className="px-4 py-2 text-muted-foreground">{compat}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Section>
+          {activeTab === "openai" && (
+            <div>
+              <h2 className="text-2xl font-bold mb-5 text-foreground">OpenAI SDK (Python)</h2>
+              <CodeBlock lang="bash" code="pip install openai" />
 
-      {/* Models */}
-      <Section id="models" title="Model Tersedia" icon={Zap}>
-        <div className="rounded-lg border border-border/50 bg-card overflow-hidden">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border/50 bg-muted/30">
-                <th className="text-left px-4 py-2 font-medium text-foreground">Model ID</th>
-                <th className="text-left px-4 py-2 font-medium text-foreground">Provider</th>
-                <th className="text-left px-4 py-2 font-medium text-foreground">Keterangan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ["claude-opus-4-6", "Anthropic", "Claude terbaru, sangat powerful"],
-                ["claude-opus-4-5", "Anthropic", "Claude Opus 4.5"],
-                ["gpt-5.5", "OpenAI", "GPT terbaru"],
-                ["glm-5.2", "Zhipu AI", "Model cepat & hemat"],
-              ].map(([model, prov, desc]) => (
-                <tr key={model} className="border-b border-border/50 last:border-0">
-                  <td className="px-4 py-2 font-mono text-primary">{model}</td>
-                  <td className="px-4 py-2 text-muted-foreground">{prov}</td>
-                  <td className="px-4 py-2 text-muted-foreground">{desc}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs">
-          Untuk list model terbaru, panggil <code className="bg-muted px-1 py-0.5 rounded text-primary">GET {base}/v1/models</code>
-        </p>
-      </Section>
-
-      {/* OpenAI SDK */}
-      <Section id="openai" title="OpenAI SDK (Python)" icon={Code}>
-        <CodeBlock lang="bash" code="pip install openai" />
-
-        <H3>Chat Completion</H3>
-        <CodeBlock lang="python" code={`from openai import OpenAI
+              <H3>Chat Completion</H3>
+              <CodeBlock lang="python" code={`from openai import OpenAI
 
 client = OpenAI(
     api_key="mk_live_YOUR_KEY_HERE",
@@ -207,15 +232,15 @@ response = client.chat.completions.create(
     model="claude-opus-4-6",
     messages=[
         {"role": "system", "content": "Kamu adalah asisten yang helpful."},
-        {"role": "user", "content": "Apa itu machine learning?"}
+        {"role": "user", "content": "Apa itu machine learningx"}
     ],
     max_tokens=1024
 )
 
 print(response.choices[0].message.content)`} />
 
-        <H3>Streaming</H3>
-        <CodeBlock lang="python" code={`from openai import OpenAI
+              <H3>Streaming</H3>
+              <CodeBlock lang="python" code={`from openai import OpenAI
 
 client = OpenAI(
     api_key="mk_live_YOUR_KEY_HERE",
@@ -229,12 +254,14 @@ with client.chat.completions.stream(
 ) as stream:
     for text in stream.text_stream:
         print(text, end="", flush=True)`} />
-      </Section>
+            </div>
+          )}
 
-      {/* OpenAI SDK Node.js */}
-      <Section id="openai-node" title="OpenAI SDK (Node.js / TypeScript)" icon={Code}>
-        <CodeBlock lang="bash" code="npm install openai" />
-        <CodeBlock lang="typescript" code={`import OpenAI from "openai";
+          {activeTab === "openai-node" && (
+            <div>
+              <h2 className="text-2xl font-bold mb-5 text-foreground">OpenAI SDK (Node.js / TypeScript)</h2>
+              <CodeBlock lang="bash" code="npm install openai" />
+              <CodeBlock lang="typescript" code={`import OpenAI from "openai";
 
 const client = new OpenAI({
   apiKey: "mk_live_YOUR_KEY_HERE",
@@ -245,60 +272,78 @@ const response = await client.chat.completions.create({
   model: "claude-opus-4-6",
   messages: [
     { role: "system", content: "Kamu adalah asisten yang helpful." },
-    { role: "user", content: "Apa itu TypeScript?" },
+    { role: "user", content: "Apa itu TypeScriptx" },
   ],
 });
 
 console.log(response.choices[0].message.content);`} />
-      </Section>
+            </div>
+          )}
 
-      {/* Claude Code */}
-      <Section id="claude-code" title="Claude Code" icon={Terminal}>
-        <p>
-          Claude Code adalah CLI dari Anthropic untuk coding dengan AI. Mution mendukung format Anthropic Messages API
-          secara penuh, termasuk streaming — sehingga Claude Code bisa langsung dipakai dengan API key Mution.
-        </p>
+          {activeTab === "claude-code" && (
+            <div>
+              <h2 className="text-2xl font-bold mb-5 text-foreground">Claude Code</h2>
+              <p className="text-foreground/70 mb-5">
+                Claude Code adalah CLI dari Anthropic untuk coding dengan AI. Mution mendukung format Anthropic Messages API
+                secara penuh, termasuk streaming - sehingga Claude Code bisa langsung dipakai dengan API key Mution.
+              </p>
 
-        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-400 space-y-1">
-          <p><strong>⚠️ Penting — baca dulu sebelum mulai:</strong></p>
-          <p>Claude Code v2+ akan menampilkan prompt login saat pertama dijalankan. Env var <strong>harus di-set sebelum</strong> menjalankan <code className="text-yellow-300">claude</code> agar login prompt tidak muncul. Kalau sudah terlanjur muncul, tekan <kbd className="bg-yellow-500/20 px-1 rounded">Esc</kbd> lalu set env var dulu, baru jalankan ulang.</p>
-        </div>
+              <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm mb-5">
+                <p className="font-medium text-foreground mb-2">Catatan Penting</p>
+                <p className="text-foreground/70 text-xs leading-relaxed">
+                  Claude Code v2+ akan menampilkan prompt login saat pertama dijalankan. Environment variables harus di-set sebelum menjalankan <code className="bg-background px-1 py-0.5 rounded border border-border text-foreground/90">claude</code> agar login prompt tidak muncul. Kalau sudah terlanjur muncul, tekan <kbd className="bg-background px-1.5 py-0.5 rounded border border-border font-mono text-[10px]">Esc</kbd> lalu set env var dulu, baru jalankan ulang.
+                </p>
+              </div>
 
-        <H3>1. Install Claude Code</H3>
-        <CodeBlock lang="bash" code="npm install -g @anthropic-ai/claude-code" />
+              <H3>1. Install Claude Code</H3>
+              <CodeBlock lang="bash" code="npm install -g @anthropic-ai/claude-code" />
 
-        <H3>2. Set env var sebelum menjalankan claude</H3>
-        <p>Tiga variabel wajib di-set. Isi <code className="bg-muted px-1 py-0.5 rounded text-primary text-xs">mk_live_...</code> dengan API key Mution kamu:</p>
-        <OsTabs
-          linux={`export ANTHROPIC_BASE_URL="${base}"\nexport ANTHROPIC_AUTH_TOKEN="mk_live_YOUR_KEY_HERE"\nexport ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"`}
-          powershell={`$env:ANTHROPIC_BASE_URL = "${base}"\n$env:ANTHROPIC_AUTH_TOKEN = "mk_live_YOUR_KEY_HERE"\n$env:ANTHROPIC_API_KEY = "mk_live_YOUR_KEY_HERE"`}
-          cmd={`set ANTHROPIC_BASE_URL=${base}\nset ANTHROPIC_AUTH_TOKEN=mk_live_YOUR_KEY_HERE\nset ANTHROPIC_API_KEY=mk_live_YOUR_KEY_HERE`}
-        />
+              <H3>2. Set environment variables</H3>
+              <p className="text-foreground/70 text-sm mb-3">Isi dengan API key Mution kamu:</p>
+              <OsTabs
+                linux={`export ANTHROPIC_BASE_URL="${base}"
+export ANTHROPIC_AUTH_TOKEN="mk_live_YOUR_KEY_HERE"
+export ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"`}
+                powershell={`$env:ANTHROPIC_BASE_URL = "${base}"
+$env:ANTHROPIC_AUTH_TOKEN = "mk_live_YOUR_KEY_HERE"
+$env:ANTHROPIC_API_KEY = "mk_live_YOUR_KEY_HERE"`}
+                cmd={`set ANTHROPIC_BASE_URL=${base}
+set ANTHROPIC_AUTH_TOKEN=mk_live_YOUR_KEY_HERE
+set ANTHROPIC_API_KEY=mk_live_YOUR_KEY_HERE`}
+              />
 
-        <p className="text-xs">
-          Agar permanen (tidak perlu set ulang setiap buka terminal):
-        </p>
-        <OsTabs
-          linux={`echo 'export ANTHROPIC_BASE_URL="${base}"' >> ~/.zshrc\necho 'export ANTHROPIC_AUTH_TOKEN="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc\necho 'export ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc\nsource ~/.zshrc\n\n# Untuk bash ganti ~/.zshrc dengan ~/.bashrc`}
-          powershell={`# Simpan permanen untuk user ini (berlaku setelah restart PowerShell)\n[System.Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL", "${base}", "User")\n[System.Environment]::SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "mk_live_YOUR_KEY_HERE", "User")\n[System.Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "mk_live_YOUR_KEY_HERE", "User")\n\n# Tutup dan buka ulang PowerShell setelah ini`}
-          cmd={`setx ANTHROPIC_BASE_URL "${base}"\nsetx ANTHROPIC_AUTH_TOKEN "mk_live_YOUR_KEY_HERE"\nsetx ANTHROPIC_API_KEY "mk_live_YOUR_KEY_HERE"\n\nREM Buka jendela CMD baru setelah menjalankan perintah di atas`}
-        />
+              <p className="text-xs mt-4 text-foreground/70 mb-3">
+                Untuk menyimpan permanen:
+              </p>
+              <OsTabs
+                linux={`echo 'export ANTHROPIC_BASE_URL="${base}"' >> ~/.zshrc
+echo 'export ANTHROPIC_AUTH_TOKEN="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc
+echo 'export ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc
+source ~/.zshrc
 
-        <H3>3. Jalankan Claude Code</H3>
-        <OsTabs
-          linux="claude"
-          powershell="claude"
-          cmd="claude"
-        />
+# Untuk bash ganti ~/.zshrc dengan ~/.bashrc`}
+                powershell={`[System.Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL", "${base}", "User")
+[System.Environment]::SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "mk_live_YOUR_KEY_HERE", "User")
+[System.Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "mk_live_YOUR_KEY_HERE", "User")
 
-        <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-3 text-xs text-green-400 space-y-1">
-          <p><strong>✅ Kalau berhasil:</strong> Claude Code langsung masuk tanpa prompt login dan terhubung ke <code className="text-green-300">{base}/v1/messages</code>.</p>
-          <p>Kredit terpotong <strong>10 kredit per 1.000 token</strong> dari akun Mution kamu.</p>
-        </div>
+# Restart PowerShell setelah ini`}
+                cmd={`setx ANTHROPIC_BASE_URL "${base}"
+setx ANTHROPIC_AUTH_TOKEN "mk_live_YOUR_KEY_HERE"
+setx ANTHROPIC_API_KEY "mk_live_YOUR_KEY_HERE"
 
-        <H3>Anthropic SDK (Python)</H3>
-        <CodeBlock lang="bash" code="pip install anthropic" />
-        <CodeBlock lang="python" code={`import anthropic
+REM Buka CMD baru setelah ini`}
+              />
+
+              <H3>3. Jalankan Claude Code</H3>
+              <OsTabs
+                linux="claude"
+                powershell="claude"
+                cmd="claude"
+              />
+
+              <H3>Anthropic SDK (Python)</H3>
+              <CodeBlock lang="bash" code="pip install anthropic" />
+              <CodeBlock lang="python" code={`import anthropic
 
 client = anthropic.Anthropic(
     api_key="mk_live_YOUR_KEY_HERE",
@@ -310,15 +355,15 @@ message = client.messages.create(
     max_tokens=1024,
     system="Kamu adalah asisten yang helpful.",
     messages=[
-        {"role": "user", "content": "Halo! Siapa kamu?"}
+        {"role": "user", "content": "Halo! Siapa kamux"}
     ]
 )
 
 print(message.content[0].text)`} />
 
-        <H3>Anthropic SDK (TypeScript)</H3>
-        <CodeBlock lang="bash" code="npm install @anthropic-ai/sdk" />
-        <CodeBlock lang="typescript" code={`import Anthropic from "@anthropic-ai/sdk";
+              <H3>Anthropic SDK (TypeScript)</H3>
+              <CodeBlock lang="bash" code="npm install @anthropic-ai/sdk" />
+              <CodeBlock lang="typescript" code={`import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({
   apiKey: "mk_live_YOUR_KEY_HERE",
@@ -332,12 +377,14 @@ const message = await client.messages.create({
 });
 
 console.log(message.content[0].type === "text" ? message.content[0].text : "");`} />
-      </Section>
+            </div>
+          )}
 
-      {/* cURL */}
-      <Section id="curl" title="cURL" icon={Terminal}>
-        <H3>OpenAI-compatible</H3>
-        <CodeBlock lang="bash" code={`curl "${base}/v1/chat/completions" \\
+          {activeTab === "curl" && (
+            <div>
+              <h2 className="text-2xl font-bold mb-5 text-foreground">cURL</h2>
+              <H3>OpenAI-compatible</H3>
+              <CodeBlock lang="bash" code={`curl "${base}/v1/chat/completions" \\
   -H "Authorization: Bearer mk_live_YOUR_KEY_HERE" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -346,8 +393,8 @@ console.log(message.content[0].type === "text" ? message.content[0].text : "");`
     "max_tokens": 256
   }'`} />
 
-        <H3>Anthropic Messages API</H3>
-        <CodeBlock lang="bash" code={`curl "${base}/v1/messages" \\
+              <H3>Anthropic Messages API</H3>
+              <CodeBlock lang="bash" code={`curl "${base}/v1/messages" \\
   -H "x-api-key: mk_live_YOUR_KEY_HERE" \\
   -H "anthropic-version: 2023-06-01" \\
   -H "Content-Type: application/json" \\
@@ -356,53 +403,17 @@ console.log(message.content[0].type === "text" ? message.content[0].text : "");`
     "max_tokens": 256,
     "messages": [{"role": "user", "content": "Halo!"}]
   }'`} />
-      </Section>
+            </div>
+          )}
 
-      {/* Pricing */}
-      <Section id="pricing" title="Tarif Kredit" icon={Zap}>
-        <p>Kredit dipotong berdasarkan jumlah token yang digunakan.</p>
-        <div className="rounded-lg border border-border/50 bg-card overflow-hidden">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border/50 bg-muted/30">
-                <th className="text-left px-4 py-2 font-medium text-foreground">Penggunaan</th>
-                <th className="text-left px-4 py-2 font-medium text-foreground">Kredit terpotong</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ["1.000 token", "10 kredit (Rp 10)"],
-                ["10.000 token", "100 kredit (Rp 100)"],
-                ["100.000 token", "1.000 kredit (Rp 1.000)"],
-              ].map(([usage, cost]) => (
-                <tr key={usage} className="border-b border-border/50 last:border-0">
-                  <td className="px-4 py-2 text-foreground">{usage}</td>
-                  <td className="px-4 py-2 text-muted-foreground">{cost}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
         </div>
-        <p>
-          Pantau penggunaan dan sisa kredit di halaman <Link href="/api-keys" className="text-primary underline underline-offset-2">API Keys</Link> dan{" "}
-          <Link href="/billing" className="text-primary underline underline-offset-2">Billing</Link>.
-        </p>
+      </main>
 
-        <div className="rounded-lg border border-border/50 bg-card p-4 mt-2">
-          <p className="font-medium text-foreground mb-1 text-xs">Butuh bantuan?</p>
-          <p className="text-xs">
-            Email: <a href="mailto:supportmution@gmail.com" className="text-primary">supportmution@gmail.com</a>
-            <span className="mx-2 text-border">·</span>
-            WA: <a href="https://wa.me/6285709557572" className="text-primary" target="_blank" rel="noreferrer">+62 857-0955-7572</a>
-          </p>
-        </div>
-      </Section>
-
-      {/* Footer */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t border-border/50">
-        <ExternalLink className="h-3.5 w-3.5" />
-        <span>API ini didukung oleh <a href="https://conduit.ozdoev.net" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">Conduit</a> — one key, every model.</span>
-      </div>
+      {/* Sidebar TOC - Right Side */}
+      <aside className="hidden lg:block w-44 flex-shrink-0">
+        <TableOfContents activeTab={activeTab} onTabChange={setActiveTab} />
+      </aside>
     </div>
   );
 }

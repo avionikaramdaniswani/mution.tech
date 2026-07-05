@@ -49,8 +49,8 @@ export default function RefundPolicyPage() {
             <ol className="list-decimal pl-5 mt-2 space-y-2">
               <li>Kirim email ke <a href="mailto:supportmution@gmail.com" className="text-primary hover:underline">supportmution@gmail.com</a> dengan subjek <strong className="text-foreground">"Pengajuan Refund - [Nama Akun]"</strong>.</li>
               <li>Sertakan informasi berikut: nama lengkap, email akun, tanggal pembelian, jumlah kredit yang dibeli, dan alasan refund.</li>
-              <li>Tim kami akan memverifikasi pengajuan dalam 2–3 hari kerja.</li>
-              <li>Jika disetujui, refund akan diproses ke metode pembayaran asli dalam 5–7 hari kerja.</li>
+              <li>Tim kami akan memverifikasi pengajuan dalam 2-3 hari kerja.</li>
+              <li>Jika disetujui, refund akan diproses ke metode pembayaran asli dalam 5-7 hari kerja.</li>
             </ol>
           </section>
 

@@ -1,15 +1,28 @@
-import { useState } from "react";
-import { useAdminListUsers, useAdminGetUser, useAdminDeleteUser } from "@workspace/api-client-react";
+import { useState, useEffect } from "react";
+import {
+  useAdminListUsers, useAdminGetUser, useAdminDeleteUser,
+  useAdminUpdateUser, useAdminAdjustCredits,
+  getAdminListUsersQueryKey, getAdminGetUserQueryKey,
+} from "@workspace/api-client-react";
+import type { UserWithStats } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Users, ShieldAlert, User, Eye, Trash2, Wallet,
-  Box, Calendar, Clock, Mail, X, AlertTriangle,
+  Box, Calendar, Clock, Mail, AlertTriangle, Plus, Minus, Loader2,
+  Pencil, Sparkles,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -74,6 +87,198 @@ function DetailRow({ icon: Icon, label, value }: { icon: React.ElementType; labe
         <div className="text-sm font-medium">{value}</div>
       </div>
     </div>
+  );
+}
+
+/** Modal untuk mengedit kredit, role, dan plan seorang pengguna. */
+function EditUserDialog({
+  user, open, onClose, onSaved,
+}: {
+  user: UserWithStats | null;
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [role, setRole] = useState<string>("user");
+  const [plan, setPlan] = useState<string>("hobby");
+
+  const adjustMutation = useAdminAdjustCredits();
+  const updateMutation = useAdminUpdateUser();
+
+  // Sinkronkan form tiap kali user berganti / modal dibuka.
+  useEffect(() => {
+    if (user) {
+      setRole(user.role);
+      setPlan(user.plan);
+      setAmount("");
+      setNote("");
+      adjustMutation.reset();
+      updateMutation.reset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, open]);
+
+  if (!user) return null;
+
+  const parsed = parseInt(amount, 10);
+  const hasAmount = amount.trim() !== "" && !isNaN(parsed) && parsed !== 0;
+  const roleChanged = role !== user.role;
+  const planChanged = plan !== user.plan;
+  const hasChanges = hasAmount || roleChanged || planChanged;
+
+  const busy = adjustMutation.isPending || updateMutation.isPending;
+  const errorMsg =
+    (adjustMutation.error as any)?.error ??
+    (updateMutation.error as any)?.error ??
+    null;
+
+  // Preview saldo setelah penyesuaian.
+  const previewCredits = hasAmount ? user.credits + parsed : user.credits;
+
+  async function handleSave() {
+    if (!user || !hasChanges) return;
+    try {
+      // 1) Role / plan
+      if (roleChanged || planChanged) {
+        await updateMutation.mutateAsync({
+          id: user.id,
+          data: {
+            ...(roleChanged ? { role: role as "user" | "admin" } : {}),
+            ...(planChanged ? { plan: plan as "hobby" | "pro" | "team" } : {}),
+          },
+        });
+      }
+      // 2) Adjust kredit
+      if (hasAmount) {
+        await adjustMutation.mutateAsync({
+          id: user.id,
+          data: { amount: parsed, note: note.trim() || undefined },
+        });
+      }
+      onSaved();
+      onClose();
+    } catch {
+      // error ditampilkan lewat errorMsg; modal tetap terbuka
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v && !busy) onClose(); }}>
+      <DialogContent className="dark bg-background border-border/50 max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-4 w-4" /> Edit Pengguna
+          </DialogTitle>
+          <DialogDescription className="flex items-center gap-2 pt-1">
+            <UserAvatar name={user.name} size="sm" />
+            <span className="truncate">{user.name} - {user.email}</span>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5 py-1">
+          {/* Role + Plan */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <ShieldAlert className="h-3.5 w-3.5" /> Role
+              </label>
+              <Select value={role} onValueChange={setRole}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent className="dark">
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" /> Plan
+              </label>
+              <Select value={plan} onValueChange={setPlan}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent className="dark">
+                  <SelectItem value="hobby">Hobby</SelectItem>
+                  <SelectItem value="pro">Pro</SelectItem>
+                  <SelectItem value="team">Team</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Credit adjust */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <Wallet className="h-3.5 w-3.5" /> Penyesuaian Kredit
+            </label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                inputMode="numeric"
+                placeholder="mis. 10000 atau -5000"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="h-9 text-sm"
+              />
+              <div className="flex gap-1 flex-shrink-0">
+                <button
+                  type="button"
+                  title="Positif (tambah)"
+                  onClick={() => setAmount((a) => String(Math.abs(parseInt(a, 10) || 0) || ""))}
+                  className="h-9 w-9 rounded-md flex items-center justify-center border border-border/60 text-emerald-500 hover:bg-emerald-500/10"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  title="Negatif (kurangi)"
+                  onClick={() => setAmount((a) => { const n = Math.abs(parseInt(a, 10) || 0); return n ? String(-n) : ""; })}
+                  className="h-9 w-9 rounded-md flex items-center justify-center border border-border/60 text-destructive hover:bg-destructive/10"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <Input
+              placeholder="Catatan (opsional)"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="h-9 text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Saldo saat ini:{" "}
+              <span className="font-semibold" style={{ color: creditColor(user.credits) }}>{formatCredits(user.credits)}</span>
+              {hasAmount && (
+                <>
+                  {" -> "}
+                  <span className="font-semibold" style={{ color: creditColor(previewCredits) }}>{formatCredits(previewCredits)}</span>
+                </>
+              )}
+            </p>
+          </div>
+
+          {errorMsg && (
+            <div className="rounded-lg px-3 py-2 text-xs text-destructive" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              {errorMsg}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>Batal</Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={!hasChanges || busy}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+            Simpan Perubahan
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -152,17 +357,25 @@ function UserDetailSheet({ userId, open, onClose }: { userId: number | null; ope
 
 export default function AdminUsers() {
   const queryClient = useQueryClient();
-  const { data: users, isLoading } = useAdminListUsers();
+  const { data: users, isLoading } = useAdminListUsers({
+    query: { queryKey: getAdminListUsersQueryKey(), refetchInterval: 5000 },
+  });
   const deleteMutation = useAdminDeleteUser();
 
   const [detailId, setDetailId] = useState<number | null>(null);
+  const [editTarget, setEditTarget] = useState<UserWithStats | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+
+  function invalidateUsers(id?: number) {
+    queryClient.invalidateQueries({ queryKey: getAdminListUsersQueryKey() });
+    if (id != null) queryClient.invalidateQueries({ queryKey: getAdminGetUserQueryKey(id) });
+  }
 
   function handleDelete() {
     if (!deleteTarget) return;
     deleteMutation.mutate({ id: deleteTarget.id }, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["/admin/users"] });
+        invalidateUsers();
         setDeleteTarget(null);
       },
     });
@@ -191,7 +404,7 @@ export default function AdminUsers() {
         {/* Table header */}
         <div
           className="grid px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-          style={{ gridTemplateColumns: "1fr 80px 110px 140px 88px", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ gridTemplateColumns: "1fr 80px 110px 140px 120px", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
         >
           <div>Pengguna</div>
           <div className="text-center">Role</div>
@@ -220,7 +433,7 @@ export default function AdminUsers() {
                 key={user.id}
                 className="grid items-center px-5 py-3.5 transition-colors hover:bg-white/[0.02]"
                 style={{
-                  gridTemplateColumns: "1fr 80px 110px 140px 88px",
+                  gridTemplateColumns: "1fr 80px 110px 140px 120px",
                   borderBottom: i < users.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
                 }}
               >
@@ -250,7 +463,7 @@ export default function AdminUsers() {
                   <span className="text-xs text-muted-foreground">
                     {user.lastLoginAt
                       ? formatDistanceToNow(new Date(user.lastLoginAt), { addSuffix: true, locale: idLocale })
-                      : "—"}
+                      : "-"}
                   </span>
                 </div>
 
@@ -262,6 +475,13 @@ export default function AdminUsers() {
                     title="Lihat detail"
                   >
                     <Eye className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setEditTarget(user)}
+                    className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    title="Edit (kredit, role, plan)"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => setDeleteTarget({ id: user.id, name: user.name })}
@@ -277,11 +497,19 @@ export default function AdminUsers() {
         )}
       </div>
 
-      {/* Detail sheet */}
+      {/* Detail sheet (read-only) */}
       <UserDetailSheet
         userId={detailId}
         open={detailId !== null}
         onClose={() => setDetailId(null)}
+      />
+
+      {/* Edit modal */}
+      <EditUserDialog
+        user={editTarget}
+        open={editTarget !== null}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => invalidateUsers(editTarget?.id)}
       />
 
       {/* Delete confirmation */}

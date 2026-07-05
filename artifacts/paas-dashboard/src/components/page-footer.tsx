@@ -26,7 +26,7 @@ export function PageFooter() {
               </span>
             </div>
             <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-              Pioo (Co-founder & CEO) · Tiara (Co-founder)
+              Pioo (Co-founder & CEO) - Tiara (Co-founder)
             </p>
           </div>
 
@@ -42,7 +42,7 @@ export function PageFooter() {
 
           <div className="flex flex-col items-center sm:items-end gap-1.5">
             <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>
-              © {new Date().getFullYear()} Mution. Dibuat di Indonesia.
+              (c) {new Date().getFullYear()} Mution. Dibuat di Indonesia.
             </p>
             <div
               className="flex flex-wrap justify-center sm:justify-end gap-4 text-xs"

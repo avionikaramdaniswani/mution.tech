@@ -787,6 +787,130 @@ paths:
               schema:
                 $ref: "#/components/schemas/AdminStats"
 
+  /admin/users/{id}/role:
+    patch:
+      operationId: adminUpdateUser
+      tags: [admin]
+      summary: Update a user's role and/or plan (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUpdateUserInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserWithStats"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/users/{id}/credits:
+    post:
+      operationId: adminAdjustCredits
+      tags: [admin]
+      summary: Manually adjust a user's credit balance (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdjustCreditsInput"
+      responses:
+        "200":
+          description: Adjusted user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserWithStats"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/orders:
+    get:
+      operationId: adminListOrders
+      tags: [admin]
+      summary: List all payment/topup orders across users (admin only)
+      responses:
+        "200":
+          description: All payment orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentOrderWithUser"
+
+  /admin/revenue:
+    get:
+      operationId: adminGetRevenue
+      tags: [admin]
+      summary: Get revenue summary across the platform (admin only)
+      responses:
+        "200":
+          description: Revenue summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminRevenue"
+
+  /admin/usage:
+    get:
+      operationId: adminGetUsage
+      tags: [admin]
+      summary: Get AI-proxy usage analytics (admin only)
+      parameters:
+        - name: days
+          in: query
+          required: false
+          description: Rentang waktu ke belakang dalam hari (1–365). Default 30.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+      responses:
+        "200":
+          description: Usage analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUsage"
+
 components:
   schemas:
     HealthStatus:
@@ -1200,3 +1324,153 @@ components:
           type: integer
         lastLoginAt:
           type: ["string", "null"]
+
+    AdminUpdateUserInput:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, admin]
+        plan:
+          type: string
+          enum: [hobby, pro, team]
+
+    AdjustCreditsInput:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: integer
+          description: Jumlah kredit yang ditambah (positif) atau dikurangi (negatif).
+        note:
+          type: string
+          description: Catatan alasan penyesuaian.
+
+    PaymentOrderWithUser:
+      type: object
+      required: [id, userId, invoiceNumber, amount, creditsAmount, provider, status, createdAt, ownerEmail, ownerName]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        invoiceNumber:
+          type: string
+        amount:
+          type: integer
+        creditsAmount:
+          type: integer
+        provider:
+          type: string
+        status:
+          type: string
+          enum: [pending, paid, expired, failed, cancelled]
+        createdAt:
+          type: string
+        paidAt:
+          type: ["string", "null"]
+        ownerEmail:
+          type: string
+        ownerName:
+          type: string
+
+    AdminRevenue:
+      type: object
+      required: [totalRevenue, todayRevenue, monthRevenue, paidCount, pendingCount, failedCount]
+      properties:
+        totalRevenue:
+          type: integer
+          description: Total nominal dari order berstatus paid (sepanjang waktu).
+        todayRevenue:
+          type: integer
+        monthRevenue:
+          type: integer
+        paidCount:
+          type: integer
+        pendingCount:
+          type: integer
+        failedCount:
+          type: integer
+
+    AdminUsageTotals:
+      type: object
+      required: [requests, totalTokens, promptTokens, completionTokens, credits]
+      properties:
+        requests:
+          type: integer
+        totalTokens:
+          type: integer
+        promptTokens:
+          type: integer
+        completionTokens:
+          type: integer
+        credits:
+          type: integer
+
+    AdminUsageByModel:
+      type: object
+      required: [model, requests, totalTokens, credits]
+      properties:
+        model:
+          type: string
+        requests:
+          type: integer
+        totalTokens:
+          type: integer
+        credits:
+          type: integer
+
+    AdminUsageByUser:
+      type: object
+      required: [userId, email, name, requests, totalTokens, credits]
+      properties:
+        userId:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        requests:
+          type: integer
+        totalTokens:
+          type: integer
+        credits:
+          type: integer
+
+    AdminUsageDaily:
+      type: object
+      required: [day, requests, totalTokens, credits]
+      properties:
+        day:
+          type: string
+          description: Tanggal dalam format YYYY-MM-DD.
+        requests:
+          type: integer
+        totalTokens:
+          type: integer
+        credits:
+          type: integer
+
+    AdminUsage:
+      type: object
+      required: [rangeDays, since, totals, byModel, topUsers, daily]
+      properties:
+        rangeDays:
+          type: integer
+        since:
+          type: string
+          format: date-time
+        totals:
+          $ref: "#/components/schemas/AdminUsageTotals"
+        byModel:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUsageByModel"
+        topUsers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUsageByUser"
+        daily:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUsageDaily"

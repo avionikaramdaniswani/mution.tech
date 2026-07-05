@@ -102,7 +102,7 @@ export default function Login() {
                     <FormItem>
                       <FormLabel className="text-white/70">Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" autoComplete="current-password" {...field} />
+                        <Input type="password" placeholder="********" autoComplete="current-password" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -122,7 +122,7 @@ export default function Login() {
           </CardContent>
           <CardFooter className="flex justify-center border-t pt-6" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
             <div className="text-sm text-white/40">
-              Belum punya akun?{" "}
+              Belum punya akunx{" "}
               <Link href="/register" className="text-primary hover:underline font-medium">
                 Daftar di sini
               </Link>

@@ -1,11 +1,61 @@
 import { Router, type Request, type Response } from "express";
-import { db, apiKeysTable, usersTable, creditTransactionsTable } from "@workspace/db";
+import { db, apiKeysTable, usersTable, creditTransactionsTable, apiUsageTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { logger } from "../lib/logger";
+import { broadcastToUser, broadcastAdmin } from "../lib/events";
 
 const router = Router();
-const CREDITS_PER_1K_TOKENS = 10;
+
+// ─── Per-Model Pricing (kredit per 1K token) ──────────────────────────────────
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  "claude-opus-4-6": { input: 180, output: 900 },
+  "claude-opus-4-7": { input: 180, output: 900 },
+  "claude-opus-4-8": { input: 225, output: 1080 },
+  "claude-sonnet-4-6": { input: 45, output: 200 },
+  "claude-sonnet-4-7": { input: 45, output: 200 },
+  "claude-sonnet-5": { input: 50, output: 250 },
+  "gpt-5-4": { input: 100, output: 300 },
+  "gpt-5-5": { input: 150, output: 400 },
+  "glm-5-2": { input: 10, output: 40 },
+};
+
+const DEFAULT_PRICING = { input: 10, output: 30 };
+
+function getModelPricing(model: string) {
+  // Try exact match first
+  if (MODEL_PRICING[model]) return MODEL_PRICING[model];
+
+  // Try partial match — sort by key length DESC so "claude-sonnet-4-7" beats "claude-sonnet-4"
+  const normalized = model.toLowerCase().replace(/-/g, "");
+  const sorted = Object.entries(MODEL_PRICING).sort((a, b) => b[0].length - a[0].length);
+  for (const [key, pricing] of sorted) {
+    if (normalized.includes(key.replace(/-/g, ""))) return pricing;
+  }
+
+  return DEFAULT_PRICING;
+}
+
+/** Safe fallback token estimate — capped to prevent overcharging when usage data is missing. */
+const FALLBACK_MAX_TOKENS = 200;
+function estimateFallbackTokens(reqBody: any): number {
+  // Rough heuristic: count characters of just the user messages, not the full JSON.
+  try {
+    const msgs = reqBody?.messages;
+    if (Array.isArray(msgs)) {
+      let chars = 0;
+      for (const m of msgs) {
+        if (typeof m.content === "string") chars += m.content.length;
+        else if (Array.isArray(m.content)) {
+          for (const b of m.content) if (b.type === "text") chars += (b.text ?? "").length;
+        }
+      }
+      // ~4 chars per token is a rough estimate, but cap it.
+      return Math.min(Math.max(1, Math.ceil(chars / 4)), FALLBACK_MAX_TOKENS);
+    }
+  } catch { }
+  return FALLBACK_MAX_TOKENS;
+}
 
 // ─── Provider pool ────────────────────────────────────────────────────────────
 
@@ -40,6 +90,77 @@ export function adminGetProviderStatuses() {
   }));
 }
 
+// ─── Upstream Health Checker ──────────────────────────────────────────────────
+export interface UpstreamHealth {
+  status: "Online" | "Degraded" | "Offline";
+  latencyMs: number;
+  lastChecked: number;
+}
+const _upstreamHealth = new Map<string, UpstreamHealth>();
+
+export function getUpstreamHealth() {
+  // If multiple providers exist, aggregate or pick the best. For now, we return the first active one or a summary.
+  let providers: Provider[];
+  try { providers = getProviders(); } catch { return { status: "Offline", latencyMs: 0, lastChecked: 0 }; }
+
+  const active = providers.filter((p) => !_disabledProviders.has(p.id));
+  if (active.length === 0) return { status: "Offline", latencyMs: 0, lastChecked: 0 };
+
+  let totalLatency = 0;
+  let onlineCount = 0;
+  let newestCheck = 0;
+
+  for (const p of active) {
+    const h = _upstreamHealth.get(p.id);
+    if (h) {
+      if (h.status === "Online") {
+        onlineCount++;
+        totalLatency += h.latencyMs;
+      }
+      if (h.lastChecked > newestCheck) newestCheck = h.lastChecked;
+    }
+  }
+
+  if (onlineCount === 0) return { status: "Offline", latencyMs: 0, lastChecked: newestCheck || Date.now() };
+
+  const avgLatency = Math.round(totalLatency / onlineCount);
+  const status = onlineCount < active.length ? "Degraded" : "Online";
+  return { status, latencyMs: avgLatency, lastChecked: newestCheck };
+}
+
+function startUpstreamHealthCheck() {
+  const runCheck = async () => {
+    let providers: Provider[];
+    try { providers = getProviders(); } catch { return; }
+
+    for (const p of providers) {
+      if (_disabledProviders.has(p.id)) continue;
+      const start = Date.now();
+      try {
+        const res = await fetch(`${p.openaiBase}/models`, {
+          headers: { Authorization: `Bearer ${p.apiKey}` },
+          signal: AbortSignal.timeout(10000), // 10s timeout
+        });
+        const latencyMs = Date.now() - start;
+        if (res.ok) {
+          _upstreamHealth.set(p.id, { status: "Online", latencyMs, lastChecked: Date.now() });
+        } else {
+          _upstreamHealth.set(p.id, { status: "Offline", latencyMs, lastChecked: Date.now() });
+        }
+      } catch (err) {
+        _upstreamHealth.set(p.id, { status: "Offline", latencyMs: Date.now() - start, lastChecked: Date.now() });
+      }
+    }
+  };
+
+  // Run once immediately, then every 3 minutes
+  runCheck();
+  setInterval(runCheck, 3 * 60 * 1000);
+}
+// Start it async
+setTimeout(startUpstreamHealthCheck, 2000);
+
+
 function urlToId(url: string): string {
   try { return new URL(url).hostname; } catch { return url.slice(0, 30); }
 }
@@ -59,7 +180,7 @@ function buildOpenaiBase(rawUrl: string): string {
     if (parsed.pathname === "/" || parsed.pathname === "") {
       return `${url}/v1`;
     }
-  } catch {}
+  } catch { }
   return url;
 }
 
@@ -168,8 +289,22 @@ async function resolveKeyAndUser(token: string) {
   return row;
 }
 
-async function deductCredits(userId: number, keyId: number, tokensUsed: number, model: string) {
-  const credits = Math.max(1, Math.ceil((tokensUsed * CREDITS_PER_1K_TOKENS) / 1000));
+async function deductCredits(
+  userId: number,
+  keyId: number,
+  tokensUsed: number,
+  model: string,
+  breakdown?: { inputTokens?: number; outputTokens?: number },
+) {
+  const inputTokens = breakdown?.inputTokens ?? 0;
+  // If we only have total tokens, assume they are all output tokens (more expensive) as a fallback
+  const outputTokens = breakdown?.outputTokens ?? (inputTokens === 0 ? tokensUsed : 0);
+
+  const pricing = getModelPricing(model);
+  const inputCredits = (inputTokens * pricing.input) / 1000;
+  const outputCredits = (outputTokens * pricing.output) / 1000;
+
+  const credits = Math.max(1, Math.ceil(inputCredits + outputCredits));
   await db
     .update(usersTable)
     .set({ credits: sql`GREATEST(0, ${usersTable.credits} - ${credits})` })
@@ -180,14 +315,29 @@ async function deductCredits(userId: number, keyId: number, tokensUsed: number, 
     amount: -credits,
     note: `API — model: ${model}, tokens: ${tokensUsed}`,
   });
+  // Catatan terstruktur untuk analitik admin (per model / per user / tren harian).
+  await db.insert(apiUsageTable).values({
+    userId,
+    keyId,
+    model,
+    promptTokens: inputTokens,
+    completionTokens: outputTokens,
+    totalTokens: tokensUsed,
+    credits,
+  });
   await db
     .update(apiKeysTable)
     .set({
       lastUsedAt: new Date(),
       totalTokensUsed: sql`${apiKeysTable.totalTokensUsed} + ${tokensUsed}`,
       totalRequestsCount: sql`${apiKeysTable.totalRequestsCount} + 1`,
+      totalCreditsUsed: sql`${apiKeysTable.totalCreditsUsed} + ${credits}`,
     })
     .where(eq(apiKeysTable.id, keyId));
+
+  // Realtime: saldo user berkurang karena pemakaian API.
+  broadcastToUser(userId, { type: "credits.changed", amount: -credits });
+  broadcastAdmin({ type: "user.credits_adjusted", userId, amount: -credits });
 }
 
 async function authenticate(req: Request, res: Response): Promise<{ key: typeof apiKeysTable.$inferSelect; user: typeof usersTable.$inferSelect } | null> {
@@ -203,6 +353,14 @@ async function authenticate(req: Request, res: Response): Promise<{ key: typeof 
   }
   if (row.user.credits <= 0) {
     res.status(402).json({ type: "error", error: { type: "insufficient_quota", message: "Insufficient credits. Top up at mution.tech/billing" } });
+    return null;
+  }
+  if (row.key.expiresAt && new Date() > new Date(row.key.expiresAt)) {
+    res.status(403).json({ type: "error", error: { type: "forbidden", message: "API key has expired" } });
+    return null;
+  }
+  if (row.key.creditLimit !== null && row.key.totalCreditsUsed >= row.key.creditLimit) {
+    res.status(403).json({ type: "error", error: { type: "forbidden", message: "API key has reached its quota limit" } });
     return null;
   }
   return row;
@@ -234,7 +392,7 @@ function anthropicToOpenAIBody(body: any): any {
     messages.push({ role: msg.role, content });
   }
 
-  const model = body.model ?? "claude-sonnet-4-5";
+  const model = body.model ?? "claude-sonnet-4-6";
 
   const converted: any = { model, messages, max_tokens: body.max_tokens ?? 4096, stream: body.stream };
   if (body.temperature !== undefined) converted.temperature = body.temperature;
@@ -279,6 +437,11 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
   const originalModel = req.body?.model ?? "unknown";
   const isStream = req.body?.stream === true;
 
+  if (key.allowedModels && key.allowedModels.length > 0 && !key.allowedModels.includes(originalModel)) {
+    res.status(403).json({ type: "error", error: { type: "forbidden", message: `API key is not allowed to use model: ${originalModel}` } });
+    return;
+  }
+
   // Try providers with fallback on non-streaming failures
   for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
@@ -321,32 +484,44 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           let totalInputTokens = 0;
           let totalOutputTokens = 0;
           const decoder = new TextDecoder();
+          let sseBuffer = "";
 
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            res.write(chunk);
-            for (const line of chunk.split("\n")) {
+            const rawChunk = decoder.decode(value, { stream: true });
+            res.write(rawChunk);
+            sseBuffer += rawChunk;
+            const sseLines = sseBuffer.split("\n");
+            sseBuffer = sseLines.pop() ?? "";
+            for (const line of sseLines) {
               if (!line.startsWith("data: ")) continue;
               try {
                 const d = JSON.parse(line.slice(6));
                 if (d.type === "message_start") totalInputTokens = d.message?.usage?.input_tokens ?? 0;
                 if (d.type === "message_delta") totalOutputTokens = d.usage?.output_tokens ?? 0;
-              } catch {}
+              } catch { }
             }
           }
           res.end();
 
-          const tokens = totalInputTokens + totalOutputTokens || Math.ceil(JSON.stringify(req.body).length / 4);
-          await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
+          const tokens = (totalInputTokens + totalOutputTokens) || estimateFallbackTokens(req.body);
+          if (totalInputTokens + totalOutputTokens === 0) {
+            logger.warn({ model: originalModel, fallbackTokens: tokens }, "Conduit stream: usage missing, using capped fallback");
+          }
+          await deductCredits(user.id, key.id, tokens, originalModel, { inputTokens: totalInputTokens, outputTokens: totalOutputTokens }).catch((e) =>
             logger.error({ err: e }, "deduct credits failed")
           );
         } else {
           const data = await upstream.json() as any;
           res.status(200).json(data);
-          const tokens = (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0) || Math.ceil(JSON.stringify(req.body).length / 4);
-          await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
+          const inputTokens = data.usage?.input_tokens ?? 0;
+          const outputTokens = data.usage?.output_tokens ?? 0;
+          const tokens = (inputTokens + outputTokens) || estimateFallbackTokens(req.body);
+          if (inputTokens + outputTokens === 0) {
+            logger.warn({ model: originalModel, fallbackTokens: tokens }, "Conduit non-stream: usage missing, using capped fallback");
+          }
+          await deductCredits(user.id, key.id, tokens, originalModel, { inputTokens, outputTokens }).catch((e) =>
             logger.error({ err: e }, "deduct credits failed")
           );
         }
@@ -389,8 +564,9 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
 
           const reader = upstream.body?.getReader();
           if (!reader) { res.end(); return; }
-          let totalInputTokens = 0;
-          let totalOutputTokens = 0;
+          let actualInputTokens = 0;
+          let actualOutputTokens = 0;
+          let estimatedOutputChars = 0;
           const decoder = new TextDecoder();
           let buffer = "";
 
@@ -412,27 +588,34 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
                     type: "content_block_delta", index: 0,
                     delta: { type: "text_delta", text: delta },
                   }));
-                  totalOutputTokens += Math.ceil(delta.length / 4);
+                  estimatedOutputChars += delta.length;
                 }
                 if (chunk.usage) {
-                  totalInputTokens = chunk.usage.prompt_tokens ?? totalInputTokens;
-                  totalOutputTokens = chunk.usage.completion_tokens ?? totalOutputTokens;
+                  actualInputTokens = chunk.usage.prompt_tokens ?? actualInputTokens;
+                  actualOutputTokens = chunk.usage.completion_tokens ?? actualOutputTokens;
                 }
-              } catch {}
+              } catch { }
             }
           }
+
+          // Prefer actual usage from provider; fall back to char estimate; last resort capped fallback.
+          const finalInput = actualInputTokens;
+          const finalOutput = actualOutputTokens || Math.min(Math.ceil(estimatedOutputChars / 4), FALLBACK_MAX_TOKENS);
 
           res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: 0 }));
           res.write(sseEvent("message_delta", {
             type: "message_delta",
             delta: { stop_reason: "end_turn", stop_sequence: null },
-            usage: { output_tokens: totalOutputTokens },
+            usage: { output_tokens: finalOutput },
           }));
           res.write(sseEvent("message_stop", { type: "message_stop" }));
           res.end();
 
-          const tokens = (totalInputTokens + totalOutputTokens) || Math.ceil(JSON.stringify(req.body).length / 4);
-          await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
+          const tokens = (finalInput + finalOutput) || estimateFallbackTokens(req.body);
+          if (actualInputTokens + actualOutputTokens === 0) {
+            logger.warn({ model: originalModel, fallbackTokens: tokens, estimatedChars: estimatedOutputChars }, "Generic stream: usage missing, using estimate");
+          }
+          await deductCredits(user.id, key.id, tokens, originalModel, { inputTokens: finalInput, outputTokens: finalOutput }).catch((e) =>
             logger.error({ err: e }, "deduct credits failed")
           );
         } else {
@@ -451,8 +634,10 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           const anthropicResponse = openAIToAnthropicResponse(data, originalModel);
           res.status(200).json(anthropicResponse);
 
-          const tokens = (data.usage?.prompt_tokens ?? 0) + (data.usage?.completion_tokens ?? 0) || Math.ceil(JSON.stringify(req.body).length / 4);
-          await deductCredits(user.id, key.id, tokens, originalModel).catch((e) =>
+          const inputTokens = data.usage?.prompt_tokens ?? 0;
+          const outputTokens = data.usage?.completion_tokens ?? 0;
+          const tokens = (inputTokens + outputTokens) || Math.ceil(JSON.stringify(req.body).length / 4);
+          await deductCredits(user.id, key.id, tokens, originalModel, { inputTokens, outputTokens }).catch((e) =>
             logger.error({ err: e }, "deduct credits failed")
           );
         }
@@ -482,6 +667,14 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
     return;
   }
 
+  if (req.method !== "GET") {
+    const originalModel = req.body?.model ?? "unknown";
+    if (key.allowedModels && key.allowedModels.length > 0 && !key.allowedModels.includes(originalModel)) {
+      res.status(403).json({ error: { message: `API key is not allowed to use model: ${originalModel}`, type: "forbidden" } });
+      return;
+    }
+  }
+
   for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
 
@@ -505,22 +698,36 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
         res.setHeader("Connection", "keep-alive");
         const reader = upstream.body?.getReader();
         if (!reader) { res.end(); return; }
-        let totalTokens = 0;
+        let streamInputTokens = 0;
+        let streamOutputTokens = 0;
         const decoder = new TextDecoder();
+        let sseBuf = "";
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          res.write(chunk);
-          for (const line of chunk.split("\n")) {
+          const rawChunk = decoder.decode(value, { stream: true });
+          res.write(rawChunk);
+          sseBuf += rawChunk;
+          const sseLines = sseBuf.split("\n");
+          sseBuf = sseLines.pop() ?? "";
+          for (const line of sseLines) {
             if (line.startsWith("data: ") && !line.includes("[DONE]")) {
-              try { const d = JSON.parse(line.slice(6)); if (d.usage?.total_tokens) totalTokens = d.usage.total_tokens; } catch {}
+              try {
+                const d = JSON.parse(line.slice(6));
+                if (d.usage) {
+                  streamInputTokens = d.usage.prompt_tokens ?? streamInputTokens;
+                  streamOutputTokens = d.usage.completion_tokens ?? streamOutputTokens;
+                }
+              } catch { }
             }
           }
         }
         res.end();
-        const tokens = totalTokens || Math.ceil(JSON.stringify(req.body).length / 4);
-        await deductCredits(user.id, key.id, tokens, req.body?.model ?? "unknown").catch((e) =>
+        const tokens = (streamInputTokens + streamOutputTokens) || estimateFallbackTokens(req.body);
+        if (streamInputTokens + streamOutputTokens === 0) {
+          logger.warn({ model: req.body?.model, fallbackTokens: tokens }, "OpenAI stream: usage missing, using capped fallback");
+        }
+        await deductCredits(user.id, key.id, tokens, req.body?.model ?? "unknown", { inputTokens: streamInputTokens, outputTokens: streamOutputTokens }).catch((e) =>
           logger.error({ err: e }, "deduct credits failed")
         );
         return;
@@ -533,8 +740,13 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
         const data = await upstream.json() as any;
         res.status(upstream.status).json(data);
         if (upstream.ok) {
-          const tokens = data.usage?.total_tokens ?? Math.ceil(JSON.stringify(req.body).length / 4);
-          await deductCredits(user.id, key.id, tokens, data.model ?? req.body?.model ?? "unknown").catch((e) =>
+          const inputTokens = data.usage?.prompt_tokens ?? 0;
+          const outputTokens = data.usage?.completion_tokens ?? 0;
+          const tokens = (data.usage?.total_tokens ?? (inputTokens + outputTokens)) || estimateFallbackTokens(req.body);
+          if (!data.usage?.total_tokens && inputTokens + outputTokens === 0) {
+            logger.warn({ model: data.model ?? req.body?.model, fallbackTokens: tokens }, "OpenAI non-stream: usage missing, using capped fallback");
+          }
+          await deductCredits(user.id, key.id, tokens, data.model ?? req.body?.model ?? "unknown", { inputTokens, outputTokens }).catch((e) =>
             logger.error({ err: e }, "deduct credits failed")
           );
         }

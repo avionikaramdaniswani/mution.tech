@@ -37,8 +37,8 @@ export default function ProjectDetail() {
     query: { enabled: !!projectId, queryKey: getGetProjectQueryKey(projectId) } 
   });
 
-  const { data: deployments, isLoading: isLoadingDeployments } = useListDeployments({
-    query: { enabled: !!projectId, queryKey: getListDeploymentsQueryKey() }
+  const { data: deployments, isLoading: isLoadingDeployments } = useListDeployments(projectId, {
+    query: { enabled: !!projectId, queryKey: getListDeploymentsQueryKey(projectId) }
   });
   
   const projectDeployments = deployments?.filter(d => d.projectId === projectId) || [];
@@ -59,10 +59,10 @@ export default function ProjectDetail() {
   
   const handleDeploy = () => {
     triggerDeploy.mutate(
-      { data: {} },
+      { id: projectId, data: {} },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListDeploymentsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListDeploymentsQueryKey(projectId) });
           queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
           toast({ title: "Deployment dimulai" });
         }
@@ -217,7 +217,7 @@ export default function ProjectDetail() {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Yakin ingin menghapus?</AlertDialogTitle>
+                      <AlertDialogTitle>Yakin ingin menghapusx</AlertDialogTitle>
                       <AlertDialogDescription>
                         Tindakan ini tidak bisa dibatalkan. Semua data proyek <span className="font-semibold text-foreground">{project.name}</span> akan dihapus permanen.
                       </AlertDialogDescription>
@@ -292,10 +292,10 @@ export default function ProjectDetail() {
                               size="sm" 
                               onClick={() => {
                                 triggerRollback.mutate(
-                                  { id: deployment.id },
+                                  { id: projectId, deploymentId: deployment.id },
                                   {
                                     onSuccess: () => {
-                                      queryClient.invalidateQueries({ queryKey: getListDeploymentsQueryKey() });
+                                      queryClient.invalidateQueries({ queryKey: getListDeploymentsQueryKey(projectId) });
                                       toast({ title: "Rollback dimulai" });
                                     }
                                   }
@@ -351,9 +351,9 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number, envV
     );
   };
 
-  const handleDelete = (key: string) => {
+  const handleDelete = (envId: number) => {
     delEnv.mutate(
-      { id: projectId, key },
+      { id: projectId, envId },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetProjectEnvQueryKey(projectId) });
@@ -377,7 +377,7 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number, envV
           </div>
           <div className="space-y-2 flex-1">
             <Label>Nilai</Label>
-            <Input type="password" placeholder="••••••••" value={newVal} onChange={e => setNewVal(e.target.value)} />
+            <Input type="password" placeholder="********" value={newVal} onChange={e => setNewVal(e.target.value)} />
           </div>
           <Button onClick={handleAdd} disabled={setEnv.isPending || !newKey || !newVal}>Tambah</Button>
         </div>
@@ -401,9 +401,9 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number, envV
               {envVars.map((env: any) => (
                 <TableRow key={env.id}>
                   <TableCell className="font-mono text-sm">{env.key}</TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">{env.value || "••••••••"}</TableCell>
+                  <TableCell className="font-mono text-sm text-muted-foreground">{env.value || "********"}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(env.key)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(env.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
                       <Trash className="h-4 w-4" />
                     </Button>
                   </TableCell>
@@ -475,7 +475,7 @@ function DatabaseTab({ projectId, database, isLoading }: { projectId: number, da
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Hapus database?</AlertDialogTitle>
+                    <AlertDialogTitle>Hapus databasex</AlertDialogTitle>
                     <AlertDialogDescription>
                       Semua data di database ini akan hilang permanen. Tindakan ini tidak bisa dibatalkan.
                     </AlertDialogDescription>
@@ -493,7 +493,7 @@ function DatabaseTab({ projectId, database, isLoading }: { projectId: number, da
             <div className="space-y-2">
               <Label>Connection String</Label>
               <div className="flex gap-2">
-                <Input value={database.connectionString || "••••••••••••••••••••••••••••••••••••••••••••"} readOnly type="password" />
+                <Input value={database.connectionString || "********************************************"} readOnly type="password" />
                 <Button variant="outline" onClick={() => {
                   navigator.clipboard.writeText(database.connectionString || "");
                   toast({ title: "Disalin ke clipboard" });

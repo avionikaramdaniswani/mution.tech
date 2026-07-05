@@ -31,7 +31,7 @@ export default function AdminProjects() {
   };
 
   const handleDelete = (id: number, name: string) => {
-    if (!confirm(`Hapus proyek "${name}" secara permanen?`)) return;
+    if (!confirm(`Hapus proyek "${name}" secara permanenx`)) return;
     deleteProject.mutate({ id }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getAdminListProjectsQueryKey() });

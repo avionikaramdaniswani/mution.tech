@@ -121,7 +121,7 @@ export default function NewProject() {
     setDetectingRuntime(true);
 
     apiFetch<{ runtime: string; confidence: string }>(
-      `/api/github/detect-runtime?repo=${encodeURIComponent(selectedRepo.fullName)}`,
+      `/api/github/detect-runtimexrepo=${encodeURIComponent(selectedRepo.fullName)}`,
     )
       .then((result) => {
         setDetectedRuntime(result);
@@ -390,8 +390,8 @@ export default function NewProject() {
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {detectedRuntime.confidence === "detected"
-                              ? "— terdeteksi dari file repo"
-                              : "— fallback dari bahasa repo"}
+                              ? "- terdeteksi dari file repo"
+                              : "- fallback dari bahasa repo"}
                           </span>
                         </div>
                       ) : (

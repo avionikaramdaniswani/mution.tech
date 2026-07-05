@@ -16,7 +16,7 @@ function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-        <p className="text-sm font-medium text-foreground truncate">{value ?? "—"}</p>
+        <p className="text-sm font-medium text-foreground truncate">{value ?? "-"}</p>
       </div>
     </div>
   );
@@ -30,7 +30,7 @@ export default function ProfilePage() {
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState(false);
 
-  const initials = (user?.name ?? "?")
+  const initials = (user?.name ?? "x")
     .split(" ")
     .map((w) => w[0])
     .slice(0, 2)
@@ -129,7 +129,7 @@ export default function ProfilePage() {
             <Input
               id="current-pw"
               type="password"
-              placeholder="••••••••"
+              placeholder="********"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
             />

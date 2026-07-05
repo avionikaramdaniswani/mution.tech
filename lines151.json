@@ -1,0 +1,85 @@
+Created At: 2026-07-02T06:32:20Z
+Completed At: 2026-07-02T06:32:21Z
+File Path: `file:///c:/Users/afio1/Documents/mution.tech-main/artifacts/paas-dashboard/src/pages/harga/index.tsx`
+Total Lines: 468
+Total Bytes: 18160
+Showing lines 151 to 300
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+151:                 >
+152:                   {plan.highlight && (
+153:                     <div
+154:                       style={{
+155:                         position: "absolute",
+156:                         top: 0, left: 0, right: 0,
+157:                         height: "2px",
+158:                         background: "rgb(249,115,22)",
+159:                       }}
+160:                     />
+161:                   )}
+162:                   <div className="flex items-center gap-2 mb-1">
+163:                     <span
+164:                       className="text-sm font-bold"
+165:                       style={{ color: plan.highlight ? "#fff" : "rgba(255,255,255,0.7)" }}
+166:                     >
+167:                       {plan.name}
+168:                     </span>
+169:                     {plan.highlight && (
+170:                       <span
+171:                         className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+172:                         style={{
+173:                           background: "rgba(249,115,22,0.15)",
+174:                           color: "rgb(249,115,22)",
+175:                           border: "1px solid rgba(249,115,22,0.22)",
+176:                         }}
+177:                       >
+178:                         Populer
+179:                       </span>
+180:                     )}
+181:                   </div>
+182:                   <div
+183:                     className="text-2xl font-extrabold tabular-nums"
+184:                     style={{ color: plan.highlight ? "rg
+<truncated 3606 bytes>
+span>
+260:                           </>
+261:                         ) : null}
+262:                       </div>
+263:                     );
+264:                   })}
+265:                 </div>
+266:               ));
+267:             })()}
+268: 
+269:             {/* CTA row */}
+270:             <div
+271:               className="relative z-10 grid"
+272:               style={{
+273:                 gridTemplateColumns: "repeat(3, 1fr)",
+274:                 borderTop: "1px solid rgba(255,255,255,0.06)",
+275:                 background: "rgba(255,255,255,0.01)",
+276:               }}
+277:             >
+278:               {plans.map((plan, i) => (
+279:                 <div
+280:                   key={plan.key}
+281:                   className="px-6 sm:px-10 py-6"
+282:                   style={{
+283:                     borderRight: i < 2 ? "1px solid rgba(255,255,255,0.05)" : "none",
+284:                     background: plan.highlight ? "rgba(249,115,22,0.03)" : "transparent",
+285:                   }}
+286:                 >
+287:                   <Link href={plan.ctaHref}>
+288:                     <button
+289:                       className="w-full text-sm font-semibold rounded-xl px-4 py-2.5 transition-all"
+290:                       style={
+291:                         plan.highlight
+292:                           ? {
+293:                               background: "rgb(249,115,22)",
+294:                               color: "#fff",
+295:                               boxShadow: "0 0 0 1px rgba(249,115,22,0.4), 0 4px 16px rgba(249,115,22,0.25)",
+296:                             }
+297:                           : {
+298:                               background: "rgba(255,255,255,0.06)",
+299:                               color: "rgba(255,255,255,0.7)",
+300:                               border: "1px solid rgba(255,255,255,0.08)",
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

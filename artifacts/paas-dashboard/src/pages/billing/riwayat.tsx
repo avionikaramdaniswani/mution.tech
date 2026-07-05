@@ -21,12 +21,12 @@ interface Order {
   paidAt: string | null;
 }
 
-const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
-  pending:   { label: "Menunggu",   color: "#F97316", bg: "rgba(249,115,22,0.08)",   border: "rgba(249,115,22,0.2)",   icon: <Clock className="h-3 w-3" /> },
-  paid:      { label: "Berhasil",   color: "#22C55E", bg: "rgba(34,197,94,0.08)",    border: "rgba(34,197,94,0.2)",    icon: <CheckCircle2 className="h-3 w-3" /> },
-  failed:    { label: "Gagal",      color: "#EF4444", bg: "rgba(239,68,68,0.08)",    border: "rgba(239,68,68,0.2)",    icon: <AlertTriangle className="h-3 w-3" /> },
-  expired:   { label: "Kadaluarsa", color: "#94A3B8", bg: "rgba(100,116,139,0.08)", border: "rgba(100,116,139,0.2)", icon: <XCircle className="h-3 w-3" /> },
-  cancelled: { label: "Dibatalkan", color: "#94A3B8", bg: "rgba(100,116,139,0.08)", border: "rgba(100,116,139,0.2)", icon: <Ban className="h-3 w-3" /> },
+const STATUS_CONFIG: Record<OrderStatus, { label: string; twClass: string; icon: React.ReactNode }> = {
+  pending:   { label: "Menunggu",   twClass: "text-orange-500 bg-orange-500/10 border-orange-500/20",   icon: <Clock className="h-3 w-3" /> },
+  paid:      { label: "Berhasil",   twClass: "text-green-500 bg-green-500/10 border-green-500/20",    icon: <CheckCircle2 className="h-3 w-3" /> },
+  failed:    { label: "Gagal",      twClass: "text-red-500 bg-red-500/10 border-red-500/20",    icon: <AlertTriangle className="h-3 w-3" /> },
+  expired:   { label: "Kadaluarsa", twClass: "text-slate-400 bg-slate-500/10 border-slate-500/20", icon: <XCircle className="h-3 w-3" /> },
+  cancelled: { label: "Dibatalkan", twClass: "text-slate-400 bg-slate-500/10 border-slate-500/20", icon: <Ban className="h-3 w-3" /> },
 };
 
 const TABS: { key: OrderStatus | "all"; label: string }[] = [
@@ -75,35 +75,26 @@ export default function RiwayatOrderPage() {
   const visibleTabs = TABS.filter(t => t.key === "all" || (counts[t.key] ?? 0) > 0);
 
   return (
-    <div className="space-y-5 max-w-2xl mx-auto">
+    <div className="space-y-6 max-w-2xl mx-auto pb-10">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link href="/billing">
-          <button
-            className="h-8 w-8 rounded-lg flex items-center justify-center"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-          >
-            <ArrowLeft className="h-4 w-4" style={{ color: "rgba(255,255,255,0.4)" }} />
-          </button>
-        </Link>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-base font-bold text-white">Riwayat Order</h1>
-          <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.28)" }}>
-            {loading ? "Memuat…" : `${orders.length} transaksi dari TriPay`}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Riwayat Transaksi</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {loading ? "Memuat data transaksi..." : `Menampilkan ${orders.length} riwayat transaksi dari TriPay.`}
           </p>
         </div>
         <button
           onClick={refresh}
-          className="h-8 w-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-70"
-          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+          className="h-9 w-9 rounded-md border border-border bg-card flex items-center justify-center transition-colors hover:bg-muted"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} style={{ color: "rgba(255,255,255,0.35)" }} />
+          <RefreshCw className={`h-4 w-4 text-muted-foreground ${loading ? "animate-spin" : ""}`} />
         </button>
       </div>
 
       {/* Tabs */}
       {visibleTabs.length > 1 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+        <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
           {visibleTabs.map(tab => {
             const active = activeTab === tab.key;
             const sc = tab.key !== "all" ? STATUS_CONFIG[tab.key as OrderStatus] : null;
@@ -111,18 +102,18 @@ export default function RiwayatOrderPage() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all"
-                style={{
-                  background: active ? (sc ? sc.bg : "rgba(255,255,255,0.08)") : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${active ? (sc ? sc.border : "rgba(255,255,255,0.15)") : "rgba(255,255,255,0.06)"}`,
-                  color: active ? (sc ? sc.color : "white") : "rgba(255,255,255,0.3)",
-                  cursor: "pointer",
-                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors border ${
+                  active
+                    ? sc
+                      ? sc.twClass
+                      : "bg-muted border-border/50 text-foreground"
+                    : "bg-card border-border/50 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                }`}
               >
                 {active && sc && sc.icon}
                 {tab.label}
                 {(counts[tab.key] ?? 0) > 0 && (
-                  <span className="text-[10px] font-bold px-1 rounded" style={{ color: "inherit", opacity: 0.6 }}>
+                  <span className="text-[10px] font-bold px-1 rounded-sm opacity-60">
                     {counts[tab.key]}
                   </span>
                 )}
@@ -134,70 +125,62 @@ export default function RiwayatOrderPage() {
 
       {/* List */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <Loader2 className="h-5 w-5 animate-spin" style={{ color: "rgba(255,255,255,0.2)" }} />
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>Mengambil data dari TriPay…</p>
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Mengambil data dari TriPay...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <p className="text-sm text-muted-foreground">
             {activeTab === "all" ? "Belum ada transaksi." : `Tidak ada order ${STATUS_CONFIG[activeTab as OrderStatus]?.label.toLowerCase() ?? ""}.`}
           </p>
           {activeTab === "all" && (
             <Link href="/billing">
-              <button
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
-                style={{ background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)", color: "#F97316", cursor: "pointer" }}
-              >
-                <Wallet className="h-3.5 w-3.5" />
+              <button className="flex items-center gap-1.5 px-4 py-2 mt-2 rounded-lg text-sm font-medium text-orange-500 bg-orange-500/10 border border-orange-500/20 hover:bg-orange-500/20 transition-colors">
+                <Wallet className="h-4 w-4" />
                 Topup Sekarang
               </button>
             </Link>
           )}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {filtered.map(order => {
             const sc = STATUS_CONFIG[order.status];
             return (
               <Link key={order.id} href={`/billing/riwayat/${order.id}`}>
                 <div
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all cursor-pointer group"
-                  style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.045)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.025)")}
+                  className="flex items-center gap-4 px-5 py-4 rounded-xl transition-colors cursor-pointer group bg-card border border-border/50 hover:bg-muted/50"
                 >
                   {/* Status icon circle */}
                   <div
-                    className="h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color }}
+                    className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 border ${sc.twClass}`}
                   >
                     {sc.icon}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-semibold text-white truncate">{rp(order.amount)}</span>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-base font-semibold text-foreground truncate">{rp(order.amount)}</span>
                       <span
-                        className="text-[10px] font-medium px-1.5 py-0.5 rounded-md"
-                        style={{ background: sc.bg, color: sc.color, border: `1px solid ${sc.border}` }}
+                        className={`text-[10px] font-medium px-2 py-0.5 rounded-md border ${sc.twClass}`}
                       >
                         {sc.label}
                       </span>
                     </div>
-                    <p className="text-[11px] truncate" style={{ color: "rgba(255,255,255,0.3)" }}>
-                      {order.paymentName ?? order.paymentMethod ?? "—"} · {order.invoiceNumber}
+                    <p className="text-xs truncate text-muted-foreground">
+                      {order.paymentName ?? order.paymentMethod ?? "-"} <span className="mx-1.5 opacity-40">*</span> <span className="font-mono text-[11px]">{order.invoiceNumber}</span>
                     </p>
                   </div>
 
                   {/* Date + chevron */}
-                  <div className="text-right flex-shrink-0 flex items-center gap-2">
-                    <div>
-                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>{fmtDate(order.createdAt)}</p>
-                      <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.18)" }}>{fmtTime(order.createdAt)}</p>
+                  <div className="text-right flex-shrink-0 flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">{fmtDate(order.createdAt)}</p>
+                      <p className="text-[10px] text-muted-foreground/60">{fmtTime(order.createdAt)}</p>
                     </div>
-                    <ChevronRight className="h-4 w-4" style={{ color: "rgba(255,255,255,0.18)" }} />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
                   </div>
                 </div>
               </Link>
@@ -208,3 +191,4 @@ export default function RiwayatOrderPage() {
     </div>
   );
 }
+

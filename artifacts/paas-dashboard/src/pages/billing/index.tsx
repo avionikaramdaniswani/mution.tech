@@ -71,11 +71,11 @@ function planStyle(plan?: string) {
   return { name: "Hobby", color: "rgba(255,255,255,0.4)" };
 }
 
-// ── Plan card configs ──────────────────────────────────────────────────────
+// -- Plan card configs ------------------------------------------------------
 const PLAN_PERKS: Record<string, string[]> = {
   hobby: [
     "2 slot deploy proyek",
-    "RAM 256 MB – 1 GB",
+    "RAM 256 MB - 1 GB",
     "5.000 kredit saat daftar",
   ],
   pro: [
@@ -199,7 +199,7 @@ function PlanCard({
         background: `radial-gradient(ellipse, ${cfg.glowColor.replace("0.11","0.18")} 0%, transparent 65%)`,
       }} />
 
-      {/* Decorative circles — bottom right */}
+      {/* Decorative circles - bottom right */}
       <div className="absolute" style={{ bottom: "-20%", right: "-8%", opacity: 0.9 }}>
         <svg width="110" height="90" viewBox="0 0 110 90">
           <circle cx="38" cy="45" r="38" fill="none" stroke={cfg.circleA} strokeWidth="1" />
@@ -271,7 +271,7 @@ function PlanCard({
               </>
             )}
             <p className="font-semibold truncate mt-2" style={{ fontSize: 10, letterSpacing: "0.05em", color: "rgba(255,255,255,0.35)" }}>
-              {isCurrentPlan ? (userName ?? "—").toUpperCase() : "— — — — — —"}
+              {isCurrentPlan ? (userName ?? "-").toUpperCase() : "- - - - - -"}
             </p>
           </div>
           <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.22em", color: "rgba(255,255,255,0.2)", flexShrink: 0 }}>
@@ -280,7 +280,7 @@ function PlanCard({
         </div>
       </div>
 
-      {/* Lock overlay — only for plans above current tier */}
+      {/* Lock overlay - only for plans above current tier */}
       {!isUnlocked && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5"
           style={{ background: "rgba(0,0,0,0.18)" }}>
@@ -296,7 +296,7 @@ function PlanCard({
   );
 }
 
-// ── End plan card ───────────────────────────────────────────────────────────
+// -- End plan card -----------------------------------------------------------
 
 type OrderStatus = "pending" | "paid" | "failed" | "expired";
 
@@ -398,9 +398,9 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
           borderRadius: "20px",
         }}
       >
-        {/* ── Header ── */}
+        {/* -- Header -- */}
         <DialogHeader className="px-5 pt-5 pb-4">
-          {/* Title row — back arrow when step > 1 */}
+          {/* Title row - back arrow when step > 1 */}
           <div className="flex items-center gap-2.5 mb-4">
             {step > 1 && (
               <button
@@ -434,7 +434,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                         color: done ? "white" : active ? "rgb(249,115,22)" : "rgba(255,255,255,0.25)",
                       }}
                     >
-                      {done ? "✓" : num}
+                      {done ? "OK" : num}
                     </div>
                     <span className="text-[9px] font-medium" style={{ color: active ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.22)" }}>
                       {label}
@@ -454,10 +454,10 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
         <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 20px" }} />
 
-        {/* ── Step content ── */}
+        {/* -- Step content -- */}
         <div className="px-5 py-4">
 
-          {/* Step 1 — Nominal */}
+          {/* Step 1 - Nominal */}
           {step === 1 && (
             <div className="space-y-3">
               <div className="grid grid-cols-4 gap-2">
@@ -530,13 +530,13 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
           )}
 
-          {/* Step 2 — Metode */}
+          {/* Step 2 - Metode */}
           {step === 2 && (
             <div className="space-y-2 max-h-72 overflow-y-auto pr-0.5">
               {chLoading && (
                 <div className="flex items-center justify-center py-8 gap-2" style={{ color: "rgba(255,255,255,0.3)" }}>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-xs">Memuat channel…</span>
+                  <span className="text-xs">Memuat channel...</span>
                 </div>
               )}
               {chError && !chLoading && (
@@ -574,7 +574,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.85)" }}>{qris.name}</p>
-                            <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>GoPay · OVO · Dana · ShopeePay & semua e-wallet</p>
+                            <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>GoPay - OVO - Dana - ShopeePay & semua e-wallet</p>
                           </div>
                           {active && (
                             <CheckCircle2 className="h-4 w-4 flex-shrink-0" style={{ color: "rgb(249,115,22)" }} />
@@ -621,7 +621,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
           )}
 
-          {/* Step 3 — Konfirmasi */}
+          {/* Step 3 - Konfirmasi */}
           {step === 3 && (
             <div className="rounded-2xl p-4 space-y-3"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -649,7 +649,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
           )}
         </div>
 
-        {/* ── Unified CTA footer ── */}
+        {/* -- Unified CTA footer -- */}
         <div className="px-5 pb-5 space-y-2.5">
           {error && <p className="text-xs text-red-400">{error}</p>}
 
@@ -668,9 +668,9 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
               cursor: ((step === 1 && !canAdvanceStep1) || (step === 3 && (loading || !resolvedAmount || !!amountError))) ? "not-allowed" : "pointer",
             }}
           >
-            {step === 1 && (canAdvanceStep1 ? `Lanjut · ${formatRp(resolvedAmount!)}` : "Pilih nominal dulu")}
-            {step === 2 && "Lanjut →"}
-            {step === 3 && (loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memproses…</> : `Bayar Sekarang · ${formatRp(resolvedAmount!)}`)}
+            {step === 1 && (canAdvanceStep1 ? `Lanjut - ${formatRp(resolvedAmount!)}` : "Pilih nominal dulu")}
+            {step === 2 && "Lanjut ->"}
+            {step === 3 && (loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memproses...</> : `Bayar Sekarang - ${formatRp(resolvedAmount!)}`)}
           </button>
 
           {step === 3 && (
@@ -795,12 +795,12 @@ function PaymentStatusBanner({ orderId, onDone }: { orderId: number; onDone: () 
         />
         <div>
           <p className="text-sm font-semibold" style={{ color: "rgb(249,115,22)" }}>
-            {timedOut ? "Pembayaran belum terkonfirmasi otomatis" : "Menunggu konfirmasi pembayaran…"}
+            {timedOut ? "Pembayaran belum terkonfirmasi otomatis" : "Menunggu konfirmasi pembayaran..."}
           </p>
           <p className="text-xs text-muted-foreground">
             {timedOut
               ? "Kalau sudah bayar, klik \"Cek Sekarang\" untuk memperbarui status secara manual."
-              : `Server sedang mengecek status ke Tripay${retries > 0 ? ` (cek ke-${retries})` : ""}…`}
+              : `Server sedang mengecek status ke Tripay${retries > 0 ? ` (cek ke-${retries})` : ""}...`}
           </p>
         </div>
       </div>
@@ -817,7 +817,7 @@ function PaymentStatusBanner({ orderId, onDone }: { orderId: number; onDone: () 
         }}
       >
         {syncing
-          ? <><Loader2 className="h-3 w-3 animate-spin" /> Mengecek…</>
+          ? <><Loader2 className="h-3 w-3 animate-spin" /> Mengecek...</>
           : <><RefreshCw className="h-3 w-3" /> Cek Sekarang</>}
       </button>
     </div>
@@ -832,7 +832,7 @@ export default function BillingPage() {
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [pollDone, setPollDone] = useState(false);
 
-  // Detect return from Tripay via ?orderId=xxx URL param
+  // Detect return from Tripay via xorderId=??x URL param
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get("orderId");
@@ -887,7 +887,7 @@ export default function BillingPage() {
         />
       )}
 
-      {/* ── Card Carousel (peek style) ── */}
+      {/* -- Card Carousel (peek style) -- */}
       <div className="flex flex-col items-center gap-3">
 
         {/* Peek track */}
@@ -930,12 +930,12 @@ export default function BillingPage() {
             })}
           </div>
 
-          {/* Edge fade — left */}
+          {/* Edge fade - left */}
           <div
             className="absolute inset-y-0 left-0 pointer-events-none"
             style={{ width: "11%", background: "linear-gradient(to right, hsl(var(--background)) 0%, transparent 100%)" }}
           />
-          {/* Edge fade — right */}
+          {/* Edge fade - right */}
           <div
             className="absolute inset-y-0 right-0 pointer-events-none"
             style={{ width: "11%", background: "linear-gradient(to left, hsl(var(--background)) 0%, transparent 100%)" }}
@@ -960,11 +960,11 @@ export default function BillingPage() {
 
         {/* Plan status label */}
         <p className="text-xs font-medium" style={{ color: isCurrentPlan ? currentCard.accent : isUnlocked ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.25)" }}>
-          {isCurrentPlan ? `Plan aktif kamu · ${currentCard.name}` : isUnlocked ? `${currentCard.name} · termasuk di plan kamu` : `${currentCard.name} — belum diaktifkan`}
+          {isCurrentPlan ? `Plan aktif kamu - ${currentCard.name}` : isUnlocked ? `${currentCard.name} - termasuk di plan kamu` : `${currentCard.name} - belum diaktifkan`}
         </p>
       </div>
 
-      {/* ── Plan benefits ── */}
+      {/* -- Plan benefits -- */}
       <div
         key={cardIndex}
         className="rounded-xl px-4 py-3.5"

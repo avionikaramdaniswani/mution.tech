@@ -209,7 +209,7 @@ export default function RiwayatDetailPage() {
         showToast("Pembayaran dikonfirmasi. Kredit sudah masuk!", true);
         load();
       } else if (data.cannotSync) {
-        showToast("Referensi TriPay tidak tersedia — tidak bisa cek otomatis.", false);
+        showToast("Referensi TriPay tidak tersedia - tidak bisa cek otomatis.", false);
       } else {
         showToast("Belum terbayar. Coba lagi setelah kamu selesai bayar.", false);
       }
@@ -244,7 +244,7 @@ export default function RiwayatDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <Loader2 className="h-5 w-5 animate-spin" style={{ color: "rgba(255,255,255,0.2)" }} />
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>Memuat detail…</p>
+        <p className="text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>Memuat detail...</p>
       </div>
     );
   }
@@ -333,7 +333,7 @@ export default function RiwayatDetailPage() {
         </div>
       )}
 
-      {/* Kode Pembayaran — hanya untuk pending yang punya pay_code */}
+      {/* Kode Pembayaran - hanya untuk pending yang punya pay_code */}
       {isPending && order.payCode && (
         <div
           className="rounded-xl px-4 py-4"
@@ -412,7 +412,7 @@ export default function RiwayatDetailPage() {
         </Section>
       )}
 
-      {/* Cara Pembayaran — hanya muncul kalau ada instructions dari TriPay */}
+      {/* Cara Pembayaran - hanya muncul kalau ada instructions dari TriPay */}
       {isPending && order.instructions.length > 0 && (
         <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
           {/* Header seksi */}
@@ -482,7 +482,7 @@ export default function RiwayatDetailPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-white truncate">{item.name}</p>
                 <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-                  {item.quantity}× {rp(item.price)}
+                  {item.quantity}x {rp(item.price)}
                 </p>
               </div>
               <p className="text-sm font-semibold text-white flex-shrink-0">{rp(item.subtotal)}</p>
@@ -534,7 +534,7 @@ export default function RiwayatDetailPage() {
               cursor: syncing ? "not-allowed" : "pointer",
             }}
           >
-            {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Mengecek Status…</> : <><RefreshCw className="h-4 w-4" /> Cek Status Pembayaran</>}
+            {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Mengecek Status...</> : <><RefreshCw className="h-4 w-4" /> Cek Status Pembayaran</>}
           </button>
           {!confirmCancel ? (
             <button
@@ -556,7 +556,7 @@ export default function RiwayatDetailPage() {
               style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}
             >
               <p className="text-sm text-center" style={{ color: "rgba(255,255,255,0.6)" }}>
-                Batalkan order ini? Tindakan ini tidak bisa diurungkan.
+                Batalkan order inix Tindakan ini tidak bisa diurungkan.
               </p>
               <div className="flex gap-2">
                 <button
@@ -577,7 +577,7 @@ export default function RiwayatDetailPage() {
                     cursor: cancelling ? "not-allowed" : "pointer",
                   }}
                 >
-                  {cancelling ? "Membatalkan…" : "Ya, Batalkan"}
+                  {cancelling ? "Membatalkan..." : "Ya, Batalkan"}
                 </button>
               </div>
             </div>

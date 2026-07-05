@@ -50,7 +50,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">4. Penyimpanan dan Keamanan Data</h2>
             <p>Data kamu disimpan di server yang berlokasi di Indonesia dan/atau wilayah Asia Tenggara. Kami menerapkan langkah-langkah keamanan teknis dan organisasional yang wajar, termasuk enkripsi data saat penyimpanan dan transmisi, akses terbatas berbasis peran, serta audit log keamanan rutin.</p>
-            <p className="mt-3">Environment variable proyek kamu disimpan dengan masking — nilai tidak pernah ditampilkan dalam bentuk teks biasa setelah disimpan.</p>
+            <p className="mt-3">Environment variable proyek kamu disimpan dengan masking - nilai tidak pernah ditampilkan dalam bentuk teks biasa setelah disimpan.</p>
           </section>
 
           <section>
@@ -95,7 +95,7 @@ export default function PrivacyPolicyPage() {
             <p>Jika kamu memiliki pertanyaan atau kekhawatiran tentang Kebijakan Privasi ini, silakan hubungi kami:</p>
             <div className="mt-3 p-4 rounded-xl space-y-1" style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
               <p><strong className="text-foreground">Email:</strong>{" "}<a href="mailto:supportmution@gmail.com" className="text-primary hover:underline">supportmution@gmail.com</a></p>
-              <p><strong className="text-foreground">Mution</strong> — Platform Infrastruktur Modern</p>
+              <p><strong className="text-foreground">Mution</strong> - Platform Infrastruktur Modern</p>
             </div>
           </section>
 

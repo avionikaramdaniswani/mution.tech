@@ -1,14 +1,49 @@
 import { Router } from "express";
-import { db, usersTable, projectsTable, deploymentsTable } from "@workspace/db";
-import { eq, desc, sql, count } from "drizzle-orm";
+import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable } from "@workspace/db";
+import { eq, desc, sql, count, and, gte } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { computePlan } from "../lib/plan";
+import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
 import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider } from "./v1-proxy";
 
 const router = Router();
 
 router.use(requireAdmin);
+
+// ─── Server-Sent Events stream untuk admin ────────────────────────────────────
+router.get("/admin/events", (req, res): void => {
+  const admin = (req as any).user;
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+
+  // Daftarkan sebagai koneksi admin (menerima event admin) sekaligus koneksi
+  // user (menerima perubahan saldo admin itu sendiri) lewat satu koneksi.
+  addAdminClient(res);
+  addUserClient(admin.id, res);
+
+  // Kirim heartbeat tiap 30 detik biar koneksi tetap hidup (beberapa proxy timeout kalau diam)
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(": heartbeat\n\n");
+    } catch {
+      clearInterval(heartbeat);
+      removeAdminClient(res);
+      removeUserClient(admin.id, res);
+    }
+  }, 30000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    removeAdminClient(res);
+    removeUserClient(admin.id, res);
+  });
+});
 
 function formatUser(u: {
   id: number;
@@ -196,8 +231,286 @@ router.get("/admin/stats", async (req, res): Promise<void> => {
   });
 });
 
-// ─── Provider management ──────────────────────────────────────────────────────
+// ─── User management: role & credits ──────────────────────────────────────────
 
+// Re-query a user together with its project count (UserWithStats shape).
+async function fetchUserWithStats(id: number) {
+  const [row] = await db
+    .select(userSelectFields)
+    .from(usersTable)
+    .leftJoin(projectsTable, eq(projectsTable.userId, usersTable.id))
+    .groupBy(usersTable.id)
+    .where(eq(usersTable.id, id));
+  if (!row) return null;
+  return formatUser({ ...row, projectCount: row.projectCount ?? 0 });
+}
+
+// Update a user's role and/or plan
+router.patch("/admin/users/:id/role", async (req, res): Promise<void> => {
+  const admin = (req as any).user;
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const { role, plan } = (req.body ?? {}) as { role?: string; plan?: string };
+  const updates: Partial<{ role: "user" | "admin"; plan: "hobby" | "pro" | "team" }> = {};
+
+  if (role !== undefined) {
+    if (role !== "user" && role !== "admin") { res.status(400).json({ error: "Role tidak valid" }); return; }
+    if (id === admin.id && role !== "admin") { res.status(400).json({ error: "Tidak bisa mencabut akses admin dari akun sendiri" }); return; }
+    updates.role = role;
+  }
+  if (plan !== undefined) {
+    if (plan !== "hobby" && plan !== "pro" && plan !== "team") { res.status(400).json({ error: "Plan tidak valid" }); return; }
+    updates.plan = plan;
+  }
+  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Tidak ada perubahan" }); return; }
+
+  const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
+  if (!updated) { res.status(404).json({ error: "User not found" }); return; }
+
+  await logActivity(admin.id, "admin.user.updated", undefined, { targetEmail: updated.email, ...updates });
+
+  const result = await fetchUserWithStats(id);
+  broadcastAdmin({ type: "user.updated", userId: id });
+  broadcastToUser(id, { type: "profile.updated" });
+  res.json(result);
+});
+
+// Manually adjust a user's credit balance (positive = tambah, negative = kurang)
+router.post("/admin/users/:id/credits", async (req, res): Promise<void> => {
+  const admin = (req as any).user;
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const { amount, note } = (req.body ?? {}) as { amount?: unknown; note?: unknown };
+  if (typeof amount !== "number" || !Number.isInteger(amount) || amount === 0) {
+    res.status(400).json({ error: "Nominal penyesuaian harus bilangan bulat selain nol" });
+    return;
+  }
+
+  const [target] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!target) { res.status(404).json({ error: "User not found" }); return; }
+
+  const newCredits = target.credits + amount;
+  if (newCredits < 0) {
+    res.status(400).json({ error: "Saldo hasil penyesuaian tidak boleh negatif" });
+    return;
+  }
+  const newPlan = computePlan(newCredits);
+  const cleanNote = typeof note === "string" && note.trim().length > 0
+    ? note.trim()
+    : `Penyesuaian admin ${amount > 0 ? "+" : ""}${amount.toLocaleString("id-ID")}`;
+
+  await db.transaction(async (tx) => {
+    await tx.update(usersTable).set({ credits: newCredits, plan: newPlan }).where(eq(usersTable.id, id));
+    await tx.insert(creditTransactionsTable).values({
+      userId: id,
+      type: "plan_credit",
+      amount,
+      note: cleanNote,
+    });
+  });
+
+  await logActivity(admin.id, "admin.user.credits_adjusted", undefined, { targetEmail: target.email, amount });
+
+  const result = await fetchUserWithStats(id);
+  broadcastAdmin({ type: "user.credits_adjusted", userId: id, amount });
+  broadcastToUser(id, { type: "credits.changed", amount });
+  res.json(result);
+});
+
+// ─── Payments / revenue ───────────────────────────────────────────────────────
+
+// List all payment orders across users
+router.get("/admin/orders", async (_req, res): Promise<void> => {
+  const orders = await db
+    .select({
+      id: paymentOrdersTable.id,
+      userId: paymentOrdersTable.userId,
+      invoiceNumber: paymentOrdersTable.invoiceNumber,
+      amount: paymentOrdersTable.amount,
+      creditsAmount: paymentOrdersTable.creditsAmount,
+      provider: paymentOrdersTable.provider,
+      status: paymentOrdersTable.status,
+      createdAt: paymentOrdersTable.createdAt,
+      paidAt: paymentOrdersTable.paidAt,
+      ownerEmail: usersTable.email,
+      ownerName: usersTable.name,
+    })
+    .from(paymentOrdersTable)
+    .innerJoin(usersTable, eq(paymentOrdersTable.userId, usersTable.id))
+    .orderBy(desc(paymentOrdersTable.createdAt))
+    .limit(200);
+
+  res.json(
+    orders.map((o) => ({
+      id: o.id,
+      userId: o.userId,
+      invoiceNumber: o.invoiceNumber,
+      amount: o.amount,
+      creditsAmount: o.creditsAmount,
+      provider: o.provider,
+      status: o.status,
+      createdAt: o.createdAt.toISOString(),
+      paidAt: o.paidAt?.toISOString() ?? null,
+      ownerEmail: o.ownerEmail,
+      ownerName: o.ownerName,
+    }))
+  );
+});
+
+// Revenue summary
+router.get("/admin/revenue", async (_req, res): Promise<void> => {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const sumAmount = sql<number>`coalesce(sum(${paymentOrdersTable.amount}), 0)::int`;
+
+  const [total] = await db
+    .select({ total: sumAmount })
+    .from(paymentOrdersTable)
+    .where(eq(paymentOrdersTable.status, "paid"));
+
+  const [today] = await db
+    .select({ total: sumAmount })
+    .from(paymentOrdersTable)
+    .where(and(eq(paymentOrdersTable.status, "paid"), gte(paymentOrdersTable.paidAt, startOfDay)));
+
+  const [month] = await db
+    .select({ total: sumAmount })
+    .from(paymentOrdersTable)
+    .where(and(eq(paymentOrdersTable.status, "paid"), gte(paymentOrdersTable.paidAt, startOfMonth)));
+
+  const statusRows = await db
+    .select({ status: paymentOrdersTable.status, c: sql<number>`count(*)::int` })
+    .from(paymentOrdersTable)
+    .groupBy(paymentOrdersTable.status);
+
+  let paidCount = 0, pendingCount = 0, failedCount = 0;
+  for (const row of statusRows) {
+    if (row.status === "paid") paidCount += row.c;
+    else if (row.status === "pending") pendingCount += row.c;
+    else failedCount += row.c; // failed | expired | cancelled
+  }
+
+  res.json({
+    totalRevenue: total?.total ?? 0,
+    todayRevenue: today?.total ?? 0,
+    monthRevenue: month?.total ?? 0,
+    paidCount,
+    pendingCount,
+    failedCount,
+  });
+});
+
+// ─── AI usage analytics ───────────────────────────────────────────────────────
+
+// Ringkasan pemakaian AI-proxy: total, breakdown per model, top user, tren harian.
+// Query param `days` (1–365, default 30) membatasi rentang waktu.
+router.get("/admin/usage", async (req, res): Promise<void> => {
+  const daysRaw = parseInt(String(req.query.days ?? "30"), 10);
+  const days = Number.isFinite(daysRaw) ? Math.min(365, Math.max(1, daysRaw)) : 30;
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const totalTokens = sql<number>`coalesce(sum(${apiUsageTable.totalTokens}), 0)::bigint`;
+  const promptTokens = sql<number>`coalesce(sum(${apiUsageTable.promptTokens}), 0)::bigint`;
+  const completionTokens = sql<number>`coalesce(sum(${apiUsageTable.completionTokens}), 0)::bigint`;
+  const totalCredits = sql<number>`coalesce(sum(${apiUsageTable.credits}), 0)::bigint`;
+  const requestCount = sql<number>`count(*)::int`;
+
+  const inRange = gte(apiUsageTable.createdAt, since);
+
+  // Total keseluruhan dalam rentang.
+  const [totals] = await db
+    .select({
+      requests: requestCount,
+      totalTokens,
+      promptTokens,
+      completionTokens,
+      credits: totalCredits,
+    })
+    .from(apiUsageTable)
+    .where(inRange);
+
+  // Breakdown per model.
+  const byModel = await db
+    .select({
+      model: apiUsageTable.model,
+      requests: requestCount,
+      totalTokens,
+      credits: totalCredits,
+    })
+    .from(apiUsageTable)
+    .where(inRange)
+    .groupBy(apiUsageTable.model)
+    .orderBy(desc(totalTokens));
+
+  // Top user berdasarkan token.
+  const byUser = await db
+    .select({
+      userId: apiUsageTable.userId,
+      email: usersTable.email,
+      name: usersTable.name,
+      requests: requestCount,
+      totalTokens,
+      credits: totalCredits,
+    })
+    .from(apiUsageTable)
+    .innerJoin(usersTable, eq(apiUsageTable.userId, usersTable.id))
+    .where(inRange)
+    .groupBy(apiUsageTable.userId, usersTable.email, usersTable.name)
+    .orderBy(desc(totalTokens))
+    .limit(20);
+
+  // Tren harian.
+  const dayCol = sql<string>`to_char(date_trunc('day', ${apiUsageTable.createdAt}), 'YYYY-MM-DD')`;
+  const daily = await db
+    .select({
+      day: dayCol,
+      requests: requestCount,
+      totalTokens,
+      credits: totalCredits,
+    })
+    .from(apiUsageTable)
+    .where(inRange)
+    .groupBy(dayCol)
+    .orderBy(dayCol);
+
+  res.json({
+    rangeDays: days,
+    since: since.toISOString(),
+    totals: {
+      requests: Number(totals?.requests ?? 0),
+      totalTokens: Number(totals?.totalTokens ?? 0),
+      promptTokens: Number(totals?.promptTokens ?? 0),
+      completionTokens: Number(totals?.completionTokens ?? 0),
+      credits: Number(totals?.credits ?? 0),
+    },
+    byModel: byModel.map((m) => ({
+      model: m.model,
+      requests: Number(m.requests),
+      totalTokens: Number(m.totalTokens),
+      credits: Number(m.credits),
+    })),
+    topUsers: byUser.map((u) => ({
+      userId: u.userId,
+      email: u.email,
+      name: u.name,
+      requests: Number(u.requests),
+      totalTokens: Number(u.totalTokens),
+      credits: Number(u.credits),
+    })),
+    daily: daily.map((d) => ({
+      day: d.day,
+      requests: Number(d.requests),
+      totalTokens: Number(d.totalTokens),
+      credits: Number(d.credits),
+    })),
+  });
+});
+
+// ─── Provider management ──────────────────────────────────────────────────────
 router.get("/admin/providers", (_req, res) => {
   res.json(adminGetProviderStatuses());
 });

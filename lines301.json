@@ -1,0 +1,96 @@
+Created At: 2026-07-02T06:32:25Z
+Completed At: 2026-07-02T06:32:26Z
+File Path: `file:///c:/Users/afio1/Documents/mution.tech-main/artifacts/paas-dashboard/src/pages/harga/index.tsx`
+Total Lines: 468
+Total Bytes: 18160
+Showing lines 301 to 468
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+301:                             }
+302:                       }
+303:                     >
+304:                       {plan.cta}
+305:                     </button>
+306:                   </Link>
+307:                 </div>
+308:               ))}
+309:             </div>
+310:           </div>
+311: 
+312:           {/* ── RAM pricing card ── */}
+313:           <div
+314:             className="relative rounded-2xl overflow-hidden"
+315:             style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+316:           >
+317:             <div
+318:               className="absolute inset-0 pointer-events-none"
+319:               style={{ background: "radial-gradient(ellipse at 30% 0%, rgba(249,115,22,0.05) 0%, transparent 55%)" }}
+320:             />
+321: 
+322:             {/* Column headers */}
+323:             <div
+324:               className="relative z-10 grid"
+325:               style={{
+326:                 gridTemplateColumns: "1fr 1fr 1fr",
+327:                 borderBottom: "1px solid rgba(255,255,255,0.06)",
+328:                 background: "rgba(255,255,255,0.015)",
+329:               }}
+330:             >
+331:               {[
+332:                 { label: "RAM", align: "left" },
+333:                 { label: "Per Menit", align: "center" },
+334:                 { label: "Est. 30 Hari", align: "right" },
+335:               ].map((col, i) => (
+336:                 <div
+337:                   key={col.label}
+338:                   className="px-8 sm:px-12 py-3.5"
+339:                   style={{
+340:                     borderRig
+<truncated 4299 bytes>
+background: "rgba(255,255,255,0.015)" }}
+423:             >
+424:               <p
+425:                 className="text-[10px] font-semibold uppercase tracking-widest"
+426:                 style={{ color: "rgba(255,255,255,0.22)", letterSpacing: "0.12em" }}
+427:               >
+428:                 Pertanyaan umum
+429:               </p>
+430:             </div>
+431:             <div className="grid sm:grid-cols-2">
+432:               {faqs.map((faq, i) => (
+433:                 <div
+434:                   key={i}
+435:                   className="px-8 sm:px-12 py-6"
+436:                   style={{
+437:                     borderRight: i % 2 === 0 ? "1px solid rgba(255,255,255,0.05)" : "none",
+438:                     borderBottom: i < faqs.length - 2 ? "1px solid rgba(255,255,255,0.05)" : "none",
+439:                   }}
+440:                 >
+441:                   <p className="text-sm font-semibold mb-2" style={{ color: "rgba(255,255,255,0.75)" }}>
+442:                     {faq.q}
+443:                   </p>
+444:                   <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.38)" }}>
+445:                     {faq.a}
+446:                   </p>
+447:                 </div>
+448:               ))}
+449:             </div>
+450:           </div>
+451: 
+452:           <p className="mt-2 text-center text-xs" style={{ color: "rgba(255,255,255,0.18)" }}>
+453:             Ada pertanyaan? Hubungi kami di{" "}
+454:             <a
+455:               href="mailto:supportmution@gmail.com"
+456:               className="underline underline-offset-2"
+457:               style={{ color: "rgba(255,255,255,0.3)" }}
+458:             >
+459:               supportmution@gmail.com
+460:             </a>
+461:           </p>
+462:         </div>
+463:       </section>
+464:       <PageFooter />
+465:     </div>
+466:   );
+467: }
+468: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

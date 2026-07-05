@@ -170,7 +170,7 @@ export default function Projects() {
                   </DropdownMenu>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Yakin ingin menghapus?</AlertDialogTitle>
+                      <AlertDialogTitle>Yakin ingin menghapusx</AlertDialogTitle>
                       <AlertDialogDescription>
                         Proyek <span className="font-semibold text-foreground">{project.name}</span> beserta semua resource, database, dan deployment-nya akan dihapus permanen.
                       </AlertDialogDescription>

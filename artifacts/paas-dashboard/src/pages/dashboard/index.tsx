@@ -128,7 +128,7 @@ function ProjectCard({ project }: { project: Project }) {
               variant="outline"
               className="h-7 text-xs gap-1.5 flex-1"
               disabled={isBusy}
-              onClick={() => stop.mutate({ projectId: project.id }, { onSuccess: invalidate })}
+              onClick={() => stop.mutate({ id: project.id }, { onSuccess: invalidate })}
             >
               <Square className="h-3 w-3" />
               Stop
@@ -139,7 +139,7 @@ function ProjectCard({ project }: { project: Project }) {
               variant="outline"
               className="h-7 text-xs gap-1.5 flex-1"
               disabled={isBusy}
-              onClick={() => restart.mutate({ projectId: project.id }, { onSuccess: invalidate })}
+              onClick={() => restart.mutate({ id: project.id }, { onSuccess: invalidate })}
             >
               <RefreshCw className="h-3 w-3" />
               Start
@@ -180,7 +180,7 @@ export default function Dashboard() {
         ].map(({ label, value, icon }) => (
           <div key={label} className="flex items-center gap-2 rounded-full border border-border/60 bg-card px-4 py-1.5">
             {icon}
-            <span className="text-sm font-semibold">{value ?? "—"}</span>
+            <span className="text-sm font-semibold">{value ?? "-"}</span>
             <span className="text-sm text-muted-foreground">{label}</span>
           </div>
         ))}

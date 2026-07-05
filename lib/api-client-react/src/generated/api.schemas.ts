@@ -350,3 +350,118 @@ export interface UserWithStats {
   lastLoginAt?: string | null;
 }
 
+export type AdminUpdateUserInputRole = typeof AdminUpdateUserInputRole[keyof typeof AdminUpdateUserInputRole];
+
+
+export const AdminUpdateUserInputRole = {
+  user: 'user',
+  admin: 'admin',
+} as const;
+
+export type AdminUpdateUserInputPlan = typeof AdminUpdateUserInputPlan[keyof typeof AdminUpdateUserInputPlan];
+
+
+export const AdminUpdateUserInputPlan = {
+  hobby: 'hobby',
+  pro: 'pro',
+  team: 'team',
+} as const;
+
+export interface AdminUpdateUserInput {
+  role?: AdminUpdateUserInputRole;
+  plan?: AdminUpdateUserInputPlan;
+}
+
+export interface AdjustCreditsInput {
+  /** Jumlah kredit yang ditambah (positif) atau dikurangi (negatif). */
+  amount: number;
+  /** Catatan alasan penyesuaian. */
+  note?: string;
+}
+
+export type PaymentOrderWithUserStatus = typeof PaymentOrderWithUserStatus[keyof typeof PaymentOrderWithUserStatus];
+
+
+export const PaymentOrderWithUserStatus = {
+  pending: 'pending',
+  paid: 'paid',
+  expired: 'expired',
+  failed: 'failed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface PaymentOrderWithUser {
+  id: number;
+  userId: number;
+  invoiceNumber: string;
+  amount: number;
+  creditsAmount: number;
+  provider: string;
+  status: PaymentOrderWithUserStatus;
+  createdAt: string;
+  /** @nullable */
+  paidAt?: string | null;
+  ownerEmail: string;
+  ownerName: string;
+}
+
+export interface AdminRevenue {
+  /** Total nominal dari order berstatus paid (sepanjang waktu). */
+  totalRevenue: number;
+  todayRevenue: number;
+  monthRevenue: number;
+  paidCount: number;
+  pendingCount: number;
+  failedCount: number;
+}
+
+export interface AdminUsageTotals {
+  requests: number;
+  totalTokens: number;
+  promptTokens: number;
+  completionTokens: number;
+  credits: number;
+}
+
+export interface AdminUsageByModel {
+  model: string;
+  requests: number;
+  totalTokens: number;
+  credits: number;
+}
+
+export interface AdminUsageByUser {
+  userId: number;
+  email: string;
+  name: string;
+  requests: number;
+  totalTokens: number;
+  credits: number;
+}
+
+export interface AdminUsageDaily {
+  /** Tanggal dalam format YYYY-MM-DD. */
+  day: string;
+  requests: number;
+  totalTokens: number;
+  credits: number;
+}
+
+export interface AdminUsage {
+  rangeDays: number;
+  since: string;
+  totals: AdminUsageTotals;
+  byModel: AdminUsageByModel[];
+  topUsers: AdminUsageByUser[];
+  daily: AdminUsageDaily[];
+}
+
+export type AdminGetUsageParams = {
+/**
+ * Rentang waktu ke belakang dalam hari (1–365). Default 30.
+ * @minimum 1
+ * @maximum 365
+ */
+days?: number;
+};
+

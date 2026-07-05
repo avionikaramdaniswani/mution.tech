@@ -74,7 +74,7 @@ export default function AdminProviders() {
           AI Providers
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Kelola provider AI yang aktif. Toggle langsung berlaku — round-robin otomatis ke provider yang aktif.
+          Kelola provider AI yang aktif. Toggle langsung berlaku - round-robin otomatis ke provider yang aktif.
         </p>
       </div>
 
@@ -139,7 +139,7 @@ export default function AdminProviders() {
         className="rounded-xl px-4 py-3 text-xs text-muted-foreground"
         style={{ border: "1px solid rgba(234,179,8,0.15)", background: "rgba(234,179,8,0.04)" }}
       >
-        <span className="text-amber-400 font-medium">Catatan:</span> Toggle bersifat in-memory — reset ke semua aktif saat server restart.
+        <span className="text-amber-400 font-medium">Catatan:</span> Toggle bersifat in-memory - reset ke semua aktif saat server restart.
         Untuk menonaktifkan permanen, hapus secret <code className="bg-muted px-1 rounded">PREFIX_API_KEY</code>-nya.
       </div>
     </div>

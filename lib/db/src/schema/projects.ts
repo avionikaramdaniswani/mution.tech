@@ -1,6 +1,6 @@
 import { pgTable, text, serial, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { usersTable } from "./users";
 
 export const runtimeEnum = pgEnum("runtime", ["nodejs", "python", "php", "static"]);

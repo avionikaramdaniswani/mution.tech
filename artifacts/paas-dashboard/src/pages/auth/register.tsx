@@ -117,7 +117,7 @@ export default function Register() {
                     <FormItem>
                       <FormLabel className="text-white/70">Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" autoComplete="new-password" {...field} />
+                        <Input type="password" placeholder="********" autoComplete="new-password" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -137,7 +137,7 @@ export default function Register() {
           </CardContent>
           <CardFooter className="flex justify-center border-t pt-6" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
             <div className="text-sm text-white/40">
-              Sudah punya akun?{" "}
+              Sudah punya akunx{" "}
               <Link href="/login" className="text-primary hover:underline font-medium">
                 Masuk
               </Link>

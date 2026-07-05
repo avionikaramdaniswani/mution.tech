@@ -7,7 +7,7 @@ import { ArrowRight, Zap, Shield, Globe, HeartHandshake } from "lucide-react";
 const values = [
   { icon: Zap, title: "Kecepatan", desc: "Deploy dalam hitungan detik, bukan jam. Kami percaya waktu developer adalah aset paling berharga." },
   { icon: Shield, title: "Keandalan", desc: "Infrastruktur yang stabil dan aman. SLA 99.9% uptime untuk bisnis yang tidak boleh berhenti." },
-  { icon: Globe, title: "Terbuka", desc: "Tidak ada vendor lock-in. Standar terbuka, teknologi yang kamu sudah kenal — Docker, Git, PostgreSQL." },
+  { icon: Globe, title: "Terbuka", desc: "Tidak ada vendor lock-in. Standar terbuka, teknologi yang kamu sudah kenal - Docker, Git, PostgreSQL." },
   { icon: HeartHandshake, title: "Pengguna Pertama", desc: "Setiap keputusan produk kami didorong oleh kebutuhan nyata developer, bukan metrik vanity." },
 ];
 
@@ -17,9 +17,9 @@ const team = [
 ];
 
 const timeline = [
-  { year: "2024", event: "Mution mulai dikembangkan — mimpi platform PaaS lokal terbaik Indonesia" },
+  { year: "2024", event: "Mution mulai dikembangkan - mimpi platform PaaS lokal terbaik Indonesia" },
   { year: "2025", event: "Versi Beta diluncurkan, onboarding pengguna awal dan proyek-proyek pertama" },
-  { year: "2026", event: "Rilis publik — multi-runtime, managed database, billing kredit, dan terus berkembang" },
+  { year: "2026", event: "Rilis publik - multi-runtime, managed database, billing kredit, dan terus berkembang" },
 ];
 
 const cardStyle = { border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" };
@@ -32,7 +32,7 @@ export default function TentangKamiPage() {
       <PageHero
         eyebrow="Tentang Mution"
         title={<>Infrastruktur yang dibangun <br /><span className="text-primary">untuk developer Indonesia.</span></>}
-        subtitle="Mution lahir dari frustrasi yang sama yang dirasakan ribuan developer — deploy seharusnya mudah, bukan pekerjaan sampingan yang menyita waktu."
+        subtitle="Mution lahir dari frustrasi yang sama yang dirasakan ribuan developer - deploy seharusnya mudah, bukan pekerjaan sampingan yang menyita waktu."
       />
 
       {/* Story */}
@@ -44,7 +44,7 @@ export default function TentangKamiPage() {
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-5">Dari frustrasi jadi solusi</h2>
               <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
                 <p>Mution dimulai pada 2024 ketika kami, sebagai developer, lelah dengan kompleksitas setup server, konfigurasi nginx, SSL manual, dan semua kerumitan yang seharusnya tidak perlu ada.</p>
-                <p>Platform seperti Railway dan Render luar biasa, tapi harga dan latensi ke server luar negeri menjadi hambatan bagi tim dan startup Indonesia. Kami ingin solusi yang sama hebatnya, tapi lebih dekat — secara infrastruktur maupun pemahaman konteks lokal.</p>
+                <p>Platform seperti Railway dan Render luar biasa, tapi harga dan latensi ke server luar negeri menjadi hambatan bagi tim dan startup Indonesia. Kami ingin solusi yang sama hebatnya, tapi lebih dekat - secara infrastruktur maupun pemahaman konteks lokal.</p>
                 <p>Mution hadir sebagai jawaban: PaaS modern yang dibangun di atas VM sendiri, dengan harga transparan dalam Rupiah, dan dukungan teknis yang benar-benar paham kebutuhanmu.</p>
               </div>
             </div>
@@ -115,7 +115,7 @@ export default function TentangKamiPage() {
           <div className="rounded-2xl p-12 text-center" style={{ border: "1px solid rgba(255,255,255,0.08)", background: "radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.08) 0%, transparent 60%)" }}>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4 text-white">Bergabung bersama kami</h2>
             <p className="text-sm mb-8" style={{ color: "rgba(255,255,255,0.5)" }}>
-              Mulai gratis hari ini — tanpa kartu kredit, tanpa konfigurasi rumit.
+              Mulai gratis hari ini - tanpa kartu kredit, tanpa konfigurasi rumit.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link href="/register">

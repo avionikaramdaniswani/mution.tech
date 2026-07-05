@@ -40,41 +40,41 @@ const runtimes = [
 const terminalLines = [
   { delay: 0,    text: "$ git push origin main",                  color: "rgba(255,255,255,0.85)" },
   { delay: 700,  text: "Counting objects: 12, done.",              color: "rgba(255,255,255,0.35)" },
-  { delay: 1100, text: "Writing objects: 100% (12/12) · 4.2 KiB", color: "rgba(255,255,255,0.35)" },
-  { delay: 1700, text: "remote: Mution — deploy triggered ⚡",    color: "rgba(249,115,22,0.9)"  },
+  { delay: 1100, text: "Writing objects: 100% (12/12) - 4.2 KiB", color: "rgba(255,255,255,0.35)" },
+  { delay: 1700, text: "remote: Mution - deploy triggered ",    color: "rgba(249,115,22,0.9)"  },
   { delay: 2300, text: "remote: Detecting runtime... Node.js 20", color: "rgba(255,255,255,0.45)" },
   { delay: 2900, text: "remote: Installing dependencies...",       color: "rgba(255,255,255,0.45)" },
-  { delay: 3600, text: "remote: npm install · 47 packages · 8s",  color: "rgba(255,255,255,0.35)" },
+  { delay: 3600, text: "remote: npm install - 47 packages - 8s",  color: "rgba(255,255,255,0.35)" },
   { delay: 4300, text: "remote: Building... npm run build",        color: "rgba(255,255,255,0.45)" },
-  { delay: 5100, text: "remote: Build succeeded in 11.4s ✓",      color: "rgba(249,115,22,0.8)"  },
+  { delay: 5100, text: "remote: Build succeeded in 11.4s OK",      color: "rgba(249,115,22,0.8)"  },
   { delay: 5800, text: "remote: Deploying container...",           color: "rgba(255,255,255,0.45)" },
-  { delay: 6600, text: "remote: SSL certificate provisioned ✓",   color: "rgba(255,255,255,0.35)" },
-  { delay: 7200, text: "remote: ● Live → my-api.mution.app",      color: "#4ade80"               },
+  { delay: 6600, text: "remote: SSL certificate provisioned OK",   color: "rgba(255,255,255,0.35)" },
+  { delay: 7200, text: "remote: * Live -> my-api.mution.app",      color: "#4ade80"               },
 ];
 
 const faqs = [
   {
-    q: "Apakah ada biaya tersembunyi?",
+    q: "Apakah ada biaya tersembunyix",
     a: "Tidak. Kamu hanya membayar sesuai resource yang dipakai. Tidak ada biaya setup, tidak ada biaya egress tersembunyi.",
   },
   {
-    q: "Berapa lama waktu deploy rata-rata?",
-    a: "Rata-rata 15–30 detik dari git push sampai aplikasi live. Build yang lebih besar dengan banyak dependencies bisa 60–90 detik.",
+    q: "Berapa lama waktu deploy rata-ratax",
+    a: "Rata-rata 15-30 detik dari git push sampai aplikasi live. Build yang lebih besar dengan banyak dependencies bisa 60-90 detik.",
   },
   {
-    q: "Apakah saya bisa pakai domain sendiri?",
+    q: "Apakah saya bisa pakai domain sendirix",
     a: "Ya. Kamu bisa menghubungkan domain custom di plan Pro ke atas. SSL/HTTPS diaktifkan otomatis tanpa konfigurasi manual.",
   },
   {
-    q: "Database apa yang didukung?",
+    q: "Database apa yang didukungx",
     a: "Mution mendukung managed PostgreSQL per proyek. Provisioning cukup satu klik, backup otomatis setiap hari.",
   },
   {
-    q: "Bagaimana cara kerja billing pay-as-you-go?",
+    q: "Bagaimana cara kerja billing pay-as-you-gox",
     a: "Kamu ditagih berdasarkan CPU dan RAM aktual yang dipakai per menit. Jika aplikasi tidak berjalan, tidak ada tagihan.",
   },
   {
-    q: "Apakah ada jaminan uptime?",
+    q: "Apakah ada jaminan uptimex",
     a: "Plan Pro dan Enterprise mendapatkan SLA 99.9% uptime. Kamu bisa memantau status platform real-time di status.mution.tech.",
   },
 ];
@@ -136,7 +136,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background text-foreground dark">
 
-      {/* ── Fixed scroll track: line + comet ── */}
+      {/* -- Fixed scroll track: line + comet -- */}
       <div
         className="fixed hidden lg:block pointer-events-none z-30"
         style={{ left: "28px", top: "64px", bottom: 0, width: "1px", background: "rgba(255,255,255,0.05)" }}
@@ -150,7 +150,7 @@ export default function Landing() {
           }}
         />
 
-        {/* Comet — tail fades up, bright head at bottom */}
+        {/* Comet - tail fades up, bright head at bottom */}
         <div
           style={{
             position: "absolute",
@@ -181,7 +181,7 @@ export default function Landing() {
 
       <PublicNavbar />
 
-      {/* ── Hero Card ── */}
+      {/* -- Hero Card -- */}
       <section className="px-3 sm:px-6 lg:px-8 pt-6 pb-0">
         <div className="mx-auto max-w-6xl">
           <div
@@ -210,7 +210,7 @@ export default function Landing() {
                 <span className="text-primary">batas kompleksitas.</span>
               </h1>
               <p className="mt-6 text-base sm:text-lg max-w-xl mx-auto leading-relaxed" style={{ color:"rgba(255,255,255,0.5)" }}>
-                Platform infrastruktur modern — deploy, scale, dan pantau aplikasi kamu tanpa perlu mengurus server atau konfigurasi rumit.
+                Platform infrastruktur modern - deploy, scale, dan pantau aplikasi kamu tanpa perlu mengurus server atau konfigurasi rumit.
               </p>
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link href="/login">
@@ -230,7 +230,7 @@ export default function Landing() {
                   </button>
                 </Link>
               </div>
-              <p className="mt-5 text-xs" style={{ color:"rgba(255,255,255,0.22)" }}>Tidak perlu kartu kredit · Tier gratis tersedia</p>
+              <p className="mt-5 text-xs" style={{ color:"rgba(255,255,255,0.22)" }}>Tidak perlu kartu kredit - Tier gratis tersedia</p>
             </div>
 
             {/* Dashboard preview peek */}
@@ -245,7 +245,7 @@ export default function Landing() {
                 </div>
                 {/* Fake dashboard rows */}
                 <div className="p-4 space-y-2">
-                  {["my-api · Node.js · ● Running", "frontend · Static · ● Running", "auth-service · Python · ⟳ Building"].map((row, i) => (
+                  {["my-api - Node.js - * Running", "frontend - Static - * Running", "auth-service - Python - restarting Building"].map((row, i) => (
                     <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.05)" }}>
                       <div className="w-6 h-6 rounded" style={{ background:"rgba(249,115,22,0.15)", border:"1px solid rgba(249,115,22,0.25)" }} />
                       <span className="text-xs font-mono" style={{ color:"rgba(255,255,255,0.4)" }}>{row}</span>
@@ -256,7 +256,7 @@ export default function Landing() {
               </div>
             </div>
 
-            {/* Trusted By — inside the same card */}
+            {/* Trusted By - inside the same card */}
             <div className="relative z-10 mt-0" style={{ borderTop:"1px solid rgba(255,255,255,0.06)" }}>
               <div className="px-6 py-4 border-b" style={{ borderColor:"rgba(255,255,255,0.05)" }}>
                 <p className="text-center text-xs font-medium" style={{ color:"rgba(255,255,255,0.25)", letterSpacing:"0.12em", textTransform:"uppercase" }}>Dipercaya oleh tim dari berbagai industri</p>
@@ -280,7 +280,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Runtimes — infinite marquee */}
+      {/* Runtimes - infinite marquee */}
       <section id="runtime" className="border-y border-border/50 bg-card/20 py-10 overflow-hidden">
         <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-7">Runtime yang Didukung</p>
 
@@ -326,7 +326,7 @@ export default function Landing() {
                 <span className="text-primary">Sisanya urusan kami.</span>
               </h2>
               <p className="mt-5 text-muted-foreground leading-relaxed">
-                Cukup <code className="text-xs bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono">git push</code> — Mution otomatis mendeteksi runtime, install dependencies, build, dan deploy. SSL aktif, domain siap, tanpa konfigurasi manual.
+                Cukup <code className="text-xs bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono">git push</code> - Mution otomatis mendeteksi runtime, install dependencies, build, dan deploy. SSL aktif, domain siap, tanpa konfigurasi manual.
               </p>
               <div className="mt-8 flex flex-col gap-3">
                 {[
@@ -353,7 +353,7 @@ export default function Landing() {
                 <div className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(255,80,80,0.5)" }} />
                 <div className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(255,190,0,0.4)" }} />
                 <div className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(0,200,80,0.4)" }} />
-                <span className="ml-3 text-[11px] font-mono" style={{ color: "rgba(255,255,255,0.2)" }}>bash — 80×24</span>
+                <span className="ml-3 text-[11px] font-mono" style={{ color: "rgba(255,255,255,0.2)" }}>bash - 80x24</span>
               </div>
               {/* Lines */}
               <div className="p-5 font-mono text-[13px] leading-relaxed min-h-[320px]" style={{ color: "rgba(255,255,255,0.35)" }}>
@@ -422,7 +422,7 @@ export default function Landing() {
                 <span style={{ fontFamily:"'Space Grotesk', sans-serif" }} className="text-sm font-extrabold text-primary">Mution</span>
               </div>
               <p className="text-xs" style={{ color:"rgba(255,255,255,0.3)" }}>
-                Pioo (Co-founder & CEO) · Tiara (Co-founder)
+                Pioo (Co-founder & CEO) - Tiara (Co-founder)
               </p>
             </div>
 
@@ -440,7 +440,7 @@ export default function Landing() {
             {/* Copyright + links */}
             <div className="flex flex-col items-center sm:items-end gap-1.5">
               <p className="text-xs" style={{ color:"rgba(255,255,255,0.2)" }}>
-                © {new Date().getFullYear()} Mution. Dibuat di Indonesia.
+                (c) {new Date().getFullYear()} Mution. Dibuat di Indonesia.
               </p>
               <div className="flex flex-wrap justify-center sm:justify-end gap-4 text-xs" style={{ color:"rgba(255,255,255,0.25)" }}>
                 {[

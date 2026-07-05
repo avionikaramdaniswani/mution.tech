@@ -10,7 +10,7 @@ const contacts = [
     icon: Mail,
     label: "Email",
     value: "supportmution@gmail.com",
-    note: "Respons dalam 1–2 hari kerja",
+    note: "Respons dalam 1-2 hari kerja",
   },
   {
     href: "https://wa.me/6285709557572",
@@ -25,7 +25,7 @@ const contacts = [
     icon: Phone,
     label: "Telepon",
     value: "+62 857-0955-7572",
-    note: "Senin–Jumat, 09.00–17.00 WIB",
+    note: "Senin-Jumat, 09.00-17.00 WIB",
   },
 ];
 
@@ -38,7 +38,7 @@ export default function KontakPage() {
 
       <PageHero
         eyebrow="Kontak"
-        title={<>Ada pertanyaan? <span className="text-primary">Kami siap membantu.</span></>}
+        title={<>Ada pertanyaanx <span className="text-primary">Kami siap membantu.</span></>}
         subtitle="Tim Mution siap merespons pertanyaan, laporan masalah, atau permintaan kerjasama kamu."
       />
 
