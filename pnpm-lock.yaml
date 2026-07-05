@@ -172,6 +172,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/model-catalog':
+        specifier: workspace:*
+        version: link:../../lib/model-catalog
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -344,6 +347,9 @@ importers:
       '@workspace/api-client-react':
         specifier: workspace:*
         version: link:../../lib/api-client-react
+      '@workspace/model-catalog':
+        specifier: workspace:*
+        version: link:../../lib/model-catalog
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -459,6 +465,8 @@ importers:
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+
+  lib/model-catalog: {}
 
   scripts:
     devDependencies:

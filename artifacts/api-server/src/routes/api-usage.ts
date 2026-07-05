@@ -1,82 +1,221 @@
 import { Router } from "express";
 import { db, apiUsageTable, apiKeysTable } from "@workspace/db";
-import { eq, desc, sum, count, and, gte, lte } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, lte, sum, sql, type SQL } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 
 const router = Router();
 
-// Get API Usage List with Pagination and Summary
-router.get("/api-usage", requireAuth, async (req, res) => {
+function startOfCurrentMonth(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+function endOfToday(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+}
+
+function parseDateParam(value: unknown, fallback: Date, endOfDay = false): Date {
+  if (typeof value !== "string" || !value.trim()) return fallback;
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return fallback;
+  if (endOfDay) date.setHours(23, 59, 59, 999);
+  return date;
+}
+
+function toDateInputValue(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function escapeCsv(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  const text = String(value);
+  if (!/[",\n\r]/.test(text)) return text;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function toCsv(rows: Array<Record<string, unknown>>): string {
+  const headers = [
+    "created_at",
+    "api_key",
+    "model",
+    "prompt_tokens",
+    "completion_tokens",
+    "total_tokens",
+    "credits",
+  ];
+  const lines = [
+    headers.join(","),
+    ...rows.map((row) => headers.map((header) => escapeCsv(row[header])).join(",")),
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+router.get("/api-usage", requireAuth, async (req, res): Promise<void> => {
   try {
     const userId = (req as any).user!.id;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 50;
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 50));
     const offset = (page - 1) * limit;
+    const fromDate = parseDateParam(req.query.from, startOfCurrentMonth());
+    const toDate = parseDateParam(req.query.to, endOfToday(), true);
+    const model = typeof req.query.model === "string" && req.query.model.trim()
+      ? req.query.model.trim()
+      : null;
+    const keyId = typeof req.query.keyId === "string" && req.query.keyId.trim()
+      ? Number(req.query.keyId)
+      : null;
+    const format = typeof req.query.format === "string" ? req.query.format : "json";
 
-    // Get current month start and end dates
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const filters: SQL[] = [
+      eq(apiUsageTable.userId, userId),
+      gte(apiUsageTable.createdAt, fromDate),
+      lte(apiUsageTable.createdAt, toDate),
+    ];
+    if (model) filters.push(eq(apiUsageTable.model, model));
+    if (Number.isInteger(keyId)) filters.push(eq(apiUsageTable.keyId, keyId as number));
 
-    // Get summary for this month
+    const whereClause = and(...filters);
+    if (!whereClause) {
+      res.status(400).json({ error: "Filter tidak valid" });
+      return;
+    }
+
+    const usageSelect = {
+      id: apiUsageTable.id,
+      keyId: apiUsageTable.keyId,
+      model: apiUsageTable.model,
+      promptTokens: apiUsageTable.promptTokens,
+      completionTokens: apiUsageTable.completionTokens,
+      totalTokens: apiUsageTable.totalTokens,
+      credits: apiUsageTable.credits,
+      createdAt: apiUsageTable.createdAt,
+      apiKeyName: apiKeysTable.name,
+    };
+
+    if (format === "csv") {
+      const csvRows = await db
+        .select(usageSelect)
+        .from(apiUsageTable)
+        .leftJoin(apiKeysTable, eq(apiUsageTable.keyId, apiKeysTable.id))
+        .where(whereClause)
+        .orderBy(desc(apiUsageTable.createdAt))
+        .limit(5000);
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="mution-api-usage-${toDateInputValue(fromDate)}-to-${toDateInputValue(toDate)}.csv"`,
+      );
+      res.send(toCsv(csvRows.map((row) => ({
+        created_at: row.createdAt.toISOString(),
+        api_key: row.apiKeyName ?? "Deleted Key",
+        model: row.model,
+        prompt_tokens: row.promptTokens,
+        completion_tokens: row.completionTokens,
+        total_tokens: row.totalTokens,
+        credits: row.credits,
+      }))));
+      return;
+    }
+
     const [summaryResult] = await db
       .select({
         totalRequests: count(apiUsageTable.id),
         totalCredits: sum(apiUsageTable.credits),
+        totalTokens: sum(apiUsageTable.totalTokens),
+        promptTokens: sum(apiUsageTable.promptTokens),
+        completionTokens: sum(apiUsageTable.completionTokens),
       })
       .from(apiUsageTable)
-      .where(
-        and(
-          eq(apiUsageTable.userId, userId),
-          gte(apiUsageTable.createdAt, startOfMonth),
-          lte(apiUsageTable.createdAt, endOfMonth)
-        )
-      );
+      .where(whereClause);
 
-    // Get paginated list of usage with API Key name
     const usageList = await db
-      .select({
-        id: apiUsageTable.id,
-        model: apiUsageTable.model,
-        promptTokens: apiUsageTable.promptTokens,
-        completionTokens: apiUsageTable.completionTokens,
-        totalTokens: apiUsageTable.totalTokens,
-        credits: apiUsageTable.credits,
-        createdAt: apiUsageTable.createdAt,
-        apiKeyName: apiKeysTable.name,
-      })
+      .select(usageSelect)
       .from(apiUsageTable)
       .leftJoin(apiKeysTable, eq(apiUsageTable.keyId, apiKeysTable.id))
-      .where(eq(apiUsageTable.userId, userId))
+      .where(whereClause)
       .orderBy(desc(apiUsageTable.createdAt))
       .limit(limit)
       .offset(offset);
 
-    // Get total count for pagination
     const [totalCountResult] = await db
       .select({ count: count(apiUsageTable.id) })
       .from(apiUsageTable)
-      .where(eq(apiUsageTable.userId, userId));
+      .where(whereClause);
 
-    const totalPages = Math.ceil((totalCountResult?.count || 0) / limit);
+    const dayCol = sql<string>`to_char(date_trunc('day', ${apiUsageTable.createdAt}), 'YYYY-MM-DD')`;
+    const daily = await db
+      .select({
+        day: dayCol,
+        requests: count(apiUsageTable.id),
+        totalTokens: sum(apiUsageTable.totalTokens),
+        credits: sum(apiUsageTable.credits),
+      })
+      .from(apiUsageTable)
+      .where(whereClause)
+      .groupBy(dayCol)
+      .orderBy(asc(dayCol));
 
-    return res.json({
+    const modelRows = await db
+      .select({ model: apiUsageTable.model })
+      .from(apiUsageTable)
+      .where(eq(apiUsageTable.userId, userId))
+      .groupBy(apiUsageTable.model)
+      .orderBy(apiUsageTable.model);
+
+    const apiKeys = await db
+      .select({
+        id: apiKeysTable.id,
+        name: apiKeysTable.name,
+        keyPrefix: apiKeysTable.keyPrefix,
+        isActive: apiKeysTable.isActive,
+      })
+      .from(apiKeysTable)
+      .where(eq(apiKeysTable.userId, userId))
+      .orderBy(desc(apiKeysTable.createdAt));
+
+    const totalItems = Number(totalCountResult?.count || 0);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    res.json({
       summary: {
         totalRequests: Number(summaryResult?.totalRequests || 0),
         totalCredits: Number(summaryResult?.totalCredits || 0),
+        totalTokens: Number(summaryResult?.totalTokens || 0),
+        promptTokens: Number(summaryResult?.promptTokens || 0),
+        completionTokens: Number(summaryResult?.completionTokens || 0),
       },
-      data: usageList,
+      data: usageList.map((item) => ({
+        ...item,
+        createdAt: item.createdAt.toISOString(),
+      })),
+      daily: daily.map((item) => ({
+        day: item.day,
+        requests: Number(item.requests || 0),
+        totalTokens: Number(item.totalTokens || 0),
+        credits: Number(item.credits || 0),
+      })),
+      filters: {
+        from: toDateInputValue(fromDate),
+        to: toDateInputValue(toDate),
+        model,
+        keyId: Number.isInteger(keyId) ? keyId : null,
+        models: modelRows.map((row) => row.model),
+        apiKeys,
+      },
       pagination: {
         page,
         limit,
-        totalItems: totalCountResult?.count || 0,
+        totalItems,
         totalPages,
-      }
+      },
     });
-
+    return;
   } catch (error) {
     console.error("Failed to fetch API usage:", error);
-    return res.status(500).json({ error: "Gagal mengambil data penggunaan API" });
+    res.status(500).json({ error: "Gagal mengambil data penggunaan API" });
+    return;
   }
 });
 

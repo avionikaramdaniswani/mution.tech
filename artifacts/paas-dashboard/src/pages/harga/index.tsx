@@ -3,6 +3,7 @@ import { PublicNavbar } from "@/components/public-navbar";
 import { PageFooter } from "@/components/page-footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain, Component, Database, Server, Cpu, Zap, CreditCard, ChevronRight } from "lucide-react";
+import { MODEL_CATALOG, groupModelsByProvider } from "@workspace/model-catalog";
 
 const plans = [
   {
@@ -61,20 +62,6 @@ const plans = [
   }
 ];
 
-const models = [
-  { id: "claude-opus-4-6",   label: "Claude Opus 4.6",   provider: "Anthropic", input: 180, output: 900, context: "200K" },
-  { id: "claude-opus-4-7",   label: "Claude Opus 4.7",   provider: "Anthropic", input: 180, output: 900, context: "200K" },
-  { id: "claude-opus-4-8",   label: "Claude Opus 4.8",   provider: "Anthropic", input: 225, output: 1080, context: "200K", note: "Terbaru" },
-  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6", provider: "Anthropic", input: 45,  output: 200, context: "200K" },
-  { id: "claude-sonnet-4-7", label: "Claude Sonnet 4.7", provider: "Anthropic", input: 45,  output: 200, context: "200K" },
-  { id: "claude-sonnet-5",   label: "Claude Sonnet 5.0", provider: "Anthropic", input: 50,  output: 250, context: "200K", note: "Terbaru" },
-  { id: "gpt-5-4",           label: "GPT 5.4",           provider: "OpenAI",    input: 100, output: 300, context: "128K" },
-  { id: "gpt-5-5",           label: "GPT 5.5",           provider: "OpenAI",    input: 150, output: 400, context: "128K", note: "Terbaru" },
-  { id: "glm-5-2",           label: "GLM 5.2",           provider: "Zhipu AI",  input: 10,  output: 40,  context: "128K" },
-];
-
-
-
 function OpenAILogo({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -108,11 +95,7 @@ function getProviderIcon(provider: string, baseClassName?: string) {
 }
 
 export default function HargaPage() {
-  const grouped = models.reduce((acc, m) => {
-    if (!acc[m.provider]) acc[m.provider] = [];
-    acc[m.provider].push(m);
-    return acc;
-  }, {} as Record<string, typeof models>);
+  const grouped = groupModelsByProvider(MODEL_CATALOG);
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-primary/30 font-sans">
@@ -272,12 +255,12 @@ export default function HargaPage() {
                               <div className="flex items-center gap-3 text-xs">
                                 <span className="text-white/60 w-12 font-medium">Input</span>
                                 <div className="h-1.5 w-4 rounded-full bg-primary/40" />
-                                <span className="font-semibold tabular-nums text-white">Rp {m.input} <span className="text-white/40 font-normal">/ 1K</span></span>
+                                <span className="font-semibold tabular-nums text-white">Rp {m.pricing.input} <span className="text-white/40 font-normal">/ 1K</span></span>
                               </div>
                               <div className="flex items-center gap-3 text-xs">
                                 <span className="text-white/60 w-12 font-medium">Output</span>
                                 <div className="h-1.5 w-6 rounded-full bg-primary" />
-                                <span className="font-semibold tabular-nums text-white">Rp {m.output} <span className="text-white/40 font-normal">/ 1K</span></span>
+                                <span className="font-semibold tabular-nums text-white">Rp {m.pricing.output} <span className="text-white/40 font-normal">/ 1K</span></span>
                               </div>
                             </div>
 

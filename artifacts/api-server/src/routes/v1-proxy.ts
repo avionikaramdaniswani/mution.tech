@@ -4,38 +4,12 @@ import { eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { logger } from "../lib/logger";
 import { broadcastToUser, broadcastAdmin } from "../lib/events";
+import { getModelPricing as getCatalogModelPricing } from "@workspace/model-catalog";
 
 const router = Router();
 
 // ─── Per-Model Pricing (kredit per 1K token) ──────────────────────────────────
-const MODEL_PRICING: Record<string, { input: number; output: number }> = {
-  "claude-opus-4-6": { input: 180, output: 900 },
-  "claude-opus-4-7": { input: 180, output: 900 },
-  "claude-opus-4-8": { input: 225, output: 1080 },
-  "claude-sonnet-4-6": { input: 45, output: 200 },
-  "claude-sonnet-4-7": { input: 45, output: 200 },
-  "claude-sonnet-5": { input: 50, output: 250 },
-  "gpt-5-4": { input: 100, output: 300 },
-  "gpt-5-5": { input: 150, output: 400 },
-  "glm-5-2": { input: 10, output: 40 },
-};
-
-const DEFAULT_PRICING = { input: 10, output: 30 };
-
-function getModelPricing(model: string) {
-  // Try exact match first
-  if (MODEL_PRICING[model]) return MODEL_PRICING[model];
-
   // Try partial match — sort by key length DESC so "claude-sonnet-4-7" beats "claude-sonnet-4"
-  const normalized = model.toLowerCase().replace(/-/g, "");
-  const sorted = Object.entries(MODEL_PRICING).sort((a, b) => b[0].length - a[0].length);
-  for (const [key, pricing] of sorted) {
-    if (normalized.includes(key.replace(/-/g, ""))) return pricing;
-  }
-
-  return DEFAULT_PRICING;
-}
-
 /** Safe fallback token estimate — capped to prevent overcharging when usage data is missing. */
 const FALLBACK_MAX_TOKENS = 200;
 function estimateFallbackTokens(reqBody: any): number {
@@ -300,7 +274,7 @@ async function deductCredits(
   // If we only have total tokens, assume they are all output tokens (more expensive) as a fallback
   const outputTokens = breakdown?.outputTokens ?? (inputTokens === 0 ? tokensUsed : 0);
 
-  const pricing = getModelPricing(model);
+  const pricing = getCatalogModelPricing(model);
   const inputCredits = (inputTokens * pricing.input) / 1000;
   const outputCredits = (outputTokens * pricing.output) / 1000;
 

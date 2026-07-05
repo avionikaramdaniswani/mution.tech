@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Copy, Check, Key, Code, Terminal, BookOpen, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
+import { DEFAULT_MODEL_ID, MODEL_CATALOG } from "@workspace/model-catalog";
 
 type OsTab = "linux" | "powershell" | "cmd";
 type ActiveTab = "quickstart" | "openai" | "openai-node" | "claude-code" | "curl";
@@ -112,6 +113,7 @@ export default function DocsPage() {
   const { user } = useAuth();
   const base = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : "https://mution.tech";
   const [activeTab, setActiveTab] = useState<ActiveTab>("quickstart");
+  const defaultModel = DEFAULT_MODEL_ID;
 
   return (
     <div className="flex gap-6 max-w-6xl mx-auto">
@@ -197,16 +199,11 @@ export default function DocsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      ["claude-opus-4-6", "Anthropic", "Claude terbaru"],
-                      ["claude-opus-4-5", "Anthropic", "Claude Opus 4.5"],
-                      ["gpt-5.5", "OpenAI", "GPT terbaru"],
-                      ["glm-5.2", "Zhipu AI", "Model cepat & hemat"],
-                    ].map(([model, prov, desc]) => (
-                      <tr key={model} className="border-b border-border last:border-0">
-                        <td className="px-4 py-2.5 font-mono text-xs text-foreground/90">{model}</td>
-                        <td className="px-4 py-2.5 text-muted-foreground">{prov}</td>
-                        <td className="px-4 py-2.5 text-muted-foreground">{desc}</td>
+                    {MODEL_CATALOG.map((model) => (
+                      <tr key={model.id} className="border-b border-border last:border-0">
+                        <td className="px-4 py-2.5 font-mono text-xs text-foreground/90">{model.id}</td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{model.provider}</td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{model.description}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -229,7 +226,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="claude-opus-4-6",
+    model="${defaultModel}",
     messages=[
         {"role": "system", "content": "Kamu adalah asisten yang helpful."},
         {"role": "user", "content": "Apa itu machine learning?"}
@@ -248,7 +245,7 @@ client = OpenAI(
 )
 
 with client.chat.completions.stream(
-    model="claude-opus-4-6",
+    model="${defaultModel}",
     messages=[{"role": "user", "content": "Ceritakan tentang Python"}],
     max_tokens=512,
 ) as stream:
@@ -269,7 +266,7 @@ const client = new OpenAI({
 });
 
 const response = await client.chat.completions.create({
-  model: "claude-opus-4-6",
+  model: "${defaultModel}",
   messages: [
     { role: "system", content: "Kamu adalah asisten yang helpful." },
     { role: "user", content: "Apa itu TypeScript?" },
@@ -351,7 +348,7 @@ client = anthropic.Anthropic(
 )
 
 message = client.messages.create(
-    model="claude-opus-4-6",
+    model="${defaultModel}",
     max_tokens=1024,
     system="Kamu adalah asisten yang helpful.",
     messages=[
@@ -371,7 +368,7 @@ const client = new Anthropic({
 });
 
 const message = await client.messages.create({
-  model: "claude-opus-4-6",
+  model: "${defaultModel}",
   max_tokens: 1024,
   messages: [{ role: "user", content: "Halo!" }],
 });
@@ -388,7 +385,7 @@ console.log(message.content[0].type === "text" ? message.content[0].text : "");`
   -H "Authorization: Bearer mk_live_YOUR_KEY_HERE" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "model": "claude-opus-4-6",
+    "model": "${defaultModel}",
     "messages": [{"role": "user", "content": "Halo!"}],
     "max_tokens": 256
   }'`} />
@@ -399,7 +396,7 @@ console.log(message.content[0].type === "text" ? message.content[0].text : "");`
   -H "anthropic-version: 2023-06-01" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "model": "claude-opus-4-6",
+    "model": "${defaultModel}",
     "max_tokens": 256,
     "messages": [{"role": "user", "content": "Halo!"}]
   }'`} />

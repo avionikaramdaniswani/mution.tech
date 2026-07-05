@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { AVAILABLE_MODEL_IDS } from "@workspace/model-catalog";
 import {
   Dialog,
   DialogContent,
@@ -63,12 +64,6 @@ function CopyButton({ text }: { text: string }) {
     </button>
   );
 }
-
-const AVAILABLE_MODELS = [
-  "claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8",
-  "claude-sonnet-4-6", "claude-sonnet-4-7", "claude-sonnet-5",
-  "gpt-5-4", "gpt-5-5", "glm-5-2"
-];
 
 function ResponsivePanel({ open, onOpenChange, title, description, children, footer }: { open: boolean; onOpenChange: (open: boolean) => void; title: React.ReactNode; description?: React.ReactNode; children: React.ReactNode; footer: React.ReactNode }) {
   const isMobile = useIsMobile();
@@ -361,7 +356,7 @@ export default function ApiKeysPage() {
             <label className="text-sm font-medium">Akses Model (Opsional)</label>
             <p className="text-xs text-muted-foreground mb-2">Pilih model yang diizinkan, atau biarkan kosong untuk semua model.</p>
             <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border border-border/50 rounded-lg">
-              {AVAILABLE_MODELS.map((m) => (
+              {AVAILABLE_MODEL_IDS.map((m) => (
                 <label key={m} className="flex items-center gap-2 text-xs cursor-pointer">
                   <input 
                     type="checkbox" 
@@ -498,7 +493,7 @@ export default function ApiKeysPage() {
             <label className="text-sm font-medium">Akses Model (Opsional)</label>
             <p className="text-xs text-muted-foreground mb-2">Pilih model yang diizinkan, atau biarkan kosong untuk semua model.</p>
             <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border border-border/50 rounded-lg">
-              {AVAILABLE_MODELS.map((m) => (
+              {AVAILABLE_MODEL_IDS.map((m) => (
                 <label key={m} className="flex items-center gap-2 text-xs cursor-pointer">
                   <input 
                     type="checkbox" 
