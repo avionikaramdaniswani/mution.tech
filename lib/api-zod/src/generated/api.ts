@@ -19,19 +19,35 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary Register a new user
  */
+export const registerBodyEmailMax = 254;
+
+export const registerBodyPasswordMin = 8;
+export const registerBodyPasswordMax = 128;
+
+export const registerBodyNameMin = 2;
+export const registerBodyNameMax = 80;
+
+
+
 export const RegisterBody = zod.object({
-  "email": zod.string(),
-  "password": zod.string(),
-  "name": zod.string()
+  "email": zod.string().email().max(registerBodyEmailMax),
+  "password": zod.string().min(registerBodyPasswordMin).max(registerBodyPasswordMax),
+  "name": zod.string().min(registerBodyNameMin).max(registerBodyNameMax)
 })
 
 
 /**
  * @summary Login
  */
+export const loginBodyEmailMax = 254;
+
+export const loginBodyPasswordMax = 128;
+
+
+
 export const LoginBody = zod.object({
-  "email": zod.string(),
-  "password": zod.string()
+  "email": zod.string().email().max(loginBodyEmailMax),
+  "password": zod.string().min(1).max(loginBodyPasswordMax)
 })
 
 export const LoginResponse = zod.object({
@@ -89,11 +105,24 @@ export const ListProjectsResponse = zod.array(ListProjectsResponseItem)
 /**
  * @summary Create a new project
  */
+export const createProjectBodyNameMin = 2;
+export const createProjectBodyNameMax = 60;
+
+
+export const createProjectBodyNameRegExp = new RegExp('^[a-z0-9-]+$');
+export const createProjectBodyRepoUrlMax = 2048;
+
+export const createProjectBodyDomainMax = 253;
+
+
+export const createProjectBodyDomainRegExp = new RegExp('^(?!-)(?:[a-z0-9-]{1,63}\\.)+[a-z]{2,63}$');
+
+
 export const CreateProjectBody = zod.object({
-  "name": zod.string(),
-  "repoUrl": zod.string().optional(),
+  "name": zod.string().min(createProjectBodyNameMin).max(createProjectBodyNameMax).regex(createProjectBodyNameRegExp),
+  "repoUrl": zod.string().url().max(createProjectBodyRepoUrlMax).optional(),
   "runtime": zod.enum(['nodejs', 'python', 'php', 'static']),
-  "domain": zod.string().optional()
+  "domain": zod.string().max(createProjectBodyDomainMax).regex(createProjectBodyDomainRegExp).optional()
 })
 
 
@@ -124,11 +153,24 @@ export const UpdateProjectParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const updateProjectBodyNameMin = 2;
+export const updateProjectBodyNameMax = 60;
+
+
+export const updateProjectBodyNameRegExp = new RegExp('^[a-z0-9-]+$');
+export const updateProjectBodyRepoUrlMax = 2048;
+
+export const updateProjectBodyDomainMax = 253;
+
+
+export const updateProjectBodyDomainRegExp = new RegExp('^(?!-)(?:[a-z0-9-]{1,63}\\.)+[a-z]{2,63}$');
+
+
 export const UpdateProjectBody = zod.object({
-  "name": zod.string().optional(),
-  "repoUrl": zod.string().optional(),
+  "name": zod.string().min(updateProjectBodyNameMin).max(updateProjectBodyNameMax).regex(updateProjectBodyNameRegExp).optional(),
+  "repoUrl": zod.string().url().max(updateProjectBodyRepoUrlMax).optional(),
   "runtime": zod.enum(['nodejs', 'python', 'php', 'static']).optional(),
-  "domain": zod.string().optional()
+  "domain": zod.string().max(updateProjectBodyDomainMax).regex(updateProjectBodyDomainRegExp).optional()
 })
 
 export const UpdateProjectResponse = zod.object({
@@ -180,9 +222,17 @@ export const SetProjectEnvParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const setProjectEnvBodyKeyMax = 128;
+
+
+export const setProjectEnvBodyKeyRegExp = new RegExp('^[A-Za-z_][A-Za-z0-9_]{0,127}$');
+export const setProjectEnvBodyValueMax = 8192;
+
+
+
 export const SetProjectEnvBody = zod.object({
-  "key": zod.string(),
-  "value": zod.string()
+  "key": zod.string().min(1).max(setProjectEnvBodyKeyMax).regex(setProjectEnvBodyKeyRegExp),
+  "value": zod.string().max(setProjectEnvBodyValueMax)
 })
 
 export const SetProjectEnvResponse = zod.object({
@@ -436,23 +486,6 @@ export const GetPaymentStatusResponse = zod.object({
   "paymentUrl": zod.string().nullish(),
   "createdAt": zod.string(),
   "paidAt": zod.string().nullish()
-})
-
-
-/**
- * @summary Topup user credits
- */
-export const topupCreditsBodyAmountMin = 1000;
-
-
-
-export const TopupCreditsBody = zod.object({
-  "amount": zod.number().min(topupCreditsBodyAmountMin)
-})
-
-export const TopupCreditsResponse = zod.object({
-  "credits": zod.number(),
-  "added": zod.number()
 })
 
 

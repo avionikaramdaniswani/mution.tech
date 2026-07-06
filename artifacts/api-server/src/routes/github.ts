@@ -1,9 +1,15 @@
 import { Router } from "express";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import crypto from "crypto";
 import { requireAuth } from "../lib/auth";
+import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/secret-box";
+import { logger } from "../lib/logger";
 
 const router = Router();
+const GITHUB_STATE_COOKIE = "github_oauth_state";
+const GITHUB_STATE_MAX_AGE_MS = 10 * 60 * 1000;
+const REPO_FULL_NAME_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 function getClientId() {
   const id = process.env.GITHUB_CLIENT_ID;
@@ -24,12 +30,57 @@ function getCallbackUrl() {
   throw new Error("Cannot determine GitHub callback URL. Set GITHUB_CALLBACK_URL.");
 }
 
+function getGithubScopes(): string {
+  return process.env.GITHUB_OAUTH_SCOPES ?? "read:user public_repo";
+}
+
+function setGithubStateCookie(res: any, state: string): void {
+  res.cookie(GITHUB_STATE_COOKIE, state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: GITHUB_STATE_MAX_AGE_MS,
+  });
+}
+
+function clearGithubStateCookie(res: any): void {
+  res.clearCookie(GITHUB_STATE_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+}
+
+async function getStoredGithubToken(userId: number): Promise<string | null> {
+  const [dbUser] = await db
+    .select({ githubAccessToken: usersTable.githubAccessToken })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+  const storedToken = dbUser?.githubAccessToken;
+  const token = decryptSecret(storedToken);
+  if (token && storedToken && !isEncryptedSecret(storedToken)) {
+    try {
+      await db
+        .update(usersTable)
+        .set({ githubAccessToken: encryptSecret(token) })
+        .where(eq(usersTable.id, userId));
+    } catch (err) {
+      logger.error({ err, userId }, "Failed to migrate plaintext GitHub token");
+    }
+  }
+  return token;
+}
+
 router.get("/auth/github", requireAuth, (_req, res): void => {
   try {
+    const state = crypto.randomBytes(32).toString("base64url");
+    setGithubStateCookie(res, state);
+
     const url = new URL("https://github.com/login/oauth/authorize");
     url.searchParams.set("client_id", getClientId());
     url.searchParams.set("redirect_uri", getCallbackUrl());
-    url.searchParams.set("scope", "repo,read:user");
+    url.searchParams.set("scope", getGithubScopes());
+    url.searchParams.set("state", state);
     res.redirect(url.toString());
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -37,9 +88,11 @@ router.get("/auth/github", requireAuth, (_req, res): void => {
 });
 
 router.get("/auth/github/callback", requireAuth, async (req, res): Promise<void> => {
-  const { code } = req.query as { code?: string };
+  const { code, state } = req.query as { code?: string; state?: string };
+  const expectedState = req.cookies?.[GITHUB_STATE_COOKIE];
+  clearGithubStateCookie(res);
 
-  if (!code) {
+  if (!code || !state || typeof expectedState !== "string" || state !== expectedState) {
     res.redirect("/github-callback?status=error");
     return;
   }
@@ -73,13 +126,17 @@ router.get("/auth/github/callback", requireAuth, async (req, res): Promise<void>
         "User-Agent": "paas-platform",
       },
     });
+    if (!userRes.ok) {
+      res.redirect("/github-callback?status=error");
+      return;
+    }
     const ghUser = await userRes.json() as Record<string, string>;
 
     const user = (req as any).user;
     await db
       .update(usersTable)
       .set({
-        githubAccessToken: tokenData.access_token,
+        githubAccessToken: encryptSecret(tokenData.access_token),
         githubLogin: ghUser.login ?? null,
       })
       .where(eq(usersTable.id, user.id));
@@ -96,21 +153,19 @@ router.get("/github/status", requireAuth, async (req, res): Promise<void> => {
     .select({ githubLogin: usersTable.githubLogin, githubAccessToken: usersTable.githubAccessToken })
     .from(usersTable)
     .where(eq(usersTable.id, user.id));
+  const token = await getStoredGithubToken(user.id);
 
   res.json({
-    connected: !!dbUser?.githubAccessToken,
+    connected: !!token,
     login: dbUser?.githubLogin ?? null,
   });
 });
 
 router.get("/github/repos", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const [dbUser] = await db
-    .select({ githubAccessToken: usersTable.githubAccessToken })
-    .from(usersTable)
-    .where(eq(usersTable.id, user.id));
+  const accessToken = await getStoredGithubToken(user.id);
 
-  if (!dbUser?.githubAccessToken) {
+  if (!accessToken) {
     res.status(403).json({ error: "GitHub not connected" });
     return;
   }
@@ -119,7 +174,7 @@ router.get("/github/repos", requireAuth, async (req, res): Promise<void> => {
     "https://api.github.com/user/repos?per_page=100&sort=updated&type=owner",
     {
       headers: {
-        Authorization: `Bearer ${dbUser.githubAccessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         Accept: "application/vnd.github+json",
         "User-Agent": "paas-platform",
       },
@@ -150,23 +205,20 @@ router.get("/github/detect-runtime", requireAuth, async (req, res): Promise<void
   const user = (req as any).user;
   const { repo } = req.query as { repo?: string };
 
-  if (!repo || !repo.includes("/")) {
+  if (!repo || !REPO_FULL_NAME_RE.test(repo)) {
     res.status(400).json({ error: "Invalid repo format. Use owner/repo." });
     return;
   }
 
-  const [dbUser] = await db
-    .select({ githubAccessToken: usersTable.githubAccessToken })
-    .from(usersTable)
-    .where(eq(usersTable.id, user.id));
+  const accessToken = await getStoredGithubToken(user.id);
 
-  if (!dbUser?.githubAccessToken) {
+  if (!accessToken) {
     res.status(403).json({ error: "GitHub not connected" });
     return;
   }
 
   const headers = {
-    Authorization: `Bearer ${dbUser.githubAccessToken}`,
+    Authorization: `Bearer ${accessToken}`,
     Accept: "application/vnd.github+json",
     "User-Agent": "paas-platform",
   };

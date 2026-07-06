@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Cpu, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { csrfFetch } from "@/lib/csrf";
 
 interface ProviderStatus {
   id: string;
@@ -22,7 +23,7 @@ async function fetchProviders(): Promise<ProviderStatus[]> {
 }
 
 async function toggleProvider(id: string, enabled: boolean): Promise<void> {
-  const res = await fetch(`/api/admin/providers/${encodeURIComponent(id)}/toggle`, {
+  const res = await csrfFetch(`/api/admin/providers/${encodeURIComponent(id)}/toggle`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -74,7 +75,7 @@ export default function AdminProviders() {
           AI Providers
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Kelola provider AI yang aktif. Toggle langsung berlaku - round-robin otomatis ke provider yang aktif.
+          Kelola provider AI yang aktif. Toggle langsung berlaku dan tersimpan setelah server restart.
         </p>
       </div>
 
@@ -139,8 +140,8 @@ export default function AdminProviders() {
         className="rounded-xl px-4 py-3 text-xs text-muted-foreground"
         style={{ border: "1px solid rgba(234,179,8,0.15)", background: "rgba(234,179,8,0.04)" }}
       >
-        <span className="text-amber-400 font-medium">Catatan:</span> Toggle bersifat in-memory - reset ke semua aktif saat server restart.
-        Untuk menonaktifkan permanen, hapus secret <code className="bg-muted px-1 rounded">PREFIX_API_KEY</code>-nya.
+        <span className="text-amber-400 font-medium">Catatan:</span> Toggle disimpan permanen di database. Secret provider tetap diperlukan
+        agar provider bisa muncul di daftar.
       </div>
     </div>
   );

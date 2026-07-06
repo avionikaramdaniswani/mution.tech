@@ -8,8 +8,18 @@
 import type { ProjectUpdateRuntime } from './projectUpdateRuntime';
 
 export interface ProjectUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 60
+     * @pattern ^[a-z0-9-]+$
+     */
   name?: string;
+  /** @maxLength 2048 */
   repoUrl?: string;
   runtime?: ProjectUpdateRuntime;
+  /**
+     * @maxLength 253
+     * @pattern ^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$
+     */
   domain?: string;
 }

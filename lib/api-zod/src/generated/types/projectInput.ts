@@ -8,8 +8,18 @@
 import type { ProjectInputRuntime } from './projectInputRuntime';
 
 export interface ProjectInput {
+  /**
+     * @minLength 2
+     * @maxLength 60
+     * @pattern ^[a-z0-9-]+$
+     */
   name: string;
+  /** @maxLength 2048 */
   repoUrl?: string;
   runtime: ProjectInputRuntime;
+  /**
+     * @maxLength 253
+     * @pattern ^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$
+     */
   domain?: string;
 }

@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { db, sessionsTable, usersTable } from "@workspace/db";
-import { eq, gt } from "drizzle-orm";
-import { logger } from "./logger";
+import { and, eq, ne } from "drizzle-orm";
 import crypto from "crypto";
 
 export const SESSION_COOKIE = "paas_session";
@@ -31,6 +30,12 @@ export async function getSessionUser(sessionId: string) {
 
 export async function deleteSession(sessionId: string): Promise<void> {
   await db.delete(sessionsTable).where(eq(sessionsTable.sessionId, sessionId));
+}
+
+export async function deleteOtherUserSessions(userId: number, currentSessionId: string): Promise<void> {
+  await db
+    .delete(sessionsTable)
+    .where(and(eq(sessionsTable.userId, userId), ne(sessionsTable.sessionId, currentSessionId)));
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {

@@ -9,8 +9,8 @@ router.get("/healthz", (_req, res) => {
   res.json(data);
 });
 
-router.get("/status", (_req, res) => {
-  const health = getUpstreamHealth();
+router.get("/status", async (_req, res) => {
+  const health = await getUpstreamHealth();
   res.json(health);
 });
 

@@ -7,6 +7,12 @@
  */
 
 export interface EnvVarInput {
+  /**
+     * @minLength 1
+     * @maxLength 128
+     * @pattern ^[A-Za-z_][A-Za-z0-9_]{0,127}$
+     */
   key: string;
+  /** @maxLength 8192 */
   value: string;
 }

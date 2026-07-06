@@ -611,31 +611,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /billing/topup:
-    post:
-      operationId: topupCredits
-      tags: [billing]
-      summary: Topup user credits
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TopupInput"
-      responses:
-        "200":
-          description: Topup successful
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TopupResponse"
-        "400":
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
   /billing/transactions:
     get:
       operationId: listTransactions
@@ -944,10 +919,16 @@ components:
       properties:
         email:
           type: string
+          format: email
+          maxLength: 254
         password:
           type: string
+          minLength: 8
+          maxLength: 128
         name:
           type: string
+          minLength: 2
+          maxLength: 80
 
     LoginInput:
       type: object
@@ -955,8 +936,12 @@ components:
       properties:
         email:
           type: string
+          format: email
+          maxLength: 254
         password:
           type: string
+          minLength: 1
+          maxLength: 128
 
     AuthResponse:
       type: object
@@ -1018,26 +1003,40 @@ components:
       properties:
         name:
           type: string
+          minLength: 2
+          maxLength: 60
+          pattern: "^[a-z0-9-]+$"
         repoUrl:
           type: string
+          format: uri
+          maxLength: 2048
         runtime:
           type: string
           enum: [nodejs, python, php, static]
         domain:
           type: string
+          maxLength: 253
+          pattern: "^(?!-)(?:[a-z0-9-]{1,63}\\.)+[a-z]{2,63}$"
 
     ProjectUpdate:
       type: object
       properties:
         name:
           type: string
+          minLength: 2
+          maxLength: 60
+          pattern: "^[a-z0-9-]+$"
         repoUrl:
           type: string
+          format: uri
+          maxLength: 2048
         runtime:
           type: string
           enum: [nodejs, python, php, static]
         domain:
           type: string
+          maxLength: 253
+          pattern: "^(?!-)(?:[a-z0-9-]{1,63}\\.)+[a-z]{2,63}$"
 
     ProjectWithOwner:
       type: object
@@ -1087,8 +1086,12 @@ components:
       properties:
         key:
           type: string
+          minLength: 1
+          maxLength: 128
+          pattern: "^[A-Za-z_][A-Za-z0-9_]{0,127}$"
         value:
           type: string
+          maxLength: 8192
 
     # Deployment schemas
     Deployment:
@@ -1264,23 +1267,6 @@ components:
         runningProjects:
           type: integer
         failedProjects:
-          type: integer
-
-    TopupInput:
-      type: object
-      required: [amount]
-      properties:
-        amount:
-          type: integer
-          minimum: 1000
-
-    TopupResponse:
-      type: object
-      required: [credits, added]
-      properties:
-        credits:
-          type: integer
-        added:
           type: integer
 
     CreditTransaction:

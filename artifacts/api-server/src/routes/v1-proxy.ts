@@ -1,17 +1,26 @@
 import { Router, type Request, type Response } from "express";
-import { db, apiKeysTable, usersTable, creditTransactionsTable, apiUsageTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { db, apiKeysTable, usersTable, creditTransactionsTable, apiUsageTable, aiProviderSettingsTable } from "@workspace/db";
+import { and, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { logger } from "../lib/logger";
 import { broadcastToUser, broadcastAdmin } from "../lib/events";
 import { getModelPricing as getCatalogModelPricing } from "@workspace/model-catalog";
+import { apiKeyRateLimitKey, rateLimit } from "../lib/security";
 
 const router = Router();
+const AiProxyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: Number(process.env.AI_PROXY_RATE_LIMIT_PER_MINUTE ?? 120),
+  keyPrefix: "ai-proxy",
+  key: apiKeyRateLimitKey,
+});
 
 // ─── Per-Model Pricing (kredit per 1K token) ──────────────────────────────────
   // Try partial match — sort by key length DESC so "claude-sonnet-4-7" beats "claude-sonnet-4"
 /** Safe fallback token estimate — capped to prevent overcharging when usage data is missing. */
-const FALLBACK_MAX_TOKENS = 200;
+const MAX_OUTPUT_TOKENS = 8_192;
+const DEFAULT_OUTPUT_TOKENS = 4_096;
+const FALLBACK_MAX_TOKENS = MAX_OUTPUT_TOKENS;
 function estimateFallbackTokens(reqBody: any): number {
   // Rough heuristic: count characters of just the user messages, not the full JSON.
   try {
@@ -31,6 +40,42 @@ function estimateFallbackTokens(reqBody: any): number {
   return FALLBACK_MAX_TOKENS;
 }
 
+function estimateInputTokens(reqBody: any): number {
+  try {
+    let chars = 0;
+    if (typeof reqBody?.system === "string") chars += reqBody.system.length;
+    const msgs = reqBody?.messages;
+    if (Array.isArray(msgs)) {
+      for (const m of msgs) {
+        if (typeof m.content === "string") chars += m.content.length;
+        else if (Array.isArray(m.content)) {
+          for (const b of m.content) if (b.type === "text") chars += String(b.text ?? "").length;
+        } else {
+          chars += String(m.content ?? "").length;
+        }
+      }
+    } else {
+      chars = JSON.stringify(reqBody ?? {}).length;
+    }
+    return Math.max(1, chars);
+  } catch {
+    return FALLBACK_MAX_TOKENS;
+  }
+}
+
+function getRequestedOutputTokens(body: any): number | null {
+  const raw = body?.max_tokens ?? body?.max_completion_tokens ?? DEFAULT_OUTPUT_TOKENS;
+  if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 1 || raw > MAX_OUTPUT_TOKENS) {
+    return null;
+  }
+  return raw;
+}
+
+function getReservationOutputTokens(path: string, body: any): number | null {
+  if (path === "/embeddings") return 0;
+  return getRequestedOutputTokens(body);
+}
+
 // ─── Provider pool ────────────────────────────────────────────────────────────
 
 interface Provider {
@@ -43,12 +88,57 @@ interface Provider {
 const PROVIDER_COOLDOWN_MS = 60_000;
 const _cooldowns = new Map<string, number>();
 
-// ─── Admin toggle state (in-memory, resets on restart) ────────────────────────
+// Admin toggle state is persisted in DB and cached briefly for request routing.
 const _disabledProviders = new Set<string>();
+let _providerSettingsLoadedAt = 0;
+let _providerSettingsRefresh: Promise<void> | null = null;
+const PROVIDER_SETTINGS_REFRESH_MS = 5_000;
 
-export function adminEnableProvider(id: string) { _disabledProviders.delete(id); }
-export function adminDisableProvider(id: string) { _disabledProviders.add(id); }
-export function adminGetProviderStatuses() {
+async function refreshProviderSettings(force = false): Promise<void> {
+  const now = Date.now();
+  if (!force && now - _providerSettingsLoadedAt < PROVIDER_SETTINGS_REFRESH_MS) return;
+
+  _providerSettingsRefresh ??= (async () => {
+    const rows = await db.select().from(aiProviderSettingsTable);
+    _disabledProviders.clear();
+    for (const row of rows) {
+      if (!row.enabled) _disabledProviders.add(row.id);
+    }
+    _providerSettingsLoadedAt = Date.now();
+  })().finally(() => {
+    _providerSettingsRefresh = null;
+  });
+
+  await _providerSettingsRefresh;
+}
+
+async function refreshProviderSettingsForProxy(): Promise<void> {
+  try {
+    await refreshProviderSettings();
+  } catch (error) {
+    logger.error({ err: error }, "Failed to refresh provider settings; using cached provider state");
+  }
+}
+
+async function setProviderEnabled(id: string, enabled: boolean): Promise<void> {
+  const now = new Date();
+  await db
+    .insert(aiProviderSettingsTable)
+    .values({ id, enabled, updatedAt: now })
+    .onConflictDoUpdate({
+      target: aiProviderSettingsTable.id,
+      set: { enabled, updatedAt: now },
+    });
+
+  if (enabled) _disabledProviders.delete(id);
+  else _disabledProviders.add(id);
+  _providerSettingsLoadedAt = Date.now();
+}
+
+export async function adminEnableProvider(id: string) { await setProviderEnabled(id, true); }
+export async function adminDisableProvider(id: string) { await setProviderEnabled(id, false); }
+export async function adminGetProviderStatuses() {
+  await refreshProviderSettings(true);
   let providers: Provider[];
   try { providers = getProviders(); } catch { return []; }
   const now = Date.now();
@@ -72,7 +162,8 @@ export interface UpstreamHealth {
 }
 const _upstreamHealth = new Map<string, UpstreamHealth>();
 
-export function getUpstreamHealth() {
+export async function getUpstreamHealth() {
+  await refreshProviderSettingsForProxy();
   // If multiple providers exist, aggregate or pick the best. For now, we return the first active one or a summary.
   let providers: Provider[];
   try { providers = getProviders(); } catch { return { status: "Offline", latencyMs: 0, lastChecked: 0 }; }
@@ -104,6 +195,7 @@ export function getUpstreamHealth() {
 
 function startUpstreamHealthCheck() {
   const runCheck = async () => {
+    await refreshProviderSettingsForProxy();
     let providers: Provider[];
     try { providers = getProviders(); } catch { return; }
 
@@ -263,55 +355,156 @@ async function resolveKeyAndUser(token: string) {
   return row;
 }
 
-async function deductCredits(
-  userId: number,
-  keyId: number,
-  tokensUsed: number,
-  model: string,
-  breakdown?: { inputTokens?: number; outputTokens?: number },
-) {
-  const inputTokens = breakdown?.inputTokens ?? 0;
-  // If we only have total tokens, assume they are all output tokens (more expensive) as a fallback
-  const outputTokens = breakdown?.outputTokens ?? (inputTokens === 0 ? tokensUsed : 0);
+type CreditBreakdown = { inputTokens?: number; outputTokens?: number };
+type CreditReservation = {
+  userId: number;
+  keyId: number;
+  credits: number;
+};
 
+function calculateCredits(tokensUsed: number, model: string, breakdown?: CreditBreakdown): number {
+  const inputTokens = breakdown?.inputTokens ?? 0;
+  const outputTokens = breakdown?.outputTokens ?? (inputTokens === 0 ? tokensUsed : 0);
   const pricing = getCatalogModelPricing(model);
   const inputCredits = (inputTokens * pricing.input) / 1000;
   const outputCredits = (outputTokens * pricing.output) / 1000;
+  return Math.max(1, Math.ceil(inputCredits + outputCredits));
+}
 
-  const credits = Math.max(1, Math.ceil(inputCredits + outputCredits));
-  await db
-    .update(usersTable)
-    .set({ credits: sql`GREATEST(0, ${usersTable.credits} - ${credits})` })
-    .where(eq(usersTable.id, userId));
-  await db.insert(creditTransactionsTable).values({
-    userId,
-    type: "usage",
-    amount: -credits,
-    note: `API — model: ${model}, tokens: ${tokensUsed}`,
+function estimateReserveCredits(reqBody: any, model: string, requestedOutputTokens: number): number {
+  const inputTokens = estimateInputTokens(reqBody);
+  return calculateCredits(inputTokens + requestedOutputTokens, model, {
+    inputTokens,
+    outputTokens: requestedOutputTokens,
   });
-  // Catatan terstruktur untuk analitik admin (per model / per user / tren harian).
-  await db.insert(apiUsageTable).values({
-    userId,
-    keyId,
-    model,
-    promptTokens: inputTokens,
-    completionTokens: outputTokens,
-    totalTokens: tokensUsed,
-    credits,
-  });
-  await db
-    .update(apiKeysTable)
-    .set({
-      lastUsedAt: new Date(),
-      totalTokensUsed: sql`${apiKeysTable.totalTokensUsed} + ${tokensUsed}`,
-      totalRequestsCount: sql`${apiKeysTable.totalRequestsCount} + 1`,
-      totalCreditsUsed: sql`${apiKeysTable.totalCreditsUsed} + ${credits}`,
-    })
-    .where(eq(apiKeysTable.id, keyId));
+}
 
-  // Realtime: saldo user berkurang karena pemakaian API.
-  broadcastToUser(userId, { type: "credits.changed", amount: -credits });
-  broadcastAdmin({ type: "user.credits_adjusted", userId, amount: -credits });
+async function reserveCredits(userId: number, keyId: number, credits: number): Promise<CreditReservation | null> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(${keyId})`);
+
+    const [key] = await tx.select().from(apiKeysTable).where(eq(apiKeysTable.id, keyId)).limit(1);
+    if (!key || !key.isActive) return null;
+    if (key.creditLimit !== null && key.totalCreditsUsed + credits > key.creditLimit) return null;
+
+    const [reservedUser] = await tx
+      .update(usersTable)
+      .set({ credits: sql`${usersTable.credits} - ${credits}` })
+      .where(and(eq(usersTable.id, userId), sql`${usersTable.credits} >= ${credits}`))
+      .returning({ id: usersTable.id });
+
+    if (!reservedUser) return null;
+
+    await tx
+      .update(apiKeysTable)
+      .set({ totalCreditsUsed: sql`${apiKeysTable.totalCreditsUsed} + ${credits}` })
+      .where(eq(apiKeysTable.id, keyId));
+
+    return { userId, keyId, credits };
+  });
+}
+
+async function refundReservation(reservation: CreditReservation): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(${reservation.keyId})`);
+    await tx
+      .update(usersTable)
+      .set({ credits: sql`${usersTable.credits} + ${reservation.credits}` })
+      .where(eq(usersTable.id, reservation.userId));
+    await tx
+      .update(apiKeysTable)
+      .set({ totalCreditsUsed: sql`GREATEST(0, ${apiKeysTable.totalCreditsUsed} - ${reservation.credits})` })
+      .where(eq(apiKeysTable.id, reservation.keyId));
+  });
+}
+
+async function finalizeCredits(
+  reservation: CreditReservation,
+  tokensUsed: number,
+  model: string,
+  breakdown?: CreditBreakdown,
+): Promise<void> {
+  const inputTokens = breakdown?.inputTokens ?? 0;
+  const outputTokens = breakdown?.outputTokens ?? (inputTokens === 0 ? tokensUsed : 0);
+  const credits = calculateCredits(tokensUsed, model, { inputTokens, outputTokens });
+  const adjustment = reservation.credits - credits;
+
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(${reservation.keyId})`);
+
+    if (adjustment > 0) {
+      await tx
+        .update(usersTable)
+        .set({ credits: sql`${usersTable.credits} + ${adjustment}` })
+        .where(eq(usersTable.id, reservation.userId));
+      await tx
+        .update(apiKeysTable)
+        .set({ totalCreditsUsed: sql`GREATEST(0, ${apiKeysTable.totalCreditsUsed} - ${adjustment})` })
+        .where(eq(apiKeysTable.id, reservation.keyId));
+    } else if (adjustment < 0) {
+      const extra = Math.abs(adjustment);
+      await tx
+        .update(usersTable)
+        .set({ credits: sql`GREATEST(0, ${usersTable.credits} - ${extra})` })
+        .where(eq(usersTable.id, reservation.userId));
+      await tx
+        .update(apiKeysTable)
+        .set({ totalCreditsUsed: sql`${apiKeysTable.totalCreditsUsed} + ${extra}` })
+        .where(eq(apiKeysTable.id, reservation.keyId));
+    }
+
+    await tx.insert(creditTransactionsTable).values({
+      userId: reservation.userId,
+      type: "usage",
+      amount: -credits,
+      note: `API - model: ${model}, tokens: ${tokensUsed}`,
+    });
+
+    await tx.insert(apiUsageTable).values({
+      userId: reservation.userId,
+      keyId: reservation.keyId,
+      model,
+      promptTokens: inputTokens,
+      completionTokens: outputTokens,
+      totalTokens: tokensUsed,
+      credits,
+    });
+
+    await tx
+      .update(apiKeysTable)
+      .set({
+        lastUsedAt: new Date(),
+        totalTokensUsed: sql`${apiKeysTable.totalTokensUsed} + ${tokensUsed}`,
+        totalRequestsCount: sql`${apiKeysTable.totalRequestsCount} + 1`,
+      })
+      .where(eq(apiKeysTable.id, reservation.keyId));
+  });
+
+  broadcastToUser(reservation.userId, { type: "credits.changed", amount: -credits });
+  broadcastAdmin({ type: "user.credits_adjusted", userId: reservation.userId, amount: -credits });
+}
+
+async function finalizeReservation(
+  reservation: CreditReservation,
+  tokensUsed: number,
+  model: string,
+  breakdown?: CreditBreakdown,
+): Promise<boolean> {
+  try {
+    await finalizeCredits(reservation, tokensUsed, model, breakdown);
+    return true;
+  } catch (err) {
+    logger.error({ err, userId: reservation.userId, keyId: reservation.keyId, model }, "finalize credits failed");
+    return false;
+  }
+}
+
+async function refundUnfinalizedReservation(reservation: CreditReservation): Promise<void> {
+  try {
+    await refundReservation(reservation);
+  } catch (err) {
+    logger.error({ err, userId: reservation.userId, keyId: reservation.keyId }, "refund credit reservation failed");
+  }
 }
 
 async function authenticate(req: Request, res: Response): Promise<{ key: typeof apiKeysTable.$inferSelect; user: typeof usersTable.$inferSelect } | null> {
@@ -407,6 +600,12 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
     res.status(503).json({ type: "error", error: { type: "api_error", message: e.message } });
     return;
   }
+  await refreshProviderSettingsForProxy();
+  providers = providers.filter((p) => !_disabledProviders.has(p.id));
+  if (providers.length === 0) {
+    res.status(503).json({ type: "error", error: { type: "api_error", message: "All AI providers are disabled" } });
+    return;
+  }
 
   const originalModel = req.body?.model ?? "unknown";
   const isStream = req.body?.stream === true;
@@ -416,6 +615,24 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
     return;
   }
 
+  const requestedOutputTokens = getRequestedOutputTokens(req.body);
+  if (requestedOutputTokens === null) {
+    res.status(400).json({ type: "error", error: { type: "invalid_request_error", message: `max_tokens must be an integer between 1 and ${MAX_OUTPUT_TOKENS}` } });
+    return;
+  }
+
+  const reservation = await reserveCredits(
+    user.id,
+    key.id,
+    estimateReserveCredits(req.body, originalModel, requestedOutputTokens),
+  );
+  if (!reservation) {
+    res.status(402).json({ type: "error", error: { type: "insufficient_quota", message: "Insufficient credits or API key credit limit for this request" } });
+    return;
+  }
+  let reservationClosed = false;
+
+  try {
   // Try providers with fallback on non-streaming failures
   for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
@@ -483,9 +700,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (totalInputTokens + totalOutputTokens === 0) {
             logger.warn({ model: originalModel, fallbackTokens: tokens }, "Conduit stream: usage missing, using capped fallback");
           }
-          await deductCredits(user.id, key.id, tokens, originalModel, { inputTokens: totalInputTokens, outputTokens: totalOutputTokens }).catch((e) =>
-            logger.error({ err: e }, "deduct credits failed")
-          );
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
         } else {
           const data = await upstream.json() as any;
           res.status(200).json(data);
@@ -495,9 +710,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (inputTokens + outputTokens === 0) {
             logger.warn({ model: originalModel, fallbackTokens: tokens }, "Conduit non-stream: usage missing, using capped fallback");
           }
-          await deductCredits(user.id, key.id, tokens, originalModel, { inputTokens, outputTokens }).catch((e) =>
-            logger.error({ err: e }, "deduct credits failed")
-          );
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens });
         }
         return;
 
@@ -589,9 +802,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (actualInputTokens + actualOutputTokens === 0) {
             logger.warn({ model: originalModel, fallbackTokens: tokens, estimatedChars: estimatedOutputChars }, "Generic stream: usage missing, using estimate");
           }
-          await deductCredits(user.id, key.id, tokens, originalModel, { inputTokens: finalInput, outputTokens: finalOutput }).catch((e) =>
-            logger.error({ err: e }, "deduct credits failed")
-          );
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: finalInput, outputTokens: finalOutput });
         } else {
           const contentType = upstream.headers.get("content-type") ?? "";
           if (!contentType.includes("application/json")) {
@@ -610,10 +821,8 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
 
           const inputTokens = data.usage?.prompt_tokens ?? 0;
           const outputTokens = data.usage?.completion_tokens ?? 0;
-          const tokens = (inputTokens + outputTokens) || Math.ceil(JSON.stringify(req.body).length / 4);
-          await deductCredits(user.id, key.id, tokens, originalModel, { inputTokens, outputTokens }).catch((e) =>
-            logger.error({ err: e }, "deduct credits failed")
-          );
+          const tokens = (inputTokens + outputTokens) || estimateFallbackTokens(req.body);
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens });
         }
         return;
       }
@@ -625,6 +834,9 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
         return;
       }
     }
+  }
+  } finally {
+    if (!reservationClosed) await refundUnfinalizedReservation(reservation);
   }
 }
 
@@ -640,15 +852,42 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
     res.status(503).json({ error: { message: e.message, type: "server_error" } });
     return;
   }
+  await refreshProviderSettingsForProxy();
+  providers = providers.filter((p) => !_disabledProviders.has(p.id));
+  if (providers.length === 0) {
+    res.status(503).json({ error: { message: "All AI providers are disabled", type: "server_error" } });
+    return;
+  }
+
+  const originalModel = req.method !== "GET" ? req.body?.model ?? "unknown" : "unknown";
+  let reservation: CreditReservation | null = null;
+  let reservationClosed = true;
 
   if (req.method !== "GET") {
-    const originalModel = req.body?.model ?? "unknown";
     if (key.allowedModels && key.allowedModels.length > 0 && !key.allowedModels.includes(originalModel)) {
       res.status(403).json({ error: { message: `API key is not allowed to use model: ${originalModel}`, type: "forbidden" } });
       return;
     }
+
+    const requestedOutputTokens = getReservationOutputTokens(path, req.body);
+    if (requestedOutputTokens === null) {
+      res.status(400).json({ error: { message: `max_tokens must be an integer between 1 and ${MAX_OUTPUT_TOKENS}`, type: "invalid_request_error" } });
+      return;
+    }
+
+    reservation = await reserveCredits(
+      user.id,
+      key.id,
+      estimateReserveCredits(req.body, originalModel, requestedOutputTokens),
+    );
+    if (!reservation) {
+      res.status(402).json({ error: { message: "Insufficient credits or API key credit limit for this request", type: "insufficient_quota" } });
+      return;
+    }
+    reservationClosed = false;
   }
 
+  try {
   for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
 
@@ -701,9 +940,9 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
         if (streamInputTokens + streamOutputTokens === 0) {
           logger.warn({ model: req.body?.model, fallbackTokens: tokens }, "OpenAI stream: usage missing, using capped fallback");
         }
-        await deductCredits(user.id, key.id, tokens, req.body?.model ?? "unknown", { inputTokens: streamInputTokens, outputTokens: streamOutputTokens }).catch((e) =>
-          logger.error({ err: e }, "deduct credits failed")
-        );
+        if (reservation) {
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: streamInputTokens, outputTokens: streamOutputTokens });
+        }
         return;
 
       } else if (contentType.includes("application/json")) {
@@ -720,9 +959,9 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
           if (!data.usage?.total_tokens && inputTokens + outputTokens === 0) {
             logger.warn({ model: data.model ?? req.body?.model, fallbackTokens: tokens }, "OpenAI non-stream: usage missing, using capped fallback");
           }
-          await deductCredits(user.id, key.id, tokens, data.model ?? req.body?.model ?? "unknown", { inputTokens, outputTokens }).catch((e) =>
-            logger.error({ err: e }, "deduct credits failed")
-          );
+          if (reservation) {
+            reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, { inputTokens, outputTokens });
+          }
         }
         return;
 
@@ -745,10 +984,14 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
       }
     }
   }
+  } finally {
+    if (reservation && !reservationClosed) await refundUnfinalizedReservation(reservation);
+  }
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
+router.use(AiProxyLimiter);
 router.post("/messages", (req, res) => proxyMessages(req, res));
 router.post("/chat/completions", (req, res) => proxyOpenAI(req, res, "/chat/completions"));
 router.get("/models", (req, res) => proxyOpenAI(req, res, "/models"));

@@ -2,10 +2,10 @@ import { Router } from "express";
 import { db, usersTable, creditTransactionsTable, paymentOrdersTable } from "@workspace/db";
 import { and, desc, eq, ne } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
-import { TopupCreditsBody } from "@workspace/api-zod";
 import { computePlan } from "../lib/plan";
 import { logger } from "../lib/logger";
 import { broadcastToUser, broadcastAdmin } from "../lib/events";
+import { z } from "zod";
 import {
   getTripayBase,
   createOrderSignature,
@@ -22,6 +22,45 @@ import {
 const router = Router();
 
 type PaymentOrderRow = typeof paymentOrdersTable.$inferSelect;
+
+const CreateTripayBody = z.object({
+  amount: z.number().int().min(MIN_TOPUP_IDR).max(MAX_TOPUP_IDR),
+  method: z.string().trim().regex(/^[A-Z0-9_-]{2,32}$/).default("QRIS"),
+});
+
+function cleanPaymentName(value: string): string {
+  return value.replace(/[^\w\s()./-]/g, "").trim().slice(0, 80) || "Unknown";
+}
+
+function parseInstructions(value: unknown): { title: string; steps: string[] }[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 12).map((item) => {
+    const record = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    return {
+      title: typeof record.title === "string" ? record.title.slice(0, 120) : "",
+      steps: Array.isArray(record.steps)
+        ? record.steps
+            .filter((step): step is string => typeof step === "string")
+            .slice(0, 20)
+            .map((step) => step.slice(0, 1000))
+        : [],
+    };
+  }).filter((item) => item.title || item.steps.length > 0);
+}
+
+function isPaidDetailForOrder(order: PaymentOrderRow, detail: TripayTransactionDetail["data"]): boolean {
+  return detail.status === "PAID"
+    && detail.merchant_ref === order.invoiceNumber
+    && detail.total_amount === order.amount
+    && (!order.tripayReference || detail.reference === order.tripayReference);
+}
+
+function isCallbackForOrder(order: PaymentOrderRow, payload: TripayCallbackPayload): boolean {
+  return payload.status === "PAID"
+    && payload.merchant_ref === order.invoiceNumber
+    && payload.total_amount === order.amount
+    && (!order.tripayReference || payload.reference === order.tripayReference);
+}
 
 async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: string) {
   return db.transaction(async (tx) => {
@@ -62,7 +101,7 @@ async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: string) 
       userId: claimed.userId,
       type: "topup",
       amount: claimed.creditsAmount,
-      note: `Topup via Tripay (${paymentName}) - ${claimed.invoiceNumber}`,
+      note: `Topup via Tripay (${cleanPaymentName(paymentName)}) - ${claimed.invoiceNumber}`,
     });
 
     return {
@@ -100,32 +139,8 @@ router.get("/billing/payment-channels", async (_req, res): Promise<void> => {
   }
 });
 
-router.post("/billing/topup", requireAuth, async (req, res): Promise<void> => {
-  const parsed = TopupCreditsBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Nominal topup minimal Rp 1.000" });
-    return;
-  }
-
-  const { amount } = parsed.data;
-  const user = (req as any).user;
-  const newCredits = user.credits + amount;
-  const newPlan = computePlan(newCredits);
-
-  const [updated] = await db
-    .update(usersTable)
-    .set({ credits: newCredits, plan: newPlan })
-    .where(eq(usersTable.id, user.id))
-    .returning({ credits: usersTable.credits, plan: usersTable.plan });
-
-  await db.insert(creditTransactionsTable).values({
-    userId: user.id,
-    type: "topup",
-    amount,
-    note: `Topup manual Rp ${amount.toLocaleString("id-ID")}`,
-  });
-
-  res.json({ credits: updated.credits, added: amount });
+router.post("/billing/topup", requireAuth, (_req, res): void => {
+  res.status(410).json({ error: "Topup manual dinonaktifkan. Gunakan endpoint pembayaran Tripay." });
 });
 
 router.get("/billing/transactions", requireAuth, async (req, res): Promise<void> => {
@@ -225,7 +240,7 @@ router.get("/billing/orders/:id", requireAuth, async (req, res): Promise<void> =
       ? new Date((tx.paid_at as number) * 1000).toISOString()
       : (order.paidAt?.toISOString() ?? null),
     orderItems: (tx?.order_items as { name: string; price: number; quantity: number; subtotal: number }[]) ?? [],
-    instructions: (tx?.instructions as { title: string; steps: string[] }[]) ?? [],
+    instructions: parseInstructions(tx?.instructions),
   });
 });
 
@@ -263,10 +278,20 @@ router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<v
       { headers: { Authorization: `Bearer ${apiKey}` } }
     );
     const detail = await tripayRes.json() as TripayTransactionDetail;
-    logger.info({ detail }, "Tripay sync detail");
+    logger.info({
+      orderId: order.id,
+      tripayStatus: detail.data?.status,
+      reference: detail.data?.reference,
+    }, "Tripay sync detail");
 
     if (!detail.success || detail.data.status !== "PAID") {
       res.json({ status: order.status });
+      return;
+    }
+
+    if (!isPaidDetailForOrder(order, detail.data)) {
+      logger.warn({ orderId: order.id, reference: detail.data.reference }, "Tripay sync detail mismatch");
+      res.status(409).json({ error: "Detail pembayaran tidak sesuai dengan order" });
       return;
     }
 
@@ -392,20 +417,12 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
     return;
   }
 
-  const { amount, method = "QRIS" } = req.body as { amount: number; method?: string };
-
-  if (!amount || typeof amount !== "number" || !Number.isInteger(amount)) {
+  const parsed = CreateTripayBody.safeParse(req.body);
+  if (!parsed.success) {
     res.status(400).json({ error: "Nominal tidak valid" });
     return;
   }
-  if (amount < MIN_TOPUP_IDR) {
-    res.status(400).json({ error: `Minimal topup Rp ${MIN_TOPUP_IDR.toLocaleString("id-ID")}` });
-    return;
-  }
-  if (amount > MAX_TOPUP_IDR) {
-    res.status(400).json({ error: `Maksimal topup Rp ${MAX_TOPUP_IDR.toLocaleString("id-ID")}` });
-    return;
-  }
+  const { amount, method } = parsed.data;
 
   const user = (req as any).user;
   const invoiceNumber = `MUTION-${Date.now()}-${user.id}`;
@@ -426,7 +443,7 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
   const expiredTime = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
   const base = getTripayBase();
 
-  logger.info({ base, method, amount, merchantCode, invoiceNumber }, "Calling Tripay API");
+  logger.info({ base, method, amount, invoiceNumber }, "Calling Tripay API");
 
   try {
     const tripayRes = await fetch(`${base}/transaction/create`, {
@@ -456,9 +473,14 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
     });
 
     const tripayData = (await tripayRes.json()) as TripayCreateResponse;
-    logger.info({ tripayData }, "Tripay API response");
+    logger.info({
+      success: tripayData.success,
+      reference: tripayData.data?.reference,
+      status: tripayData.data?.status,
+      invoiceNumber,
+    }, "Tripay API response");
 
-    if (!tripayData.success) {
+    if (!tripayData.success || tripayData.data?.merchant_ref !== invoiceNumber) {
       await db
         .update(paymentOrdersTable)
         .set({ status: "failed" })
@@ -535,6 +557,12 @@ router.post("/billing/tripay/webhook", async (req, res): Promise<void> => {
 
   if (order.status === "paid") {
     res.json({ success: true, message: "Already processed" });
+    return;
+  }
+
+  if (!isCallbackForOrder(order, payload)) {
+    logger.warn({ orderId: order.id, reference: payload.reference }, "Tripay webhook payload mismatch");
+    res.status(409).json({ error: "Payment payload does not match order" });
     return;
   }
 

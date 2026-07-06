@@ -511,20 +511,30 @@ router.get("/admin/usage", async (req, res): Promise<void> => {
 });
 
 // ─── Provider management ──────────────────────────────────────────────────────
-router.get("/admin/providers", (_req, res) => {
-  res.json(adminGetProviderStatuses());
+router.get("/admin/providers", async (_req, res): Promise<void> => {
+  try {
+    res.json(await adminGetProviderStatuses());
+  } catch (error) {
+    console.error("Failed to fetch provider statuses:", error);
+    res.status(500).json({ error: "Gagal mengambil data provider" });
+  }
 });
 
-router.patch("/admin/providers/:id/toggle", (req, res) => {
+router.patch("/admin/providers/:id/toggle", async (req, res): Promise<void> => {
   const id = decodeURIComponent(req.params.id);
   const { enabled } = req.body;
   if (typeof enabled !== "boolean") {
     res.status(400).json({ error: "enabled must be boolean" });
     return;
   }
-  if (enabled) adminEnableProvider(id);
-  else adminDisableProvider(id);
-  res.json({ ok: true, id, enabled });
+  try {
+    if (enabled) await adminEnableProvider(id);
+    else await adminDisableProvider(id);
+    res.json({ ok: true, id, enabled });
+  } catch (error) {
+    console.error("Failed to update provider status:", error);
+    res.status(500).json({ error: "Gagal mengubah status provider" });
+  }
 });
 
 router.post("/admin/providers/:id/reset-cooldown", (req, res) => {

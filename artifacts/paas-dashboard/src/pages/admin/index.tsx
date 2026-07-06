@@ -11,6 +11,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { ProjectStatusBadge } from "../projects";
+import { csrfFetch } from "@/lib/csrf";
 
 // --- Provider types -----------------------------------------------------------
 
@@ -30,7 +31,7 @@ async function fetchProviders(): Promise<ProviderStatus[]> {
 }
 
 async function toggleProvider(id: string, enabled: boolean): Promise<void> {
-  const res = await fetch(`/api/admin/providers/${encodeURIComponent(id)}/toggle`, {
+  const res = await csrfFetch(`/api/admin/providers/${encodeURIComponent(id)}/toggle`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -87,7 +88,7 @@ function ProvidersTab() {
           </CardTitle>
           <CardDescription>
             Aktifkan atau nonaktifkan provider AI secara real-time. Provider yang aktif akan dipilih secara round-robin dengan automatic failover.
-            Status cooldown dan toggle reset saat server restart.
+            Toggle provider tersimpan setelah server restart.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -137,7 +138,7 @@ function ProvidersTab() {
       <Card className="border-border/50 border-amber-500/20 bg-amber-500/5">
         <CardContent className="pt-4">
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-amber-500">Catatan:</span> Toggle bersifat in-memory - akan reset ke semua aktif saat server restart. Untuk menonaktifkan provider secara permanen, hapus dari env var <code className="bg-muted px-1 rounded">PROVIDER_POOL</code>.
+            <span className="font-semibold text-amber-500">Catatan:</span> Toggle provider disimpan permanen di database. Hapus secret provider hanya jika provider tidak ingin muncul di daftar.
           </p>
         </CardContent>
       </Card>

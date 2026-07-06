@@ -7,7 +7,16 @@
  */
 
 export interface RegisterInput {
+  /** @maxLength 254 */
   email: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
   password: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
   name: string;
 }

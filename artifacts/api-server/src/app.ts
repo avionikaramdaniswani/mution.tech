@@ -8,6 +8,7 @@ import { existsSync } from "fs";
 import router from "./routes";
 import v1Router from "./routes/v1-proxy";
 import { logger } from "./lib/logger";
+import { corsOptions, csrfOriginGuard, securityHeaders } from "./lib/security";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDist = path.resolve(__dirname, "../../paas-dashboard/dist/public");
@@ -36,19 +37,17 @@ app.use(
   }),
 );
 
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-  })
-);
+app.use(securityHeaders);
+app.use(cors(corsOptions));
+app.options(/(.*)/, cors(corsOptions));
 
 // Webhook TriPay HARUS pakai raw body untuk verifikasi signature — daftarkan SEBELUM json/urlencoded
 app.use("/api/billing/tripay/webhook", express.raw({ type: "*/*" }));
 
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
-app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+app.use(express.json({ limit: "1mb" }));
+app.use("/api", csrfOriginGuard);
 
 app.use("/api", router);
 app.use("/v1", v1Router);

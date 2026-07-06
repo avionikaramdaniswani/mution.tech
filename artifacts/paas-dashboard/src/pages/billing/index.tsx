@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Link } from "wouter";
+import { csrfFetch } from "@/lib/csrf";
 
 const PRESETS = [3_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000];
 
@@ -366,7 +367,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/billing/tripay/create", {
+      const res = await csrfFetch("/api/billing/tripay/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -698,7 +699,7 @@ function PaymentStatusBanner({ orderId, onDone }: { orderId: number; onDone: () 
     if (syncing) return;
     setSyncing(true);
     try {
-      const res = await fetch(`/api/billing/orders/${orderId}/sync`, {
+      const res = await csrfFetch(`/api/billing/orders/${orderId}/sync`, {
         method: "POST",
         credentials: "include",
       });
@@ -723,7 +724,7 @@ function PaymentStatusBanner({ orderId, onDone }: { orderId: number; onDone: () 
       return;
     }
     try {
-      const res = await fetch(`/api/billing/orders/${orderId}/sync`, {
+      const res = await csrfFetch(`/api/billing/orders/${orderId}/sync`, {
         method: "POST",
         credentials: "include",
       });

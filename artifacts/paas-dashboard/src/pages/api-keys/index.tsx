@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { csrfFetch } from "@/lib/csrf";
 
 interface ApiKey {
   id: number;
@@ -39,7 +40,7 @@ interface NewKey extends ApiKey {
 }
 
 async function apiFetch(path: string, options?: RequestInit) {
-  const res = await fetch(`/api${path}`, {
+  const res = await csrfFetch(`/api${path}`, {
     ...options,
     credentials: "include",
     headers: { "Content-Type": "application/json", ...options?.headers },

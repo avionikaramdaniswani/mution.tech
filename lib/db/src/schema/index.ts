@@ -10,3 +10,4 @@ export * from "./payment_orders";
 export * from "./api_keys";
 export * from "./api_usage";
 export * from "./changelogs";
+export * from "./ai_provider_settings";

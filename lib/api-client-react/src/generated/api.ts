@@ -49,8 +49,6 @@ import type {
   ProjectWithOwner,
   RegisterInput,
   SuccessResponse,
-  TopupInput,
-  TopupResponse,
   User,
   UserWithStats
 } from './api.schemas';
@@ -2129,77 +2127,6 @@ export function useGetPaymentStatus<TData = Awaited<ReturnType<typeof getPayment
 
 
 
-
-export const getTopupCreditsUrl = () => {
-
-
-
-
-  return `/api/billing/topup`
-}
-
-/**
- * @summary Topup user credits
- */
-export const topupCredits = async (topupInput: TopupInput, options?: RequestInit): Promise<TopupResponse> => {
-
-  return customFetch<TopupResponse>(getTopupCreditsUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      topupInput,)
-  }
-);}
-
-
-
-
-export const getTopupCreditsMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof topupCredits>>, TError,{data: BodyType<TopupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof topupCredits>>, TError,{data: BodyType<TopupInput>}, TContext> => {
-
-const mutationKey = ['topupCredits'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof topupCredits>>, {data: BodyType<TopupInput>}> = (props) => {
-          const {data} = props ?? {};
-
-          return  topupCredits(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type TopupCreditsMutationResult = NonNullable<Awaited<ReturnType<typeof topupCredits>>>
-    export type TopupCreditsMutationBody = BodyType<TopupInput>
-    export type TopupCreditsMutationError = ErrorType<ErrorResponse>
-
-    /**
- * @summary Topup user credits
- */
-export const useTopupCredits = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof topupCredits>>, TError,{data: BodyType<TopupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof topupCredits>>,
-        TError,
-        {data: BodyType<TopupInput>},
-        TContext
-      > => {
-      return useMutation(getTopupCreditsMutationOptions(options));
-    }
 
 export const getListTransactionsUrl = () => {
 

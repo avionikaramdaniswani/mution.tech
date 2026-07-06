@@ -10,6 +10,11 @@ export type AuthTokenGetter = () => Promise<string | null> | string | null;
 
 const NO_BODY_STATUS = new Set([204, 205, 304]);
 const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+const CSRF_HEADER = "X-CSRF-Token";
+
+let _csrfToken: string | null = null;
+let _csrfTokenRequest: Promise<string> | null = null;
 
 // ---------------------------------------------------------------------------
 // Module-level configuration
@@ -76,6 +81,54 @@ function resolveUrl(input: RequestInfo | URL): string {
   if (typeof input === "string") return input;
   if (isUrl(input)) return input.toString();
   return input.url;
+}
+
+function getBrowserOrigin(): string | null {
+  if (typeof window === "undefined" || !window.location?.origin) return null;
+  return window.location.origin;
+}
+
+function resolveBrowserUrl(input: RequestInfo | URL): URL | null {
+  const origin = getBrowserOrigin();
+  if (!origin) return null;
+
+  try {
+    return new URL(resolveUrl(input), origin);
+  } catch {
+    return null;
+  }
+}
+
+function shouldAttachCsrf(input: RequestInfo | URL, method: string, headers: Headers): boolean {
+  if (SAFE_METHODS.has(method) || headers.has(CSRF_HEADER)) return false;
+
+  const origin = getBrowserOrigin();
+  const url = resolveBrowserUrl(input);
+  return Boolean(origin && url && url.origin === origin && url.pathname.startsWith("/api/"));
+}
+
+async function getCsrfToken(): Promise<string> {
+  if (_csrfToken) return _csrfToken;
+
+  _csrfTokenRequest ??= fetch("/api/auth/csrf", { credentials: "include" })
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch CSRF token (${response.status})`);
+      }
+
+      const data = await response.json() as { csrfToken?: string };
+      if (!data.csrfToken) {
+        throw new Error("Missing CSRF token");
+      }
+
+      _csrfToken = data.csrfToken;
+      return data.csrfToken;
+    })
+    .finally(() => {
+      _csrfTokenRequest = null;
+    });
+
+  return _csrfTokenRequest;
 }
 
 function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
@@ -356,6 +409,10 @@ export async function customFetch<T = unknown>(
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
     }
+  }
+
+  if (shouldAttachCsrf(input, method, headers)) {
+    headers.set(CSRF_HEADER, await getCsrfToken());
   }
 
   const requestInfo = { method, url: resolveUrl(input) };

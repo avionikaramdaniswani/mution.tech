@@ -24,6 +24,7 @@ import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { csrfFetch } from "@/lib/csrf";
 
 type GithubRepo = {
   id: number;
@@ -59,7 +60,7 @@ const formSchema = z.object({
 });
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, { credentials: "include", ...init });
+  const res = await csrfFetch(path, { credentials: "include", ...init });
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<T>;
 }

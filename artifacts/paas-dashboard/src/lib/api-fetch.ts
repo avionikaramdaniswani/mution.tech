@@ -1,5 +1,7 @@
+import { csrfFetch } from "./csrf";
+
 export async function apiFetch<T = any>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const res = await csrfFetch(`/api${path}`, {
     ...options,
     credentials: "include",
     headers: { "Content-Type": "application/json", ...options?.headers },

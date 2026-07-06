@@ -18,13 +18,27 @@ export interface SuccessResponse {
 }
 
 export interface RegisterInput {
+  /** @maxLength 254 */
   email: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
   password: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
   name: string;
 }
 
 export interface LoginInput {
+  /** @maxLength 254 */
   email: string;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
   password: string;
 }
 
@@ -107,9 +121,19 @@ export const ProjectInputRuntime = {
 } as const;
 
 export interface ProjectInput {
+  /**
+     * @minLength 2
+     * @maxLength 60
+     * @pattern ^[a-z0-9-]+$
+     */
   name: string;
+  /** @maxLength 2048 */
   repoUrl?: string;
   runtime: ProjectInputRuntime;
+  /**
+     * @maxLength 253
+     * @pattern ^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$
+     */
   domain?: string;
 }
 
@@ -124,9 +148,19 @@ export const ProjectUpdateRuntime = {
 } as const;
 
 export interface ProjectUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 60
+     * @pattern ^[a-z0-9-]+$
+     */
   name?: string;
+  /** @maxLength 2048 */
   repoUrl?: string;
   runtime?: ProjectUpdateRuntime;
+  /**
+     * @maxLength 253
+     * @pattern ^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$
+     */
   domain?: string;
 }
 
@@ -157,7 +191,13 @@ export interface EnvVar {
 }
 
 export interface EnvVarInput {
+  /**
+     * @minLength 1
+     * @maxLength 128
+     * @pattern ^[A-Za-z_][A-Za-z0-9_]{0,127}$
+     */
   key: string;
+  /** @maxLength 8192 */
   value: string;
 }
 
@@ -297,16 +337,6 @@ export interface AdminStats {
   totalDeployments: number;
   runningProjects: number;
   failedProjects: number;
-}
-
-export interface TopupInput {
-  /** @minimum 1000 */
-  amount: number;
-}
-
-export interface TopupResponse {
-  credits: number;
-  added: number;
 }
 
 export type CreditTransactionType = typeof CreditTransactionType[keyof typeof CreditTransactionType];

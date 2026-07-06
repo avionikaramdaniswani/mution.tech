@@ -1,28 +1,53 @@
 import { Router } from "express";
 import { db, projectsTable, deploymentsTable, envVarsTable, projectDatabasesTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
-import {
-  GetProjectParams,
-  UpdateProjectParams,
-  UpdateProjectBody,
-  DeleteProjectParams,
-  GetProjectEnvParams,
-  SetProjectEnvParams,
-  SetProjectEnvBody,
-  DeleteProjectEnvParams,
-  StopProjectParams,
-  RestartProjectParams,
-  GetProjectDatabaseParams,
-  ProvisionDatabaseParams,
-  DeleteDatabaseParams,
-  CreateProjectBody,
-} from "@workspace/api-zod";
+import { z } from "zod";
 import { requireAuth } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 
 const router = Router();
 
 router.use(requireAuth);
+
+const RuntimeSchema = z.enum(["nodejs", "python", "php", "static"]);
+const OptionalRepoUrl = z.preprocess(
+  (value) => value === "" ? undefined : value,
+  z.string().trim().url().max(2048).refine((value) => {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === "https:" || parsed.protocol === "http:";
+    } catch {
+      return false;
+    }
+  }).optional(),
+);
+const OptionalDomain = z.preprocess(
+  (value) => value === "" ? undefined : value,
+  z.string().trim().toLowerCase().max(253).regex(/^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/).optional(),
+);
+const ProjectName = z.string().trim().min(2).max(60).regex(/^[a-z0-9-]+$/);
+const CreateProjectBody = z.object({
+  name: ProjectName,
+  repoUrl: OptionalRepoUrl,
+  runtime: RuntimeSchema,
+  domain: OptionalDomain,
+});
+const UpdateProjectBody = z.object({
+  name: ProjectName.optional(),
+  repoUrl: OptionalRepoUrl,
+  runtime: RuntimeSchema.optional(),
+  domain: OptionalDomain,
+}).refine((value) => Object.keys(value).length > 0, "Tidak ada perubahan");
+const SetProjectEnvBody = z.object({
+  key: z.string().trim().min(1).max(128).regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
+  value: z.string().max(8192),
+});
+
+function parseRouteId(value: string | string[] | undefined): number | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const id = Number(raw);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
 
 // List projects
 router.get("/projects", async (req, res): Promise<void> => {
@@ -88,8 +113,8 @@ router.post("/projects", async (req, res): Promise<void> => {
 // Get project
 router.get("/projects/:id", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .select()
@@ -117,8 +142,8 @@ router.get("/projects/:id", async (req, res): Promise<void> => {
 // Update project
 router.patch("/projects/:id", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const parsed = UpdateProjectBody.safeParse(req.body);
   if (!parsed.success) {
@@ -153,8 +178,8 @@ router.patch("/projects/:id", async (req, res): Promise<void> => {
 // Delete project
 router.delete("/projects/:id", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .delete(projectsTable)
@@ -173,8 +198,8 @@ router.delete("/projects/:id", async (req, res): Promise<void> => {
 // Stop project
 router.post("/projects/:id/stop", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .update(projectsTable)
@@ -204,8 +229,8 @@ router.post("/projects/:id/stop", async (req, res): Promise<void> => {
 // Restart project
 router.post("/projects/:id/restart", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .update(projectsTable)
@@ -235,8 +260,8 @@ router.post("/projects/:id/restart", async (req, res): Promise<void> => {
 // Env vars
 router.get("/projects/:id/env", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .select()
@@ -267,8 +292,8 @@ router.get("/projects/:id/env", async (req, res): Promise<void> => {
 
 router.post("/projects/:id/env", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .select()
@@ -306,10 +331,9 @@ router.post("/projects/:id/env", async (req, res): Promise<void> => {
 
 router.delete("/projects/:id/env/:envId", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const rawEnvId = Array.isArray(req.params.envId) ? req.params.envId[0] : req.params.envId;
-  const id = parseInt(rawId, 10);
-  const envId = parseInt(rawEnvId, 10);
+  const id = parseRouteId(req.params.id);
+  const envId = parseRouteId(req.params.envId);
+  if (id === null || envId === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .select()
@@ -328,8 +352,8 @@ router.delete("/projects/:id/env/:envId", async (req, res): Promise<void> => {
 // Database
 router.get("/projects/:id/database", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .select()
@@ -364,8 +388,8 @@ router.get("/projects/:id/database", async (req, res): Promise<void> => {
 
 router.post("/projects/:id/database", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .select()
@@ -415,8 +439,8 @@ router.post("/projects/:id/database", async (req, res): Promise<void> => {
 
 router.delete("/projects/:id/database", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .select()

@@ -1,15 +1,24 @@
 import { Router } from "express";
 import { db, deploymentsTable, projectsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
-import {
-  TriggerDeploymentBody,
-} from "@workspace/api-zod";
+import { z } from "zod";
 import { requireAuth } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 
 const router = Router();
 
 router.use(requireAuth);
+
+const TriggerDeploymentBody = z.object({
+  commitHash: z.string().trim().regex(/^[a-f0-9]{7,40}$/i).optional(),
+  commitMessage: z.string().trim().max(500).optional(),
+});
+
+function parseRouteId(value: string | string[] | undefined): number | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const id = Number(raw);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
 
 const FAKE_BUILD_LOG = `[2024-01-01 00:00:00] Cloning repository...
 [2024-01-01 00:00:02] Repository cloned successfully
@@ -41,8 +50,8 @@ function mapDeployment(d: typeof deploymentsTable.$inferSelect) {
 // List deployments
 router.get("/projects/:id/deployments", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .select()
@@ -66,8 +75,8 @@ router.get("/projects/:id/deployments", async (req, res): Promise<void> => {
 // Trigger deployment
 router.post("/projects/:id/deployments", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .select()
@@ -80,8 +89,12 @@ router.post("/projects/:id/deployments", async (req, res): Promise<void> => {
   }
 
   const body = TriggerDeploymentBody.safeParse(req.body ?? {});
-  const commitHash = body.success ? (body.data.commitHash ?? generateFakeHash()) : generateFakeHash();
-  const commitMessage = body.success ? (body.data.commitMessage ?? "Manual deploy") : "Manual deploy";
+  if (!body.success) {
+    res.status(400).json({ error: "Metadata deployment tidak valid" });
+    return;
+  }
+  const commitHash = body.data.commitHash ?? generateFakeHash();
+  const commitMessage = body.data.commitMessage ?? "Manual deploy";
 
   const deployedAt = new Date();
   const durationMs = Math.floor(Math.random() * 20000) + 15000;
@@ -113,10 +126,9 @@ router.post("/projects/:id/deployments", async (req, res): Promise<void> => {
 // Get deployment
 router.get("/projects/:id/deployments/:deploymentId", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const rawDep = Array.isArray(req.params.deploymentId) ? req.params.deploymentId[0] : req.params.deploymentId;
-  const id = parseInt(raw, 10);
-  const deploymentId = parseInt(rawDep, 10);
+  const id = parseRouteId(req.params.id);
+  const deploymentId = parseRouteId(req.params.deploymentId);
+  if (id === null || deploymentId === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .select()
@@ -144,10 +156,9 @@ router.get("/projects/:id/deployments/:deploymentId", async (req, res): Promise<
 // Rollback
 router.post("/projects/:id/deployments/:deploymentId/rollback", async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const rawDep = Array.isArray(req.params.deploymentId) ? req.params.deploymentId[0] : req.params.deploymentId;
-  const id = parseInt(raw, 10);
-  const deploymentId = parseInt(rawDep, 10);
+  const id = parseRouteId(req.params.id);
+  const deploymentId = parseRouteId(req.params.deploymentId);
+  if (id === null || deploymentId === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
     .select()

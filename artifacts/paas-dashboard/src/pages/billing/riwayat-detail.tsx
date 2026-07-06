@@ -7,6 +7,7 @@ import {
   CheckCircle2, Clock, AlertTriangle, Ban, XCircle,
   Copy, Check, Wallet, ReceiptText,
 } from "lucide-react";
+import { csrfFetch } from "@/lib/csrf";
 
 type OrderStatus = "pending" | "paid" | "failed" | "expired" | "cancelled";
 
@@ -202,7 +203,7 @@ export default function RiwayatDetailPage() {
     if (syncing || !order) return;
     setSyncing(true);
     try {
-      const res = await fetch(`/api/billing/orders/${order.id}/sync`, { method: "POST", credentials: "include" });
+      const res = await csrfFetch(`/api/billing/orders/${order.id}/sync`, { method: "POST", credentials: "include" });
       const data = await res.json() as { status: string; cannotSync?: boolean };
       if (data.status === "paid") {
         await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
@@ -225,7 +226,7 @@ export default function RiwayatDetailPage() {
     setCancelling(true);
     setConfirmCancel(false);
     try {
-      const res = await fetch(`/api/billing/orders/${order.id}/cancel`, { method: "POST", credentials: "include" });
+      const res = await csrfFetch(`/api/billing/orders/${order.id}/cancel`, { method: "POST", credentials: "include" });
       if (res.ok) {
         showToast("Order berhasil dibatalkan.", true);
         load();
@@ -454,10 +455,11 @@ export default function RiwayatDetailPage() {
                   {i + 1}
                 </div>
                 <p
-                  className="text-sm leading-relaxed"
+                  className="text-sm leading-relaxed whitespace-pre-line"
                   style={{ color: "rgba(255,255,255,0.55)" }}
-                  dangerouslySetInnerHTML={{ __html: step }}
-                />
+                >
+                  {step}
+                </p>
               </div>
             ))}
           </div>
