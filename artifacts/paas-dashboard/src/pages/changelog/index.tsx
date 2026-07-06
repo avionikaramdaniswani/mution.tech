@@ -31,11 +31,11 @@ export default function ChangelogPage() {
     <div className="min-h-screen bg-background flex flex-col">
       <PublicNavbar />
       
-      <main className="flex-1 max-w-3xl w-full mx-auto py-12 px-6 sm:px-0">
+      <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-10 sm:px-6 sm:py-12 lg:px-0">
         {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold tracking-tight mb-3">Changelog</h1>
-          <p className="text-lg text-muted-foreground">Catatan pembaruan, penambahan fitur baru, dan peningkatan sistem Mution AI.</p>
+        <div className="mb-10 sm:mb-12">
+          <h1 className="text-3xl font-bold tracking-tight mb-3 sm:text-4xl">Changelog</h1>
+          <p className="text-base text-muted-foreground leading-relaxed sm:text-lg">Catatan pembaruan, penambahan fitur baru, dan peningkatan sistem Mution AI.</p>
         </div>
 
         {isLoading ? (
@@ -45,34 +45,34 @@ export default function ChangelogPage() {
             Belum ada catatan rilis.
           </div>
         ) : (
-          <div className="relative border-l border-border/50 ml-4 space-y-12 pb-10">
+          <div className="relative ml-2 space-y-10 border-l border-border/50 pb-10 sm:ml-4 sm:space-y-12">
             {changelogs.map((entry) => (
-              <div key={entry.id} className="relative pl-10">
+              <div key={entry.id} className="relative pl-6 sm:pl-10">
                 {/* Timeline solid dot */}
                 <div className="absolute -left-[7px] top-2 flex h-3 w-3 items-center justify-center rounded-full bg-primary ring-4 ring-background" />
 
                 {/* Version & Date */}
-                <div className="mb-2 flex items-center gap-3">
-                  <h2 className="text-2xl font-bold tracking-tight text-foreground">{entry.version}</h2>
+                <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                  <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">{entry.version}</h2>
                   <span className="text-sm font-medium text-muted-foreground">{entry.date}</span>
                 </div>
                 
                 {/* Entry Card */}
-                <div className="bg-card border border-border/50 rounded-xl p-6 mt-4 shadow-sm relative group overflow-hidden transition-colors hover:border-border">
+                <div className="bg-card border border-border/50 rounded-xl p-4 mt-4 shadow-sm relative group overflow-hidden transition-colors hover:border-border sm:p-6">
                   <div className="absolute inset-0 bg-gradient-to-r from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                   
                   <h3 className="text-lg font-semibold text-foreground mb-2">{entry.title}</h3>
                   {entry.description && (
-                    <p className="text-sm text-muted-foreground mb-6 leading-relaxed">{entry.description}</p>
+                    <p className="text-sm text-muted-foreground mb-5 leading-relaxed sm:mb-6">{entry.description}</p>
                   )}
 
                   {/* Changes List */}
-                  <div className="space-y-4">
+                  <div className="space-y-4 sm:space-y-3">
                     {entry.changes.map((change, cIdx) => {
                       const conf = TypeConfig[change.type] || TypeConfig.chore;
                       return (
-                        <div key={cIdx} className="flex items-start gap-3">
-                          <span className={`inline-flex items-center gap-1.5 mt-0.5 px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-widest flex-shrink-0 ${conf.colorClass}`}>
+                        <div key={cIdx} className="flex flex-col items-start gap-2 sm:flex-row sm:gap-3">
+                          <span className={`inline-flex w-fit max-w-full flex-shrink-0 items-center gap-1.5 rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide sm:mt-0.5 sm:tracking-widest ${conf.colorClass}`}>
                             <conf.icon className="h-3 w-3" />
                             {conf.label}
                           </span>
