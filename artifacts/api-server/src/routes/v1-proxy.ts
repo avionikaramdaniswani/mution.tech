@@ -1,10 +1,10 @@
-import { Router, type Request, type Response } from "express";
-import { db, apiKeysTable, usersTable, creditTransactionsTable, apiUsageTable, aiProviderSettingsTable } from "@workspace/db";
+import { Router, type NextFunction, type Request, type Response } from "express";
+import { db, apiKeysTable, usersTable, creditTransactionsTable, apiUsageTable, aiProviderSettingsTable, apiRequestsTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { logger } from "../lib/logger";
 import { broadcastToUser, broadcastAdmin } from "../lib/events";
-import { getModelPricing as getCatalogModelPricing } from "@workspace/model-catalog";
+import { MODEL_CATALOG, getModelPricing as getCatalogModelPricing } from "@workspace/model-catalog";
 import { apiKeyRateLimitKey, rateLimit } from "../lib/security";
 
 const router = Router();
@@ -14,6 +14,85 @@ const AiProxyLimiter = rateLimit({
   keyPrefix: "ai-proxy",
   key: apiKeyRateLimitKey,
 });
+
+type ApiRequestLogState = {
+  requestId: string;
+  startedAt: number;
+  endpoint: string;
+  method: string;
+  userId?: number | null;
+  keyId?: number | null;
+  model?: string | null;
+  providerId?: string | null;
+  errorType?: string | null;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  credits?: number;
+};
+
+function getApiRequestLog(res: Response): ApiRequestLogState | null {
+  return (res.locals as { apiRequestLog?: ApiRequestLogState }).apiRequestLog ?? null;
+}
+
+function updateApiRequestLog(res: Response, patch: Partial<ApiRequestLogState>): void {
+  const state = getApiRequestLog(res);
+  if (state) Object.assign(state, patch);
+}
+
+function classifyErrorType(statusCode: number): string | null {
+  if (statusCode < 400) return null;
+  if (statusCode === 400) return "invalid_request_error";
+  if (statusCode === 401) return "authentication_error";
+  if (statusCode === 402) return "insufficient_quota";
+  if (statusCode === 403) return "forbidden";
+  if (statusCode === 429) return "rate_limit";
+  if (statusCode >= 500) return "api_error";
+  return "http_error";
+}
+
+async function writeApiRequestLog(state: ApiRequestLogState, statusCode: number): Promise<void> {
+  const errorType = state.errorType ?? classifyErrorType(statusCode);
+
+  try {
+    await db.insert(apiRequestsTable).values({
+      requestId: state.requestId,
+      userId: state.userId ?? null,
+      keyId: state.keyId ?? null,
+      endpoint: state.endpoint,
+      method: state.method,
+      model: state.model ?? null,
+      providerId: state.providerId ?? null,
+      statusCode,
+      success: statusCode < 400 && !errorType,
+      errorType,
+      latencyMs: Math.max(0, Date.now() - state.startedAt),
+      promptTokens: state.promptTokens ?? 0,
+      completionTokens: state.completionTokens ?? 0,
+      totalTokens: state.totalTokens ?? 0,
+      credits: state.credits ?? 0,
+    });
+  } catch (err) {
+    logger.error({ err, requestId: state.requestId }, "Failed to write API request log");
+  }
+}
+
+function apiRequestLogger(req: Request, res: Response, next: NextFunction): void {
+  const requestId = crypto.randomUUID();
+  (res.locals as { apiRequestLog?: ApiRequestLogState }).apiRequestLog = {
+    requestId,
+    startedAt: Date.now(),
+    endpoint: req.path,
+    method: req.method,
+    model: typeof req.body?.model === "string" ? req.body.model : null,
+  };
+  res.setHeader("X-Request-ID", requestId);
+  res.on("finish", () => {
+    const state = getApiRequestLog(res);
+    if (state) void writeApiRequestLog(state, res.statusCode);
+  });
+  next();
+}
 
 // ─── Per-Model Pricing (kredit per 1K token) ──────────────────────────────────
   // Try partial match — sort by key length DESC so "claude-sonnet-4-7" beats "claude-sonnet-4"
@@ -371,6 +450,23 @@ function calculateCredits(tokensUsed: number, model: string, breakdown?: CreditB
   return Math.max(1, Math.ceil(inputCredits + outputCredits));
 }
 
+function updateApiRequestUsageLog(
+  res: Response,
+  tokensUsed: number,
+  model: string,
+  breakdown?: CreditBreakdown,
+): void {
+  const inputTokens = breakdown?.inputTokens ?? 0;
+  const outputTokens = breakdown?.outputTokens ?? (inputTokens === 0 ? tokensUsed : 0);
+  updateApiRequestLog(res, {
+    model,
+    promptTokens: inputTokens,
+    completionTokens: outputTokens,
+    totalTokens: tokensUsed,
+    credits: calculateCredits(tokensUsed, model, { inputTokens, outputTokens }),
+  });
+}
+
 function estimateReserveCredits(reqBody: any, model: string, requestedOutputTokens: number): number {
   const inputTokens = estimateInputTokens(reqBody);
   return calculateCredits(inputTokens + requestedOutputTokens, model, {
@@ -510,23 +606,29 @@ async function refundUnfinalizedReservation(reservation: CreditReservation): Pro
 async function authenticate(req: Request, res: Response): Promise<{ key: typeof apiKeysTable.$inferSelect; user: typeof usersTable.$inferSelect } | null> {
   const token = extractToken(req);
   if (!token) {
+    updateApiRequestLog(res, { errorType: "authentication_error" });
     res.status(401).json({ type: "error", error: { type: "authentication_error", message: "Missing Authorization header or x-api-key" } });
     return null;
   }
   const row = await resolveKeyAndUser(token);
   if (!row) {
+    updateApiRequestLog(res, { errorType: "authentication_error" });
     res.status(401).json({ type: "error", error: { type: "authentication_error", message: "Invalid or revoked API key" } });
     return null;
   }
+  updateApiRequestLog(res, { userId: row.user.id, keyId: row.key.id });
   if (row.user.credits <= 0) {
+    updateApiRequestLog(res, { errorType: "insufficient_quota" });
     res.status(402).json({ type: "error", error: { type: "insufficient_quota", message: "Insufficient credits. Top up at mution.tech/billing" } });
     return null;
   }
   if (row.key.expiresAt && new Date() > new Date(row.key.expiresAt)) {
+    updateApiRequestLog(res, { errorType: "forbidden" });
     res.status(403).json({ type: "error", error: { type: "forbidden", message: "API key has expired" } });
     return null;
   }
   if (row.key.creditLimit !== null && row.key.totalCreditsUsed >= row.key.creditLimit) {
+    updateApiRequestLog(res, { errorType: "forbidden" });
     res.status(403).json({ type: "error", error: { type: "forbidden", message: "API key has reached its quota limit" } });
     return null;
   }
@@ -597,26 +699,31 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
 
   let providers: Provider[];
   try { providers = getProviders(); } catch (e: any) {
+    updateApiRequestLog(res, { errorType: "api_error" });
     res.status(503).json({ type: "error", error: { type: "api_error", message: e.message } });
     return;
   }
   await refreshProviderSettingsForProxy();
   providers = providers.filter((p) => !_disabledProviders.has(p.id));
   if (providers.length === 0) {
+    updateApiRequestLog(res, { errorType: "api_error" });
     res.status(503).json({ type: "error", error: { type: "api_error", message: "All AI providers are disabled" } });
     return;
   }
 
   const originalModel = req.body?.model ?? "unknown";
   const isStream = req.body?.stream === true;
+  updateApiRequestLog(res, { model: originalModel });
 
   if (key.allowedModels && key.allowedModels.length > 0 && !key.allowedModels.includes(originalModel)) {
+    updateApiRequestLog(res, { errorType: "forbidden" });
     res.status(403).json({ type: "error", error: { type: "forbidden", message: `API key is not allowed to use model: ${originalModel}` } });
     return;
   }
 
   const requestedOutputTokens = getRequestedOutputTokens(req.body);
   if (requestedOutputTokens === null) {
+    updateApiRequestLog(res, { errorType: "invalid_request_error" });
     res.status(400).json({ type: "error", error: { type: "invalid_request_error", message: `max_tokens must be an integer between 1 and ${MAX_OUTPUT_TOKENS}` } });
     return;
   }
@@ -627,6 +734,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
     estimateReserveCredits(req.body, originalModel, requestedOutputTokens),
   );
   if (!reservation) {
+    updateApiRequestLog(res, { errorType: "insufficient_quota" });
     res.status(402).json({ type: "error", error: { type: "insufficient_quota", message: "Insufficient credits or API key credit limit for this request" } });
     return;
   }
@@ -636,6 +744,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
   // Try providers with fallback on non-streaming failures
   for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
+    updateApiRequestLog(res, { providerId: provider.id });
 
     logger.info({ provider: provider.id, type: provider.type, model: originalModel }, "Proxying /messages");
 
@@ -660,6 +769,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
             if (attempt < providers.length - 1) continue;
           }
           const data = await upstream.json().catch(() => ({}));
+          updateApiRequestLog(res, { errorType: classifyErrorType(status) });
           res.status(status).json(data);
           return;
         }
@@ -700,7 +810,9 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (totalInputTokens + totalOutputTokens === 0) {
             logger.warn({ model: originalModel, fallbackTokens: tokens }, "Conduit stream: usage missing, using capped fallback");
           }
+          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
           reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
+          if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         } else {
           const data = await upstream.json() as any;
           res.status(200).json(data);
@@ -710,7 +822,9 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (inputTokens + outputTokens === 0) {
             logger.warn({ model: originalModel, fallbackTokens: tokens }, "Conduit non-stream: usage missing, using capped fallback");
           }
+          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens });
           reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens });
+          if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         }
         return;
 
@@ -802,17 +916,21 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (actualInputTokens + actualOutputTokens === 0) {
             logger.warn({ model: originalModel, fallbackTokens: tokens, estimatedChars: estimatedOutputChars }, "Generic stream: usage missing, using estimate");
           }
+          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens: finalInput, outputTokens: finalOutput });
           reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: finalInput, outputTokens: finalOutput });
+          if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         } else {
           const contentType = upstream.headers.get("content-type") ?? "";
           if (!contentType.includes("application/json")) {
             const text = await upstream.text();
             logger.error({ provider: provider.id, status: upstream.status, body: text.slice(0, 500) }, "Provider returned non-JSON");
+            updateApiRequestLog(res, { errorType: "upstream_non_json" });
             res.status(502).json({ type: "error", error: { type: "api_error", message: `Upstream error (${upstream.status})` } });
             return;
           }
           const data = await upstream.json() as any;
           if (!upstream.ok) {
+            updateApiRequestLog(res, { errorType: classifyErrorType(upstream.status) });
             res.status(upstream.status).json({ type: "error", error: data.error ?? data });
             return;
           }
@@ -822,7 +940,9 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           const inputTokens = data.usage?.prompt_tokens ?? 0;
           const outputTokens = data.usage?.completion_tokens ?? 0;
           const tokens = (inputTokens + outputTokens) || estimateFallbackTokens(req.body);
+          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens });
           reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens });
+          if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         }
         return;
       }
@@ -830,6 +950,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
       logger.error({ err, provider: provider.id }, "Messages proxy error");
       markCooldown(provider);
       if (attempt >= providers.length - 1) {
+        updateApiRequestLog(res, { errorType: "upstream_error" });
         if (!res.headersSent) res.status(502).json({ type: "error", error: { type: "api_error", message: "All upstream providers failed" } });
         return;
       }
@@ -842,6 +963,42 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
 
 // ─── OpenAI-compatible proxy ──────────────────────────────────────────────────
 
+function providerOwner(provider: string): string {
+  return provider.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+async function listModels(req: Request, res: Response): Promise<void> {
+  const row = await authenticate(req, res);
+  if (!row) return;
+
+  const allowed = row.key.allowedModels && row.key.allowedModels.length > 0
+    ? new Set(row.key.allowedModels)
+    : null;
+
+  const models = MODEL_CATALOG
+    .filter((model) => !allowed || allowed.has(model.id))
+    .map((model) => ({
+      id: model.id,
+      object: "model",
+      created: 0,
+      owned_by: providerOwner(model.provider),
+      mution: {
+        label: model.label,
+        provider: model.provider,
+        pricing: model.pricing,
+        context: model.context,
+        note: model.note ?? null,
+        description: model.description,
+        aliases: model.aliases ?? [],
+      },
+    }));
+
+  res.json({
+    object: "list",
+    data: models,
+  });
+}
+
 async function proxyOpenAI(req: Request, res: Response, path: string): Promise<void> {
   const row = await authenticate(req, res);
   if (!row) return;
@@ -849,28 +1006,33 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
 
   let providers: Provider[];
   try { providers = getProviders(); } catch (e: any) {
+    updateApiRequestLog(res, { errorType: "api_error" });
     res.status(503).json({ error: { message: e.message, type: "server_error" } });
     return;
   }
   await refreshProviderSettingsForProxy();
   providers = providers.filter((p) => !_disabledProviders.has(p.id));
   if (providers.length === 0) {
+    updateApiRequestLog(res, { errorType: "api_error" });
     res.status(503).json({ error: { message: "All AI providers are disabled", type: "server_error" } });
     return;
   }
 
   const originalModel = req.method !== "GET" ? req.body?.model ?? "unknown" : "unknown";
+  updateApiRequestLog(res, { model: originalModel });
   let reservation: CreditReservation | null = null;
   let reservationClosed = true;
 
   if (req.method !== "GET") {
     if (key.allowedModels && key.allowedModels.length > 0 && !key.allowedModels.includes(originalModel)) {
+      updateApiRequestLog(res, { errorType: "forbidden" });
       res.status(403).json({ error: { message: `API key is not allowed to use model: ${originalModel}`, type: "forbidden" } });
       return;
     }
 
     const requestedOutputTokens = getReservationOutputTokens(path, req.body);
     if (requestedOutputTokens === null) {
+      updateApiRequestLog(res, { errorType: "invalid_request_error" });
       res.status(400).json({ error: { message: `max_tokens must be an integer between 1 and ${MAX_OUTPUT_TOKENS}`, type: "invalid_request_error" } });
       return;
     }
@@ -881,6 +1043,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
       estimateReserveCredits(req.body, originalModel, requestedOutputTokens),
     );
     if (!reservation) {
+      updateApiRequestLog(res, { errorType: "insufficient_quota" });
       res.status(402).json({ error: { message: "Insufficient credits or API key credit limit for this request", type: "insufficient_quota" } });
       return;
     }
@@ -890,6 +1053,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
   try {
   for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
+    updateApiRequestLog(res, { providerId: provider.id });
 
     logger.info({ provider: provider.id, path }, "Proxying OpenAI call");
 
@@ -941,7 +1105,9 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
           logger.warn({ model: req.body?.model, fallbackTokens: tokens }, "OpenAI stream: usage missing, using capped fallback");
         }
         if (reservation) {
+          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens: streamInputTokens, outputTokens: streamOutputTokens });
           reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: streamInputTokens, outputTokens: streamOutputTokens });
+          if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         }
         return;
 
@@ -960,8 +1126,12 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
             logger.warn({ model: data.model ?? req.body?.model, fallbackTokens: tokens }, "OpenAI non-stream: usage missing, using capped fallback");
           }
           if (reservation) {
+            updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, { inputTokens, outputTokens });
             reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, { inputTokens, outputTokens });
+            if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
           }
+        } else {
+          updateApiRequestLog(res, { errorType: classifyErrorType(upstream.status) });
         }
         return;
 
@@ -972,6 +1142,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
           markCooldown(provider);
           if (attempt < providers.length - 1) continue;
         }
+        updateApiRequestLog(res, { errorType: "upstream_non_json" });
         res.status(502).json({ error: { message: `Upstream error (${upstream.status})`, type: "server_error" } });
         return;
       }
@@ -979,6 +1150,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
       logger.error({ err, provider: provider.id }, "OpenAI proxy error");
       markCooldown(provider);
       if (attempt >= providers.length - 1) {
+        updateApiRequestLog(res, { errorType: "upstream_error" });
         if (!res.headersSent) res.status(502).json({ error: { message: "All upstream providers failed", type: "server_error" } });
         return;
       }
@@ -991,10 +1163,11 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
+router.use(apiRequestLogger);
 router.use(AiProxyLimiter);
 router.post("/messages", (req, res) => proxyMessages(req, res));
 router.post("/chat/completions", (req, res) => proxyOpenAI(req, res, "/chat/completions"));
-router.get("/models", (req, res) => proxyOpenAI(req, res, "/models"));
+router.get("/models", (req, res) => listModels(req, res));
 router.post("/completions", (req, res) => proxyOpenAI(req, res, "/completions"));
 router.post("/embeddings", (req, res) => proxyOpenAI(req, res, "/embeddings"));
 
