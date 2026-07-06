@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Activity, Coins, Download, Filter, Hash, Loader2, RotateCcw } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, Clock, Download, Filter, Hash, Loader2, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,16 @@ import { getModelById } from "@workspace/model-catalog";
 
 interface ApiUsageItem {
   id: number;
+  requestId: string;
   keyId: number | null;
-  model: string;
+  endpoint: string;
+  method: string;
+  model: string | null;
+  providerId: string | null;
+  statusCode: number;
+  success: boolean;
+  errorType: string | null;
+  latencyMs: number;
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
@@ -23,6 +31,7 @@ interface ApiUsageItem {
 interface ApiUsageDaily {
   day: string;
   requests: number;
+  errors: number;
   totalTokens: number;
   credits: number;
 }
@@ -41,6 +50,9 @@ interface ApiUsageResponse {
     totalTokens: number;
     promptTokens: number;
     completionTokens: number;
+    successfulRequests: number;
+    failedRequests: number;
+    averageLatencyMs: number;
   };
   data: ApiUsageItem[];
   daily: ApiUsageDaily[];
@@ -48,6 +60,7 @@ interface ApiUsageResponse {
     from: string;
     to: string;
     model: string | null;
+    status: "success" | "error" | null;
     keyId: number | null;
     models: string[];
     apiKeys: ApiUsageFilterKey[];
@@ -78,6 +91,7 @@ function buildUsageParams({
   from,
   to,
   model,
+  status,
   keyId,
   format,
 }: {
@@ -85,6 +99,7 @@ function buildUsageParams({
   from: string;
   to: string;
   model: string;
+  status: string;
   keyId: string;
   format?: "csv";
 }) {
@@ -95,6 +110,7 @@ function buildUsageParams({
     to,
   });
   if (model) params.set("model", model);
+  if (status) params.set("status", status);
   if (keyId) params.set("keyId", keyId);
   if (format) params.set("format", format);
   return params;
@@ -130,18 +146,29 @@ function modelLabel(modelId: string) {
   return model ? `${model.label} (${model.id})` : modelId;
 }
 
+function shortRequestId(requestId: string) {
+  return requestId.length > 12 ? requestId.slice(0, 8) : requestId;
+}
+
+function statusBadgeClass(success: boolean) {
+  return success
+    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+    : "border-red-500/30 bg-red-500/10 text-red-400";
+}
+
 export default function ApiUsagePage() {
   const [page, setPage] = useState(1);
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);
   const [model, setModel] = useState("");
+  const [status, setStatus] = useState("");
   const [keyId, setKeyId] = useState("");
   const [isExporting, setIsExporting] = useState(false);
 
-  const params = buildUsageParams({ page, from, to, model, keyId });
+  const params = buildUsageParams({ page, from, to, model, status, keyId });
 
   const { data, isLoading, isError } = useQuery<ApiUsageResponse>({
-    queryKey: ["api-usage", page, from, to, model, keyId],
+    queryKey: ["api-usage", page, from, to, model, status, keyId],
     queryFn: () => fetchApiUsage(params),
     placeholderData: keepPreviousData,
   });
@@ -155,6 +182,7 @@ export default function ApiUsagePage() {
     setFrom(initialFrom());
     setTo(initialTo());
     setModel("");
+    setStatus("");
     setKeyId("");
     setPage(1);
   };
@@ -162,7 +190,7 @@ export default function ApiUsagePage() {
   const exportCsv = async () => {
     setIsExporting(true);
     try {
-      const exportParams = buildUsageParams({ page: 1, from, to, model, keyId, format: "csv" });
+      const exportParams = buildUsageParams({ page: 1, from, to, model, status, keyId, format: "csv" });
       const res = await fetch(`/api/api-usage?${exportParams.toString()}`, { credentials: "include" });
       if (!res.ok) throw new Error("Gagal export CSV");
       const blob = await res.blob();
@@ -200,7 +228,7 @@ export default function ApiUsagePage() {
           <Filter className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Filter</h2>
         </div>
-        <div className="grid gap-3 md:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-6">
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground">Dari</label>
             <Input type="date" value={from} onChange={(e) => updateFilter(setFrom, e.target.value)} />
@@ -222,6 +250,18 @@ export default function ApiUsagePage() {
                   {key.name} - {key.keyPrefix}
                 </option>
               ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">Status</label>
+            <select
+              value={status}
+              onChange={(e) => updateFilter(setStatus, e.target.value)}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">Semua status</option>
+              <option value="success">Berhasil</option>
+              <option value="error">Error</option>
             </select>
           </div>
           <div className="space-y-1.5">
@@ -256,12 +296,12 @@ export default function ApiUsagePage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <SummaryCard
               title="Total Requests"
               value={data?.summary.totalRequests.toLocaleString("id-ID") || 0}
               icon={Activity}
-              description="Jumlah pemanggilan API pada filter aktif"
+              description={`${(data?.summary.successfulRequests || 0).toLocaleString("id-ID")} berhasil - ${(data?.summary.failedRequests || 0).toLocaleString("id-ID")} error`}
             />
             <SummaryCard
               title="Total Tokens"
@@ -270,10 +310,16 @@ export default function ApiUsagePage() {
               description={`${(data?.summary.promptTokens || 0).toLocaleString("id-ID")} input - ${(data?.summary.completionTokens || 0).toLocaleString("id-ID")} output`}
             />
             <SummaryCard
-              title="Credits Used"
-              value={`Rp ${data?.summary.totalCredits.toLocaleString("id-ID") || 0}`}
-              icon={Coins}
-              description="Total kredit yang terpotong"
+              title="Error Requests"
+              value={data?.summary.failedRequests.toLocaleString("id-ID") || 0}
+              icon={AlertTriangle}
+              description="Request dengan status gagal pada filter aktif"
+            />
+            <SummaryCard
+              title="Avg Latency"
+              value={`${data?.summary.averageLatencyMs.toLocaleString("id-ID") || 0} ms`}
+              icon={Clock}
+              description={`Kredit terpakai: Rp ${data?.summary.totalCredits.toLocaleString("id-ID") || 0}`}
             />
           </div>
 
@@ -294,7 +340,7 @@ export default function ApiUsagePage() {
                         style={{ height: `${Math.max(3, (item.totalTokens / maxDailyTokens) * 138)}px` }}
                       />
                       <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap text-[10px] font-medium px-2 py-1 rounded bg-black/80 border border-white/10 pointer-events-none">
-                        {item.totalTokens.toLocaleString("id-ID")} tok - {item.requests.toLocaleString("id-ID")} req
+                        {item.totalTokens.toLocaleString("id-ID")} tok - {item.requests.toLocaleString("id-ID")} req - {item.errors.toLocaleString("id-ID")} err
                       </div>
                     </div>
                     <span className="text-[9px] text-muted-foreground truncate w-full text-center">{item.day.slice(5)}</span>
@@ -310,11 +356,13 @@ export default function ApiUsagePage() {
                 <thead className="bg-white/5 border-b border-white/10 text-muted-foreground">
                   <tr>
                     <th className="px-6 py-4 font-medium">Tanggal</th>
+                    <th className="px-6 py-4 font-medium">Status</th>
+                    <th className="px-6 py-4 font-medium">Request</th>
                     <th className="px-6 py-4 font-medium">API Key</th>
+                    <th className="px-6 py-4 font-medium">Endpoint</th>
                     <th className="px-6 py-4 font-medium">Model</th>
-                    <th className="px-6 py-4 font-medium text-right">Input</th>
-                    <th className="px-6 py-4 font-medium text-right">Output</th>
-                    <th className="px-6 py-4 font-medium text-right">Total</th>
+                    <th className="px-6 py-4 font-medium text-right">Tokens</th>
+                    <th className="px-6 py-4 font-medium text-right">Latency</th>
                     <th className="px-6 py-4 font-medium text-right">Spend</th>
                   </tr>
                 </thead>
@@ -326,6 +374,28 @@ export default function ApiUsagePage() {
                           {format(new Date(item.createdAt), "dd MMM yyyy, HH:mm", { locale: id })}
                         </td>
                         <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline" className={statusBadgeClass(item.success)}>
+                              {item.success ? (
+                                <CheckCircle2 className="mr-1 h-3 w-3" />
+                              ) : (
+                                <AlertTriangle className="mr-1 h-3 w-3" />
+                              )}
+                              {item.statusCode}
+                            </Badge>
+                            {item.errorType && (
+                              <span className="max-w-36 truncate text-xs text-red-400" title={item.errorType}>
+                                {item.errorType}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <code className="text-xs text-muted-foreground" title={item.requestId}>
+                            {shortRequestId(item.requestId)}
+                          </code>
+                        </td>
+                        <td className="px-6 py-4">
                           {item.keyId === null || item.apiKeyName === "Deleted API Key" ? (
                             <Badge variant="outline" className="border-muted-foreground/30 text-muted-foreground">
                               Deleted API Key
@@ -335,18 +405,37 @@ export default function ApiUsagePage() {
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          <Badge variant="outline" className="font-mono text-xs font-normal">
-                            {item.model}
-                          </Badge>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs font-medium text-muted-foreground">{item.method}</span>
+                            <code className="max-w-40 truncate text-xs" title={item.endpoint}>
+                              {item.endpoint}
+                            </code>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {item.model ? (
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="outline" className="font-mono text-xs font-normal">
+                                {item.model}
+                              </Badge>
+                              {item.providerId && (
+                                <span className="text-xs text-muted-foreground">{item.providerId}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-right tabular-nums text-muted-foreground">
-                          {item.promptTokens.toLocaleString("id-ID")}
+                          <div className="font-medium text-foreground">
+                            {item.totalTokens.toLocaleString("id-ID")}
+                          </div>
+                          <div className="text-xs">
+                            {item.promptTokens.toLocaleString("id-ID")} in - {item.completionTokens.toLocaleString("id-ID")} out
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-right tabular-nums text-muted-foreground">
-                          {item.completionTokens.toLocaleString("id-ID")}
-                        </td>
-                        <td className="px-6 py-4 text-right tabular-nums text-muted-foreground">
-                          {item.totalTokens.toLocaleString("id-ID")}
+                          {item.latencyMs.toLocaleString("id-ID")} ms
                         </td>
                         <td className="px-6 py-4 text-right tabular-nums font-medium text-orange-500">
                           Rp {item.credits.toLocaleString("id-ID")}
@@ -355,8 +444,8 @@ export default function ApiUsagePage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">
-                        Belum ada riwayat penggunaan API untuk filter ini.
+                      <td colSpan={9} className="px-6 py-12 text-center text-muted-foreground">
+                        Belum ada request API untuk filter ini.
                       </td>
                     </tr>
                   )}

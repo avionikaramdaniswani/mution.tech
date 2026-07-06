@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AVAILABLE_MODEL_IDS } from "@workspace/model-catalog";
+import { MODEL_CATALOG, groupModelsByProvider } from "@workspace/model-catalog";
 import {
   Dialog,
   DialogContent,
@@ -103,6 +103,75 @@ function ResponsivePanel({ open, onOpenChange, title, description, children, foo
         </SheetFooter>
       </SheetContent>
     </Sheet>
+  );
+}
+
+const MODEL_GROUPS = groupModelsByProvider(MODEL_CATALOG);
+
+function formatCredits(value: number) {
+  return value.toLocaleString("id-ID");
+}
+
+function ModelAccessSelector({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (models: string[]) => void;
+}) {
+  const selected = new Set(value);
+
+  const toggleModel = (modelId: string, checked: boolean) => {
+    if (checked) onChange([...selected, modelId]);
+    else onChange(value.filter((id) => id !== modelId));
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          {value.length === 0 ? "Semua model diizinkan." : `${value.length} model dipilih.`}
+        </p>
+        <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onChange([])}>
+          Semua Model
+        </Button>
+      </div>
+      <div className="max-h-72 overflow-y-auto rounded-lg border border-border/50">
+        {Object.entries(MODEL_GROUPS).map(([provider, models]) => (
+          <div key={provider} className="border-b border-border/40 last:border-b-0">
+            <div className="sticky top-0 z-10 bg-background/95 px-3 py-2 text-xs font-semibold text-muted-foreground">
+              {provider}
+            </div>
+            <div className="divide-y divide-border/30">
+              {models.map((model) => (
+                <label key={model.id} className="flex cursor-pointer items-start gap-3 px-3 py-2.5 hover:bg-muted/30">
+                  <input
+                    type="checkbox"
+                    className="mt-1 accent-primary"
+                    checked={selected.has(model.id)}
+                    onChange={(event) => toggleModel(model.id, event.target.checked)}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium">{model.label}</span>
+                      {model.note && (
+                        <Badge variant="outline" className="border-orange-500/30 bg-orange-500/10 text-orange-400">
+                          {model.note}
+                        </Badge>
+                      )}
+                    </span>
+                    <span className="mt-1 block truncate font-mono text-xs text-muted-foreground">{model.id}</span>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      {model.context} context - {formatCredits(model.pricing.input)} in / {formatCredits(model.pricing.output)} out per 1K token
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -355,23 +424,7 @@ export default function ApiKeysPage() {
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Akses Model (Opsional)</label>
-            <p className="text-xs text-muted-foreground mb-2">Pilih model yang diizinkan, atau biarkan kosong untuk semua model.</p>
-            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border border-border/50 rounded-lg">
-              {AVAILABLE_MODEL_IDS.map((m) => (
-                <label key={m} className="flex items-center gap-2 text-xs cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="accent-primary"
-                    checked={newKeyAllowedModels.includes(m)}
-                    onChange={(e) => {
-                      if (e.target.checked) setNewKeyAllowedModels(prev => [...prev, m]);
-                      else setNewKeyAllowedModels(prev => prev.filter(x => x !== m));
-                    }}
-                  />
-                  {m}
-                </label>
-              ))}
-            </div>
+            <ModelAccessSelector value={newKeyAllowedModels} onChange={setNewKeyAllowedModels} />
           </div>
         </div>
       </ResponsivePanel>
@@ -492,23 +545,7 @@ export default function ApiKeysPage() {
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Akses Model (Opsional)</label>
-            <p className="text-xs text-muted-foreground mb-2">Pilih model yang diizinkan, atau biarkan kosong untuk semua model.</p>
-            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border border-border/50 rounded-lg">
-              {AVAILABLE_MODEL_IDS.map((m) => (
-                <label key={m} className="flex items-center gap-2 text-xs cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="accent-primary"
-                    checked={editAllowedModels.includes(m)}
-                    onChange={(e) => {
-                      if (e.target.checked) setEditAllowedModels(prev => [...prev, m]);
-                      else setEditAllowedModels(prev => prev.filter(x => x !== m));
-                    }}
-                  />
-                  {m}
-                </label>
-              ))}
-            </div>
+            <ModelAccessSelector value={editAllowedModels} onChange={setEditAllowedModels} />
           </div>
         </div>
       </ResponsivePanel>
