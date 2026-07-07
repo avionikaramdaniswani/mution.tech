@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Eye, EyeOff, Key, Plus, Trash2, Pencil, Check, AlertTriangle } from "lucide-react";
+import { Copy, Eye, EyeOff, Key, Plus, Trash2, Pencil, Check, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -162,7 +162,7 @@ function ModelAccessSelector({
                     </span>
                     <span className="mt-1 block truncate font-mono text-xs text-muted-foreground">{model.id}</span>
                     <span className="mt-1 block text-xs text-muted-foreground">
-                      {model.context} context - {formatCredits(model.pricing.input)} in / {formatCredits(model.pricing.output)} out per 1K token
+                      {model.context} context - {formatCredits(model.pricing.input)} in / {formatCredits(model.pricing.output)} out per 1M token
                     </span>
                   </span>
                 </label>
@@ -195,6 +195,8 @@ export default function ApiKeysPage() {
   const [editUnlimitedCredit, setEditUnlimitedCredit] = useState(true);
 
   const [showFullKey, setShowFullKey] = useState(false);
+  const [revealedKeys, setRevealedKeys] = useState<Record<number, string>>({});
+  const [pendingRevealId, setPendingRevealId] = useState<number | null>(null);
 
   const openCreateDialog = () => {
     setNewKeyName("");
@@ -212,6 +214,49 @@ export default function ApiKeysPage() {
     setEditCreditLimit(key.creditLimit !== null ? String(key.creditLimit) : "");
     setEditUnlimitedCredit(key.creditLimit === null);
     setEditAllowedModels(key.allowedModels || []);
+  };
+
+  const fetchFullKey = async (key: ApiKey) => {
+    if (revealedKeys[key.id]) return revealedKeys[key.id];
+
+    setPendingRevealId(key.id);
+    try {
+      const data = await apiFetch(`/api-keys/${key.id}/reveal`);
+      if (!data.fullKey) throw new Error("Full API key tidak tersedia");
+
+      setRevealedKeys((current) => ({ ...current, [key.id]: data.fullKey }));
+      return data.fullKey as string;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal menampilkan API key");
+      return null;
+    } finally {
+      setPendingRevealId((current) => (current === key.id ? null : current));
+    }
+  };
+
+  const toggleRevealKey = async (key: ApiKey) => {
+    if (revealedKeys[key.id]) {
+      setRevealedKeys((current) => {
+        const next = { ...current };
+        delete next[key.id];
+        return next;
+      });
+      return;
+    }
+
+    await fetchFullKey(key);
+  };
+
+  const copyApiKey = async (key: ApiKey) => {
+    const fullKey = revealedKeys[key.id] ?? (await fetchFullKey(key));
+    if (!fullKey) return;
+
+    try {
+      await navigator.clipboard.writeText(fullKey);
+      toast.success("API key disalin");
+    } catch {
+      toast.error("Gagal menyalin API key");
+    }
   };
 
   const { data: keys = [], isLoading } = useQuery<ApiKey[]>({
@@ -245,8 +290,13 @@ export default function ApiKeysPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiFetch(`/api-keys/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       qc.invalidateQueries({ queryKey: ["api-keys"] });
+      setRevealedKeys((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
       setDeleteTarget(null);
       toast.success("API key berhasil dihapus");
     },
@@ -297,8 +347,36 @@ export default function ApiKeysPage() {
                     Aktif
                   </Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <code className="text-xs text-muted-foreground font-mono">{key.keyPrefix}</code>
+                <div className="flex items-start gap-2">
+                  <code className="min-w-0 flex-1 break-all text-xs text-muted-foreground font-mono">
+                    {revealedKeys[key.id] ?? key.keyPrefix}
+                  </code>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      onClick={() => toggleRevealKey(key)}
+                      className="h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors disabled:pointer-events-none disabled:opacity-60"
+                      title={revealedKeys[key.id] ? "Sembunyikan API Key" : "Tampilkan API Key"}
+                      aria-label={revealedKeys[key.id] ? "Sembunyikan API key" : "Tampilkan API key"}
+                      disabled={pendingRevealId === key.id}
+                    >
+                      {pendingRevealId === key.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : revealedKeys[key.id] ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => copyApiKey(key)}
+                      className="h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors disabled:pointer-events-none disabled:opacity-60"
+                      title="Salin API Key"
+                      aria-label="Salin API key"
+                      disabled={pendingRevealId === key.id}
+                    >
+                      {pendingRevealId === key.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs text-muted-foreground">
                   <span>{(key.totalRequestsCount || 0).toLocaleString()} reqs</span>
@@ -323,7 +401,6 @@ export default function ApiKeysPage() {
                   ) : (
                     <span className="bg-muted px-1.5 py-0.5 rounded">Semua Model</span>
                   )}
-                  <span>Full key hanya muncul saat dibuat</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -430,7 +507,15 @@ export default function ApiKeysPage() {
       </ResponsivePanel>
 
       {/* New key reveal dialog */}
-      <Dialog open={!!newKeyResult} onOpenChange={() => setNewKeyResult(null)}>
+      <Dialog
+        open={!!newKeyResult}
+        onOpenChange={(open) => {
+          if (!open) {
+            setNewKeyResult(null);
+            setShowFullKey(false);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -438,13 +523,13 @@ export default function ApiKeysPage() {
               API Key Berhasil Dibuat
             </DialogTitle>
             <DialogDescription>
-              Simpan key ini sekarang - kamu tidak akan bisa melihatnya lagi setelah dialog ini ditutup.
+              Key ini bisa dilihat ulang dari daftar API Keys selama data terenkripsi masih tersedia.
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-yellow-600 dark:text-yellow-400">
-              Ini adalah satu-satunya kesempatan untuk melihat full key. Simpan di tempat yang aman!
+              Simpan di tempat yang aman dan jangan bagikan ke orang lain.
             </p>
           </div>
           {newKeyResult && (

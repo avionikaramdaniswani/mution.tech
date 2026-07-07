@@ -94,7 +94,7 @@ function apiRequestLogger(req: Request, res: Response, next: NextFunction): void
   next();
 }
 
-// ─── Per-Model Pricing (kredit per 1K token) ──────────────────────────────────
+// ─── Per-Model Pricing (kredit per 1M token) ──────────────────────────────────
   // Try partial match — sort by key length DESC so "claude-sonnet-4-7" beats "claude-sonnet-4"
 /** Safe fallback token estimate — capped to prevent overcharging when usage data is missing. */
 const MAX_OUTPUT_TOKENS = 8_192;
@@ -441,12 +441,14 @@ type CreditReservation = {
   credits: number;
 };
 
+const MODEL_PRICING_TOKEN_UNIT = 1_000_000;
+
 function calculateCredits(tokensUsed: number, model: string, breakdown?: CreditBreakdown): number {
   const inputTokens = breakdown?.inputTokens ?? 0;
   const outputTokens = breakdown?.outputTokens ?? (inputTokens === 0 ? tokensUsed : 0);
   const pricing = getCatalogModelPricing(model);
-  const inputCredits = (inputTokens * pricing.input) / 1000;
-  const outputCredits = (outputTokens * pricing.output) / 1000;
+  const inputCredits = (inputTokens * pricing.input) / MODEL_PRICING_TOKEN_UNIT;
+  const outputCredits = (outputTokens * pricing.output) / MODEL_PRICING_TOKEN_UNIT;
   return Math.max(1, Math.ceil(inputCredits + outputCredits));
 }
 

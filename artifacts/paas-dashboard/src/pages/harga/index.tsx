@@ -1,66 +1,142 @@
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
+import {
+  ArrowRight,
+  Brain,
+  Calculator,
+  CheckCircle2,
+  Clock3,
+  Cpu,
+  CreditCard,
+  Gauge,
+  KeyRound,
+  Server,
+  ShieldCheck,
+  Zap,
+} from "lucide-react";
 import { PublicNavbar } from "@/components/public-navbar";
 import { PageFooter } from "@/components/page-footer";
+import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, Component, Database, Server, Cpu, Zap, CreditCard, ChevronRight } from "lucide-react";
 import { MODEL_CATALOG, groupModelsByProvider } from "@workspace/model-catalog";
 
-const plans = [
+const hostingRates = [
+  { ram: "256 MB", perMinute: 0.2, fit: "Prototype ringan" },
+  { ram: "512 MB", perMinute: 0.4, fit: "API kecil" },
+  { ram: "1 GB", perMinute: 0.8, fit: "Web app aktif" },
+  { ram: "2 GB", perMinute: 1.6, fit: "Backend produksi" },
+  { ram: "4 GB", perMinute: 3.2, fit: "Worker dan API ramai" },
+  { ram: "8 GB", perMinute: 6.4, fit: "Beban berat" },
+] as const;
+
+const pricingSignals = [
+  { label: "Hosting", value: "per menit aktif", Icon: Clock3 },
+  { label: "AI Gateway", value: "per 1K atau 1M token", Icon: Brain },
+  { label: "Kontrol", value: "saldo kredit", Icon: CreditCard },
+] as const;
+
+const billingPrinciples = [
   {
-    key: "hobby",
-    name: "Hobby",
-    price: null,
-    priceLabel: "Gratis",
-    priceSub: "Selamanya",
-    credits: 5000,
-    creditsLabel: "5.000 kredit",
-    creditsSub: "sekali saat daftar",
-    highlight: false,
-    cta: "Mulai Gratis",
-    ctaHref: "/register",
-    features: [
-      "2 slot deploy proyek",
-      "RAM 256 MB - 1 GB",
-    ],
+    title: "Resource aktif saja",
+    body: "Biaya hosting mengikuti durasi runtime aktif. Cocok untuk produk yang traffic-nya naik turun.",
+    Icon: Server,
   },
   {
-    key: "pro",
-    name: "Pro",
-    price: 26000,
-    priceLabel: "Rp 26.000",
-    priceSub: "per bulan",
-    credits: 25000,
-    creditsLabel: "25.000 kredit",
-    creditsSub: "per siklus, rollover saat upgrade",
-    highlight: true,
-    cta: "Mulai Pro",
-    ctaHref: "/register",
-    features: [
-      "Unlimited slot proyek",
-      "RAM hingga 4 GB",
-      "Priority support",
-    ],
+    title: "Harga model terbaca",
+    body: "Input dan output token dipisah, jadi biaya API AI lebih mudah dilacak dari dashboard usage.",
+    Icon: KeyRound,
   },
   {
-    key: "team",
-    name: "Team",
-    price: 75000,
-    priceLabel: "Rp 75.000",
-    priceSub: "per bulan",
-    credits: 60000,
-    creditsLabel: "60.000 kredit",
-    creditsSub: "per siklus, rollover saat upgrade",
-    highlight: false,
-    cta: "Mulai Team",
-    ctaHref: "/register",
-    features: [
-      "Unlimited slot proyek",
-      "Multi user",
-      "Shared proyek",
-      "Priority support",
-    ],
-  }
+    title: "Tidak ada kontrak panjang",
+    body: "Mulai dari saldo kecil, pantau pemakaian, lalu naikkan kredit saat produk butuh kapasitas lebih.",
+    Icon: ShieldCheck,
+  },
+] as const;
+
+const DEFAULT_MODEL = MODEL_CATALOG.find((model) => model.id === "claude-opus-4-8") ?? MODEL_CATALOG[0]!;
+const AI_PRICING_TOKEN_UNIT = 1_000_000;
+const TOKEN_SLIDER_UNIT = 1_000;
+
+type AiPricingDisplayUnit = "1k" | "1m";
+
+const aiPricingDisplayUnits: { value: AiPricingDisplayUnit; label: string; suffix: string }[] = [
+  { value: "1k", label: "1K token", suffix: "/1K" },
+  { value: "1m", label: "1M token", suffix: "/1M" },
 ];
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("id-ID").format(value);
+}
+
+function formatRupiah(value: number, options?: Intl.NumberFormatOptions) {
+  return `Rp ${new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: value > 0 && value < 10 ? 2 : 0,
+    maximumFractionDigits: value > 0 && value < 10 ? 2 : 0,
+    ...options,
+  }).format(value)}`;
+}
+
+function formatTokenPrice(value: number) {
+  const hasDecimal = !Number.isInteger(value);
+
+  return `Rp ${new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: hasDecimal ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(value)}`;
+}
+
+function getHostingEstimate(perMinute: number, hoursPerDay: number, daysPerMonth: number) {
+  return perMinute * 60 * hoursPerDay * daysPerMonth;
+}
+
+function getAiEstimate(inputKTokens: number, outputKTokens: number, pricing: { input: number; output: number }) {
+  const inputTokens = inputKTokens * TOKEN_SLIDER_UNIT;
+  const outputTokens = outputKTokens * TOKEN_SLIDER_UNIT;
+  return (inputTokens * pricing.input + outputTokens * pricing.output) / AI_PRICING_TOKEN_UNIT;
+}
+
+function getAiDisplayPrice(pricePerMillion: number, unit: AiPricingDisplayUnit) {
+  const value = unit === "1k" ? pricePerMillion / 1000 : pricePerMillion;
+  return formatTokenPrice(value);
+}
+
+function getAiUnitSuffix(unit: AiPricingDisplayUnit) {
+  return aiPricingDisplayUnits.find((item) => item.value === unit)?.suffix ?? "/1K";
+}
+
+function AiPricingUnitToggle({
+  value,
+  onChange,
+  className = "",
+}: {
+  value: AiPricingDisplayUnit;
+  onChange: (value: AiPricingDisplayUnit) => void;
+  className?: string;
+}) {
+  return (
+    <div className={`inline-grid grid-cols-2 rounded-md border border-[#dbe8f3] bg-white p-0.5 text-[11px] font-bold normal-case tracking-normal ${className}`}>
+      {aiPricingDisplayUnits.map((unit) => {
+        const active = value === unit.value;
+
+        return (
+          <button
+            key={unit.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(unit.value)}
+            className={`h-7 rounded px-2.5 transition-colors ${
+              active
+                ? "bg-[#172033] text-white shadow-sm"
+                : "text-[#526173] hover:bg-[#f8fbff] hover:text-[#172033]"
+            }`}
+          >
+            {unit.value === "1k" ? "1K" : "1M"}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function OpenAILogo({ className }: { className?: string }) {
   return (
@@ -86,217 +162,454 @@ function ZhipuLogo({ className }: { className?: string }) {
   );
 }
 
-function getProviderIcon(provider: string, baseClassName?: string) {
-  const cls = baseClassName || "h-5 w-5";
-  if (provider === "Anthropic") return <AnthropicLogo className={`${cls} text-amber-500`} />;
-  if (provider === "OpenAI") return <OpenAILogo className={`${cls} text-emerald-500`} />;
-  if (provider === "Zhipu AI") return <ZhipuLogo className={`${cls} text-blue-500`} />;
-  return <Brain className={`${cls} text-muted-foreground`} />;
+function getProviderIcon(provider: string, baseClassName = "h-5 w-5") {
+  if (provider === "Anthropic") return <AnthropicLogo className={`${baseClassName} text-amber-500`} />;
+  if (provider === "OpenAI") return <OpenAILogo className={`${baseClassName} text-emerald-500`} />;
+  if (provider === "Zhipu AI") return <ZhipuLogo className={`${baseClassName} text-blue-500`} />;
+  return <Brain className={`${baseClassName} text-[#64748b]`} />;
 }
 
 export default function HargaPage() {
   const grouped = groupModelsByProvider(MODEL_CATALOG);
+  const [selectedRam, setSelectedRam] = useState("1 GB");
+  const [hoursPerDay, setHoursPerDay] = useState(8);
+  const [daysPerMonth, setDaysPerMonth] = useState(20);
+  const [selectedModelId, setSelectedModelId] = useState(DEFAULT_MODEL.id);
+  const [inputKTokens, setInputKTokens] = useState(120);
+  const [outputKTokens, setOutputKTokens] = useState(40);
+  const [aiPricingDisplayUnit, setAiPricingDisplayUnit] = useState<AiPricingDisplayUnit>("1k");
+
+  const selectedHosting = useMemo(
+    () => hostingRates.find((tier) => tier.ram === selectedRam) ?? hostingRates[2]!,
+    [selectedRam],
+  );
+
+  const selectedModel = useMemo(
+    () => MODEL_CATALOG.find((model) => model.id === selectedModelId) ?? DEFAULT_MODEL,
+    [selectedModelId],
+  );
+
+  const hostingEstimate = getHostingEstimate(selectedHosting.perMinute, hoursPerDay, daysPerMonth);
+  const aiEstimate = getAiEstimate(inputKTokens, outputKTokens, selectedModel.pricing);
+  const totalEstimate = hostingEstimate + aiEstimate;
+  const aiPriceSuffix = getAiUnitSuffix(aiPricingDisplayUnit);
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-primary/30 font-sans">
+    <div className="min-h-screen bg-[#f8fbff] text-[#172033] selection:bg-[#f97316]/20">
       <PublicNavbar />
-      
-      {/* -- BACKGROUND -- */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[150px]" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]" />
-      </div>
 
-      <section className="relative z-10 pt-32 pb-24 sm:pt-40 sm:pb-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          
-          {/* Header */}
-          <div className="text-center max-w-3xl mx-auto mb-20">
-            <h1 
-              style={{ fontFamily: "'Space Grotesk', sans-serif" }} 
-              className="text-5xl sm:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6"
-            >
-              Bayar yang dipakai.<br />
-              <span className="text-white/30">Bukan yang di-idle.</span>
-            </h1>
-            <p className="text-lg text-white/50 leading-relaxed">
-              Sistem berbasis kredit transparan. Tidak ada tagihan membengkak, tidak ada kontrak. Anda memegang kendali penuh atas pengeluaran Anda.
-            </p>
-          </div>
+      <main>
+        <section className="relative overflow-hidden border-b border-[#dbe8f3] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_58%,#fff7ed_100%)] px-4 pb-16 pt-32 sm:px-6 sm:pb-20 sm:pt-36 lg:px-8">
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(249,115,22,0.08),rgba(20,184,166,0.08)_44%,transparent_72%)]" />
 
-          {/* Langganan Plans */}
-          <div className="grid md:grid-cols-3 gap-6 mb-24">
-            {plans.map((plan) => (
-              <div 
-                key={plan.key} 
-                className={`relative rounded-3xl p-8 border ${plan.highlight ? 'border-primary/50 bg-primary/5' : 'border-white/10 bg-white/5'} flex flex-col`}
-              >
-                {plan.highlight && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider py-1.5 px-4 rounded-full">
-                    Paling Populer
-                  </div>
-                )}
-                <div className="mb-8">
-                  <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                  <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-4xl font-extrabold tracking-tight">{plan.priceLabel}</span>
-                  </div>
-                  <p className="text-sm text-white/50">{plan.priceSub}</p>
-                </div>
-                
-                <div className="p-4 rounded-2xl bg-black/40 border border-white/5 mb-8">
-                  <p className="font-semibold text-primary mb-1">{plan.creditsLabel}</p>
-                  <p className="text-xs text-white/40 leading-relaxed">{plan.creditsSub}</p>
-                </div>
+          <div className="relative mx-auto grid max-w-6xl gap-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-end">
+            <div className="max-w-3xl">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">
+                Harga Mution
+              </p>
+              <h1 className="mt-5 text-4xl font-black leading-[1.05] tracking-normal text-[#172033] sm:text-6xl">
+                Bayar sesuai usage, bukan paket yang menganggur.
+              </h1>
+              <p className="mt-6 max-w-2xl text-base leading-7 text-[#526173] sm:text-lg sm:leading-8">
+                Hosting dihitung per menit aktif. API model bisa dibaca per 1K atau per 1 juta token. Semua dibuat mudah dipantau dari saldo kredit yang sama.
+              </p>
 
-                <ul className="space-y-4 mb-8 flex-1">
-                  {plan.features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm text-white/70">
-                      <Zap className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                <Link href={plan.ctaHref}>
-                  <button className={`w-full py-3 px-4 rounded-xl font-semibold transition-all ${
-                    plan.highlight 
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_20px_rgba(249,115,22,0.3)]' 
-                      : 'bg-white/10 text-white hover:bg-white/20'
-                  }`}>
-                    {plan.cta}
-                  </button>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link
+                  href="/register"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#f97316] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c]"
+                >
+                  Mulai Pakai
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/faq"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-[#c9d8e7] bg-white px-5 text-sm font-semibold text-[#172033] transition-colors hover:bg-[#eef8ff]"
+                >
+                  Baca FAQ
                 </Link>
               </div>
-            ))}
-          </div>
 
-          {/* Pay As You Go Section with Tabs */}
-          <div className="mb-24">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">Tarif Pay-As-You-Go</h2>
-              <p className="text-white/50 max-w-2xl mx-auto">
-                Harga per-menit untuk server (Hosting) dan per-ribu token untuk model AI.
-                Kredit Anda adalah saldo universal yang bisa digunakan untuk keduanya.
+              <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                {pricingSignals.map(({ label, value, Icon }) => (
+                  <div key={label} className="rounded-lg border border-[#dbe8f3] bg-white/80 p-4 shadow-[0_18px_45px_rgba(23,32,51,0.07)] backdrop-blur">
+                    <Icon className="h-4 w-4 text-[#f97316]" />
+                    <p className="mt-3 text-xs font-bold uppercase tracking-[0.14em] text-[#64748b]">{label}</p>
+                    <p className="mt-1 text-sm font-extrabold text-[#172033]">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <aside className="rounded-lg border border-[#dbe8f3] bg-white p-5 shadow-[0_24px_70px_rgba(23,32,51,0.10)]">
+              <div className="flex items-center justify-between gap-4 border-b border-[#dbe8f3] pb-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Estimasi</p>
+                  <h2 className="mt-1 text-xl font-extrabold text-[#172033]">Simulasi bulan ini</h2>
+                </div>
+                <Calculator className="h-5 w-5 text-[#14b8a6]" />
+              </div>
+
+              <div className="space-y-4 py-5 text-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-bold text-[#172033]">Hosting {selectedHosting.ram}</p>
+                    <p className="mt-1 text-xs text-[#64748b]">{hoursPerDay} jam/hari, {daysPerMonth} hari</p>
+                  </div>
+                  <span className="font-mono font-bold text-[#172033]">{formatRupiah(hostingEstimate)}</span>
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-bold text-[#172033]">{selectedModel.label}</p>
+                    <p className="mt-1 text-xs text-[#64748b]">{formatNumber(inputKTokens + outputKTokens)}K token</p>
+                  </div>
+                  <span className="font-mono font-bold text-[#172033]">{formatRupiah(aiEstimate)}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-[#dbe8f3] pt-5">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#64748b]">Total estimasi</p>
+                    <p className="mt-1 text-sm text-[#526173]">Belum termasuk storage tambahan.</p>
+                  </div>
+                  <p className="text-2xl font-black text-[#172033]">{formatRupiah(totalEstimate)}</p>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section className="bg-[#f8fbff] px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Kalkulator usage</p>
+                <h2 className="mt-3 max-w-2xl text-3xl font-extrabold tracking-normal text-[#172033] sm:text-4xl">
+                  Atur skenario pemakaian dan lihat angkanya langsung.
+                </h2>
+              </div>
+              <p className="max-w-md text-sm leading-6 text-[#526173]">
+                Angka di bawah adalah estimasi sederhana dari tarif yang tersedia. Tagihan aktual mengikuti usage real di dashboard.
               </p>
             </div>
 
-            <Tabs defaultValue="hosting" className="max-w-4xl mx-auto">
-              <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-10 h-auto p-1 bg-white/5 border border-white/10 rounded-2xl">
-                <TabsTrigger value="hosting" className="py-3 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <Server className="w-4 h-4 mr-2" />
-                  Hosting (Deploy)
+            <div className="grid gap-5 lg:grid-cols-2">
+              <section className="rounded-lg border border-[#dbe8f3] bg-white p-5 shadow-[0_18px_50px_rgba(23,32,51,0.07)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Hosting</p>
+                    <h3 className="mt-2 text-2xl font-extrabold text-[#172033]">Runtime calculator</h3>
+                  </div>
+                  <Server className="h-5 w-5 text-[#14b8a6]" />
+                </div>
+
+                <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {hostingRates.map((tier) => {
+                    const active = tier.ram === selectedRam;
+
+                    return (
+                      <button
+                        key={tier.ram}
+                        type="button"
+                        onClick={() => setSelectedRam(tier.ram)}
+                        className={`rounded-md border px-3 py-3 text-left transition-colors ${
+                          active
+                            ? "border-[#f97316] bg-[#fff7ed] text-[#172033]"
+                            : "border-[#dbe8f3] bg-[#f8fbff] text-[#526173] hover:border-[#c9d8e7] hover:bg-white"
+                        }`}
+                      >
+                        <span className="block text-sm font-extrabold">{tier.ram}</span>
+                        <span className="mt-1 block text-xs">{formatRupiah(tier.perMinute, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/menit</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-7 space-y-6">
+                  <div>
+                    <div className="mb-3 flex items-center justify-between gap-4">
+                      <p className="text-sm font-bold text-[#172033]">Jam aktif per hari</p>
+                      <span className="rounded-md bg-[#eefdfa] px-2 py-1 text-xs font-bold text-[#0f766e]">{hoursPerDay} jam</span>
+                    </div>
+                    <Slider value={[hoursPerDay]} min={1} max={24} step={1} onValueChange={(value) => setHoursPerDay(value[0] ?? hoursPerDay)} />
+                  </div>
+
+                  <div>
+                    <div className="mb-3 flex items-center justify-between gap-4">
+                      <p className="text-sm font-bold text-[#172033]">Hari aktif per bulan</p>
+                      <span className="rounded-md bg-[#eefdfa] px-2 py-1 text-xs font-bold text-[#0f766e]">{daysPerMonth} hari</span>
+                    </div>
+                    <Slider value={[daysPerMonth]} min={1} max={30} step={1} onValueChange={(value) => setDaysPerMonth(value[0] ?? daysPerMonth)} />
+                  </div>
+                </div>
+
+                <div className="mt-7 rounded-lg border border-[#dbe8f3] bg-[#f8fbff] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-bold text-[#172033]">{selectedHosting.fit}</p>
+                      <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                        {formatRupiah(selectedHosting.perMinute, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/menit, {formatRupiah(selectedHosting.perMinute * 60)}/jam
+                      </p>
+                    </div>
+                    <p className="text-xl font-black text-[#172033]">{formatRupiah(hostingEstimate)}</p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-[#dbe8f3] bg-white p-5 shadow-[0_18px_50px_rgba(23,32,51,0.07)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">AI Gateway</p>
+                    <h3 className="mt-2 text-2xl font-extrabold text-[#172033]">Token calculator</h3>
+                  </div>
+                  <Brain className="h-5 w-5 text-[#14b8a6]" />
+                </div>
+
+                <label className="mt-6 block">
+                  <span className="text-sm font-bold text-[#172033]">Model</span>
+                  <select
+                    value={selectedModelId}
+                    onChange={(event) => setSelectedModelId(event.target.value)}
+                    className="mt-2 h-11 w-full rounded-md border border-[#dbe8f3] bg-[#f8fbff] px-3 text-sm font-semibold text-[#172033] outline-none transition-colors focus:border-[#f97316] focus:bg-white"
+                  >
+                    {MODEL_CATALOG.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.label} - {model.provider}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="mt-7 space-y-6">
+                  <div>
+                    <div className="mb-3 flex items-center justify-between gap-4">
+                      <p className="text-sm font-bold text-[#172033]">Input token</p>
+                      <span className="rounded-md bg-[#fff7ed] px-2 py-1 text-xs font-bold text-[#c2410c]">{formatNumber(inputKTokens)}K</span>
+                    </div>
+                    <Slider value={[inputKTokens]} min={10} max={1000} step={10} onValueChange={(value) => setInputKTokens(value[0] ?? inputKTokens)} />
+                  </div>
+
+                  <div>
+                    <div className="mb-3 flex items-center justify-between gap-4">
+                      <p className="text-sm font-bold text-[#172033]">Output token</p>
+                      <span className="rounded-md bg-[#fff7ed] px-2 py-1 text-xs font-bold text-[#c2410c]">{formatNumber(outputKTokens)}K</span>
+                    </div>
+                    <Slider value={[outputKTokens]} min={5} max={500} step={5} onValueChange={(value) => setOutputKTokens(value[0] ?? outputKTokens)} />
+                  </div>
+                </div>
+
+                <div className="mt-7 rounded-lg border border-[#dbe8f3] bg-[#f8fbff] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="flex items-center gap-2 text-sm font-bold text-[#172033]">
+                        {getProviderIcon(selectedModel.provider, "h-4 w-4")}
+                        {selectedModel.label}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                        Input {getAiDisplayPrice(selectedModel.pricing.input, aiPricingDisplayUnit)}{aiPriceSuffix}, output {getAiDisplayPrice(selectedModel.pricing.output, aiPricingDisplayUnit)}{aiPriceSuffix}
+                      </p>
+                    </div>
+                    <p className="text-xl font-black text-[#172033]">{formatRupiah(aiEstimate)}</p>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Tarif detail</p>
+                <h2 className="mt-3 text-3xl font-extrabold tracking-normal text-[#172033] sm:text-4xl">
+                  Satu halaman untuk cek semua rate.
+                </h2>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs font-bold text-[#526173] lg:justify-end">
+                {["Per menit", "Tanpa kontrak"].map((item) => (
+                  <span key={item} className="inline-flex items-center gap-2 rounded-md border border-[#dbe8f3] bg-[#f8fbff] px-3 py-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-[#14b8a6]" />
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <Tabs defaultValue="hosting">
+              <TabsList className="grid h-auto w-full max-w-md grid-cols-2 rounded-lg border border-[#dbe8f3] bg-[#f8fbff] p-1">
+                <TabsTrigger value="hosting" className="gap-2 rounded-md py-3 data-[state=active]:bg-[#f97316] data-[state=active]:text-white">
+                  <Cpu className="h-4 w-4" />
+                  Hosting
                 </TabsTrigger>
-                <TabsTrigger value="apikeys" className="py-3 rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <Brain className="w-4 h-4 mr-2" />
-                  API Keys (AI)
+                <TabsTrigger value="ai" className="gap-2 rounded-md py-3 data-[state=active]:bg-[#f97316] data-[state=active]:text-white">
+                  <KeyRound className="h-4 w-4" />
+                  API Models
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="hosting" className="focus:outline-none">
-                <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
-                  <div className="grid grid-cols-3 border-b border-white/10 bg-white/5 p-4 sm:p-6 text-sm font-semibold text-white/60">
-                    <div>Spesifikasi RAM</div>
-                    <div className="text-center">Biaya per Menit</div>
-                    <div className="text-right">Estimasi 30 Hari (Aktif)</div>
-                  </div>
-                  <div className="divide-y divide-white/5">
-                    {[
-                      { ram: "256 MB", min: "Rp 0,20", mo: "Rp 8.640" },
-                      { ram: "512 MB", min: "Rp 0,40", mo: "Rp 17.280" },
-                      { ram: "1 GB", min: "Rp 0,80", mo: "Rp 34.560" },
-                      { ram: "2 GB", min: "Rp 1,60", mo: "Rp 69.120" },
-                      { ram: "4 GB", min: "Rp 3,20", mo: "Rp 138.240" },
-                      { ram: "8 GB", min: "Rp 6,40", mo: "Rp 276.480" },
-                    ].map((row, i) => (
-                      <div key={i} className="grid grid-cols-3 p-4 sm:p-6 hover:bg-white/[0.02] transition-colors items-center">
-                        <div className="font-medium flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
-                            <Cpu className="w-4 h-4 text-primary" />
-                          </div>
-                          {row.ram}
-                        </div>
-                        <div className="text-center font-mono text-white/80">{row.min}</div>
-                        <div className="text-right font-mono text-white/60">~ {row.mo}</div>
+              <TabsContent value="hosting" className="mt-6 focus:outline-none">
+                <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_18px_50px_rgba(23,32,51,0.07)]">
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[680px]">
+                      <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr] border-b border-[#dbe8f3] bg-[#f8fbff] px-5 py-4 text-xs font-bold uppercase tracking-[0.12em] text-[#64748b]">
+                        <div>RAM</div>
+                        <div>Per menit</div>
+                        <div>Per jam</div>
+                        <div className="text-right">30 hari aktif</div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="apikeys" className="focus:outline-none">
-                <div className="space-y-12">
-                  {Object.entries(grouped).map(([providerName, provModels]) => (
-                    <div key={providerName} className="space-y-5">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-white/5 border border-white/10 p-2.5 rounded-xl shadow-sm">
-                          {getProviderIcon(providerName)}
-                        </div>
-                        <h3 className="text-xl font-bold tracking-tight text-white">{providerName}</h3>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                        {provModels.map((m) => (
-                          <div
-                            key={m.id}
-                            className="relative flex flex-col p-5 rounded-2xl transition-all border border-white/10 bg-white/5 hover:border-white/20"
-                          >
-                            <div className="flex items-center justify-between mb-5">
-                              <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-full flex items-center justify-center bg-white/5 border border-white/10">
-                                  {getProviderIcon(m.provider)}
-                                </div>
-                                <span className="font-semibold text-[15px] tracking-tight">{m.label}</span>
+                      <div className="divide-y divide-[#dbe8f3]">
+                        {hostingRates.map((tier) => (
+                          <div key={tier.ram} className="grid grid-cols-[1.2fr_1fr_1fr_1fr] items-center px-5 py-4 text-sm transition-colors hover:bg-[#f8fbff]">
+                            <div className="flex items-center gap-3">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-[#fff7ed] text-[#f97316]">
+                                <Cpu className="h-4 w-4" />
+                              </span>
+                              <div>
+                                <p className="font-extrabold text-[#172033]">{tier.ram}</p>
+                                <p className="mt-0.5 text-xs text-[#64748b]">{tier.fit}</p>
                               </div>
                             </div>
-
-                            <div className="space-y-2 mb-6">
-                              <div className="flex items-center gap-3 text-xs">
-                                <span className="text-white/60 w-12 font-medium">Input</span>
-                                <div className="h-1.5 w-4 rounded-full bg-primary/40" />
-                                <span className="font-semibold tabular-nums text-white">Rp {m.pricing.input} <span className="text-white/40 font-normal">/ 1K</span></span>
-                              </div>
-                              <div className="flex items-center gap-3 text-xs">
-                                <span className="text-white/60 w-12 font-medium">Output</span>
-                                <div className="h-1.5 w-6 rounded-full bg-primary" />
-                                <span className="font-semibold tabular-nums text-white">Rp {m.pricing.output} <span className="text-white/40 font-normal">/ 1K</span></span>
-                              </div>
+                            <div className="font-mono font-bold text-[#172033]">
+                              {formatRupiah(tier.perMinute, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
-
-                            <div className="mt-auto flex items-end justify-between pt-4 border-t border-white/10">
-                              <div className="flex flex-col">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[11px] font-semibold text-white tracking-wide">{m.provider}</span>
-                                  {m.note && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-white/10 text-white/70">
-                                      {m.note}
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-[10px] text-white/40 mt-0.5">Token-based</span>
-                              </div>
-                              <div className="flex gap-5">
-                                <div className="flex flex-col items-end">
-                                  <span className="text-[10px] font-medium text-white/40 mb-0.5">Context</span>
-                                  <span className="text-[11px] font-semibold tabular-nums">{m.context}</span>
-                                </div>
-                              </div>
+                            <div className="font-mono text-[#526173]">{formatRupiah(tier.perMinute * 60)}</div>
+                            <div className="text-right font-mono font-bold text-[#172033]">
+                              {formatRupiah(getHostingEstimate(tier.perMinute, 24, 30))}
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="ai" className="mt-6 focus:outline-none">
+                <div className="space-y-6">
+                  {Object.entries(grouped).map(([providerName, providerModels]) => (
+                    <section key={providerName} className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_18px_50px_rgba(23,32,51,0.07)]">
+                      <div className="flex flex-col gap-4 border-b border-[#dbe8f3] bg-[#f8fbff] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-10 w-10 items-center justify-center rounded-md border border-[#dbe8f3] bg-white">
+                            {getProviderIcon(providerName)}
+                          </span>
+                          <div>
+                            <h3 className="font-extrabold text-[#172033]">{providerName}</h3>
+                            <p className="text-xs text-[#64748b]">{providerModels.length} model tersedia</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 sm:justify-end">
+                          <AiPricingUnitToggle
+                            value={aiPricingDisplayUnit}
+                            onChange={setAiPricingDisplayUnit}
+                            className="md:hidden"
+                          />
+                          <Gauge className="h-4 w-4 text-[#14b8a6]" />
+                        </div>
+                      </div>
+
+                      <div className="hidden grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] items-center border-b border-[#dbe8f3] bg-white px-5 py-3 text-xs font-bold uppercase tracking-[0.12em] text-[#64748b] md:grid">
+                        <div>Model</div>
+                        <div className="flex items-center gap-3">
+                          Input
+                          <AiPricingUnitToggle
+                            value={aiPricingDisplayUnit}
+                            onChange={setAiPricingDisplayUnit}
+                          />
+                        </div>
+                        <div>Output</div>
+                        <div>Context</div>
+                      </div>
+
+                      <div className="divide-y divide-[#dbe8f3]">
+                        {providerModels.map((model) => (
+                          <div key={model.id} className="grid gap-4 px-5 py-4 text-sm transition-colors hover:bg-[#f8fbff] md:grid-cols-[minmax(0,1.4fr)_0.7fr_0.7fr_0.7fr] md:items-center">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-extrabold text-[#172033]">{model.label}</p>
+                                {model.note && (
+                                  <span className="rounded-md bg-[#fff7ed] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#c2410c]">
+                                    {model.note}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-1 text-xs leading-5 text-[#64748b]">{model.description}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#64748b] md:hidden">Input</p>
+                              <p className="mt-1 font-mono font-bold text-[#172033]">{getAiDisplayPrice(model.pricing.input, aiPricingDisplayUnit)}{aiPriceSuffix}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#64748b] md:hidden">Output</p>
+                              <p className="mt-1 font-mono font-bold text-[#172033]">{getAiDisplayPrice(model.pricing.output, aiPricingDisplayUnit)}{aiPriceSuffix}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#64748b] md:hidden">Context</p>
+                              <p className="mt-1 font-mono font-bold text-[#172033]">{model.context}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
                   ))}
                 </div>
               </TabsContent>
             </Tabs>
           </div>
+        </section>
 
+        <section className="bg-[#f8fbff] px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Cara bacanya</p>
+                <h2 className="mt-3 text-3xl font-extrabold tracking-normal text-[#172033] sm:text-4xl">
+                  Pricing dibuat untuk dipantau, bukan ditebak.
+                </h2>
+                <p className="mt-4 text-sm leading-6 text-[#526173]">
+                  Kamu bisa mulai kecil, melihat usage harian, lalu menambah kredit saat angka pemakaian sudah jelas.
+                </p>
+              </div>
 
+              <div className="grid gap-4 md:grid-cols-3">
+                {billingPrinciples.map(({ title, body, Icon }) => (
+                  <article key={title} className="rounded-lg border border-[#dbe8f3] bg-white p-5 shadow-[0_18px_50px_rgba(23,32,51,0.07)]">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-md bg-[#eefdfa] text-[#14b8a6]">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <h3 className="mt-4 font-extrabold text-[#172033]">{title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-[#526173]">{body}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
 
-        </div>
-      </section>
+            <div className="mt-10 rounded-lg border border-[#dbe8f3] bg-white p-6 shadow-[0_18px_50px_rgba(23,32,51,0.07)]">
+              <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                <div>
+                  <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">
+                    <Zap className="h-4 w-4" />
+                    Siap dicoba
+                  </p>
+                  <h2 className="mt-3 text-2xl font-extrabold tracking-normal text-[#172033]">
+                    Deploy dulu, lihat pemakaian real, baru scale.
+                  </h2>
+                </div>
+                <Link
+                  href="/register"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#172033] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#263247]"
+                >
+                  Buat Akun
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
       <PageFooter />
     </div>
   );

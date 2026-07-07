@@ -1,0 +1,21 @@
+
+  [32m[1mVITE[22m v7.3.3[39m  [2mready in [0m[1m1459[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5002[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.100.15:[1m5002[22m/[39m
+[2m22.37.13[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/faq/index.tsx, /src/index.css[22m
+[2m23.13.48[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m23.13.50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m23.19.51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ new dependencies optimized: [33m@radix-ui/react-slider[32m[39m
+[2m23.19.51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ optimized dependencies changed. reloading[39m
+[2m23.37.13[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-usage/index.tsx, /src/pages/docs/index.tsx, /src/pages/providers/index.tsx, /src/pages/api-keys/index.tsx, /src/pages/harga/index.tsx[22m
+[2m23.37.58[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m23.38.20[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/index.tsx, /src/index.css[22m
+[2m23.38.50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/providers/index.tsx, /src/index.css[22m
+[2m23.58.10[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-usage/index.tsx, /src/pages/docs/index.tsx, /src/pages/providers/index.tsx, /src/pages/api-keys/index.tsx, /src/pages/harga/index.tsx[22m
+[2m00.05.14[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m00.09.28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m00.09.51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m00.17.17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/auth/login.tsx, /src/index.css[22m
+[2m00.18.09[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/auth/register.tsx, /src/index.css[22m
+[2m00.21.14[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/auth/register.tsx, /src/index.css[22m

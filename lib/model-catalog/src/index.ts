@@ -9,6 +9,7 @@ export interface ModelCatalogEntry {
   id: string;
   label: string;
   provider: ModelProvider;
+  /** Credits charged per 1 million tokens. */
   pricing: ModelPricing;
   context: string;
   note?: string;
@@ -21,7 +22,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     id: "claude-opus-4-6",
     label: "Claude Opus 4.6",
     provider: "Anthropic",
-    pricing: { input: 180, output: 900 },
+    pricing: { input: 26900, output: 134900 },
     context: "200K",
     description: "Model kuat dari Anthropic untuk tugas yang sangat kompleks.",
   },
@@ -29,7 +30,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     id: "claude-opus-4-7",
     label: "Claude Opus 4.7",
     provider: "Anthropic",
-    pricing: { input: 180, output: 900 },
+    pricing: { input: 27900, output: 139900 },
     context: "200K",
     description: "Versi pembaruan Opus dengan stabilitas reasoning lebih baik.",
   },
@@ -37,7 +38,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     id: "claude-opus-4-8",
     label: "Claude Opus 4.8",
     provider: "Anthropic",
-    pricing: { input: 225, output: 1080 },
+    pricing: { input: 28900, output: 146000 },
     context: "200K",
     note: "Terbaru",
     description: "Iterasi terbaru Opus. Kecepatan dan kecerdasan maksimal.",
@@ -46,7 +47,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     id: "claude-sonnet-4-6",
     label: "Claude Sonnet 4.6",
     provider: "Anthropic",
-    pricing: { input: 45, output: 200 },
+    pricing: { input: 9900, output: 49500 },
     context: "200K",
     description: "Model cerdas dan cepat, cocok untuk mayoritas use-case.",
   },
@@ -54,7 +55,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     id: "claude-sonnet-4-7",
     label: "Claude Sonnet 4.7",
     provider: "Anthropic",
-    pricing: { input: 45, output: 200 },
+    pricing: { input: 10500, output: 52500 },
     context: "200K",
     description: "Keseimbangan ideal antara kecepatan, harga, dan kecerdasan.",
   },
@@ -62,7 +63,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     id: "claude-sonnet-5",
     label: "Claude Sonnet 5.0",
     provider: "Anthropic",
-    pricing: { input: 50, output: 250 },
+    pricing: { input: 11500, output: 57500 },
     context: "200K",
     note: "Terbaru",
     description: "Generasi ke-5 Sonnet dengan pemahaman logika lebih kuat.",
@@ -71,7 +72,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     id: "gpt-5-4",
     label: "GPT 5.4",
     provider: "OpenAI",
-    pricing: { input: 100, output: 300 },
+    pricing: { input: 8500, output: 51000 },
     context: "128K",
     description: "Standar industri. Performa sangat baik untuk berbagai tugas.",
     aliases: ["gpt-5.4"],
@@ -80,7 +81,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     id: "gpt-5-5",
     label: "GPT 5.5",
     provider: "OpenAI",
-    pricing: { input: 150, output: 400 },
+    pricing: { input: 16900, output: 99900 },
     context: "128K",
     note: "Terbaru",
     description: "Peningkatan dari seri GPT-5. Respons lebih cepat dan lebih patuh instruksi.",
@@ -90,7 +91,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     id: "glm-5-2",
     label: "GLM 5.2",
     provider: "Zhipu AI",
-    pricing: { input: 10, output: 40 },
+    pricing: { input: 4700, output: 15000 },
     context: "128K",
     description: "Model open-weight terkemuka dengan efisiensi biaya luar biasa.",
     aliases: ["glm-5.2"],
@@ -98,7 +99,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
 ];
 
 export const DEFAULT_MODEL_ID = "claude-opus-4-8";
-export const DEFAULT_MODEL_PRICING: ModelPricing = { input: 10, output: 30 };
+export const DEFAULT_MODEL_PRICING: ModelPricing = { input: 4700, output: 15000 };
 export const AVAILABLE_MODEL_IDS = MODEL_CATALOG.map((model) => model.id);
 
 function normalizeModelId(model: string): string {

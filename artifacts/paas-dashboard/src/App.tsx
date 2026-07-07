@@ -31,10 +31,8 @@ import ProvidersPage from "@/pages/providers";
 import FAQPage from "@/pages/faq";
 import RefundPolicyPage from "@/pages/refund-policy";
 import TermsPage from "@/pages/terms";
-import KontakPage from "@/pages/kontak";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TentangKamiPage from "@/pages/tentang-kami";
-import LayananPage from "@/pages/layanan";
 
 import AdminOverview from "@/pages/admin/overview";
 import AdminUsers from "@/pages/admin/users";
@@ -51,7 +49,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center bg-background text-foreground dark">Loading...</div>;
+    return <div className="flex h-screen items-center justify-center bg-background text-foreground">Loading...</div>;
   }
 
   if (!user) return <Redirect to="/login" />;
@@ -67,7 +65,7 @@ function AdminRoute({ component: Component }: { component: React.ComponentType }
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center bg-background text-foreground dark">Loading...</div>;
+    return <div className="flex h-screen items-center justify-center bg-background text-foreground">Loading...</div>;
   }
 
   if (!user) return <Redirect to="/login" />;
@@ -82,7 +80,7 @@ function AdminRoute({ component: Component }: { component: React.ComponentType }
 
 function Router() {
   useEffect(() => {
-    document.documentElement.classList.add("dark");
+    document.documentElement.classList.remove("dark");
   }, []);
 
   return (
@@ -114,10 +112,8 @@ function Router() {
       <Route path="/faq" component={FAQPage} />
       <Route path="/refund-policy" component={RefundPolicyPage} />
       <Route path="/terms-and-conditions" component={TermsPage} />
-      <Route path="/kontak" component={KontakPage} />
       <Route path="/privacy-policy" component={PrivacyPolicyPage} />
       <Route path="/tentang-kami" component={TentangKamiPage} />
-      <Route path="/layanan" component={LayananPage} />
 
       {/* Admin routes - dedicated layout */}
       <Route path="/admin/users" component={() => <AdminRoute component={AdminUsers} />} />

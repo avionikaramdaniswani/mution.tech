@@ -1,199 +1,127 @@
-import { useState, useRef, useEffect } from "react";
-import { Link, useLocation } from "wouter";
+import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Menu, X, ChevronDown } from "lucide-react";
+import { ArrowRight, Menu, X } from "lucide-react";
 
-const legalLinks = [
+const navLinks = [
+  { label: "Harga", href: "/harga" },
   { label: "FAQ", href: "/faq" },
-  { label: "Privacy Policy", href: "/privacy-policy" },
-  { label: "Terms of Service", href: "/terms-and-conditions" },
-  { label: "Refund Policy", href: "/refund-policy" },
-];
-
-const mainLinks = [
-  { label: "Services", href: "/layanan" },
-  { label: "Pricing", href: "/harga" },
-  { label: "Contact", href: "/kontak" },
+  { label: "Tentang Kami", href: "/tentang-kami" },
 ];
 
 export function PublicNavbar() {
   const { user } = useAuth();
-  const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [navExpanded, setNavExpanded] = useState(false);
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    const updateNav = () => setNavExpanded(window.scrollY > 96);
+    updateNav();
+    window.addEventListener("scroll", updateNav, { passive: true });
+    return () => window.removeEventListener("scroll", updateNav);
   }, []);
 
-  const isLegalActive = legalLinks.some((l) => location === l.href);
+  const showFullNav = navExpanded || mobileOpen;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+    <header className="fixed inset-x-0 top-4 z-50 px-4 text-[#172033] sm:top-5">
+      <div
+        className={`mx-auto flex h-14 w-full items-center justify-between rounded-full border border-[#dbe8f3] bg-white/88 px-3 shadow-[0_18px_60px_rgba(23,32,51,0.12)] backdrop-blur-xl transition-[max-width,padding,background-color] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:h-16 ${
+          showFullNav ? "sm:px-5" : "sm:px-4"
+        }`}
+        style={{ maxWidth: showFullNav ? "64rem" : "21rem" }}
+      >
+        <a href="/" className="flex items-center gap-2.5">
+          <img src="/mution-logo.png" alt="Mution" className="h-8 w-auto sm:h-9" />
+          <span className="text-lg font-extrabold tracking-normal text-[#172033] sm:text-xl" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            Mution
+          </span>
+        </a>
 
-          {/* Logo */}
-          <a href="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <img src="/mution-logo.png" alt="Mution" className="h-9 w-auto" />
-            <span
-              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-              className="text-xl font-extrabold text-primary tracking-tight"
+        <nav
+          className={`hidden items-center gap-1 overflow-hidden transition-[max-width,opacity] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] md:flex ${
+            showFullNav ? "max-w-md opacity-100" : "pointer-events-none max-w-0 opacity-0"
+          }`}
+        >
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="rounded-full px-3 py-2 text-sm font-medium text-[#526173] transition-colors hover:bg-[#eef8ff] hover:text-[#172033]"
             >
-              Mution
-            </span>
-          </a>
+              {link.label}
+            </Link>
+          ))}
+        </nav>
 
-          {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-1 text-sm">
-            {mainLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-3 py-2 rounded-lg transition-colors ${
-                  location === link.href
-                    ? "text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+        <div className="hidden items-center gap-2 md:flex">
+          {user ? (
+            <Link href="/dashboard">
+              <Button className="gap-2 rounded-full bg-[#172033] text-white hover:bg-[#263247]">
+                Dashboard
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          ) : (
+            <>
+              <span
+                className={`inline-flex overflow-hidden transition-[max-width,opacity] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                  showFullNav ? "max-w-24 opacity-100" : "pointer-events-none max-w-0 opacity-0"
                 }`}
               >
-                {link.label}
-              </Link>
-            ))}
-
-            {/* Kebijakan dropdown */}
-            <div ref={dropdownRef} className="relative">
-              <button
-                onClick={() => setDropdownOpen((v) => !v)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-                  isLegalActive
-                    ? "text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                }`}
-              >
-                Legal
-                <ChevronDown
-                  className="h-3.5 w-3.5 transition-transform duration-200"
-                  style={{ transform: dropdownOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-                />
-              </button>
-
-              {dropdownOpen && (
-                <div
-                  className="absolute top-full left-0 mt-1.5 w-52 rounded-xl border border-border/60 bg-background/95 backdrop-blur-md shadow-xl overflow-hidden"
-                  style={{ zIndex: 100 }}
-                >
-                  {legalLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      onClick={() => setDropdownOpen(false)}
-                      className={`block px-4 py-2.5 text-sm transition-colors ${
-                        location === link.href
-                          ? "text-foreground bg-muted/40 font-medium"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </nav>
-
-          {/* Desktop auth */}
-          <div className="hidden md:flex items-center gap-3">
-            {user ? (
-              <Link href="/dashboard">
-                <Button size="sm">
-                  Go to Dashboard <ArrowRight className="ml-1.5 h-4 w-4" />
+                <Link href="/login">
+                  <Button variant="ghost" className="shrink-0 rounded-full text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">
+                    Masuk
+                  </Button>
+                </Link>
+              </span>
+              <Link href="/register">
+                <Button className="gap-2 rounded-full bg-[#f97316] text-white hover:bg-[#ea580c]">
+                  Mulai
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-            ) : (
-              <>
-                <Link href="/login">
-                  <Button variant="ghost" size="sm">Sign In</Button>
-                </Link>
-                <Link href="/register">
-                  <Button size="sm">Sign Up Free</Button>
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
-            onClick={() => setMobileOpen((v) => !v)}
-            aria-label="Menu"
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+            </>
+          )}
         </div>
+
+        <button
+          className="flex h-10 w-10 items-center justify-center rounded-full text-[#526173] transition-colors hover:bg-[#eef8ff] hover:text-[#172033] md:hidden"
+          onClick={() => setMobileOpen((value) => !value)}
+          aria-label="Menu"
+        >
+          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </div>
 
-      {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-border/50 bg-background/95 backdrop-blur-md">
-          <div className="mx-auto max-w-6xl px-4 py-4 flex flex-col gap-1">
-
-            {mainLinks.map((link) => (
+        <div className="mx-auto mt-2 max-w-5xl rounded-3xl border border-[#dbe8f3] bg-white/95 p-3 shadow-[0_18px_60px_rgba(23,32,51,0.14)] backdrop-blur-xl md:hidden">
+          <div className="flex flex-col gap-1">
+            {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className={`px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                  location === link.href
-                    ? "bg-muted/40 text-foreground font-medium"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                }`}
+                className="rounded-2xl px-3 py-2.5 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]"
               >
                 {link.label}
               </Link>
             ))}
-
-            <div className="mt-1 pt-2 border-t border-border/30">
-              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-                Legal
-              </p>
-              {legalLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                    location === link.href
-                      ? "bg-muted/40 text-foreground font-medium"
-                      : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-
-            <div className="mt-3 pt-3 border-t border-border/40 flex flex-col gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-[#dbe8f3] pt-3">
               {user ? (
-                <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
-                  <Button size="sm" className="w-full justify-center">
-                    Go to Dashboard <ArrowRight className="ml-1.5 h-4 w-4" />
-                  </Button>
+                <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="col-span-2">
+                  <Button className="w-full rounded-full bg-[#172033] text-white hover:bg-[#263247]">Dashboard</Button>
                 </Link>
               ) : (
                 <>
-                  <Link href="/register" onClick={() => setMobileOpen(false)}>
-                    <Button size="sm" className="w-full justify-center">Sign Up Free</Button>
-                  </Link>
                   <Link href="/login" onClick={() => setMobileOpen(false)}>
-                    <Button variant="outline" size="sm" className="w-full justify-center">Sign In</Button>
+                    <Button variant="outline" className="w-full rounded-full border-[#c9d8e7] bg-white text-[#172033] hover:bg-[#eef8ff]">
+                      Masuk
+                    </Button>
+                  </Link>
+                  <Link href="/register" onClick={() => setMobileOpen(false)}>
+                    <Button className="w-full rounded-full bg-[#f97316] text-white hover:bg-[#ea580c]">Mulai</Button>
                   </Link>
                 </>
               )}

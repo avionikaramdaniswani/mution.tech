@@ -1,466 +1,568 @@
 import { Link } from "wouter";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { PublicNavbar } from "@/components/public-navbar";
 import { Button } from "@/components/ui/button";
 import {
+  Activity,
   ArrowRight,
-  Globe,
+  Brain,
+  CheckCircle2,
   ChevronDown,
+  Cloud,
+  GitBranch,
+  KeyRound,
 } from "lucide-react";
-import { PublicNavbar } from "@/components/public-navbar";
 import {
-  SiNodedotjs,
-  SiPython,
-  SiPhp,
+  SiBun,
+  SiDeno,
+  SiDocker,
+  SiDotnet,
   SiGo,
+  SiNodedotjs,
+  SiPhp,
+  SiPython,
   SiRuby,
   SiRust,
-  SiDeno,
-  SiBun,
-  SiDotnet,
-  SiDocker,
+  SiInstagram,
+  SiTiktok,
+  SiWhatsapp,
 } from "react-icons/si";
 import { FaJava } from "react-icons/fa";
-import { useEffect, useState, useRef } from "react";
 
 const runtimes = [
-  { label: "Node.js",  Icon: SiNodedotjs, color: "#5FA04E" },
-  { label: "Python",   Icon: SiPython,    color: "#3776AB" },
-  { label: "PHP",      Icon: SiPhp,       color: "#777BB4" },
-  { label: "Static",   Icon: Globe,       color: "#94a3b8" },
-  { label: "Go",       Icon: SiGo,        color: "#00ADD8" },
-  { label: "Ruby",     Icon: SiRuby,      color: "#CC342D" },
-  { label: "Java",     Icon: FaJava,      color: "#ED8B00" },
-  { label: "Rust",     Icon: SiRust,      color: "#CE422B" },
-  { label: "Deno",     Icon: SiDeno,      color: "#ffffff" },
-  { label: "Bun",      Icon: SiBun,       color: "#FBF0DF" },
-  { label: ".NET",     Icon: SiDotnet,    color: "#512BD4" },
-  { label: "Docker",   Icon: SiDocker,    color: "#2496ED" },
+  { label: "Node.js", Icon: SiNodedotjs, color: "#5fa04e" },
+  { label: "Python", Icon: SiPython, color: "#3776ab" },
+  { label: "PHP", Icon: SiPhp, color: "#777bb4" },
+  { label: "Go", Icon: SiGo, color: "#00add8" },
+  { label: "Ruby", Icon: SiRuby, color: "#cc342d" },
+  { label: "Java", Icon: FaJava, color: "#ed8b00" },
+  { label: "Rust", Icon: SiRust, color: "#ce422b" },
+  { label: "Deno", Icon: SiDeno, color: "#111827" },
+  { label: "Bun", Icon: SiBun, color: "#6f4e37" },
+  { label: ".NET", Icon: SiDotnet, color: "#512bd4" },
+  { label: "Docker", Icon: SiDocker, color: "#2496ed" },
 ];
 
-const terminalLines = [
-  { delay: 0,    text: "$ git push origin main",                  color: "rgba(255,255,255,0.85)" },
-  { delay: 700,  text: "Counting objects: 12, done.",              color: "rgba(255,255,255,0.35)" },
-  { delay: 1100, text: "Writing objects: 100% (12/12) - 4.2 KiB", color: "rgba(255,255,255,0.35)" },
-  { delay: 1700, text: "remote: Mution - deploy triggered ",    color: "rgba(249,115,22,0.9)"  },
-  { delay: 2300, text: "remote: Detecting runtime... Node.js 20", color: "rgba(255,255,255,0.45)" },
-  { delay: 2900, text: "remote: Installing dependencies...",       color: "rgba(255,255,255,0.45)" },
-  { delay: 3600, text: "remote: npm install - 47 packages - 8s",  color: "rgba(255,255,255,0.35)" },
-  { delay: 4300, text: "remote: Building... npm run build",        color: "rgba(255,255,255,0.45)" },
-  { delay: 5100, text: "remote: Build succeeded in 11.4s OK",      color: "rgba(249,115,22,0.8)"  },
-  { delay: 5800, text: "remote: Deploying container...",           color: "rgba(255,255,255,0.45)" },
-  { delay: 6600, text: "remote: SSL certificate provisioned OK",   color: "rgba(255,255,255,0.35)" },
-  { delay: 7200, text: "remote: * Live -> my-api.mution.app",      color: "#4ade80"               },
+const plans = [
+  {
+    key: "hobby",
+    name: "Hobby",
+    priceLabel: "Gratis",
+    priceSub: "Selamanya",
+    creditsLabel: "5.000 kredit",
+    creditsSub: "sekali saat daftar",
+    cta: "Mulai Gratis",
+    highlight: false,
+    features: ["2 slot deploy proyek", "RAM 256 MB - 1 GB", "Cocok untuk eksperimen dan project kecil"],
+  },
+  {
+    key: "pro",
+    name: "Pro",
+    priceLabel: "Rp 26.000",
+    priceSub: "per bulan",
+    creditsLabel: "25.000 kredit",
+    creditsSub: "per siklus, rollover saat upgrade",
+    cta: "Mulai Pro",
+    highlight: true,
+    features: ["Unlimited slot proyek", "RAM hingga 4 GB", "Priority support"],
+  },
+  {
+    key: "team",
+    name: "Team",
+    priceLabel: "Rp 75.000",
+    priceSub: "per bulan",
+    creditsLabel: "60.000 kredit",
+    creditsSub: "per siklus, rollover saat upgrade",
+    cta: "Mulai Team",
+    highlight: false,
+    features: ["Unlimited slot proyek", "Multi user", "Shared proyek", "Priority support"],
+  },
 ];
 
 const faqs = [
   {
-    q: "Apakah ada biaya tersembunyi?",
-    a: "Tidak. Kamu hanya membayar sesuai resource yang dipakai. Tidak ada biaya setup, tidak ada biaya egress tersembunyi.",
+    q: "Mution cocok untuk siapa?",
+    a: "Mution cocok untuk developer, founder, dan tim produk yang ingin menjalankan app, API, domain, database, serta monitoring tanpa banyak dashboard terpisah.",
   },
   {
-    q: "Berapa lama waktu deploy rata-ratax",
-    a: "Rata-rata 15-30 detik dari git push sampai aplikasi live. Build yang lebih besar dengan banyak dependencies bisa 60-90 detik.",
+    q: "Apakah Mution cuma untuk deploy aplikasi?",
+    a: "Tidak. Deploy adalah salah satu bagian saja. Mution juga mengelola API key, usage, kredit, domain, database, provider model, dan monitoring produk.",
   },
   {
-    q: "Apakah saya bisa pakai domain sendiri?",
-    a: "Ya. Kamu bisa menghubungkan domain custom di plan Pro ke atas. SSL/HTTPS diaktifkan otomatis tanpa konfigurasi manual.",
+    q: "Apakah bisa dipakai untuk project kecil?",
+    a: "Bisa. Kamu bisa mulai dari satu app kecil, lalu menambah domain, database, API, dan resource lain saat produk berkembang.",
   },
   {
-    q: "Database apa yang didukungx",
-    a: "Mution mendukung managed PostgreSQL per proyek. Provisioning cukup satu klik, backup otomatis setiap hari.",
-  },
-  {
-    q: "Bagaimana cara kerja billing pay-as-you-gox",
-    a: "Kamu ditagih berdasarkan CPU dan RAM aktual yang dipakai per menit. Jika aplikasi tidak berjalan, tidak ada tagihan.",
-  },
-  {
-    q: "Apakah ada jaminan uptime?",
-    a: "Plan Pro dan Enterprise mendapatkan SLA 99.9% uptime. Kamu bisa memantau status platform real-time di status.mution.tech.",
+    q: "Apakah perlu kartu kredit untuk mulai?",
+    a: "Tidak perlu. Kamu bisa membuat akun dan mulai mencoba workspace Mution lebih dulu.",
   },
 ];
 
-
-const stats = [
-  { value: "99.9%", label: "Uptime SLA" },
-  { value: "< 30 detik", label: "Rata-rata deploy" },
-  { value: "10.000+", label: "Proyek aktif" },
-  { value: "24/7", label: "Dukungan teknis" },
+const footerLinks = [
+  { label: "FAQ", href: "/faq" },
+  { label: "Tentang Kami", href: "/tentang-kami" },
+  { label: "Privacy", href: "/privacy-policy" },
+  { label: "Terms", href: "/terms-and-conditions" },
+  { label: "Refund", href: "/refund-policy" },
 ];
 
-export default function Landing() {
-  const { user } = useAuth();
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [visibleLines, setVisibleLines] = useState(0);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const terminalRef = useRef<HTMLDivElement | null>(null);
-  const animStarted = useRef(false);
+const socialLinks = [
+  { label: "WhatsApp", href: "https://wa.me/6285709557572", Icon: SiWhatsapp },
+  { label: "Instagram", href: "https://www.instagram.com/mution.tech", Icon: SiInstagram },
+  { label: "TikTok", href: "https://www.tiktok.com/@mution.tech", Icon: SiTiktok },
+];
+
+const HERO_VIDEO_SRC = "/herobg.mp4?v=20260707";
+const HERO_VIDEO_CROSSFADE_MS = 900;
+
+function HeroBackgroundVideo() {
+  const firstVideoRef = useRef<HTMLVideoElement>(null);
+  const secondVideoRef = useRef<HTMLVideoElement>(null);
+  const activeVideoRef = useRef(0);
+  const isCrossfadingRef = useRef(false);
+  const [activeVideo, setActiveVideo] = useState(0);
 
   useEffect(() => {
-    document.documentElement.classList.add("dark");
+    activeVideoRef.current = activeVideo;
+  }, [activeVideo]);
 
-    const onScroll = () => {
-      const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      setScrollProgress(docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0);
+  useEffect(() => {
+    const videos = [firstVideoRef.current, secondVideoRef.current];
+    if (!videos[0] || !videos[1]) return;
+
+    let animationFrame = 0;
+    const timeoutIds: number[] = [];
+
+    const crossfadeToStart = () => {
+      if (isCrossfadingRef.current) return;
+
+      const currentIndex = activeVideoRef.current;
+      const nextIndex = currentIndex === 0 ? 1 : 0;
+      const currentVideo = videos[currentIndex];
+      const nextVideo = videos[nextIndex];
+      if (!currentVideo || !nextVideo) return;
+
+      isCrossfadingRef.current = true;
+      nextVideo.currentTime = 0;
+      void nextVideo.play().catch(() => undefined);
+      activeVideoRef.current = nextIndex;
+      setActiveVideo(nextIndex);
+
+      const timeoutId = window.setTimeout(() => {
+        currentVideo.pause();
+        currentVideo.currentTime = 0;
+        isCrossfadingRef.current = false;
+      }, HERO_VIDEO_CROSSFADE_MS);
+      timeoutIds.push(timeoutId);
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
+
+    const tick = () => {
+      const currentVideo = videos[activeVideoRef.current];
+      if (currentVideo) {
+        const { currentTime, duration } = currentVideo;
+        const leadTime = Math.min(0.9, Math.max(0.35, duration * 0.16));
+
+        if (Number.isFinite(duration) && duration > 1 && currentTime >= duration - leadTime) {
+          crossfadeToStart();
+        }
+      }
+
+      animationFrame = window.requestAnimationFrame(tick);
+    };
+
+    const handleEnded = () => crossfadeToStart();
+
+    videos.forEach((video) => video?.addEventListener("ended", handleEnded));
+    void videos[0].play().catch(() => undefined);
+    animationFrame = window.requestAnimationFrame(tick);
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      window.cancelAnimationFrame(animationFrame);
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      videos.forEach((video) => video?.removeEventListener("ended", handleEnded));
     };
-  }, []);
-
-  useEffect(() => {
-    const el = terminalRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !animStarted.current) {
-          animStarted.current = true;
-          terminalLines.forEach((line, i) => {
-            setTimeout(() => setVisibleLines(i + 1), line.delay);
-          });
-          const totalDuration = terminalLines[terminalLines.length - 1].delay + 3000;
-          setTimeout(() => {
-            animStarted.current = false;
-            setVisibleLines(0);
-          }, totalDuration);
-        }
-      },
-      { threshold: 0.4 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground dark">
-
-      {/* -- Fixed scroll track: line + comet -- */}
-      <div
-        className="fixed hidden lg:block pointer-events-none z-30"
-        style={{ left: "28px", top: "64px", bottom: 0, width: "1px", background: "rgba(255,255,255,0.05)" }}
-      >
-        {/* Track fill behind comet */}
-        <div
-          style={{
-            position: "absolute", left: 0, top: 0, width: "1px",
-            height: `${scrollProgress * 100}%`,
-            background: "linear-gradient(to bottom, transparent, rgba(249,115,22,0.15) 40%, rgba(249,115,22,0.5))",
-          }}
+    <>
+      {[firstVideoRef, secondVideoRef].map((videoRef, index) => (
+        <video
+          key={index}
+          ref={videoRef}
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[900ms] ease-linear ${
+            activeVideo === index ? "opacity-100" : "opacity-0"
+          }`}
+          src={HERO_VIDEO_SRC}
+          autoPlay={index === 0}
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden="true"
         />
+      ))}
+    </>
+  );
+}
 
-        {/* Comet - tail fades up, bright head at bottom */}
-        <div
-          style={{
-            position: "absolute",
-            left: "-3px",
-            top: `${scrollProgress * 100}%`,
-            transform: "translateY(-100%)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
-          {/* Tail */}
-          <div style={{
-            width: "1px",
-            height: "60px",
-            background: "linear-gradient(to bottom, transparent, rgba(249,115,22,0.25) 60%, rgba(249,115,22,0.7))",
-          }} />
-          {/* Head */}
-          <div style={{
-            width: "7px", height: "7px",
-            borderRadius: "50%",
-            background: "radial-gradient(circle at 40% 35%, #ffb86c, rgb(249,115,22) 60%)",
-            boxShadow: "0 0 6px 2px rgba(249,115,22,0.6), 0 0 14px 4px rgba(249,115,22,0.25)",
-            flexShrink: 0,
-          }} />
-        </div>
-      </div>
+function LandingHero() {
+  return (
+    <section className="relative isolate overflow-hidden bg-[#f8fbff] text-[#172033]" style={{ minHeight: "100svh" }}>
+      <HeroBackgroundVideo />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(248,251,255,0.78)_0%,rgba(248,251,255,0.48)_42%,rgba(248,251,255,0.12)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.12)_0%,rgba(255,255,255,0.02)_54%,rgba(248,251,255,0.72)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_36%,rgba(255,255,255,0.34),transparent_34%)]" />
+      <div className="absolute inset-y-0 left-0 w-full bg-[linear-gradient(135deg,rgba(249,115,22,0.09),rgba(20,184,166,0.06)_46%,transparent_70%)]" />
 
-      <PublicNavbar />
+      <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-6xl flex-col justify-center px-4 pb-14 pt-32 sm:px-6 sm:pt-36 lg:px-8">
+        <div className="max-w-3xl">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">
+            PaaS dan AI gateway untuk produk digital
+          </p>
+          <h1 className="mt-5 text-5xl font-black leading-[0.94] tracking-normal text-[#172033] sm:text-7xl lg:text-8xl">
+            Mution
+          </h1>
+          <p className="mt-6 max-w-2xl text-base leading-7 text-[#526173] sm:text-lg sm:leading-8">
+            Deploy aplikasi, kelola API key, pantau pemakaian kredit, dan jalankan operasional produk dari satu workspace yang terasa ringan.
+          </p>
 
-      {/* -- Hero Card -- */}
-      <section className="px-3 sm:px-6 lg:px-8 pt-6 pb-0">
-        <div className="mx-auto max-w-6xl">
-          <div
-            className="relative rounded-2xl overflow-hidden"
-            style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-          >
-            {/* Background image */}
-            <div className="absolute inset-0" style={{
-              backgroundImage: "url('/hero-bg.png?v=2')",
-              backgroundSize: "cover",
-              backgroundPosition: "center top",
-            }} />
-            {/* Dark overlay so text is readable */}
-            <div className="absolute inset-0" style={{
-              background: "linear-gradient(to bottom, rgba(4,4,12,0.78) 0%, rgba(6,6,16,0.72) 50%, rgba(8,8,18,0.92) 100%)",
-            }} />
-            {/* Subtle orange glow at bottom center */}
-            <div className="absolute inset-0 pointer-events-none" style={{
-              background: "radial-gradient(ellipse at 50% 110%, rgba(249,115,22,0.2) 0%, transparent 55%)",
-            }} />
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link href="/register">
+              <Button className="h-11 gap-2 rounded-md bg-[#f97316] px-5 text-white hover:bg-[#ea580c]">
+                Mulai Bangun
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
 
-            {/* Hero text content */}
-            <div className="relative z-10 text-center px-6 pt-20 pb-14">
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.06]">
-                Deploy tanpa<br />
-                <span className="text-primary">batas kompleksitas.</span>
-              </h1>
-              <p className="mt-6 text-base sm:text-lg max-w-xl mx-auto leading-relaxed" style={{ color:"rgba(255,255,255,0.5)" }}>
-                Platform infrastruktur modern - deploy, scale, dan pantau aplikasi kamu tanpa perlu mengurus server atau konfigurasi rumit.
-              </p>
-              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Link href="/login">
-                  <button
-                    className="group inline-flex items-center gap-2 rounded-xl font-semibold text-sm transition-all duration-200"
-                    style={{
-                      background: "rgb(249,115,22)",
-                      color: "#fff",
-                      padding: "12px 28px",
-                      boxShadow: "0 0 0 1px rgba(249,115,22,0.4), 0 4px 24px rgba(249,115,22,0.35)",
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 0 0 1px rgba(249,115,22,0.6), 0 6px 32px rgba(249,115,22,0.5)")}
-                    onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 0 0 1px rgba(249,115,22,0.4), 0 4px 24px rgba(249,115,22,0.35)")}
-                  >
-                    Deploy Sekarang
-                    <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                  </button>
-                </Link>
-              </div>
-              <p className="mt-5 text-xs" style={{ color:"rgba(255,255,255,0.22)" }}>Tidak perlu kartu kredit - Tier gratis tersedia</p>
-            </div>
-
-            {/* Dashboard preview peek */}
-            <div className="relative z-10 px-4 sm:px-10">
-              <div className="mx-auto max-w-4xl rounded-t-xl overflow-hidden" style={{ border:"1px solid rgba(255,255,255,0.1)", borderBottom:"none", background:"rgba(10,10,18,0.9)", boxShadow:"0 -20px 60px rgba(0,0,0,0.5)" }}>
-                {/* Fake window chrome */}
-                <div className="flex items-center gap-1.5 px-4 py-3 border-b" style={{ borderColor:"rgba(255,255,255,0.06)", background:"rgba(255,255,255,0.02)" }}>
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ background:"rgba(255,255,255,0.12)" }} />
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ background:"rgba(255,255,255,0.12)" }} />
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ background:"rgba(255,255,255,0.12)" }} />
-                  <div className="flex-1 mx-4 rounded px-3 py-1 text-[10px]" style={{ background:"rgba(255,255,255,0.04)", color:"rgba(255,255,255,0.2)" }}>app.mution.id/dashboard</div>
-                </div>
-                {/* Fake dashboard rows */}
-                <div className="p-4 space-y-2">
-                  {["my-api - Node.js - * Running", "frontend - Static - * Running", "auth-service - Python - restarting Building"].map((row, i) => (
-                    <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.05)" }}>
-                      <div className="w-6 h-6 rounded" style={{ background:"rgba(249,115,22,0.15)", border:"1px solid rgba(249,115,22,0.25)" }} />
-                      <span className="text-xs font-mono" style={{ color:"rgba(255,255,255,0.4)" }}>{row}</span>
-                      <div className="ml-auto w-16 h-4 rounded" style={{ background:"rgba(255,255,255,0.04)" }} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Trusted By - inside the same card */}
-            <div className="relative z-10 mt-0" style={{ borderTop:"1px solid rgba(255,255,255,0.06)" }}>
-              <div className="px-6 py-4 border-b" style={{ borderColor:"rgba(255,255,255,0.05)" }}>
-                <p className="text-center text-xs font-medium" style={{ color:"rgba(255,255,255,0.25)", letterSpacing:"0.12em", textTransform:"uppercase" }}>Dipercaya oleh tim dari berbagai industri</p>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6" style={{ borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
-                {["Tokopedia","Gojek","Traveloka","Ruangguru","Bukalapak","Kumparan"].map((name, i) => (
-                  <div key={i} className="flex items-center justify-center py-5 px-4" style={{ borderRight: i < 5 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                    <span className="text-sm font-semibold" style={{ color:"rgba(255,255,255,0.2)", fontFamily:"system-ui", letterSpacing:"-0.02em" }}>{name}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6">
-                {["Flip","Xendit","Midtrans","Ovo","Dana","Shopee"].map((name, i) => (
-                  <div key={i} className="flex items-center justify-center py-5 px-4" style={{ borderRight: i < 5 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                    <span className="text-sm font-semibold" style={{ color:"rgba(255,255,255,0.2)", fontFamily:"system-ui", letterSpacing:"-0.02em" }}>{name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="mt-8 flex flex-col gap-2 text-sm font-medium text-[#526173] sm:flex-row sm:flex-wrap sm:gap-x-5">
+            {["Domain dan SSL siap", "Runtime multi-bahasa", "Usage API terbaca"].map((item) => (
+              <span key={item} className="inline-flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-[#14b8a6]" />
+                {item}
+              </span>
+            ))}
           </div>
         </div>
-      </section>
+      </div>
+    </section>
+  );
+}
 
-      {/* Runtimes - infinite marquee */}
-      <section id="runtime" className="border-y border-border/50 bg-card/20 py-10 overflow-hidden">
-        <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-7">Runtime yang Didukung</p>
-
-        {/* fade masks on left & right */}
-        <div className="relative">
-          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-24 z-10"
-            style={{ background: "linear-gradient(to right, hsl(var(--background)), transparent)" }} />
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-24 z-10"
-            style={{ background: "linear-gradient(to left, hsl(var(--background)), transparent)" }} />
-
-          {/* scrolling track */}
-          <div className="flex" style={{ animation: "marquee 28s linear infinite" }}>
-            {/* duplicate so it loops seamlessly */}
-            {[...runtimes, ...runtimes].map(({ label, Icon, color }, i) => (
-              <div
-                key={i}
-                className="flex-shrink-0 flex items-center gap-2.5 rounded-xl border border-border/60 bg-card px-5 py-2.5 text-sm font-medium text-foreground mx-2"
-              >
-                <Icon style={{ color, flexShrink: 0 }} className="h-4 w-4" />
+function RuntimeStrip() {
+  return (
+    <div className="relative overflow-hidden border-y border-[#dbe8f3] bg-white py-7">
+      <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-16 bg-[linear-gradient(to_right,#ffffff,transparent)]" />
+      <div className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-16 bg-[linear-gradient(to_left,#ffffff,transparent)]" />
+      <div className="flex w-max animate-[cityMarquee_30s_linear_infinite]">
+        {[0, 1, 2, 3].map((group) => (
+          <div key={group} className="flex shrink-0 gap-3 pr-3" aria-hidden={group > 0}>
+            {runtimes.map(({ label, Icon, color }) => (
+              <div key={`${group}-${label}`} className="flex h-11 items-center gap-2 rounded-xl border border-[#dbe8f3] bg-[#f8fbff] px-4 text-sm font-semibold text-[#172033]">
+                <Icon className="h-4 w-4" style={{ color }} />
                 {label}
               </div>
             ))}
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ServicesShowcase() {
+  return (
+    <section className="bg-[#f8fbff] pb-8 pt-16 sm:pb-10 sm:pt-20">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-8 ml-auto max-w-2xl text-right">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Layanan Mution</p>
+          <h2 className="mt-4 text-3xl font-extrabold leading-tight tracking-normal text-[#172033] sm:text-4xl">
+            Deploy aplikasi dan gateway AI dalam satu alur.
+          </h2>
         </div>
 
-        <style>{`
-          @keyframes marquee {
-            from { transform: translateX(0); }
-            to   { transform: translateX(-50%); }
-          }
-        `}</style>
-      </section>
-
-      {/* Terminal Animasi */}
-      <section className="py-24 border-t border-border/40">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Teks kiri */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-4">Deploy dalam hitungan detik</p>
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
-                Push kode.<br />
-                <span className="text-primary">Sisanya urusan kami.</span>
-              </h2>
-              <p className="mt-5 text-muted-foreground leading-relaxed">
-                Cukup <code className="text-xs bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono">git push</code> - Mution otomatis mendeteksi runtime, install dependencies, build, dan deploy. SSL aktif, domain siap, tanpa konfigurasi manual.
-              </p>
-              <div className="mt-8 flex flex-col gap-3">
-                {[
-                  "Runtime terdeteksi otomatis",
-                  "Zero-downtime deployment",
-                  "SSL otomatis tanpa konfigurasi",
-                ].map((item) => (
-                  <div key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-                    {item}
-                  </div>
-                ))}
+        <div className="grid gap-8 border-y border-[#dbe8f3] py-10 md:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] md:gap-10 md:py-12">
+          <article className="max-w-md">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#bae6fd] bg-white text-[#0ea5e9] shadow-[0_14px_34px_rgba(14,165,233,0.16)]">
+                <Cloud className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#0ea5e9]">Hosting</p>
+                <h3 className="text-2xl font-extrabold tracking-normal text-[#172033]">Deploy & Hosting</h3>
               </div>
             </div>
+            <p className="text-sm leading-7 text-[#526173]">
+              Jalankan app dari runtime favorit, sambungkan domain, dan pantau resource tanpa pindah-pindah dashboard.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {[
+                { label: "Git push", Icon: GitBranch },
+                { label: "Runtime", Icon: Cloud },
+                { label: "Monitoring", Icon: Activity },
+              ].map(({ label, Icon }) => (
+                <span key={label} className="inline-flex items-center gap-2 rounded-full border border-[#dbe8f3] bg-white/80 px-3 py-1.5 text-xs font-bold text-[#526173] shadow-sm">
+                  <Icon className="h-3.5 w-3.5 text-[#14b8a6]" />
+                  {label}
+                </span>
+              ))}
+            </div>
+          </article>
 
-            {/* Terminal */}
-            <div
-              ref={terminalRef}
-              className="rounded-xl overflow-hidden"
-              style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(6,6,14,0.95)" }}
-            >
-              {/* Chrome bar */}
-              <div className="flex items-center gap-1.5 px-4 py-3 border-b" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
-                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(255,80,80,0.5)" }} />
-                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(255,190,0,0.4)" }} />
-                <div className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(0,200,80,0.4)" }} />
-                <span className="ml-3 text-[11px] font-mono" style={{ color: "rgba(255,255,255,0.2)" }}>bash - 80x24</span>
-              </div>
-              {/* Lines */}
-              <div className="p-5 font-mono text-[13px] leading-relaxed min-h-[320px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-                {terminalLines.slice(0, visibleLines).map((line, i) => (
-                  <div
-                    key={i}
-                    className="transition-opacity duration-300"
-                    style={{ color: line.color, opacity: 1 }}
-                  >
-                    {line.text}
-                  </div>
-                ))}
-                {visibleLines < terminalLines.length && (
-                  <span className="inline-block w-2 h-4 ml-0.5 align-middle animate-pulse" style={{ background: "rgba(249,115,22,0.7)" }} />
-                )}
+          <div className="h-px bg-[#dbe8f3] md:h-auto md:w-px" aria-hidden="true" />
+
+          <article className="max-w-md md:justify-self-end md:text-right">
+            <div className="mb-5 flex items-center gap-3 md:justify-end">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#fed7aa] bg-white text-[#f97316] shadow-[0_14px_34px_rgba(249,115,22,0.18)] md:order-2">
+                <Brain className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">AI Gateway</p>
+                <h3 className="text-2xl font-extrabold tracking-normal text-[#172033]">API Keys & Usage</h3>
               </div>
             </div>
-          </div>
+            <p className="text-sm leading-7 text-[#526173]">
+              Kelola akses model AI, pantau pemakaian token, dan kontrol kredit dari jalur billing yang jelas.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2 md:justify-end">
+              {[
+                { label: "API keys", Icon: KeyRound },
+                { label: "Token usage", Icon: Activity },
+                { label: "Credits", Icon: Brain },
+              ].map(({ label, Icon }) => (
+                <span key={label} className="inline-flex items-center gap-2 rounded-full border border-[#fed7aa] bg-white/80 px-3 py-1.5 text-xs font-bold text-[#526173] shadow-sm">
+                  <Icon className="h-3.5 w-3.5 text-[#f97316]" />
+                  {label}
+                </span>
+              ))}
+            </div>
+          </article>
         </div>
-      </section>
+      </div>
+    </section>
+  );
+}
 
+export default function Landing() {
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-      {/* FAQ */}
-      <section className="py-24 border-t border-border/40">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-4">FAQ</p>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Pertanyaan yang sering ditanyakan</h2>
-          </div>
-          <div className="space-y-2">
-            {faqs.map((faq, i) => (
-              <div
-                key={i}
-                className="rounded-xl border overflow-hidden transition-colors"
-                style={{ borderColor: openFaq === i ? "rgba(249,115,22,0.3)" : "rgba(255,255,255,0.08)", background: openFaq === i ? "rgba(249,115,22,0.04)" : "rgba(255,255,255,0.02)" }}
-              >
-                <button
-                  className="w-full flex items-center justify-between px-6 py-4 text-left"
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+  return (
+    <div className="min-h-screen bg-[#f8fbff] text-[#172033]">
+      <PublicNavbar />
+
+      <main>
+        <LandingHero />
+        <RuntimeStrip />
+        <ServicesShowcase />
+
+        <section className="bg-[#f8fbff] pb-8 pt-8 sm:pb-10 sm:pt-10">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Plan Mution</p>
+                <h2 className="mt-4 max-w-2xl text-3xl font-extrabold leading-tight tracking-normal text-[#172033] sm:text-4xl">
+                  Mulai kecil, naik saat produkmu butuh ruang lebih.
+                </h2>
+              </div>
+              <Link href="/harga">
+                <Button variant="outline" className="w-fit rounded-md border-[#c9d8e7] bg-white text-[#172033] hover:bg-[#eef8ff]">
+                  Detail Harga
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-3">
+              {plans.map((plan) => (
+                <article
+                  key={plan.key}
+                  className={`relative overflow-hidden rounded-[2rem] border p-2 shadow-[0_24px_70px_rgba(23,32,51,0.08)] transition-all hover:-translate-y-1 hover:shadow-[0_30px_90px_rgba(23,32,51,0.12)] ${
+                    plan.highlight
+                      ? "border-[#f97316]/45 bg-[linear-gradient(180deg,#fff7ed_0%,#ffffff_72%)] text-[#172033]"
+                      : "border-[#dbe8f3] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] text-[#172033]"
+                  }`}
                 >
-                  <span className="text-sm font-semibold text-foreground">{faq.q}</span>
-                  <ChevronDown
-                    className="h-4 w-4 flex-shrink-0 ml-4 transition-transform duration-200"
-                    style={{ color: "rgba(255,255,255,0.4)", transform: openFaq === i ? "rotate(180deg)" : "rotate(0deg)" }}
-                  />
-                </button>
-                {openFaq === i && (
-                  <div className="px-6 pb-5 text-sm text-muted-foreground leading-relaxed border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-                    <p className="pt-4">{faq.a}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+                  <div
+                    className={`relative overflow-hidden rounded-[1.5rem] border p-5 ${
+                      plan.highlight
+                        ? "border-[#fdba74] bg-[linear-gradient(135deg,#ffffff_0%,#fff7ed_54%,#e6fffb_100%)] shadow-[0_18px_50px_rgba(249,115,22,0.16)]"
+                        : "border-[#dbe8f3] bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_62%,#eef8ff_100%)] shadow-[0_18px_50px_rgba(23,32,51,0.08)]"
+                    }`}
+                  >
+                    <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#14b8a6]/10 blur-2xl" />
+                    <div className="pointer-events-none absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-[#f97316]/10 blur-2xl" />
 
-      {/* Footer */}
-      <footer className="border-t py-10" style={{ borderColor:"rgba(255,255,255,0.07)" }}>
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            {/* Brand + founders */}
-            <div className="flex flex-col items-center sm:items-start gap-2">
-              <div className="flex items-center gap-2.5">
-                <img src="/mution-logo.png" alt="Mution" className="h-6 w-auto" />
-                <span style={{ fontFamily:"'Space Grotesk', sans-serif" }} className="text-sm font-extrabold text-primary">Mution</span>
+                    <div className="relative">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">{plan.name}</p>
+                          <div className="mt-4 flex items-end gap-2">
+                            <span className="text-4xl font-black tracking-normal text-[#172033]">{plan.priceLabel}</span>
+                          </div>
+                          <p className="mt-1 text-sm text-[#526173]">{plan.priceSub}</p>
+                        </div>
+                        {plan.highlight && (
+                          <div className="rounded-full bg-[#f97316] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_10px_24px_rgba(249,115,22,0.28)]">
+                            Populer
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-5 border-t border-[#dbe8f3]/80 pt-4">
+                        <p className="text-sm font-bold text-[#172033]">{plan.creditsLabel}</p>
+                        <p className="mt-1 text-xs leading-5 text-[#526173]">{plan.creditsSub}</p>
+                      </div>
+
+                      <Link href="/register" className="mt-5 block">
+                        <Button
+                          className={`w-full rounded-full ${
+                            plan.highlight
+                              ? "bg-[#f97316] text-white shadow-[0_14px_30px_rgba(249,115,22,0.25)] hover:bg-[#ea580c]"
+                              : "bg-[#172033] text-white hover:bg-[#263247]"
+                          }`}
+                        >
+                          {plan.cta}
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+
+                  <ul className="space-y-3 px-4 pb-5 pt-5">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-3 text-sm leading-6 text-[#526173]">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#10b981]" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[#f8fbff] pb-18 pt-6 sm:pb-20 sm:pt-8">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-8 text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">FAQ</p>
+              <h2 className="mt-4 text-3xl font-extrabold tracking-normal text-[#172033]">Yang sering ditanyakan</h2>
+            </div>
+            <div className="columns-1 gap-4 md:columns-2">
+              {faqs.map((faq, index) => (
+                <article
+                  key={faq.q}
+                  className={`mb-4 break-inside-avoid overflow-hidden rounded-[1.5rem] border bg-white/90 shadow-[0_18px_50px_rgba(23,32,51,0.07)] transition-all duration-300 ${
+                    openFaq === index
+                      ? "border-[#f97316]/35 bg-[linear-gradient(135deg,#ffffff_0%,#fff7ed_58%,#eefdfa_100%)] shadow-[0_24px_70px_rgba(23,32,51,0.11)]"
+                      : "border-[#dbe8f3] hover:border-[#c9d8e7] hover:bg-white"
+                  }`}
+                >
+                  <button
+                    className="flex w-full items-center justify-between gap-4 px-5 py-5 text-left text-sm font-bold leading-6 text-[#172033]"
+                    onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                    aria-expanded={openFaq === index}
+                  >
+                    {faq.q}
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                        openFaq === index
+                          ? "border-[#fdba74] bg-[#fff7ed] text-[#f97316]"
+                          : "border-[#dbe8f3] bg-[#f8fbff] text-[#526173]"
+                      }`}
+                    >
+                      <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${openFaq === index ? "rotate-180" : ""}`} />
+                    </span>
+                  </button>
+                  <div
+                    className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+                      openFaq === index ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                    }`}
+                  >
+                    <div className="overflow-hidden">
+                      <div
+                        className={`border-t border-[#dbe8f3] px-5 pb-5 pt-4 text-sm leading-6 text-[#526173] transition-all duration-300 ${
+                          openFaq === index ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
+                        }`}
+                      >
+                        {faq.a}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-[#dbe8f3] bg-white py-12 text-[#526173]">
+        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 sm:px-6 lg:flex-row lg:items-start lg:justify-between lg:px-8">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <img src="/mution-logo.png" alt="Mution" className="h-8 w-auto" />
+                  <span className="text-xl font-extrabold text-[#172033]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                    Mution
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-[#526173]">Pioo (Founder) & Tiara (co-Founder)</p>
               </div>
-              <p className="text-xs" style={{ color:"rgba(255,255,255,0.3)" }}>
-                Pioo (Co-founder & CEO) - Tiara (Co-founder)
-              </p>
+
+              <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold" aria-label="Footer">
+                {footerLinks.map((link) => (
+                  <Link key={link.href} href={link.href} className="transition-colors hover:text-[#172033]">
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
             </div>
 
-            {/* Email */}
-            <a
-              href="mailto:supportmution@gmail.com"
-              className="text-xs transition-colors"
-              style={{ color:"rgba(255,255,255,0.4)" }}
-              onMouseEnter={e => (e.currentTarget.style.color = "rgb(249,115,22)")}
-              onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
-            >
-              supportmution@gmail.com
-            </a>
-
-            {/* Copyright + links */}
-            <div className="flex flex-col items-center sm:items-end gap-1.5">
-              <p className="text-xs" style={{ color:"rgba(255,255,255,0.2)" }}>
-                (c) {new Date().getFullYear()} Mution. Dibuat di Indonesia.
-              </p>
-              <div className="flex flex-wrap justify-center sm:justify-end gap-4 text-xs" style={{ color:"rgba(255,255,255,0.25)" }}>
-                {[
-                  { label: "Tentang Kami", href: "/tentang-kami" },
-                  { label: "FAQ", href: "/faq" },
-                  { label: "Kebijakan Privasi", href: "/privacy-policy" },
-                  { label: "Ketentuan", href: "/terms-and-conditions" },
-                  { label: "Refund", href: "/refund-policy" },
-                  { label: "Kontak", href: "/kontak" },
-                ].map(l => (
-                  <Link key={l.label} href={l.href} className="transition-colors"
-                    onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
-                    onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.25)")}
-                  >{l.label}</Link>
+            <div className="mt-7">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#172033]">Follow us</p>
+              <div className="mt-3 flex gap-2">
+                {socialLinks.map(({ label, href, Icon }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={label}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#dbe8f3] bg-[#f8fbff] text-[#172033] transition-colors hover:border-[#f97316]/40 hover:bg-[#fff7ed] hover:text-[#f97316]"
+                  >
+                    <Icon className="h-4 w-4" />
+                  </a>
                 ))}
               </div>
             </div>
+          </div>
+
+          <div className="border-t border-[#dbe8f3] pt-6 lg:ml-8 lg:w-72 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+            <div className="space-y-4 text-sm">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#172033]">Call:</p>
+                <a href="tel:+6285709557572" className="mt-1 block font-semibold text-[#526173] transition-colors hover:text-[#172033]">
+                  +62 857-0955-7572
+                </a>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#172033]">Email:</p>
+                <a href="mailto:supportmution@gmail.com" className="mt-1 block break-all font-semibold text-[#526173] transition-colors hover:text-[#172033]">
+                  supportmution@gmail.com
+                </a>
+              </div>
+            </div>
+            <p className="mt-7 text-xs text-[#526173]/75">(c) {new Date().getFullYear()} Mution. Dibuat dengan ❤️.</p>
           </div>
         </div>
       </footer>
+
+      <style>{`
+        @keyframes cityMarquee {
+          from { transform: translateX(0); }
+          to { transform: translateX(-25%); }
+        }
+      `}</style>
     </div>
   );
 }

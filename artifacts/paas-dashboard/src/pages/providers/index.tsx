@@ -15,6 +15,10 @@ import { MODEL_CATALOG, groupModelsByProvider, type ModelCatalogEntry } from "@w
 
 type Model = ModelCatalogEntry;
 
+function formatPricing(value: number) {
+  return value.toLocaleString("id-ID");
+}
+
 function OpenAILogo({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -141,12 +145,12 @@ export default function ProvidersPage() {
                       <div className="flex items-center gap-3 text-xs">
                         <span className="text-muted-foreground/80 w-12 font-medium">Input</span>
                         <div className="h-1.5 w-4 rounded-full bg-primary/40" />
-                        <span className="font-semibold tabular-nums">{m.pricing.input} <span className="text-muted-foreground/60 font-normal">/ 1K</span></span>
+                        <span className="font-semibold tabular-nums">{formatPricing(m.pricing.input)} <span className="text-muted-foreground/60 font-normal">/ 1M</span></span>
                       </div>
                       <div className="flex items-center gap-3 text-xs">
                         <span className="text-muted-foreground/80 w-12 font-medium">Output</span>
                         <div className="h-1.5 w-6 rounded-full bg-primary" />
-                        <span className="font-semibold tabular-nums">{m.pricing.output} <span className="text-muted-foreground/60 font-normal">/ 1K</span></span>
+                        <span className="font-semibold tabular-nums">{formatPricing(m.pricing.output)} <span className="text-muted-foreground/60 font-normal">/ 1M</span></span>
                       </div>
                     </div>
 
@@ -236,15 +240,15 @@ export default function ProvidersPage() {
 
                 {/* Pricing section */}
                 <div className="space-y-3 pt-2">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Harga (Kredit / 1K Token)</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Harga (Kredit / 1M Token)</label>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="border border-border/50 rounded-xl p-4 bg-muted/10">
                       <p className="text-xs text-muted-foreground mb-1 font-medium">Input Tokens</p>
-                      <p className="text-2xl font-bold tabular-nums">{detailsModel.pricing.input}</p>
+                      <p className="text-2xl font-bold tabular-nums">{formatPricing(detailsModel.pricing.input)}</p>
                     </div>
                     <div className="border border-border/50 rounded-xl p-4 bg-muted/10">
                       <p className="text-xs text-muted-foreground mb-1 font-medium">Output Tokens</p>
-                      <p className="text-2xl font-bold tabular-nums">{detailsModel.pricing.output}</p>
+                      <p className="text-2xl font-bold tabular-nums">{formatPricing(detailsModel.pricing.output)}</p>
                     </div>
                   </div>
                 </div>

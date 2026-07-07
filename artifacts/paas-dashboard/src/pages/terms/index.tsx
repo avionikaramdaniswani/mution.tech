@@ -4,7 +4,7 @@ import { PageFooter } from "@/components/page-footer";
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground dark">
+    <div className="min-h-screen bg-background text-foreground">
       <PublicNavbar />
 
       <PageHero

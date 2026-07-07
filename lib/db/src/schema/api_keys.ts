@@ -7,7 +7,7 @@ export const apiKeysTable = pgTable("api_keys", {
   name: text("name").notNull().default("My API Key"),
   keyPrefix: text("key_prefix").notNull(),
   keyHash: text("key_hash").notNull().unique(),
-  // Legacy nullable column. New keys are never stored in plaintext.
+  // Stores the encrypted full key so users can reveal/copy it from the dashboard.
   keyPlain: text("key_plain"),
   isActive: boolean("is_active").notNull().default(true),
   lastUsedAt: timestamp("last_used_at"),

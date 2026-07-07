@@ -5,7 +5,7 @@ import { Link } from "wouter";
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground dark">
+    <div className="min-h-screen bg-background text-foreground">
       <PublicNavbar />
 
       <PageHero
@@ -93,7 +93,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">10. Hubungi Kami</h2>
             <p>Jika kamu memiliki pertanyaan atau kekhawatiran tentang Kebijakan Privasi ini, silakan hubungi kami:</p>
-            <div className="mt-3 p-4 rounded-xl space-y-1" style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
+            <div className="mt-3 p-4 rounded-xl space-y-1 border border-border/70 bg-card">
               <p><strong className="text-foreground">Email:</strong>{" "}<a href="mailto:supportmution@gmail.com" className="text-primary hover:underline">supportmution@gmail.com</a></p>
               <p><strong className="text-foreground">Mution</strong> - Platform Infrastruktur Modern</p>
             </div>

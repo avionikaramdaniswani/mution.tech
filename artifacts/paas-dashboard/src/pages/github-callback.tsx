@@ -14,7 +14,7 @@ export default function GitHubCallback() {
   }, [status]);
 
   return (
-    <div className="flex h-screen items-center justify-center bg-background text-foreground dark">
+    <div className="flex h-screen items-center justify-center bg-background text-foreground">
       <p className="text-sm text-muted-foreground">
         {status === "connected"
           ? "GitHub terhubung! Menutup jendela..."

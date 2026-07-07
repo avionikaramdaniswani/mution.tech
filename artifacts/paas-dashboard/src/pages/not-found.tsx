@@ -9,14 +9,14 @@ const quickLinks = [
   { label: "Pricing", href: "/harga" },
   { label: "Docs", href: "/docs" },
   { label: "FAQ", href: "/faq" },
-  { label: "Contact", href: "/kontak" },
+  { label: "Tentang Kami", href: "/tentang-kami" },
 ];
 
 export default function NotFound() {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-background text-foreground dark">
+    <div className="min-h-screen bg-background text-foreground">
       <PublicNavbar />
 
       <main className="relative overflow-hidden">
@@ -28,10 +28,10 @@ export default function NotFound() {
           }}
         />
 
-        <section className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
+        <section className="relative mx-auto max-w-6xl px-4 pb-20 pt-32 sm:px-6 sm:pb-28 sm:pt-36 lg:px-8">
           <div className="grid gap-10 lg:grid-cols-[1fr_360px] lg:items-center">
             <div className="max-w-2xl">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-muted-foreground">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
                 <SearchX className="h-3.5 w-3.5 text-primary" />
                 Error 404
               </div>
@@ -60,11 +60,10 @@ export default function NotFound() {
             </div>
 
             <div
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
-              style={{ boxShadow: "0 24px 80px rgba(0,0,0,0.28)" }}
+              className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm"
             >
-              <div className="rounded-xl border border-white/10 bg-black/20 p-5">
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="rounded-xl border border-border/70 bg-background p-5">
+                <div className="flex items-center justify-between border-b border-border/70 pb-4">
                   <div>
                     <p className="text-xs text-muted-foreground">Requested route</p>
                     <p className="mt-1 font-mono text-sm text-foreground break-all">
@@ -85,7 +84,7 @@ export default function NotFound() {
                       <Link
                         key={link.href}
                         href={link.href}
-                        className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
+                        className="flex items-center justify-between rounded-lg border border-border/70 bg-card px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                       >
                         {link.label}
                         <ArrowRight className="h-3.5 w-3.5" />

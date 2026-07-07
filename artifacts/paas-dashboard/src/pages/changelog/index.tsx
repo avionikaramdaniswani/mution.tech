@@ -31,7 +31,7 @@ export default function ChangelogPage() {
     <div className="min-h-screen bg-background flex flex-col">
       <PublicNavbar />
       
-      <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-10 sm:px-6 sm:py-12 lg:px-0">
+      <main className="flex-1 w-full max-w-3xl mx-auto px-4 pb-10 pt-32 sm:px-6 sm:pb-12 sm:pt-36 lg:px-0">
         {/* Header */}
         <div className="mb-10 sm:mb-12">
           <h1 className="text-3xl font-bold tracking-tight mb-3 sm:text-4xl">Changelog</h1>

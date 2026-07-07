@@ -1,0 +1,75 @@
+
+  [32m[1mVITE[22m v7.3.3[39m  [2mready in [0m[1m1980[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5001[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.100.15:[1m5001[22m/[39m
+[2m19.38.23[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m19.53.53[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m19.54.36[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m19.58.18[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m19.58.37[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m20.14.55[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m20.14.55[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m20.27.06[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m20.27.06[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m20.27.55[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m20.28.21[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m20.45.51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m20.57.47[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m20.57.49[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/public-navbar.tsx[22m
+[2m20.57.51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/page-footer.tsx[22m
+[2m20.57.53[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m20.57.56[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/layanan/index.tsx, /src/index.css[22m
+[2m21.00.34[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m21.03.01[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m21.05.58[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m21.08.08[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m21.09.36[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m21.16.28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m21.17.04[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/page-footer.tsx[22m
+[2m21.21.24[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m21.21.51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/page-footer.tsx[22m
+[2m21.23.30[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m21.23.32[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/page-footer.tsx[22m
+[2m21.27.00[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m21.27.02[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/page-footer.tsx[22m
+[2m21.30.45[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/tentang-kami/index.tsx, /src/index.css[22m
+[2m21.31.15[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[2m21.31.17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/page-footer.tsx[22m
+[2m21.31.19[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/public-navbar.tsx[22m
+[2m21.31.21[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m21.31.24[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/faq/index.tsx, /src/index.css[22m
+[2m21.31.26[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/not-found.tsx, /src/index.css[22m
+[2m21.31.28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/refund-policy/index.tsx, /src/index.css[22m
+[2m21.31.30[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/kontak/index.tsx, /src/index.css[22m
+[2m21.32.26[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/public-navbar.tsx[22m
+[2m21.32.28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/not-found.tsx, /src/index.css[22m
+[2m21.32.30[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/tentang-kami/index.tsx, /src/index.css[22m
+[2m21.47.09[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/tentang-kami/index.tsx, /src/index.css[22m
+[2m21.47.11[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/tentang-kami/index.tsx, /src/index.css[22m
+[2m21.48.14[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/public-navbar.tsx[22m
+[2m21.48.15[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/public-navbar.tsx[22m
+[2m21.48.17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/page-hero.tsx[22m
+[2m21.49.15[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/changelog/index.tsx, /src/index.css[22m
+[2m21.49.17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/not-found.tsx, /src/index.css[22m
+[2m22.00.29[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/tentang-kami/index.tsx, /src/index.css[22m
+[2m22.02.56[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/public-navbar.tsx[22m
+[2m22.02.58[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/public-navbar.tsx[22m
+[2m22.03.00[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/landing/index.tsx, /src/index.css[22m
+[2m22.14.28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/faq/index.tsx, /src/index.css[22m
+[2m22.14.30[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/faq/index.tsx, /src/index.css[22m
+[2m22.30.26[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/faq/index.tsx, /src/index.css[22m
+[2m22.37.13[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/faq/index.tsx, /src/index.css[22m
+[2m23.13.48[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m23.13.50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m23.37.13[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/providers/index.tsx, /src/pages/api-keys/index.tsx, /src/pages/docs/index.tsx, /src/pages/api-usage/index.tsx[22m
+[2m23.37.58[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m23.38.20[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/api-keys/index.tsx, /src/index.css[22m
+[2m23.38.50[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/providers/index.tsx, /src/index.css[22m
+[2m23.58.10[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/providers/index.tsx, /src/pages/api-keys/index.tsx, /src/pages/docs/index.tsx, /src/pages/api-usage/index.tsx[22m
+[2m00.05.14[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m00.09.28[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m00.09.51[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/harga/index.tsx, /src/index.css[22m
+[2m00.17.17[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/auth/login.tsx, /src/index.css[22m
+[2m00.18.09[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/auth/register.tsx, /src/index.css[22m
+[2m00.21.14[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/auth/register.tsx, /src/index.css[22m

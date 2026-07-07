@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { cleanupInactiveApiKeys, db, deleteApiKeyForUser, apiKeysTable } from "@workspace/db";
-import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import crypto from "crypto";
 import { z } from "zod";
 import { AVAILABLE_MODEL_IDS } from "@workspace/model-catalog";
+import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/secret-box";
 
 const router = Router();
 const MAX_ACTIVE_KEYS = 10;
@@ -63,10 +64,6 @@ function parseExpiresAt(value: string | null | undefined, fallbackToNull: boolea
 
 router.get("/api-keys", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  await db
-    .update(apiKeysTable)
-    .set({ keyPlain: null })
-    .where(and(eq(apiKeysTable.userId, user.id), isNotNull(apiKeysTable.keyPlain)));
   await cleanupInactiveApiKeys({ userId: user.id });
 
   const keys = await db
@@ -112,6 +109,7 @@ router.post("/api-keys", requireAuth, async (req, res): Promise<void> => {
         name,
         keyPrefix: prefix,
         keyHash: hash,
+        keyPlain: encryptSecret(fullKey),
         expiresAt,
         creditLimit,
         allowedModels: allowedModels && allowedModels.length > 0 ? allowedModels : null,
@@ -132,7 +130,38 @@ router.post("/api-keys", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.get("/api-keys/:id/reveal", requireAuth, async (req, res): Promise<void> => {
-  res.status(410).json({ error: "Full API key hanya ditampilkan sekali saat dibuat. Buat key baru jika key lama hilang." });
+  const user = (req as any).user;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "ID API key tidak valid" });
+    return;
+  }
+
+  const [key] = await db
+    .select()
+    .from(apiKeysTable)
+    .where(and(eq(apiKeysTable.id, id), eq(apiKeysTable.userId, user.id)));
+
+  if (!key) {
+    res.status(404).json({ error: "API key tidak ditemukan" });
+    return;
+  }
+
+  const fullKey = decryptSecret(key.keyPlain);
+  const fullKeyHash = fullKey ? crypto.createHash("sha256").update(fullKey).digest("hex") : null;
+  if (!fullKey || fullKeyHash !== key.keyHash) {
+    res.status(410).json({ error: "Full API key tidak tersedia untuk key ini. Buat key baru jika key lama hilang." });
+    return;
+  }
+
+  if (!isEncryptedSecret(key.keyPlain)) {
+    await db
+      .update(apiKeysTable)
+      .set({ keyPlain: encryptSecret(fullKey) })
+      .where(and(eq(apiKeysTable.id, key.id), eq(apiKeysTable.userId, user.id)));
+  }
+
+  res.json({ fullKey });
 });
 
 router.patch("/api-keys/:id", requireAuth, async (req, res): Promise<void> => {

@@ -5,7 +5,7 @@ import { PageFooter } from "@/components/page-footer";
 
 export default function RefundPolicyPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground dark">
+    <div className="min-h-screen bg-background text-foreground">
       <PublicNavbar />
 
       <PageHero
@@ -64,7 +64,7 @@ export default function RefundPolicyPage() {
             <p>
               Untuk pertanyaan lebih lanjut terkait kebijakan refund, silakan hubungi kami di{" "}
               <a href="mailto:supportmution@gmail.com" className="text-primary hover:underline">supportmution@gmail.com</a>{" "}
-              atau melalui halaman <Link href="/kontak" className="text-primary hover:underline">Kontak</Link>.
+              atau melalui halaman <Link href="/tentang-kami" className="text-primary hover:underline">Tentang Kami</Link>.
             </p>
           </section>
 
