@@ -34,13 +34,12 @@ function StatCard({
 }) {
   return (
     <div
-      className="rounded-2xl p-5 flex flex-col gap-4"
-      style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}
+      className="flex flex-col gap-4 rounded-lg border border-[#dbe8f3] bg-white p-5 shadow-[0_12px_34px_rgba(23,32,51,0.05)]"
     >
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#526173]">{label}</p>
         <div
-          className="h-8 w-8 rounded-lg flex items-center justify-center"
+          className="flex h-9 w-9 items-center justify-center rounded-full"
           style={{ background: `${color}18`, border: `1px solid ${color}28` }}
         >
           <Icon className="h-4 w-4" style={{ color }} />
@@ -50,9 +49,9 @@ function StatCard({
         {value === undefined ? (
           <Skeleton className="h-9 w-28" />
         ) : (
-          <p className="text-3xl font-extrabold tabular-nums tracking-tight">{value}</p>
+          <p className="text-3xl font-black tabular-nums tracking-normal text-[#172033]">{value}</p>
         )}
-        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+        {sub && <p className="mt-1 text-xs text-[#526173]">{sub}</p>}
       </div>
     </div>
   );
@@ -61,13 +60,13 @@ function StatCard({
 const STATUS_META: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   paid:      { label: "Lunas",     color: "rgb(34,197,94)",  icon: CheckCircle2 },
   pending:   { label: "Pending",   color: "rgb(234,179,8)",  icon: Clock },
-  expired:   { label: "Kedaluwarsa", color: "rgba(255,255,255,0.4)", icon: XCircle },
+  expired:   { label: "Kedaluwarsa", color: "rgb(82,97,115)", icon: XCircle },
   failed:    { label: "Gagal",     color: "rgb(239,68,68)",  icon: XCircle },
-  cancelled: { label: "Dibatalkan", color: "rgba(255,255,255,0.4)", icon: XCircle },
+  cancelled: { label: "Dibatalkan", color: "rgb(82,97,115)", icon: XCircle },
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const meta = STATUS_META[status] ?? { label: status, color: "rgba(255,255,255,0.4)", icon: Clock };
+  const meta = STATUS_META[status] ?? { label: status, color: "rgb(82,97,115)", icon: Clock };
   const Icon = meta.icon;
   return (
     <span
@@ -89,11 +88,12 @@ export default function AdminPayments() {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-7xl space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Pembayaran</h1>
-        <p className="text-sm text-muted-foreground mt-1">Ringkasan pendapatan dan seluruh transaksi topup pengguna.</p>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Admin Mution</p>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-[#172033]">Pembayaran</h1>
+        <p className="mt-1 text-sm text-[#526173]">Ringkasan pendapatan dan seluruh transaksi topup pengguna.</p>
       </div>
 
       {/* Revenue cards */}
@@ -151,15 +151,15 @@ export default function AdminPayments() {
       {/* Orders table */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold">Transaksi Terbaru</h2>
-          {orders && <span className="text-xs text-muted-foreground">{orders.length} transaksi</span>}
+          <h2 className="text-sm font-bold text-[#172033]">Transaksi Terbaru</h2>
+          {orders && <span className="text-xs text-[#526173]">{orders.length} transaksi</span>}
         </div>
 
-        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_16px_44px_rgba(23,32,51,0.07)]">
           {/* Table header */}
           <div
-            className="grid px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-            style={{ gridTemplateColumns: "1fr 120px 110px 130px", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+            className="grid border-b border-[#dbe8f3] bg-[#f8fbff] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#526173]"
+            style={{ gridTemplateColumns: "1fr 120px 110px 130px" }}
           >
             <div>Pengguna</div>
             <div className="text-right">Nominal</div>
@@ -180,27 +180,26 @@ export default function AdminPayments() {
             </div>
           ) : (
             <div>
-              {orders.map((order: PaymentOrderWithUser, i: number) => (
+              {orders.map((order: PaymentOrderWithUser) => (
                 <div
                   key={order.id}
-                  className="grid items-center px-5 py-3.5 transition-colors hover:bg-white/[0.02]"
+                  className="grid items-center border-b border-[#edf4fb] px-5 py-3.5 transition-colors last:border-b-0 hover:bg-[#f8fbff]"
                   style={{
                     gridTemplateColumns: "1fr 120px 110px 130px",
-                    borderBottom: i < orders.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
                   }}
                 >
                   {/* User */}
                   <div className="flex items-center gap-3 min-w-0">
                     <UserAvatar name={order.ownerName} />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{order.ownerName}</p>
-                      <p className="text-xs text-muted-foreground truncate">{order.ownerEmail}</p>
+                      <p className="truncate text-sm font-semibold text-[#172033]">{order.ownerName}</p>
+                      <p className="truncate text-xs text-[#526173]">{order.ownerEmail}</p>
                     </div>
                   </div>
 
                   {/* Amount */}
                   <div className="text-right">
-                    <span className="text-sm font-semibold tabular-nums">{formatRupiah(order.amount)}</span>
+                    <span className="text-sm font-semibold tabular-nums text-[#172033]">{formatRupiah(order.amount)}</span>
                   </div>
 
                   {/* Status */}
@@ -210,7 +209,7 @@ export default function AdminPayments() {
 
                   {/* Time */}
                   <div className="text-right">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-[#526173]">
                       {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: idLocale })}
                     </span>
                   </div>

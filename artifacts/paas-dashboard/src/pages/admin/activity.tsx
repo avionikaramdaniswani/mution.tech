@@ -24,23 +24,18 @@ export default function AdminActivity() {
   const { data: logs, isLoading } = useListActivity();
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Log Aktivitas</h1>
-        <p className="text-sm text-muted-foreground mt-1">Rekam jejak aksi yang terjadi di platform.</p>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Admin Mution</p>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-[#172033]">Log Aktivitas</h1>
+        <p className="mt-1 text-sm text-[#526173]">Rekam jejak aksi yang terjadi di platform.</p>
       </div>
 
       {/* Log list */}
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ border: "1px solid rgba(255,255,255,0.07)" }}
-      >
+      <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_16px_44px_rgba(23,32,51,0.07)]">
         {/* Header row */}
-        <div
-          className="grid grid-cols-12 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-          style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-        >
+        <div className="grid grid-cols-12 border-b border-[#dbe8f3] bg-[#f8fbff] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#526173]">
           <div className="col-span-5">Aksi</div>
           <div className="col-span-4">Metadata</div>
           <div className="col-span-3 text-right">Waktu</div>
@@ -61,15 +56,14 @@ export default function AdminActivity() {
           </div>
         ) : (
           <div>
-            {logs.map((log, i) => {
+            {logs.map((log) => {
               let meta = "";
               try { meta = log.metadata ? JSON.stringify(JSON.parse(log.metadata)) : ""; } catch { meta = log.metadata ?? ""; }
               const isAdmin = log.action.startsWith("admin.");
               return (
                 <div
                   key={log.id}
-                  className="grid grid-cols-12 items-center px-5 py-3.5 transition-colors hover:bg-white/[0.02]"
-                  style={{ borderBottom: i < logs.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                  className="grid grid-cols-12 items-center border-b border-[#edf4fb] px-5 py-3.5 transition-colors last:border-b-0 hover:bg-[#f8fbff]"
                 >
                   <div className="col-span-5 flex items-center gap-2.5 min-w-0">
                     <div
@@ -77,21 +71,21 @@ export default function AdminActivity() {
                       style={
                         isAdmin
                           ? { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.18)" }
-                          : { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }
+                          : { background: "#f8fbff", border: "1px solid #dbe8f3" }
                       }
                     >
                       <ArrowUpCircle
                         className="h-3 w-3"
-                        style={{ color: isAdmin ? "rgb(239,68,68)" : "rgba(255,255,255,0.4)" }}
+                        style={{ color: isAdmin ? "rgb(239,68,68)" : "rgb(82,97,115)" }}
                       />
                     </div>
-                    <p className="text-sm truncate">{actionLabel(log.action)}</p>
+                    <p className="truncate text-sm font-medium text-[#172033]">{actionLabel(log.action)}</p>
                   </div>
                   <div className="col-span-4 min-w-0">
-                    <p className="text-xs text-muted-foreground truncate">{meta || "-"}</p>
+                    <p className="truncate text-xs text-[#526173]">{meta || "-"}</p>
                   </div>
                   <div className="col-span-3 text-right">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-[#526173]">
                       {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
                     </span>
                   </div>

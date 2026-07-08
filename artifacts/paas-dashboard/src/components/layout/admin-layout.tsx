@@ -15,12 +15,8 @@ import {
 import {
   LayoutDashboard,
   Users,
-  Box,
   Activity,
   ShieldAlert,
-  Cpu,
-  Receipt,
-  BarChart3,
   FolderGit2,
   Brain,
   CreditCard,
@@ -74,7 +70,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="dark bg-background text-foreground min-h-screen w-full">
+      <div className="min-h-screen w-full bg-[#f8fbff] text-[#172033]">
 
         {/* -- Navbar: fixed full-width, tidak terpengaruh sidebar -- */}
         <TopNavbar
@@ -85,7 +81,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           healthOk={health?.status === "ok"}
           onLogout={handleLogout}
           leftExtra={
-            <div className="flex items-center gap-1.5 text-xs font-medium text-destructive bg-destructive/10 px-2.5 py-1 rounded-full border border-destructive/20 flex-shrink-0">
+            <div className="flex flex-shrink-0 items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600">
               <ShieldAlert className="h-3 w-3" />
               <span>Admin</span>
             </div>
@@ -93,12 +89,18 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         />
 
         {/* -- Body: sidebar + content, digeser 64px ke bawah navbar -- */}
-        <div className="flex pt-16 min-h-screen">
-          <Sidebar variant="sidebar" collapsible="icon" className="border-r border-border/50 top-16 h-[calc(100svh-4rem)]">
+        <div className="flex min-h-screen pt-16">
+          <Sidebar
+            variant="sidebar"
+            collapsible="icon"
+            className="top-16 h-[calc(100svh-4rem)] border-r border-[#dbe8f3] shadow-[8px_0_30px_rgba(23,32,51,0.04)]"
+          >
             <SidebarContent>
               {adminNavGroups.map((group) => (
                 <SidebarGroup key={group.title}>
-                  <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
+                  <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-widest text-[#526173]/60">
+                    {group.title}
+                  </SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
                       {group.items.map((item) => (
@@ -121,7 +123,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               ))}
 
               <SidebarGroup>
-                <SidebarGroupLabel>User Panel</SidebarGroupLabel>
+                <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-widest text-[#526173]/60">
+                  User Panel
+                </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     <SidebarMenuItem>

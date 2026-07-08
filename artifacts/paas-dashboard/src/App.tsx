@@ -2,6 +2,7 @@ import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SeoController } from "@/components/seo";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
 import NotFound from "@/pages/not-found";
@@ -84,51 +85,54 @@ function Router() {
   }, []);
 
   return (
-    <Switch>
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
+    <>
+      <SeoController />
+      <Switch>
+        <Route path="/login" component={Login} />
+        <Route path="/register" component={Register} />
 
-      {/* User routes */}
-      <Route path="/dashboard/billing" component={() => { window.location.replace("/billing" + window.location.search); return null; }} />
-      <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
-      <Route path="/projects/new" component={() => <ProtectedRoute component={NewProject} />} />
-      <Route path="/projects/:id" component={() => <ProtectedRoute component={ProjectDetail} />} />
-      <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />
-      <Route path="/activity" component={() => <ProtectedRoute component={ActivityLog} />} />
-      <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
-      <Route path="/billing" component={() => <ProtectedRoute component={BillingPage} />} />
-      <Route path="/billing/riwayat/:id" component={() => <ProtectedRoute component={RiwayatDetailPage} />} />
-      <Route path="/billing/riwayat" component={() => <ProtectedRoute component={RiwayatOrderPage} />} />
-      <Route path="/api-keys" component={() => <ProtectedRoute component={ApiKeysPage} />} />
-      <Route path="/docs" component={() => <ProtectedRoute component={DocsPage} />} />
-      <Route path="/usage" component={() => <ProtectedRoute component={UsagePage} />} />
-      <Route path="/api-usage" component={() => <ProtectedRoute component={ApiUsagePage} />} />
-      <Route path="/providers" component={() => <ProtectedRoute component={ProvidersPage} />} />
-      <Route path="/github-callback" component={GitHubCallback} />
+        {/* User routes */}
+        <Route path="/dashboard/billing" component={() => { window.location.replace("/billing" + window.location.search); return null; }} />
+        <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
+        <Route path="/projects/new" component={() => <ProtectedRoute component={NewProject} />} />
+        <Route path="/projects/:id" component={() => <ProtectedRoute component={ProjectDetail} />} />
+        <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />
+        <Route path="/activity" component={() => <ProtectedRoute component={ActivityLog} />} />
+        <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
+        <Route path="/billing" component={() => <ProtectedRoute component={BillingPage} />} />
+        <Route path="/billing/riwayat/:id" component={() => <ProtectedRoute component={RiwayatDetailPage} />} />
+        <Route path="/billing/riwayat" component={() => <ProtectedRoute component={RiwayatOrderPage} />} />
+        <Route path="/api-keys" component={() => <ProtectedRoute component={ApiKeysPage} />} />
+        <Route path="/docs" component={() => <ProtectedRoute component={DocsPage} />} />
+        <Route path="/usage" component={() => <ProtectedRoute component={UsagePage} />} />
+        <Route path="/api-usage" component={() => <ProtectedRoute component={ApiUsagePage} />} />
+        <Route path="/providers" component={() => <ProtectedRoute component={ProvidersPage} />} />
+        <Route path="/github-callback" component={GitHubCallback} />
 
-      {/* Public static pages */}
-      <Route path="/harga" component={HargaPage} />
-      <Route path="/changelog" component={ChangelogPage} />
-      <Route path="/faq" component={FAQPage} />
-      <Route path="/refund-policy" component={RefundPolicyPage} />
-      <Route path="/terms-and-conditions" component={TermsPage} />
-      <Route path="/privacy-policy" component={PrivacyPolicyPage} />
-      <Route path="/tentang-kami" component={TentangKamiPage} />
+        {/* Public static pages */}
+        <Route path="/harga" component={HargaPage} />
+        <Route path="/changelog" component={ChangelogPage} />
+        <Route path="/faq" component={FAQPage} />
+        <Route path="/refund-policy" component={RefundPolicyPage} />
+        <Route path="/terms-and-conditions" component={TermsPage} />
+        <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+        <Route path="/tentang-kami" component={TentangKamiPage} />
 
-      {/* Admin routes - dedicated layout */}
-      <Route path="/admin/users" component={() => <AdminRoute component={AdminUsers} />} />
-      <Route path="/admin/projects" component={() => <AdminRoute component={AdminProjects} />} />
-      <Route path="/admin/payments" component={() => <AdminRoute component={AdminPayments} />} />
-      <Route path="/admin/activity" component={() => <AdminRoute component={AdminActivity} />} />
-      <Route path="/admin/providers" component={() => <AdminRoute component={AdminProviders} />} />
-      <Route path="/admin/usage" component={() => <AdminRoute component={AdminUsage} />} />
-      <Route path="/admin/changelog" component={() => <AdminRoute component={AdminChangelog} />} />
-      <Route path="/admin" component={() => <AdminRoute component={AdminOverview} />} />
+        {/* Admin routes - dedicated layout */}
+        <Route path="/admin/users" component={() => <AdminRoute component={AdminUsers} />} />
+        <Route path="/admin/projects" component={() => <AdminRoute component={AdminProjects} />} />
+        <Route path="/admin/payments" component={() => <AdminRoute component={AdminPayments} />} />
+        <Route path="/admin/activity" component={() => <AdminRoute component={AdminActivity} />} />
+        <Route path="/admin/providers" component={() => <AdminRoute component={AdminProviders} />} />
+        <Route path="/admin/usage" component={() => <AdminRoute component={AdminUsage} />} />
+        <Route path="/admin/changelog" component={() => <AdminRoute component={AdminChangelog} />} />
+        <Route path="/admin" component={() => <AdminRoute component={AdminOverview} />} />
 
-      {/* Root last - so it doesn't swallow every other path */}
-      <Route path="/" component={Landing} />
-      <Route component={NotFound} />
-    </Switch>
+        {/* Root last - so it doesn't swallow every other path */}
+        <Route path="/" component={Landing} />
+        <Route component={NotFound} />
+      </Switch>
+    </>
   );
 }
 

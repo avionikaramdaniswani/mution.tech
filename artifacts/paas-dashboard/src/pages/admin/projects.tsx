@@ -41,33 +41,25 @@ export default function AdminProjects() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Semua Proyek</h1>
-          <p className="text-sm text-muted-foreground mt-1">Kelola proyek dari seluruh pengguna platform.</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Admin Mution</p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-[#172033]">Semua Proyek</h1>
+          <p className="mt-1 text-sm text-[#526173]">Kelola proyek dari seluruh pengguna platform.</p>
         </div>
         {projects && (
-          <div
-            className="text-sm font-semibold px-4 py-2 rounded-xl"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
-          >
+          <div className="rounded-full border border-[#dbe8f3] bg-white px-4 py-2 text-sm font-bold text-[#526173] shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
             {projects.length} proyek
           </div>
         )}
       </div>
 
       {/* Table card */}
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ border: "1px solid rgba(255,255,255,0.07)" }}
-      >
+      <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_16px_44px_rgba(23,32,51,0.07)]">
         {/* Table header */}
-        <div
-          className="grid grid-cols-12 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-          style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-        >
+        <div className="grid grid-cols-12 border-b border-[#dbe8f3] bg-[#f8fbff] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#526173]">
           <div className="col-span-3">Proyek</div>
           <div className="col-span-3">Pemilik</div>
           <div className="col-span-2">Runtime</div>
@@ -90,29 +82,27 @@ export default function AdminProjects() {
           </div>
         ) : (
           <div>
-            {projects.map((project, i) => (
+            {projects.map((project) => (
               <div
                 key={project.id}
-                className="grid grid-cols-12 items-center px-5 py-3.5 transition-colors hover:bg-white/[0.02]"
-                style={{ borderBottom: i < projects.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                className="grid grid-cols-12 items-center border-b border-[#edf4fb] px-5 py-3.5 transition-colors last:border-b-0 hover:bg-[#f8fbff]"
               >
                 {/* Project name */}
                 <div className="col-span-3 min-w-0">
-                  <p className="text-sm font-medium truncate">{project.name}</p>
+                  <p className="truncate text-sm font-semibold text-[#172033]">{project.name}</p>
                   {project.domain && (
-                    <p className="text-xs text-muted-foreground truncate">{project.domain}</p>
+                    <p className="truncate text-xs text-[#526173]">{project.domain}</p>
                   )}
                 </div>
                 {/* Owner */}
                 <div className="col-span-3 min-w-0">
-                  <p className="text-sm truncate">{project.ownerName}</p>
-                  <p className="text-xs text-muted-foreground truncate">{project.ownerEmail}</p>
+                  <p className="truncate text-sm text-[#172033]">{project.ownerName}</p>
+                  <p className="truncate text-xs text-[#526173]">{project.ownerEmail}</p>
                 </div>
                 {/* Runtime */}
                 <div className="col-span-2">
                   <span
-                    className="text-xs font-medium px-2 py-0.5 rounded-md"
-                    style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}
+                    className="rounded-md border border-[#dbe8f3] bg-[#f8fbff] px-2 py-0.5 text-xs font-semibold text-[#526173]"
                   >
                     {RUNTIME_LABEL[project.runtime] ?? project.runtime}
                   </span>

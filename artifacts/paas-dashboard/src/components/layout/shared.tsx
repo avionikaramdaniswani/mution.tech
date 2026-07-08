@@ -85,17 +85,20 @@ export function TopNavbar({
   onLogout,
 }: TopNavbarProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 z-50 flex items-center justify-between gap-4 border-b border-border/50 bg-background/80 backdrop-blur-md px-4">
+    <header className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between gap-4 border-b border-[#dbe8f3] bg-white/88 px-4 shadow-[0_14px_40px_rgba(23,32,51,0.08)] backdrop-blur-xl dark:border-border/50 dark:bg-background/80 dark:shadow-none">
 
       {/* Kiri: toggle + logo + extra + nav links */}
       <div className="flex items-center gap-2">
-        <SidebarTrigger className="flex-shrink-0" aria-label="Buka/tutup menu samping" />
+        <SidebarTrigger
+          className="flex-shrink-0 text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033] dark:text-muted-foreground dark:hover:bg-muted/30 dark:hover:text-foreground"
+          aria-label="Buka/tutup menu samping"
+        />
 
         <Link href={logoHref} className="flex items-center gap-2 flex-shrink-0 ml-1">
           <img src="/mution-logo.png" alt="Mution" className="h-7 w-auto" />
           <span
             style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-            className="text-base font-extrabold tracking-tight text-primary hidden sm:block"
+            className="hidden text-base font-extrabold tracking-normal text-[#172033] sm:block dark:text-primary"
           >
             Mution
           </span>
@@ -108,10 +111,10 @@ export function TopNavbar({
             <Link
               key={href}
               href={href}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+              className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
                 location === href
-                  ? "text-foreground font-medium bg-muted/30"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                  ? "bg-[#eef8ff] font-semibold text-[#172033] dark:bg-muted/30 dark:text-foreground"
+                  : "text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033] dark:text-muted-foreground dark:hover:bg-muted/30 dark:hover:text-foreground"
               }`}
             >
               {label}
@@ -134,8 +137,7 @@ export function TopNavbar({
         {/* Saldo */}
         <Link href="/billing">
           <div
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/40"
-            style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}
+            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[#dbe8f3] bg-[#f8fbff]/90 px-3 py-1.5 transition-colors hover:border-[#c9d8e7] hover:bg-[#eef8ff] dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-muted/40"
             title="Kredit kamu"
           >
             <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
@@ -149,8 +151,7 @@ export function TopNavbar({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-xl transition-colors hover:bg-muted/40 outline-none"
-              style={{ border: "1px solid rgba(255,255,255,0.07)" }}
+              className="flex items-center gap-2 rounded-full border border-[#dbe8f3] bg-white/70 py-1 pl-1 pr-2.5 outline-none transition-colors hover:border-[#c9d8e7] hover:bg-[#eef8ff] dark:border-white/10 dark:bg-transparent dark:hover:bg-muted/40"
               aria-label="Menu akun"
             >
               <UserAvatar name={user?.name} size="sm" />

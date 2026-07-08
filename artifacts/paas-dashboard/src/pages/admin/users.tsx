@@ -43,7 +43,7 @@ function creditColor(c: number): string {
 function planStyle(plan?: string) {
   if (plan === "team") return { name: "Team", color: "rgba(139,92,246,0.8)" };
   if (plan === "pro")  return { name: "Pro",  color: "rgb(249,115,22)" };
-  return { name: "Hobby", color: "rgba(255,255,255,0.4)" };
+  return { name: "Hobby", color: "rgb(82,97,115)" };
 }
 
 function UserAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg" }) {
@@ -67,7 +67,7 @@ function RoleBadge({ role }: { role: string }) {
       style={
         isAdmin
           ? { background: "rgba(239,68,68,0.12)", color: "rgb(239,68,68)", border: "1px solid rgba(239,68,68,0.22)" }
-          : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.08)" }
+          : { background: "#f8fbff", color: "rgb(82,97,115)", border: "1px solid #dbe8f3" }
       }
     >
       {isAdmin ? <ShieldAlert className="h-2.5 w-2.5" /> : <User className="h-2.5 w-2.5" />}
@@ -78,13 +78,13 @@ function RoleBadge({ role }: { role: string }) {
 
 function DetailRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-border/40 last:border-0">
-      <div className="mt-0.5 flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,0.05)" }}>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+    <div className="flex items-start gap-3 border-b border-[#edf4fb] py-3 last:border-0">
+      <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-[#dbe8f3] bg-[#f8fbff]">
+        <Icon className="h-4 w-4 text-[#526173]" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-        <div className="text-sm font-medium">{value}</div>
+        <p className="mb-0.5 text-xs text-[#526173]">{label}</p>
+        <div className="text-sm font-medium text-[#172033]">{value}</div>
       </div>
     </div>
   );
@@ -166,7 +166,7 @@ function EditUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !busy) onClose(); }}>
-      <DialogContent className="dark bg-background border-border/50 max-w-md">
+      <DialogContent className="max-w-md border-[#dbe8f3] bg-white text-[#172033]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Pencil className="h-4 w-4" /> Edit Pengguna
@@ -186,7 +186,7 @@ function EditUserDialog({
               </label>
               <Select value={role} onValueChange={setRole}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent className="dark">
+                <SelectContent>
                   <SelectItem value="user">User</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
@@ -198,7 +198,7 @@ function EditUserDialog({
               </label>
               <Select value={plan} onValueChange={setPlan}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent className="dark">
+                <SelectContent>
                   <SelectItem value="hobby">Hobby</SelectItem>
                   <SelectItem value="pro">Pro</SelectItem>
                   <SelectItem value="team">Team</SelectItem>
@@ -287,7 +287,7 @@ function UserDetailSheet({ userId, open, onClose }: { userId: number | null; ope
 
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <SheetContent side="right" className="w-full max-w-sm dark bg-background border-l border-border/50 overflow-y-auto">
+      <SheetContent side="right" className="w-full max-w-sm overflow-y-auto border-l border-[#dbe8f3] bg-white text-[#172033]">
         <SheetHeader className="mb-6">
           <SheetTitle className="text-base">Detail Pengguna</SheetTitle>
         </SheetHeader>
@@ -300,7 +300,7 @@ function UserDetailSheet({ userId, open, onClose }: { userId: number | null; ope
         ) : (
           <div>
             {/* Avatar + identity */}
-            <div className="flex items-center gap-4 mb-6 p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div className="mb-6 flex items-center gap-4 rounded-lg border border-[#dbe8f3] bg-[#f8fbff] p-4">
               <UserAvatar name={user.name} size="lg" />
               <div className="min-w-0">
                 <p className="font-semibold text-base truncate">{user.name}</p>
@@ -382,29 +382,27 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Pengguna</h1>
-          <p className="text-sm text-muted-foreground mt-1">Semua akun yang terdaftar di platform.</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Admin Mution</p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-[#172033]">Pengguna</h1>
+          <p className="mt-1 text-sm text-[#526173]">Semua akun yang terdaftar di platform.</p>
         </div>
         {users && (
-          <div
-            className="text-sm font-semibold px-4 py-2 rounded-xl"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
-          >
+          <div className="rounded-full border border-[#dbe8f3] bg-white px-4 py-2 text-sm font-bold text-[#526173] shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
             {users.length} pengguna
           </div>
         )}
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+      <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_16px_44px_rgba(23,32,51,0.07)]">
         {/* Table header */}
         <div
-          className="grid px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-          style={{ gridTemplateColumns: "1fr 80px 110px 140px 120px", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+          className="grid border-b border-[#dbe8f3] bg-[#f8fbff] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#526173]"
+          style={{ gridTemplateColumns: "1fr 80px 110px 140px 120px" }}
         >
           <div>Pengguna</div>
           <div className="text-center">Role</div>
@@ -428,21 +426,20 @@ export default function AdminUsers() {
           </div>
         ) : (
           <div>
-            {users.map((user, i) => (
+            {users.map((user) => (
               <div
                 key={user.id}
-                className="grid items-center px-5 py-3.5 transition-colors hover:bg-white/[0.02]"
+                className="grid items-center border-b border-[#edf4fb] px-5 py-3.5 transition-colors last:border-b-0 hover:bg-[#f8fbff]"
                 style={{
                   gridTemplateColumns: "1fr 80px 110px 140px 120px",
-                  borderBottom: i < users.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
                 }}
               >
                 {/* Avatar + name */}
                 <div className="flex items-center gap-3 min-w-0">
                   <UserAvatar name={user.name} />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{user.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    <p className="truncate text-sm font-semibold text-[#172033]">{user.name}</p>
+                    <p className="truncate text-xs text-[#526173]">{user.email}</p>
                   </div>
                 </div>
 
@@ -460,7 +457,7 @@ export default function AdminUsers() {
 
                 {/* Last login */}
                 <div className="text-right">
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-[#526173]">
                     {user.lastLoginAt
                       ? formatDistanceToNow(new Date(user.lastLoginAt), { addSuffix: true, locale: idLocale })
                       : "-"}
@@ -471,7 +468,7 @@ export default function AdminUsers() {
                 <div className="flex items-center justify-end gap-1.5">
                   <button
                     onClick={() => setDetailId(user.id)}
-                    className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-[#526173] transition-colors hover:bg-[#eef8ff] hover:text-[#172033]"
                     title="Lihat detail"
                   >
                     <Eye className="h-3.5 w-3.5" />
@@ -514,7 +511,7 @@ export default function AdminUsers() {
 
       {/* Delete confirmation */}
       <AlertDialog open={deleteTarget !== null} onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}>
-        <AlertDialogContent className="dark bg-background border-border/50">
+        <AlertDialogContent className="border-[#dbe8f3] bg-white text-[#172033]">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />

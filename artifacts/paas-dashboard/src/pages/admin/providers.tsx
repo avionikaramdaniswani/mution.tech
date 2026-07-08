@@ -36,14 +36,14 @@ function StatusBadge({ provider }: { provider: ProviderStatus }) {
   if (!provider.enabled)
     return <Badge variant="secondary" className="gap-1.5 text-xs"><XCircle className="h-3 w-3" /> Nonaktif</Badge>;
   if (provider.inCooldown)
-    return <Badge variant="outline" className="gap-1.5 text-xs text-amber-400 border-amber-500/40"><Clock className="h-3 w-3" /> Cooldown</Badge>;
-  return <Badge variant="outline" className="gap-1.5 text-xs text-emerald-400 border-emerald-500/40"><CheckCircle2 className="h-3 w-3" /> Aktif</Badge>;
+    return <Badge variant="outline" className="gap-1.5 border-amber-300 bg-amber-50 text-xs text-amber-700"><Clock className="h-3 w-3" /> Cooldown</Badge>;
+  return <Badge variant="outline" className="gap-1.5 border-emerald-200 bg-emerald-50 text-xs text-emerald-700"><CheckCircle2 className="h-3 w-3" /> Aktif</Badge>;
 }
 
 function TypeBadge({ type }: { type: string }) {
   const style = type === "conduit"
-    ? "bg-violet-500/10 text-violet-400 border border-violet-500/20"
-    : "bg-slate-500/10 text-slate-400 border border-slate-500/20";
+    ? "border border-violet-200 bg-violet-50 text-violet-700"
+    : "border border-slate-200 bg-slate-50 text-slate-700";
   return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${style}`}>{type}</span>;
 }
 
@@ -68,13 +68,14 @@ export default function AdminProviders() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Admin Mution</p>
+        <h1 className="mt-2 flex items-center gap-2 text-3xl font-extrabold tracking-normal text-[#172033]">
           <Cpu className="h-6 w-6 text-primary" />
           AI Providers
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="mt-1 text-sm text-[#526173]">
           Kelola provider AI yang aktif. Toggle langsung berlaku dan tersimpan setelah server restart.
         </p>
       </div>
@@ -85,8 +86,7 @@ export default function AdminProviders() {
         </div>
       ) : !providers || providers.length === 0 ? (
         <div
-          className="rounded-2xl p-10 flex flex-col items-center gap-3 text-center"
-          style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}
+          className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-[#c9d8e7] bg-white/80 p-10 text-center shadow-[0_12px_34px_rgba(23,32,51,0.04)]"
         >
           <Cpu className="h-10 w-10 text-muted-foreground/30" />
           <p className="text-muted-foreground text-sm">Tidak ada provider terkonfigurasi.</p>
@@ -100,22 +100,17 @@ export default function AdminProviders() {
           {providers.map((p) => (
             <div
               key={p.id}
-              className="rounded-2xl p-5 flex items-center justify-between gap-4 transition-opacity"
-              style={{
-                border: "1px solid rgba(255,255,255,0.07)",
-                background: p.enabled ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.01)",
-                opacity: p.enabled ? 1 : 0.55,
-              }}
+              className={`flex items-center justify-between gap-4 rounded-lg border border-[#dbe8f3] bg-white p-5 shadow-[0_12px_34px_rgba(23,32,51,0.05)] transition-opacity ${p.enabled ? "" : "opacity-55"}`}
             >
               <div className="flex flex-col gap-1.5 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-mono font-semibold text-sm">{p.id}</span>
+                  <span className="font-mono text-sm font-semibold text-[#172033]">{p.id}</span>
                   <TypeBadge type={p.type} />
                   <StatusBadge provider={p} />
                 </div>
                 <span className="text-xs text-muted-foreground truncate">{p.openaiBase}</span>
                 {p.inCooldown && p.cooldownExpiresAt && (
-                  <span className="text-xs text-amber-400">
+                  <span className="text-xs text-amber-700">
                     Cooldown berakhir {formatDistanceToNow(new Date(p.cooldownExpiresAt), { addSuffix: true })}
                   </span>
                 )}
@@ -137,10 +132,10 @@ export default function AdminProviders() {
       )}
 
       <div
-        className="rounded-xl px-4 py-3 text-xs text-muted-foreground"
+        className="rounded-lg px-4 py-3 text-xs text-[#526173]"
         style={{ border: "1px solid rgba(234,179,8,0.15)", background: "rgba(234,179,8,0.04)" }}
       >
-        <span className="text-amber-400 font-medium">Catatan:</span> Toggle disimpan permanen di database. Secret provider tetap diperlukan
+        <span className="font-semibold text-amber-700">Catatan:</span> Toggle disimpan permanen di database. Secret provider tetap diperlukan
         agar provider bisa muncul di daftar.
       </div>
     </div>

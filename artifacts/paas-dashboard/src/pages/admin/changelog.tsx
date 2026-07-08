@@ -100,13 +100,14 @@ export default function AdminChangelog() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Kelola Changelog</h1>
-          <p className="text-muted-foreground text-sm">Atur catatan rilis yang akan ditampilkan di halaman publik.</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Admin Mution</p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-[#172033]">Kelola Changelog</h1>
+          <p className="text-sm text-[#526173]">Atur catatan rilis yang akan ditampilkan di halaman publik.</p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
+        <Button onClick={openCreate} className="gap-2 rounded-md bg-[#f97316] text-white hover:bg-[#ea580c]">
           <Plus className="h-4 w-4" /> Tambah Rilis
         </Button>
       </div>
@@ -114,24 +115,24 @@ export default function AdminChangelog() {
       {isLoading ? (
         <div className="py-12 text-center text-muted-foreground">Memuat...</div>
       ) : (
-        <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
-          <div className="grid grid-cols-12 border-b border-border/50 bg-muted/20 p-4 text-sm font-semibold text-muted-foreground">
+        <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_16px_44px_rgba(23,32,51,0.07)]">
+          <div className="grid grid-cols-12 border-b border-[#dbe8f3] bg-[#f8fbff] p-4 text-[11px] font-bold uppercase tracking-[0.12em] text-[#526173]">
             <div className="col-span-2">Versi</div>
             <div className="col-span-2">Tanggal</div>
             <div className="col-span-4">Judul</div>
             <div className="col-span-2 text-center">Jml Perubahan</div>
             <div className="col-span-2 text-right">Aksi</div>
           </div>
-          <div className="divide-y divide-border/50">
+          <div className="divide-y divide-[#edf4fb]">
             {changelogs.length === 0 && (
               <div className="p-8 text-center text-muted-foreground text-sm">Belum ada changelog.</div>
             )}
             {changelogs.map(c => (
-              <div key={c.id} className="grid grid-cols-12 p-4 items-center text-sm">
-                <div className="col-span-2 font-mono font-medium">{c.version}</div>
-                <div className="col-span-2 text-muted-foreground">{c.date}</div>
-                <div className="col-span-4 font-medium truncate pr-4">{c.title}</div>
-                <div className="col-span-2 text-center text-muted-foreground">{c.changes?.length || 0} item</div>
+              <div key={c.id} className="grid grid-cols-12 items-center p-4 text-sm transition-colors hover:bg-[#f8fbff]">
+                <div className="col-span-2 font-mono font-semibold text-[#172033]">{c.version}</div>
+                <div className="col-span-2 text-[#526173]">{c.date}</div>
+                <div className="col-span-4 truncate pr-4 font-semibold text-[#172033]">{c.title}</div>
+                <div className="col-span-2 text-center text-[#526173]">{c.changes?.length || 0} item</div>
                 <div className="col-span-2 flex justify-end gap-2">
                   <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
                     <Edit2 className="h-4 w-4" />

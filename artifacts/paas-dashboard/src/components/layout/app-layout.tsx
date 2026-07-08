@@ -85,7 +85,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="dark bg-background text-foreground min-h-screen w-full">
+      <div className="min-h-screen w-full bg-[#f8fbff] text-[#172033]">
 
         {/* -- Navbar: fixed full-width, tidak terpengaruh sidebar -- */}
         <TopNavbar
@@ -98,20 +98,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         />
 
         {/* -- Body: sidebar + content, digeser 64px ke bawah navbar -- */}
-        <div className="flex pt-16 min-h-screen">
-          <Sidebar variant="sidebar" collapsible="icon" className="border-r border-border/50 top-16 h-[calc(100svh-4rem)]">
+        <div className="flex min-h-screen pt-16">
+          <Sidebar
+            variant="sidebar"
+            collapsible="icon"
+            className="top-16 h-[calc(100svh-4rem)] border-r border-[#dbe8f3] shadow-[8px_0_30px_rgba(23,32,51,0.04)]"
+          >
             {/* -- Mobile-only header: logo + brand -- */}
-            <SidebarHeader className="md:hidden px-5 py-5 border-b border-border/40">
+            <SidebarHeader className="border-b border-[#dbe8f3] px-5 py-5 md:hidden">
               <Link href="/dashboard" className="flex items-center gap-2.5">
                 <img src="/mution-logo.png" alt="Mution" className="h-8 w-auto" />
                 <div>
                   <span
                     style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-                    className="text-lg font-extrabold tracking-tight text-primary block leading-none"
+                    className="block text-lg font-extrabold leading-none tracking-normal text-[#172033]"
                   >
                     Mution
                   </span>
-                  <span className="text-[10px] text-muted-foreground/50 font-medium tracking-wide">Cloud Platform</span>
+                  <span className="text-[10px] font-medium tracking-wide text-[#526173]">Cloud Platform</span>
                 </div>
               </Link>
             </SidebarHeader>
@@ -125,7 +129,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <SidebarGroup className={`${group.label ? "pt-1" : ""} pb-0`}>
                     {/* Label hanya muncul jika ada */}
                     {group.label && (
-                      <SidebarGroupLabel className="h-5 text-[10px] uppercase tracking-widest font-medium opacity-40">
+                      <SidebarGroupLabel className="h-5 text-[10px] font-semibold uppercase tracking-widest text-[#526173]/60">
                         {group.label}
                       </SidebarGroupLabel>
                     )}
@@ -180,10 +184,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </SidebarContent>
 
             {/* -- Sidebar footer: kredit user -- */}
-            <SidebarFooter className="border-t border-border/40">
+            <SidebarFooter className="border-t border-[#dbe8f3]">
               <Link href="/billing">
                 <div
-                  className="flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-sidebar-accent cursor-pointer group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+                  className="flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-[#eef8ff] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
                 >
                   <div
                     className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -195,7 +199,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <Wallet className="h-4 w-4" style={{ color: "rgb(249,115,22)" }} />
                   </div>
                   <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider font-medium leading-none mb-1">Kredit</p>
+                    <p className="mb-1 text-[10px] font-semibold uppercase leading-none tracking-wider text-[#526173]/70">Kredit</p>
                     <p
                       className="text-sm font-bold tabular-nums leading-none"
                       style={{ color: creditColor(user?.credits) }}
@@ -203,7 +207,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       {formatCredits(user?.credits)}
                     </p>
                   </div>
-                  <CreditCard className="h-3.5 w-3.5 text-muted-foreground/30 flex-shrink-0 group-data-[collapsible=icon]:hidden" />
+                  <CreditCard className="h-3.5 w-3.5 flex-shrink-0 text-[#526173]/40 group-data-[collapsible=icon]:hidden" />
                 </div>
               </Link>
             </SidebarFooter>

@@ -24,13 +24,12 @@ function StatCard({
 }) {
   return (
     <div
-      className="rounded-2xl p-5 flex flex-col gap-4"
-      style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}
+      className="flex flex-col gap-4 rounded-lg border border-[#dbe8f3] bg-white p-5 shadow-[0_12px_34px_rgba(23,32,51,0.05)]"
     >
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#526173]">{label}</p>
         <div
-          className="h-8 w-8 rounded-lg flex items-center justify-center"
+          className="flex h-9 w-9 items-center justify-center rounded-full"
           style={{ background: `${color}18`, border: `1px solid ${color}28` }}
         >
           <Icon className="h-4 w-4" style={{ color }} />
@@ -40,9 +39,9 @@ function StatCard({
         {value === undefined ? (
           <Skeleton className="h-9 w-28" />
         ) : (
-          <p className="text-3xl font-extrabold tabular-nums tracking-tight">{value}</p>
+          <p className="text-3xl font-black tabular-nums tracking-normal text-[#172033]">{value}</p>
         )}
-        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+        {sub && <p className="mt-1 text-xs text-[#526173]">{sub}</p>}
       </div>
     </div>
   );
@@ -82,16 +81,17 @@ export default function AdminUsage() {
   const maxModelTokens = Math.max(1, ...byModel.map((m) => m.totalTokens));
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-7xl space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Pemakaian AI</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Admin Mution</p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-normal text-[#172033]">Pemakaian AI</h1>
+          <p className="mt-1 text-sm text-[#526173]">
             Analitik pemakaian AI-proxy: token, kredit terpakai, breakdown model, dan pengguna teratas.
           </p>
         </div>
-        <div className="flex items-center gap-1 rounded-xl p-1" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+        <div className="flex items-center gap-1 rounded-md border border-[#dbe8f3] bg-white p-1 shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
           {RANGE_OPTIONS.map((opt) => (
             <button
               key={opt.days}
@@ -100,7 +100,7 @@ export default function AdminUsage() {
               style={
                 days === opt.days
                   ? { background: "rgba(249,115,22,0.15)", color: "rgb(249,115,22)" }
-                  : { color: "rgba(255,255,255,0.5)" }
+                  : { color: "rgb(82,97,115)" }
               }
             >
               {opt.label}
@@ -141,13 +141,10 @@ export default function AdminUsage() {
       {/* Daily trend */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Tren Harian (token)</h2>
+          <TrendingUp className="h-4 w-4 text-[#14b8a6]" />
+          <h2 className="text-sm font-bold text-[#172033]">Tren Harian (token)</h2>
         </div>
-        <div
-          className="rounded-2xl p-5"
-          style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}
-        >
+        <div className="rounded-lg border border-[#dbe8f3] bg-white p-5 shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
           {isLoading ? (
             <Skeleton className="h-40 w-full" />
           ) : daily.length === 0 ? (
@@ -167,7 +164,7 @@ export default function AdminUsage() {
                         background: "rgba(249,115,22,0.55)",
                       }}
                     />
-                    <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap text-[10px] font-medium px-2 py-1 rounded bg-black/80 border border-white/10 pointer-events-none">
+                    <div className="pointer-events-none absolute -top-8 whitespace-nowrap rounded border border-[#dbe8f3] bg-white px-2 py-1 text-[10px] font-semibold text-[#172033] opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
                       {formatNumber(d.totalTokens)} tok
                     </div>
                   </div>
@@ -186,10 +183,10 @@ export default function AdminUsage() {
         {/* By model */}
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <Cpu className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Breakdown per Model</h2>
+            <Cpu className="h-4 w-4 text-[#f97316]" />
+            <h2 className="text-sm font-bold text-[#172033]">Breakdown per Model</h2>
           </div>
-          <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
             {isLoading ? (
               <div className="p-5 space-y-3">
                 {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
@@ -201,19 +198,18 @@ export default function AdminUsage() {
               </div>
             ) : (
               <div>
-                {byModel.map((m, i) => (
+                {byModel.map((m) => (
                   <div
                     key={m.model}
-                    className="px-5 py-3.5"
-                    style={{ borderBottom: i < byModel.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                    className="border-b border-[#edf4fb] px-5 py-3.5 last:border-b-0"
                   >
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm font-medium font-mono truncate mr-3">{m.model}</span>
-                      <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0">
+                      <span className="mr-3 truncate font-mono text-sm font-semibold text-[#172033]">{m.model}</span>
+                      <span className="flex-shrink-0 text-xs tabular-nums text-[#526173]">
                         {formatCompact(m.totalTokens)} tok - {formatNumber(m.requests)} req
                       </span>
                     </div>
-                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.05)" }}>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-[#eef8ff]">
                       <div
                         className="h-full rounded-full"
                         style={{ width: `${(m.totalTokens / maxModelTokens) * 100}%`, background: "rgb(168,85,247)" }}
@@ -229,10 +225,10 @@ export default function AdminUsage() {
         {/* Top users */}
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <Users2 className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Pengguna Teratas</h2>
+            <Users2 className="h-4 w-4 text-[#f97316]" />
+            <h2 className="text-sm font-bold text-[#172033]">Pengguna Teratas</h2>
           </div>
-          <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
             {isLoading ? (
               <div className="p-5 space-y-3">
                 {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
@@ -244,20 +240,19 @@ export default function AdminUsage() {
               </div>
             ) : (
               <div>
-                {topUsers.map((u, i) => (
+                {topUsers.map((u) => (
                   <div
                     key={u.userId}
-                    className="flex items-center gap-3 px-5 py-3"
-                    style={{ borderBottom: i < topUsers.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                    className="flex items-center gap-3 border-b border-[#edf4fb] px-5 py-3 last:border-b-0"
                   >
                     <UserAvatar name={u.name} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{u.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      <p className="truncate text-sm font-semibold text-[#172033]">{u.name}</p>
+                      <p className="truncate text-xs text-[#526173]">{u.email}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-semibold tabular-nums">{formatCompact(u.totalTokens)} tok</p>
-                      <p className="text-xs text-muted-foreground tabular-nums">{formatNumber(u.credits)} kredit</p>
+                      <p className="text-sm font-semibold tabular-nums text-[#172033]">{formatCompact(u.totalTokens)} tok</p>
+                      <p className="text-xs tabular-nums text-[#526173]">{formatNumber(u.credits)} kredit</p>
                     </div>
                   </div>
                 ))}

@@ -1,2 +1,18 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /api-keys
+Disallow: /api-usage
+Disallow: /activity
+Disallow: /billing
+Disallow: /dashboard
+Disallow: /docs
+Disallow: /github-callback
+Disallow: /login
+Disallow: /profile
+Disallow: /projects
+Disallow: /providers
+Disallow: /register
+Disallow: /usage
+
+Sitemap: https://mution.tech/sitemap.xml

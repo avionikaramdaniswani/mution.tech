@@ -17,13 +17,12 @@ function StatCard({
 }) {
   return (
     <div
-      className="rounded-2xl p-5 flex flex-col gap-4"
-      style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}
+      className="flex flex-col gap-4 rounded-lg border border-[#dbe8f3] bg-white p-5 shadow-[0_12px_34px_rgba(23,32,51,0.05)]"
     >
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#526173]">{label}</p>
         <div
-          className="h-8 w-8 rounded-lg flex items-center justify-center"
+          className="flex h-9 w-9 items-center justify-center rounded-full"
           style={{ background: `${color}18`, border: `1px solid ${color}28` }}
         >
           <Icon className="h-4 w-4" style={{ color }} />
@@ -33,9 +32,9 @@ function StatCard({
         {value === undefined ? (
           <Skeleton className="h-9 w-20" />
         ) : (
-          <p className="text-4xl font-extrabold tabular-nums tracking-tight">{value.toLocaleString()}</p>
+          <p className="text-4xl font-black tabular-nums tracking-normal text-[#172033]">{value.toLocaleString()}</p>
         )}
-        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+        {sub && <p className="mt-1 text-xs text-[#526173]">{sub}</p>}
       </div>
     </div>
   );
@@ -45,12 +44,13 @@ export default function AdminOverview() {
   const { data: stats, isLoading } = useGetAdminStats();
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-7xl space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Overview Platform</h1>
-        <p className="text-sm text-muted-foreground mt-1">Ringkasan kondisi platform secara keseluruhan.</p>
-      </div>
+      <section className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_58%,#fff7ed_100%)] p-5 shadow-[0_20px_60px_rgba(23,32,51,0.08)] sm:p-6">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Admin Mution</p>
+        <h1 className="mt-3 text-3xl font-extrabold tracking-normal text-[#172033] sm:text-4xl">Overview Platform</h1>
+        <p className="mt-3 text-sm leading-6 text-[#526173]">Ringkasan kondisi platform, user, proyek, dan deployment secara keseluruhan.</p>
+      </section>
 
       {/* Stat grid */}
       {isLoading ? (
@@ -94,22 +94,19 @@ export default function AdminOverview() {
       {!isLoading && stats && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Health snapshot */}
-          <div
-            className="rounded-2xl p-5 space-y-4"
-            style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}
-          >
+          <div className="space-y-4 rounded-lg border border-[#dbe8f3] bg-white p-5 shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm font-semibold">Kesehatan Platform</p>
+              <TrendingUp className="h-4 w-4 text-[#14b8a6]" />
+              <p className="text-sm font-bold text-[#172033]">Kesehatan Platform</p>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Proyek berjalan</span>
+                <span className="text-[#526173]">Proyek berjalan</span>
                 <span className="font-semibold" style={{ color: "rgb(34,197,94)" }}>
                   {stats.runningProjects} / {stats.totalProjects}
                 </span>
               </div>
-              <div className="w-full h-2 rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
+              <div className="h-2 w-full rounded-full bg-[#eef8ff]">
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
@@ -119,8 +116,8 @@ export default function AdminOverview() {
                 />
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Proyek gagal</span>
-                <span className="font-semibold" style={{ color: stats.failedProjects > 0 ? "rgb(239,68,68)" : "rgba(255,255,255,0.4)" }}>
+                <span className="text-[#526173]">Proyek gagal</span>
+                <span className="font-semibold" style={{ color: stats.failedProjects > 0 ? "rgb(239,68,68)" : "rgb(82,97,115)" }}>
                   {stats.failedProjects}
                 </span>
               </div>
@@ -128,13 +125,10 @@ export default function AdminOverview() {
           </div>
 
           {/* Alerts */}
-          <div
-            className="rounded-2xl p-5 space-y-4"
-            style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}
-          >
+          <div className="space-y-4 rounded-lg border border-[#dbe8f3] bg-white p-5 shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm font-semibold">Perhatian</p>
+              <AlertTriangle className="h-4 w-4 text-[#f97316]" />
+              <p className="text-sm font-bold text-[#172033]">Perhatian</p>
             </div>
             {stats.failedProjects === 0 ? (
               <div
