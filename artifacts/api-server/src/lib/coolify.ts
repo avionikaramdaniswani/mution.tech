@@ -617,6 +617,19 @@ const BUILD_FAILURE_PATTERNS: Array<{ test: (logs: string) => boolean; diagnose:
     }),
   },
   {
+    test: (logs) => /Cannot find module '@(rollup|esbuild)\/[\w-]+-(linux|darwin|win32)-[\w-]+'/.test(logs)
+      || /optional dependencies.*npm\/cli\/issues\/4828/.test(logs),
+    diagnose: (logs) => {
+      const match = logs.match(/Cannot find module '(@(?:rollup|esbuild)\/[\w-]+)'/);
+      const pkg = match?.[1] ?? "binary native package (rollup/esbuild)";
+      return {
+        title: "Lockfile tidak cocok dengan arsitektur server (npm/pnpm optional-deps bug)",
+        explanation: `Build gagal cari \`${pkg}\` — ini binary native platform-specific untuk rollup/esbuild. \`pnpm-lock.yaml\` di repo ini kemungkinan digenerate di komputer dengan arsitektur CPU berbeda dari server build (misal Mac Apple Silicon vs server Linux), jadi entry optionalDependencies untuk arsitektur server tidak ikut ter-resolve. Ini bug dikenal di npm/pnpm (npm/cli#4828), bukan masalah dari platform Mution.`,
+        suggestion: "Hapus `pnpm-lock.yaml` dan `node_modules` di repo, jalankan ulang `pnpm install` (idealnya di lingkungan Linux/Docker biar lockfile-nya mencakup binary yang sesuai server), lalu commit lockfile baru dan deploy ulang.",
+      };
+    },
+  },
+  {
     test: (logs) => /ERR_MODULE_NOT_FOUND/.test(logs) || /Cannot find module/.test(logs),
     diagnose: (logs) => {
       const match = logs.match(/Cannot find (?:package|module) '([^']+)'/);
