@@ -157,15 +157,6 @@ export function csrfOriginGuard(req: Request, res: Response, next: NextFunction)
 
   const origin = originFromRequestHeader(req);
   if (!origin || !isAllowedOrigin(origin, req)) {
-    console.error("[csrf-debug] origin-blocked", {
-      origin,
-      headerOrigin: req.header("Origin"),
-      headerReferer: req.header("Referer"),
-      headerHost: req.header("Host"),
-      headerXFHost: req.header("X-Forwarded-Host"),
-      headerXFProto: req.header("X-Forwarded-Proto"),
-      protocol: req.protocol,
-    });
     res.status(403).json({ error: "Invalid request origin" });
     return;
   }
@@ -173,14 +164,6 @@ export function csrfOriginGuard(req: Request, res: Response, next: NextFunction)
   const cookieToken = req.cookies?.[CSRF_COOKIE];
   const headerToken = req.header(CSRF_HEADER);
   if (!isValidCsrfToken(cookieToken) || !isValidCsrfToken(headerToken) || !timingSafeEqualString(cookieToken, headerToken)) {
-    console.error("[csrf-debug] token-blocked", {
-      cookiePresent: Boolean(cookieToken),
-      headerPresent: Boolean(headerToken),
-      cookieValid: isValidCsrfToken(cookieToken),
-      headerValid: isValidCsrfToken(headerToken),
-      match: isValidCsrfToken(cookieToken) && isValidCsrfToken(headerToken) ? timingSafeEqualString(cookieToken, headerToken) : false,
-      allCookies: Object.keys(req.cookies || {}),
-    });
     res.status(403).json({ error: "Invalid CSRF token" });
     return;
   }
