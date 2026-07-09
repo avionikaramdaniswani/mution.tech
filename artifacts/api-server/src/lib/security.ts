@@ -153,6 +153,18 @@ export function csrfOriginGuard(req: Request, res: Response, next: NextFunction)
 
   const origin = originFromRequestHeader(req);
   if (!origin || !isAllowedOrigin(origin, req)) {
+    {
+      // eslint-disable-next-line no-console
+      console.error("[csrf-debug] blocked", {
+        origin,
+        headerOrigin: req.header("Origin"),
+        headerReferer: req.header("Referer"),
+        headerHost: req.header("Host"),
+        headerXFHost: req.header("X-Forwarded-Host"),
+        headerXFProto: req.header("X-Forwarded-Proto"),
+        protocol: req.protocol,
+      });
+    }
     res.status(403).json({ error: "Invalid request origin" });
     return;
   }

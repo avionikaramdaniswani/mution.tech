@@ -1,0 +1,12 @@
+{"level":30,"time":1783612668244,"pid":2249,"hostname":"repl","req":{"id":22,"method":"GET","url":"/assets/index-Cbl5pGFC.css"},"res":{"statusCode":200},"responseTime":4,"msg":"request completed"}
+{"level":30,"time":1783612668252,"pid":2249,"hostname":"repl","req":{"id":21,"method":"GET","url":"/assets/index-BdM5YUla.js"},"res":{"statusCode":200},"responseTime":14,"msg":"request completed"}
+{"level":30,"time":1783612668778,"pid":2249,"hostname":"repl","req":{"id":23,"method":"GET","url":"/mution-logo.png"},"res":{"statusCode":200},"responseTime":8,"msg":"request completed"}
+{"level":30,"time":1783612668782,"pid":2249,"hostname":"repl","req":{"id":24,"method":"GET","url":"/api/auth/me"},"res":{"statusCode":401},"responseTime":0,"msg":"request completed"}
+{"level":30,"time":1783612668798,"pid":2249,"hostname":"repl","req":{"id":25,"method":"GET","url":"/hero-bg.png"},"res":{"statusCode":200},"responseTime":7,"msg":"request completed"}
+{"level":30,"time":1783612671452,"pid":2249,"hostname":"repl","req":{"id":26,"method":"GET","url":"/favicon.png"},"res":{"statusCode":200},"responseTime":9,"msg":"request completed"}
+{"level":30,"time":1783612673451,"pid":2249,"hostname":"repl","req":{"id":27,"method":"GET","url":"/api/auth/csrf"},"res":{"statusCode":304},"responseTime":2,"msg":"request completed"}
+{"level":30,"time":1783612673548,"pid":2249,"hostname":"repl","req":{"id":28,"method":"POST","url":"/api/auth/login"},"res":{"statusCode":403},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1783612674906,"pid":2249,"hostname":"repl","req":{"id":29,"method":"GET","url":"/api/auth/me"},"res":{"statusCode":401},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1783612683780,"pid":2249,"hostname":"repl","req":{"id":30,"method":"GET","url":"/api/auth/me"},"res":{"statusCode":401},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1783612684942,"pid":2249,"hostname":"repl","req":{"id":31,"method":"POST","url":"/api/auth/login"},"res":{"statusCode":403},"responseTime":1,"msg":"request completed"}
+{"level":30,"time":1783612686494,"pid":2249,"hostname":"repl","req":{"id":32,"method":"GET","url":"/api/auth/me"},"res":{"statusCode":401},"responseTime":2,"msg":"request completed"}
