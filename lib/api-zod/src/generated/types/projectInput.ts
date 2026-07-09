@@ -22,4 +22,9 @@ export interface ProjectInput {
      * @pattern ^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$
      */
   domain?: string;
+  /**
+     * Subdirectory in the repo to build from (for monorepos), e.g. /apps/api
+     * @maxLength 255
+     */
+  baseDirectory?: string;
 }

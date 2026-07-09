@@ -57,6 +57,7 @@ const formSchema = z.object({
     .min(2, { message: "Nama proyek minimal 2 karakter." })
     .regex(/^[a-z0-9-]+$/, { message: "Hanya huruf kecil, angka, dan tanda hubung." }),
   runtime: z.enum(["nodejs", "python", "php", "static"]),
+  baseDirectory: z.string().trim().max(255).optional(),
 });
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -102,7 +103,7 @@ export default function NewProject() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "", runtime: "nodejs" },
+    defaultValues: { name: "", runtime: "nodejs", baseDirectory: "" },
   });
 
   useEffect(() => {
@@ -376,6 +377,23 @@ export default function NewProject() {
                     </FormControl>
                     <FormDescription>
                       Huruf kecil, angka, dan tanda hubung saja.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="baseDirectory"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Root Directory (opsional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="/apps/api" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Isi kalau repo ini monorepo dan aplikasinya ada di subfolder. Build & typecheck hanya dijalankan dari folder ini, jadi error di package lain di monorepo tidak menggagalkan deploy.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

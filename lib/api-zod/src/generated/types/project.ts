@@ -18,6 +18,8 @@ export interface Project {
   status: ProjectStatus;
   /** @nullable */
   domain?: string | null;
+  /** @nullable */
+  baseDirectory?: string | null;
   createdAt: string;
   /** @nullable */
   lastDeployedAt?: string | null;

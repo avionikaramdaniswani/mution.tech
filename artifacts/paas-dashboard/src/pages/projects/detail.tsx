@@ -6,7 +6,7 @@ import {
   useGetProjectEnv, getGetProjectEnvQueryKey, useSetProjectEnv, useDeleteProjectEnv,
   useListDeployments, getListDeploymentsQueryKey, useTriggerDeployment, useRollbackDeployment,
   useGetProjectDatabase, getGetProjectDatabaseQueryKey, useProvisionDatabase, useDeleteDatabase,
-  getListProjectsQueryKey,
+  getListProjectsQueryKey, useUpdateProject,
 } from "@workspace/api-client-react";
 import type { Deployment } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -85,6 +85,29 @@ export default function ProjectDetail() {
   const stopProject = useStopProject();
   const restartProject = useRestartProject();
   const deleteProject = useDeleteProject();
+  const updateProject = useUpdateProject();
+  const [baseDirectoryInput, setBaseDirectoryInput] = useState<string | null>(null);
+
+  const handleSaveBaseDirectory = () => {
+    if (baseDirectoryInput === null) return;
+    updateProject.mutate(
+      { id: projectId, data: { baseDirectory: baseDirectoryInput } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+          setBaseDirectoryInput(null);
+          toast({ title: "Root directory disimpan", description: "Deploy ulang untuk menerapkan perubahan." });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Gagal menyimpan",
+            description: error?.data?.error || error?.message,
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
   
   const handleDeploy = () => {
     triggerDeploy.mutate(
@@ -219,6 +242,28 @@ export default function ProjectDetail() {
                   ) : (
                     <span className="text-sm text-muted-foreground">Belum ada repository yang terhubung</span>
                   )}
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Root Directory</div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="/apps/api (kosongkan jika bukan monorepo)"
+                      value={baseDirectoryInput ?? project.baseDirectory ?? ""}
+                      onChange={(e) => setBaseDirectoryInput(e.target.value)}
+                      className="font-mono text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={baseDirectoryInput === null || updateProject.isPending}
+                      onClick={handleSaveBaseDirectory}
+                    >
+                      Simpan
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Untuk monorepo: build & typecheck hanya berjalan dari folder ini, jadi error di package lain tidak menggagalkan deploy.
+                  </p>
                 </div>
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">Dibuat</div>

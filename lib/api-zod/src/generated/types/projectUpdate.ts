@@ -22,4 +22,10 @@ export interface ProjectUpdate {
      * @pattern ^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$
      */
   domain?: string;
+  /**
+     * Subdirectory in the repo to build from (for monorepos), e.g. /apps/api. Send null or empty string to reset to repo root.
+     * @maxLength 255
+     * @nullable
+     */
+  baseDirectory?: string | null;
 }

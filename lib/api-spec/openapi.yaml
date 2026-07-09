@@ -992,6 +992,8 @@ components:
           enum: [idle, running, stopped, building, deploying, failed]
         domain:
           type: ["string", "null"]
+        baseDirectory:
+          type: ["string", "null"]
         createdAt:
           type: string
         lastDeployedAt:
@@ -1017,6 +1019,10 @@ components:
           type: string
           maxLength: 253
           pattern: "^(?!-)(?:[a-z0-9-]{1,63}\\.)+[a-z]{2,63}$"
+        baseDirectory:
+          type: string
+          maxLength: 255
+          description: Subdirectory in the repo to build from (for monorepos), e.g. /apps/api
 
     ProjectUpdate:
       type: object
@@ -1037,6 +1043,10 @@ components:
           type: string
           maxLength: 253
           pattern: "^(?!-)(?:[a-z0-9-]{1,63}\\.)+[a-z]{2,63}$"
+        baseDirectory:
+          type: ["string", "null"]
+          maxLength: 255
+          description: Subdirectory in the repo to build from (for monorepos), e.g. /apps/api. Send null or empty string to reset to repo root.
 
     ProjectWithOwner:
       type: object

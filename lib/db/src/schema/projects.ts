@@ -23,6 +23,7 @@ export const projectsTable = pgTable("projects", {
   runtime: runtimeEnum("runtime").notNull(),
   status: projectStatusEnum("status").notNull().default("idle"),
   domain: text("domain"),
+  baseDirectory: text("base_directory"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastDeployedAt: timestamp("last_deployed_at"),
 });

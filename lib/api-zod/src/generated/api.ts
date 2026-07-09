@@ -96,6 +96,7 @@ export const ListProjectsResponseItem = zod.object({
   "runtime": zod.enum(['nodejs', 'python', 'php', 'static']),
   "status": zod.enum(['idle', 'running', 'stopped', 'building', 'deploying', 'failed']),
   "domain": zod.string().nullish(),
+  "baseDirectory": zod.string().nullish(),
   "createdAt": zod.string(),
   "lastDeployedAt": zod.string().nullish()
 })
@@ -116,13 +117,16 @@ export const createProjectBodyDomainMax = 253;
 
 
 export const createProjectBodyDomainRegExp = new RegExp('^(?!-)(?:[a-z0-9-]{1,63}\\.)+[a-z]{2,63}$');
+export const createProjectBodyBaseDirectoryMax = 255;
+
 
 
 export const CreateProjectBody = zod.object({
   "name": zod.string().min(createProjectBodyNameMin).max(createProjectBodyNameMax).regex(createProjectBodyNameRegExp),
   "repoUrl": zod.string().url().max(createProjectBodyRepoUrlMax).optional(),
   "runtime": zod.enum(['nodejs', 'python', 'php', 'static']),
-  "domain": zod.string().max(createProjectBodyDomainMax).regex(createProjectBodyDomainRegExp).optional()
+  "domain": zod.string().max(createProjectBodyDomainMax).regex(createProjectBodyDomainRegExp).optional(),
+  "baseDirectory": zod.string().max(createProjectBodyBaseDirectoryMax).optional().describe('Subdirectory in the repo to build from (for monorepos), e.g. \/apps\/api')
 })
 
 
@@ -141,6 +145,7 @@ export const GetProjectResponse = zod.object({
   "runtime": zod.enum(['nodejs', 'python', 'php', 'static']),
   "status": zod.enum(['idle', 'running', 'stopped', 'building', 'deploying', 'failed']),
   "domain": zod.string().nullish(),
+  "baseDirectory": zod.string().nullish(),
   "createdAt": zod.string(),
   "lastDeployedAt": zod.string().nullish()
 })
@@ -164,13 +169,16 @@ export const updateProjectBodyDomainMax = 253;
 
 
 export const updateProjectBodyDomainRegExp = new RegExp('^(?!-)(?:[a-z0-9-]{1,63}\\.)+[a-z]{2,63}$');
+export const updateProjectBodyBaseDirectoryMax = 255;
+
 
 
 export const UpdateProjectBody = zod.object({
   "name": zod.string().min(updateProjectBodyNameMin).max(updateProjectBodyNameMax).regex(updateProjectBodyNameRegExp).optional(),
   "repoUrl": zod.string().url().max(updateProjectBodyRepoUrlMax).optional(),
   "runtime": zod.enum(['nodejs', 'python', 'php', 'static']).optional(),
-  "domain": zod.string().max(updateProjectBodyDomainMax).regex(updateProjectBodyDomainRegExp).optional()
+  "domain": zod.string().max(updateProjectBodyDomainMax).regex(updateProjectBodyDomainRegExp).optional(),
+  "baseDirectory": zod.string().max(updateProjectBodyBaseDirectoryMax).nullish().describe('Subdirectory in the repo to build from (for monorepos), e.g. \/apps\/api. Send null or empty string to reset to repo root.')
 })
 
 export const UpdateProjectResponse = zod.object({
@@ -181,6 +189,7 @@ export const UpdateProjectResponse = zod.object({
   "runtime": zod.enum(['nodejs', 'python', 'php', 'static']),
   "status": zod.enum(['idle', 'running', 'stopped', 'building', 'deploying', 'failed']),
   "domain": zod.string().nullish(),
+  "baseDirectory": zod.string().nullish(),
   "createdAt": zod.string(),
   "lastDeployedAt": zod.string().nullish()
 })
@@ -336,6 +345,7 @@ export const StopProjectResponse = zod.object({
   "runtime": zod.enum(['nodejs', 'python', 'php', 'static']),
   "status": zod.enum(['idle', 'running', 'stopped', 'building', 'deploying', 'failed']),
   "domain": zod.string().nullish(),
+  "baseDirectory": zod.string().nullish(),
   "createdAt": zod.string(),
   "lastDeployedAt": zod.string().nullish()
 })
@@ -356,6 +366,7 @@ export const RestartProjectResponse = zod.object({
   "runtime": zod.enum(['nodejs', 'python', 'php', 'static']),
   "status": zod.enum(['idle', 'running', 'stopped', 'building', 'deploying', 'failed']),
   "domain": zod.string().nullish(),
+  "baseDirectory": zod.string().nullish(),
   "createdAt": zod.string(),
   "lastDeployedAt": zod.string().nullish()
 })
@@ -586,6 +597,7 @@ export const AdminStopProjectResponse = zod.object({
   "runtime": zod.enum(['nodejs', 'python', 'php', 'static']),
   "status": zod.enum(['idle', 'running', 'stopped', 'building', 'deploying', 'failed']),
   "domain": zod.string().nullish(),
+  "baseDirectory": zod.string().nullish(),
   "createdAt": zod.string(),
   "lastDeployedAt": zod.string().nullish()
 })

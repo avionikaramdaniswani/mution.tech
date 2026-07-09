@@ -268,6 +268,13 @@ function buildApplicationEnv(runtime: Runtime, rows: Array<{ key: string; value:
   return env;
 }
 
+function normalizeBaseDirectory(value: string | null | undefined): string | undefined {
+  const trimmed = (value ?? "").trim();
+  if (!trimmed) return undefined;
+  const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return withLeadingSlash.replace(/\/+$/, "") || "/";
+}
+
 function normalizeCommand(command: string | null | undefined): string {
   return (command ?? "").trim().replace(/\s+/g, " ");
 }
@@ -334,6 +341,7 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
   const domain = normalizeDomain(project.domain);
   const runtime = project.runtime as Runtime;
   const port = runtimePort(runtime);
+  const baseDirectory = normalizeBaseDirectory(project.baseDirectory);
   const commonPayload: Record<string, unknown> = {
     project_uuid: resource.coolifyProjectUuid,
     server_uuid: resource.coolifyServerUuid,
@@ -344,6 +352,7 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
     git_branch: process.env.COOLIFY_DEFAULT_GIT_BRANCH?.trim() || "main",
     build_pack: runtimeBuildPack(runtime),
     ports_exposes: port,
+    ...(baseDirectory ? { base_directory: baseDirectory } : {}),
     ...runtimeDeploymentSettings(runtime),
     is_auto_deploy_enabled: true,
     is_force_https_enabled: true,
@@ -373,11 +382,12 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
 async function updateCoolifyApplicationSettings(project: Project, applicationUuid: string): Promise<void> {
   const runtime = project.runtime as Runtime;
   const settings = runtimeDeploymentSettings(runtime);
-  if (Object.keys(settings).length === 0) return;
+  const baseDirectory = normalizeBaseDirectory(project.baseDirectory);
 
   await coolifyRequest("PATCH", `/applications/${applicationUuid}`, {
     ...settings,
     ports_exposes: runtimePort(runtime),
+    base_directory: baseDirectory ?? "/",
   });
 
   const updated = await coolifyRequest<CoolifyApplication>("GET", `/applications/${applicationUuid}`);

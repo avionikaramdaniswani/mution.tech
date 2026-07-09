@@ -33,17 +33,30 @@ const OptionalDomain = z.preprocess(
   z.string().trim().toLowerCase().max(253).regex(/^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/).optional(),
 );
 const ProjectName = z.string().trim().min(2).max(60).regex(/^[a-z0-9-]+$/);
+function isSafeRepoPath(value: string): boolean {
+  const segments = value.split("/").filter(Boolean);
+  return segments.every((segment) => /^[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)*$/.test(segment) && segment !== "." && segment !== "..");
+}
+
+const BaseDirectoryString = z.string().trim().max(255).refine(isSafeRepoPath, "Path direktori tidak valid");
+// undefined = no change (update) / not set (create); null = explicit clear back to repo root
+const OptionalBaseDirectory = z.preprocess(
+  (value) => value === "" ? null : value,
+  z.union([BaseDirectoryString, z.null()]).optional(),
+);
 const CreateProjectBody = z.object({
   name: ProjectName,
   repoUrl: OptionalRepoUrl,
   runtime: RuntimeSchema,
   domain: OptionalDomain,
+  baseDirectory: OptionalBaseDirectory,
 });
 const UpdateProjectBody = z.object({
   name: ProjectName.optional(),
   repoUrl: OptionalRepoUrl,
   runtime: RuntimeSchema.optional(),
   domain: OptionalDomain,
+  baseDirectory: OptionalBaseDirectory,
 }).refine((value) => Object.keys(value).length > 0, "Tidak ada perubahan");
 const SetProjectEnvBody = z.object({
   key: z.string().trim().min(1).max(128).regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
@@ -56,6 +69,21 @@ function parseRouteId(value: string | string[] | undefined): number | null {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+function mapProject(p: typeof projectsTable.$inferSelect) {
+  return {
+    id: p.id,
+    userId: p.userId,
+    name: p.name,
+    repoUrl: p.repoUrl ?? null,
+    runtime: p.runtime,
+    status: p.status,
+    domain: p.domain ?? null,
+    baseDirectory: p.baseDirectory ?? null,
+    createdAt: p.createdAt.toISOString(),
+    lastDeployedAt: p.lastDeployedAt?.toISOString() ?? null,
+  };
+}
+
 // List projects
 router.get("/projects", async (req, res): Promise<void> => {
   const user = (req as any).user;
@@ -65,19 +93,7 @@ router.get("/projects", async (req, res): Promise<void> => {
     .where(eq(projectsTable.userId, user.id))
     .orderBy(desc(projectsTable.createdAt));
 
-  res.json(
-    projects.map((p) => ({
-      id: p.id,
-      userId: p.userId,
-      name: p.name,
-      repoUrl: p.repoUrl ?? null,
-      runtime: p.runtime,
-      status: p.status,
-      domain: p.domain ?? null,
-      createdAt: p.createdAt.toISOString(),
-      lastDeployedAt: p.lastDeployedAt?.toISOString() ?? null,
-    }))
-  );
+  res.json(projects.map(mapProject));
 });
 
 // Create project
@@ -89,7 +105,7 @@ router.post("/projects", async (req, res): Promise<void> => {
     return;
   }
 
-  const { name, repoUrl, runtime, domain } = parsed.data;
+  const { name, repoUrl, runtime, domain, baseDirectory } = parsed.data;
   const [project] = await db
     .insert(projectsTable)
     .values({
@@ -98,23 +114,14 @@ router.post("/projects", async (req, res): Promise<void> => {
       repoUrl: repoUrl ?? null,
       runtime,
       domain: domain ?? null,
+      baseDirectory: baseDirectory ?? null,
       status: "idle",
     })
     .returning();
 
   await logActivity(user.id, "project.created", project.id, { name });
 
-  res.status(201).json({
-    id: project.id,
-    userId: project.userId,
-    name: project.name,
-    repoUrl: project.repoUrl ?? null,
-    runtime: project.runtime,
-    status: project.status,
-    domain: project.domain ?? null,
-    createdAt: project.createdAt.toISOString(),
-    lastDeployedAt: null,
-  });
+  res.status(201).json(mapProject(project));
 });
 
 // Get project
@@ -133,17 +140,7 @@ router.get("/projects/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json({
-    id: project.id,
-    userId: project.userId,
-    name: project.name,
-    repoUrl: project.repoUrl ?? null,
-    runtime: project.runtime,
-    status: project.status,
-    domain: project.domain ?? null,
-    createdAt: project.createdAt.toISOString(),
-    lastDeployedAt: project.lastDeployedAt?.toISOString() ?? null,
-  });
+  res.json(mapProject(project));
 });
 
 // Update project
@@ -169,17 +166,7 @@ router.patch("/projects/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json({
-    id: project.id,
-    userId: project.userId,
-    name: project.name,
-    repoUrl: project.repoUrl ?? null,
-    runtime: project.runtime,
-    status: project.status,
-    domain: project.domain ?? null,
-    createdAt: project.createdAt.toISOString(),
-    lastDeployedAt: project.lastDeployedAt?.toISOString() ?? null,
-  });
+  res.json(mapProject(project));
 });
 
 // Delete project
@@ -262,17 +249,7 @@ router.post("/projects/:id/stop", async (req, res): Promise<void> => {
   }
 
   await logActivity(user.id, "project.stopped", id, { name: project.name });
-  res.json({
-    id: project.id,
-    userId: project.userId,
-    name: project.name,
-    repoUrl: project.repoUrl ?? null,
-    runtime: project.runtime,
-    status: project.status,
-    domain: project.domain ?? null,
-    createdAt: project.createdAt.toISOString(),
-    lastDeployedAt: project.lastDeployedAt?.toISOString() ?? null,
-  });
+  res.json(mapProject(project));
 });
 
 // Restart project
@@ -319,17 +296,7 @@ router.post("/projects/:id/restart", async (req, res): Promise<void> => {
   }
 
   await logActivity(user.id, "project.restarted", id, { name: project.name });
-  res.json({
-    id: project.id,
-    userId: project.userId,
-    name: project.name,
-    repoUrl: project.repoUrl ?? null,
-    runtime: project.runtime,
-    status: project.status,
-    domain: project.domain ?? null,
-    createdAt: project.createdAt.toISOString(),
-    lastDeployedAt: project.lastDeployedAt?.toISOString() ?? null,
-  });
+  res.json(mapProject(project));
 });
 
 // Env vars
