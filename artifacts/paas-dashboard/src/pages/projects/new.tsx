@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useLocation } from "wouter";
-import { useCreateProject, getListProjectsQueryKey } from "@workspace/api-client-react";
+import { useCreateProject, getListProjectsQueryKey, getListDeploymentsQueryKey, getGetProjectQueryKey, useTriggerDeployment } from "@workspace/api-client-react";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
@@ -69,6 +69,7 @@ export default function NewProject() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const createProject = useCreateProject();
+  const triggerDeploy = useTriggerDeployment();
   const { toast } = useToast();
 
   const [selectedRepo, setSelectedRepo] = useState<GithubRepo | null>(null);
@@ -182,8 +183,26 @@ export default function NewProject() {
       {
         onSuccess: (data) => {
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-          toast({ title: "Proyek dibuat", description: "Proyek baru kamu berhasil dibuat." });
+          toast({ title: "Proyek dibuat", description: "Deployment otomatis dimulai." });
           setLocation(`/projects/${data.id}`);
+          triggerDeploy.mutate(
+            { id: data.id, data: {} },
+            {
+              onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(data.id) });
+                queryClient.invalidateQueries({ queryKey: getListDeploymentsQueryKey(data.id) });
+              },
+              onError: (error: any) => {
+                queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(data.id) });
+                queryClient.invalidateQueries({ queryKey: getListDeploymentsQueryKey(data.id) });
+                toast({
+                  title: "Deployment gagal dimulai",
+                  description: error?.data?.error || error?.message || "Cek tab Deployment untuk detail log.",
+                  variant: "destructive",
+                });
+              },
+            },
+          );
         },
         onError: (error: any) => {
           toast({
@@ -420,7 +439,7 @@ export default function NewProject() {
                 <Link href="/projects">
                   <Button type="button" variant="ghost">Batal</Button>
                 </Link>
-                <Button type="submit" disabled={createProject.isPending}>
+                <Button type="submit" disabled={createProject.isPending || triggerDeploy.isPending}>
                   {createProject.isPending ? "Membuat..." : "Buat Proyek"}
                 </Button>
               </div>

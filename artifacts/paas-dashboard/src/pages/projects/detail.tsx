@@ -8,6 +8,7 @@ import {
   useGetProjectDatabase, getGetProjectDatabaseQueryKey, useProvisionDatabase, useDeleteDatabase,
   getListProjectsQueryKey,
 } from "@workspace/api-client-react";
+import type { Deployment } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { ProjectStatusBadge } from "./index";
@@ -21,7 +22,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Copy, Database, Globe, Play, Power, RotateCcw, Trash } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, Copy, Database, FileText, Globe, Play, Power, RotateCcw, Trash } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -32,6 +34,7 @@ export default function ProjectDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const [logDeployment, setLogDeployment] = useState<Deployment | null>(null);
 
   const { data: project, isLoading: isLoadingProject } = useGetProject(projectId, { 
     query: { enabled: !!projectId, queryKey: getGetProjectQueryKey(projectId) } 
@@ -65,7 +68,16 @@ export default function ProjectDetail() {
           queryClient.invalidateQueries({ queryKey: getListDeploymentsQueryKey(projectId) });
           queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
           toast({ title: "Deployment dimulai" });
-        }
+        },
+        onError: (error: any) => {
+          queryClient.invalidateQueries({ queryKey: getListDeploymentsQueryKey(projectId) });
+          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+          toast({
+            title: "Deployment gagal",
+            description: error?.data?.error || error?.message || "Cek log deployment untuk detail.",
+            variant: "destructive",
+          });
+        },
       }
     );
   };
@@ -286,6 +298,14 @@ export default function ProjectDetail() {
                           {deployment.durationMs ? `${(deployment.durationMs / 1000).toFixed(1)}s` : '-'}
                         </TableCell>
                         <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setLogDeployment(deployment)}
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Logs
+                          </Button>
                           {deployment.status === 'running' && (
                             <Button 
                               variant="outline" 
@@ -324,6 +344,20 @@ export default function ProjectDetail() {
           <DatabaseTab projectId={projectId} database={database} isLoading={isLoadingDb} />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!logDeployment} onOpenChange={(open) => !open && setLogDeployment(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Log Deployment</DialogTitle>
+            <DialogDescription>
+              {logDeployment?.commitMessage || logDeployment?.commitHash || "Deploy manual"}
+            </DialogDescription>
+          </DialogHeader>
+          <pre className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
+            {logDeployment?.buildLog || "Belum ada log untuk deployment ini."}
+          </pre>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

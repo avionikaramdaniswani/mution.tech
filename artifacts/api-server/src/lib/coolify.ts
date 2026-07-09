@@ -293,10 +293,9 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
     git_branch: process.env.COOLIFY_DEFAULT_GIT_BRANCH?.trim() || "main",
     build_pack: runtimeBuildPack(runtime),
     ports_exposes: port,
-    autodeploy: true,
-    autodeploy_enabled: true,
+    is_auto_deploy_enabled: true,
+    is_force_https_enabled: true,
     autogenerate_domain: !domain,
-    force_https: true,
     instant_deploy: false,
   };
 
@@ -333,7 +332,8 @@ async function syncApplicationEnv(applicationUuid: string, runtime: Runtime, pro
       key: env.key,
       value: env.value,
       is_preview: false,
-      is_build_time: false,
+      is_buildtime: true,
+      is_runtime: true,
       is_literal: false,
     })),
   });

@@ -11,6 +11,7 @@ import {
   isCoolifyConfigured,
   syncDeploymentFromCoolify,
 } from "../lib/coolify";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -204,6 +205,16 @@ router.post("/projects/:id/deployments", async (req, res): Promise<void> => {
 
     res.status(201).json(mapDeployment(updated ?? deployment));
   } catch (err) {
+    logger.error(
+      {
+        err,
+        projectId: id,
+        deploymentId: deployment.id,
+        coolifyStatusCode: err instanceof CoolifyError ? err.statusCode : undefined,
+      },
+      "Coolify deployment failed",
+    );
+
     const [failed] = await db
       .update(deploymentsTable)
       .set({
