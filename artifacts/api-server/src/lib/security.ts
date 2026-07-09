@@ -54,15 +54,34 @@ function getAllowedOrigins(): Set<string> {
   return origins;
 }
 
-export function isAllowedOrigin(origin: string | undefined): boolean {
+export function isAllowedOrigin(origin: string | undefined, req?: Request): boolean {
   if (!origin) return true;
-  return getAllowedOrigins().has(origin);
+  if (getAllowedOrigins().has(origin)) return true;
+
+  // Same-origin request (Origin host/proto matches the Host this request actually hit).
+  // Covers Replit preview/dev domains that rotate per session and can't be hardcoded.
+  if (req) {
+    const forwardedHost = req.header("X-Forwarded-Host");
+    const host = (forwardedHost ? forwardedHost.split(",")[0].trim() : "") || req.header("Host");
+    if (host) {
+      const forwardedProto = req.header("X-Forwarded-Proto");
+      const proto = forwardedProto ? forwardedProto.split(",")[0].trim() : req.protocol;
+      try {
+        const requestOrigin = new URL(`${proto}://${host}`).origin;
+        if (origin === requestOrigin) return true;
+      } catch {
+        // ignore malformed host header
+      }
+    }
+  }
+
+  return false;
 }
 
 export const corsOptions: CorsOptionsDelegate<Request> = (req, callback) => {
   const origin = req.header("Origin");
   callback(null, {
-    origin: isAllowedOrigin(origin),
+    origin: isAllowedOrigin(origin, req),
     credentials: true,
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-API-Key", "X-CSRF-Token"],
@@ -133,7 +152,7 @@ export function csrfOriginGuard(req: Request, res: Response, next: NextFunction)
   }
 
   const origin = originFromRequestHeader(req);
-  if (!origin || !isAllowedOrigin(origin)) {
+  if (!origin || !isAllowedOrigin(origin, req)) {
     res.status(403).json({ error: "Invalid request origin" });
     return;
   }
