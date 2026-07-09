@@ -67,10 +67,14 @@ export function isAllowedOrigin(origin: string | undefined, req?: Request): bool
       const forwardedProto = req.header("X-Forwarded-Proto");
       const proto = forwardedProto ? forwardedProto.split(",")[0].trim() : req.protocol;
       try {
-        const requestOrigin = new URL(`${proto}://${host}`).origin;
-        if (origin === requestOrigin) return true;
+        const originUrl = new URL(origin);
+        // Compare protocol + hostname only. Behind Replit's proxy the public-facing
+        // Origin port (e.g. :5000) often differs from the internal Host header,
+        // which arrives without a port — a port-only mismatch is not cross-origin.
+        const hostOnly = host.split(":")[0];
+        if (originUrl.protocol === `${proto}:` && originUrl.hostname === hostOnly) return true;
       } catch {
-        // ignore malformed host header
+        // ignore malformed origin/host header
       }
     }
   }
@@ -153,18 +157,15 @@ export function csrfOriginGuard(req: Request, res: Response, next: NextFunction)
 
   const origin = originFromRequestHeader(req);
   if (!origin || !isAllowedOrigin(origin, req)) {
-    {
-      // eslint-disable-next-line no-console
-      console.error("[csrf-debug] blocked", {
-        origin,
-        headerOrigin: req.header("Origin"),
-        headerReferer: req.header("Referer"),
-        headerHost: req.header("Host"),
-        headerXFHost: req.header("X-Forwarded-Host"),
-        headerXFProto: req.header("X-Forwarded-Proto"),
-        protocol: req.protocol,
-      });
-    }
+    console.error("[csrf-debug] origin-blocked", {
+      origin,
+      headerOrigin: req.header("Origin"),
+      headerReferer: req.header("Referer"),
+      headerHost: req.header("Host"),
+      headerXFHost: req.header("X-Forwarded-Host"),
+      headerXFProto: req.header("X-Forwarded-Proto"),
+      protocol: req.protocol,
+    });
     res.status(403).json({ error: "Invalid request origin" });
     return;
   }
@@ -172,6 +173,14 @@ export function csrfOriginGuard(req: Request, res: Response, next: NextFunction)
   const cookieToken = req.cookies?.[CSRF_COOKIE];
   const headerToken = req.header(CSRF_HEADER);
   if (!isValidCsrfToken(cookieToken) || !isValidCsrfToken(headerToken) || !timingSafeEqualString(cookieToken, headerToken)) {
+    console.error("[csrf-debug] token-blocked", {
+      cookiePresent: Boolean(cookieToken),
+      headerPresent: Boolean(headerToken),
+      cookieValid: isValidCsrfToken(cookieToken),
+      headerValid: isValidCsrfToken(headerToken),
+      match: isValidCsrfToken(cookieToken) && isValidCsrfToken(headerToken) ? timingSafeEqualString(cookieToken, headerToken) : false,
+      allCookies: Object.keys(req.cookies || {}),
+    });
     res.status(403).json({ error: "Invalid CSRF token" });
     return;
   }
