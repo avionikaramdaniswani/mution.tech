@@ -9,6 +9,7 @@ import {
   deployProjectWithCoolify,
   formatCoolifyBuildLog,
   isCoolifyConfigured,
+  sanitizeDeploymentProviderText,
   syncDeploymentFromCoolify,
 } from "../lib/coolify";
 import { logger } from "../lib/logger";
@@ -97,7 +98,7 @@ async function refreshDeploymentStatus(d: typeof deploymentsTable.$inferSelect):
 
 function deploymentErrorLog(err: unknown): string {
   const message = err instanceof CoolifyError ? err.message : (err as Error)?.message || "Deployment gagal";
-  return `[${new Date().toISOString()}] Deployment gagal dikirim ke Coolify\n${message}`;
+  return `[${new Date().toISOString()}] Deployment gagal diproses\n${sanitizeDeploymentProviderText(message)}`;
 }
 
 // List deployments
@@ -159,7 +160,7 @@ router.post("/projects/:id/deployments", async (req, res): Promise<void> => {
       status: isCoolifyConfigured() ? "queued" : "running",
       commitHash,
       commitMessage,
-      buildLog: isCoolifyConfigured() ? "Deployment masuk antrean Coolify." : FAKE_BUILD_LOG,
+      buildLog: isCoolifyConfigured() ? "Deployment masuk antrean Mution." : FAKE_BUILD_LOG,
       deployedAt: isCoolifyConfigured() ? null : new Date(),
       durationMs: isCoolifyConfigured() ? null : Math.floor(Math.random() * 20000) + 15000,
     })
@@ -199,8 +200,8 @@ router.post("/projects/:id/deployments", async (req, res): Promise<void> => {
     await logActivity(user.id, "deployment.triggered", id, {
       commitHash,
       commitMessage,
-      provider: "coolify",
-      coolifyDeploymentUuid: result.deploymentUuid,
+      provider: "mution-deployment",
+      deploymentRunId: result.deploymentUuid,
     });
 
     res.status(201).json(mapDeployment(updated ?? deployment));
@@ -212,7 +213,7 @@ router.post("/projects/:id/deployments", async (req, res): Promise<void> => {
         deploymentId: deployment.id,
         coolifyStatusCode: err instanceof CoolifyError ? err.statusCode : undefined,
       },
-      "Coolify deployment failed",
+      "Deployment provider failed",
     );
 
     const [failed] = await db
@@ -231,7 +232,9 @@ router.post("/projects/:id/deployments", async (req, res): Promise<void> => {
       .where(eq(projectsTable.id, id));
 
     res.status(err instanceof CoolifyError ? 502 : 500).json({
-      error: err instanceof CoolifyError ? err.message : "Deployment gagal dikirim ke Coolify",
+      error: err instanceof CoolifyError
+        ? sanitizeDeploymentProviderText(err.message)
+        : "Deployment gagal diproses",
       deployment: mapDeployment(failed ?? deployment),
     });
   }

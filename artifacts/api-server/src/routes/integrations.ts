@@ -13,7 +13,7 @@ router.get("/integrations/coolify/status", requireAuth, async (_req, res): Promi
       serverResolved: false,
       serverUuid: null,
       serverName: null,
-      error: err instanceof CoolifyError ? err.message : "Gagal cek integrasi Coolify",
+      error: err instanceof CoolifyError ? err.message : "Gagal cek integrasi deployment",
     });
   }
 });

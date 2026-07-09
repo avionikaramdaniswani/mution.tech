@@ -76,12 +76,22 @@ export function isCoolifyConfigured(): boolean {
   return !!process.env.COOLIFY_API_URL?.trim() && !!process.env.COOLIFY_API_TOKEN?.trim();
 }
 
+export function sanitizeDeploymentProviderText(value: string): string {
+  return value
+    .replace(/ghcr\.io\/coollabsio\/coolify-helper:[^\s']+/gi, "mution-builder-helper")
+    .replace(/coollabsio\/coolify-helper/gi, "mution-builder-helper")
+    .replace(/coolify-helper/gi, "mution-builder")
+    .replace(/COOLIFY_/g, "MUTION_")
+    .replace(/Coolify/g, "Mution")
+    .replace(/coolify/g, "mution");
+}
+
 function getCoolifyConfig(): CoolifyConfig {
   const apiUrl = process.env.COOLIFY_API_URL?.trim();
   const apiToken = process.env.COOLIFY_API_TOKEN?.trim();
 
   if (!apiUrl || !apiToken) {
-    throw new CoolifyError("Coolify belum dikonfigurasi. Set COOLIFY_API_URL dan COOLIFY_API_TOKEN di Heroku Config Vars.");
+    throw new CoolifyError("Deployment engine belum dikonfigurasi. Set URL dan token deployment di Config Vars.");
   }
 
   const trimmed = apiUrl.replace(/\/+$/, "");
@@ -135,7 +145,7 @@ async function coolifyRequest<T>(
     const parsed = parseResponseBody(text);
 
     if (!res.ok) {
-      const message = getErrorMessage(parsed) ?? `Coolify API request failed with status ${res.status}`;
+      const message = getErrorMessage(parsed) ?? `Deployment engine request failed with status ${res.status}`;
       throw new CoolifyError(message, res.status, parsed);
     }
 
@@ -143,9 +153,9 @@ async function coolifyRequest<T>(
   } catch (err) {
     if (err instanceof CoolifyError) throw err;
     if ((err as any)?.name === "AbortError") {
-      throw new CoolifyError("Coolify API timeout. Cek koneksi dari Heroku ke server Coolify.");
+      throw new CoolifyError("Deployment engine timeout. Cek koneksi dari Heroku ke server deployment.");
     }
-    throw new CoolifyError((err as Error).message || "Coolify API request failed");
+    throw new CoolifyError((err as Error).message || "Deployment engine request failed");
   } finally {
     clearTimeout(timeout);
   }
@@ -170,9 +180,9 @@ function getErrorMessage(value: unknown): string | null {
       : typeof obj.error === "string"
         ? obj.error
         : null;
-  if (baseMessage && errorDetails) return `${baseMessage} ${errorDetails}`;
-  if (baseMessage) return baseMessage;
-  if (errorDetails) return errorDetails;
+  if (baseMessage && errorDetails) return sanitizeDeploymentProviderText(`${baseMessage} ${errorDetails}`);
+  if (baseMessage) return sanitizeDeploymentProviderText(baseMessage);
+  if (errorDetails) return sanitizeDeploymentProviderText(errorDetails);
   return null;
 }
 
@@ -231,6 +241,21 @@ function runtimePort(runtime: Runtime): string {
   return "3000";
 }
 
+function getNodeInstallCommand(): string {
+  return process.env.MUTION_NODE_INSTALL_COMMAND?.trim()
+    || process.env.COOLIFY_NODE_INSTALL_COMMAND?.trim()
+    || "if [ -f pnpm-lock.yaml ]; then pnpm install --no-frozen-lockfile; elif [ -f yarn.lock ]; then yarn install --frozen-lockfile || yarn install; elif [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then npm ci || npm install; else npm install; fi";
+}
+
+function runtimeDeploymentSettings(runtime: Runtime): Record<string, unknown> {
+  if (runtime === "nodejs") {
+    return {
+      install_command: getNodeInstallCommand(),
+    };
+  }
+  return {};
+}
+
 function buildApplicationEnv(runtime: Runtime, rows: Array<{ key: string; value: string }>): Array<{ key: string; value: string }> {
   const env = rows.map((row) => ({ key: row.key, value: row.value }));
   if ((runtime === "nodejs" || runtime === "python") && !env.some((row) => row.key === "PORT")) {
@@ -262,7 +287,7 @@ async function resolveServerUuid(): Promise<string> {
 
   if (!match?.uuid) {
     throw new CoolifyError(
-      `Server Coolify "${config.serverName}" tidak ditemukan. Set COOLIFY_SERVER_UUID atau COOLIFY_SERVER_NAME yang sesuai.`,
+      `Server deployment "${config.serverName}" tidak ditemukan. Set server UUID atau server name yang sesuai.`,
     );
   }
 
@@ -311,6 +336,7 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
     git_branch: process.env.COOLIFY_DEFAULT_GIT_BRANCH?.trim() || "main",
     build_pack: runtimeBuildPack(runtime),
     ports_exposes: port,
+    ...runtimeDeploymentSettings(runtime),
     is_auto_deploy_enabled: true,
     is_force_https_enabled: true,
     autogenerate_domain: !domain,
@@ -325,7 +351,7 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
 
   if (config.sourceMode === "github-app") {
     if (!config.githubAppUuid) {
-      throw new CoolifyError("COOLIFY_GITHUB_APP_UUID wajib diisi untuk deploy private repository.");
+      throw new CoolifyError("Konfigurasi GitHub App deployment wajib diisi untuk deploy private repository.");
     }
     return coolifyRequest<CoolifyApplication>("POST", "/applications/private-github-app", {
       ...commonPayload,
@@ -334,6 +360,17 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
   }
 
   return coolifyRequest<CoolifyApplication>("POST", "/applications/public", commonPayload);
+}
+
+async function updateCoolifyApplicationSettings(project: Project, applicationUuid: string): Promise<void> {
+  const runtime = project.runtime as Runtime;
+  const settings = runtimeDeploymentSettings(runtime);
+  if (Object.keys(settings).length === 0) return;
+
+  await coolifyRequest("PATCH", `/applications/${applicationUuid}`, {
+    ...settings,
+    ports_exposes: runtimePort(runtime),
+  });
 }
 
 async function syncApplicationEnv(applicationUuid: string, runtime: Runtime, projectId: number): Promise<void> {
@@ -416,9 +453,10 @@ export async function deployProjectWithCoolify(project: Project, deploymentId: n
 }> {
   const resource = await ensureCoolifyResource(project);
   if (!resource.coolifyApplicationUuid) {
-    throw new CoolifyError("Coolify application UUID tidak tersedia setelah provisioning.");
+    throw new CoolifyError("Application resource tidak tersedia setelah provisioning.");
   }
 
+  await updateCoolifyApplicationSettings(project, resource.coolifyApplicationUuid);
   await syncApplicationEnv(resource.coolifyApplicationUuid, project.runtime as Runtime, project.id);
 
   const response = await coolifyRequest<CoolifyDeploymentResponse>(
@@ -444,7 +482,7 @@ export async function deployProjectWithCoolify(project: Project, deploymentId: n
   return {
     applicationUuid: resource.coolifyApplicationUuid,
     deploymentUuid,
-    message: response.message ?? "Deployment dikirim ke Coolify.",
+    message: sanitizeDeploymentProviderText(response.message ?? "Deployment masuk antrean."),
   };
 }
 
@@ -465,7 +503,7 @@ export async function syncDeploymentFromCoolify(deploymentId: number): Promise<{
   const details = await coolifyRequest<CoolifyDeploymentDetails>("GET", `/deployments/${mapping.coolifyDeploymentUuid}`);
   return {
     status: mapCoolifyDeploymentStatus(details.status),
-    logs: details.logs ?? null,
+    logs: details.logs ? sanitizeDeploymentProviderText(details.logs) : null,
   };
 }
 
@@ -531,9 +569,9 @@ export function formatCoolifyBuildLog(input: {
   deploymentUuid?: string | null;
 }): string {
   const lines = [
-    `[${new Date().toISOString()}] ${input.message}`,
+    `[${new Date().toISOString()}] ${sanitizeDeploymentProviderText(input.message)}`,
   ];
-  if (input.applicationUuid) lines.push(`Coolify application: ${input.applicationUuid}`);
-  if (input.deploymentUuid) lines.push(`Coolify deployment: ${input.deploymentUuid}`);
+  if (input.applicationUuid) lines.push(`Application resource: ${input.applicationUuid}`);
+  if (input.deploymentUuid) lines.push(`Deployment run: ${input.deploymentUuid}`);
   return lines.join("\n");
 }

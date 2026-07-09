@@ -28,6 +28,13 @@ import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
+const ACTIVE_PROJECT_STATUSES = new Set<string>(["building", "deploying"]);
+const ACTIVE_DEPLOYMENT_STATUSES = new Set<string>(["queued", "building", "deploying"]);
+
+function isDeploymentActive(deployment: Deployment | null | undefined): boolean {
+  return ACTIVE_DEPLOYMENT_STATUSES.has(deployment?.status ?? "");
+}
+
 export default function ProjectDetail() {
   const params = useParams();
   const projectId = parseInt(params.id || "0", 10);
@@ -37,15 +44,33 @@ export default function ProjectDetail() {
   const [logDeployment, setLogDeployment] = useState<Deployment | null>(null);
 
   const { data: project, isLoading: isLoadingProject } = useGetProject(projectId, { 
-    query: { enabled: !!projectId, queryKey: getGetProjectQueryKey(projectId) } 
+    query: {
+      enabled: !!projectId,
+      queryKey: getGetProjectQueryKey(projectId),
+      refetchInterval: (query) => {
+        const current = query.state.data as { status?: string } | undefined;
+        return ACTIVE_PROJECT_STATUSES.has(current?.status ?? "") ? 2500 : false;
+      },
+    }
   });
 
   const { data: deployments, isLoading: isLoadingDeployments } = useListDeployments(projectId, {
-    query: { enabled: !!projectId, queryKey: getListDeploymentsQueryKey(projectId) }
+    query: {
+      enabled: !!projectId,
+      queryKey: getListDeploymentsQueryKey(projectId),
+      refetchInterval: (query) => {
+        const current = query.state.data as Deployment[] | undefined;
+        return ACTIVE_PROJECT_STATUSES.has(project?.status ?? "") || current?.some(isDeploymentActive) ? 2500 : false;
+      },
+    }
   });
   
   const projectDeployments = deployments?.filter(d => d.projectId === projectId) || [];
   const latestDeployment = projectDeployments[0] ?? null;
+  const hasActiveDeployment = isDeploymentActive(latestDeployment) || ACTIVE_PROJECT_STATUSES.has(project?.status ?? "");
+  const selectedLogDeployment = logDeployment
+    ? projectDeployments.find((deployment) => deployment.id === logDeployment.id) ?? logDeployment
+    : null;
 
   const { data: envVars, isLoading: isLoadingEnv } = useGetProjectEnv(projectId, {
     query: { enabled: !!projectId, queryKey: getGetProjectEnvQueryKey(projectId) }
@@ -68,6 +93,7 @@ export default function ProjectDetail() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListDeploymentsQueryKey(projectId) });
           queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+          void queryClient.refetchQueries({ queryKey: getListDeploymentsQueryKey(projectId) });
           toast({ title: "Deployment dimulai" });
         },
         onError: (error: any) => {
@@ -252,7 +278,7 @@ export default function ProjectDetail() {
               <Button
                 variant="outline"
                 onClick={handleDeploy}
-                disabled={triggerDeploy.isPending || project.status === 'deploying'}
+                disabled={triggerDeploy.isPending || hasActiveDeployment}
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${triggerDeploy.isPending ? "animate-spin" : ""}`} />
                 Deploy ulang
@@ -372,16 +398,16 @@ export default function ProjectDetail() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!logDeployment} onOpenChange={(open) => !open && setLogDeployment(null)}>
+      <Dialog open={!!selectedLogDeployment} onOpenChange={(open) => !open && setLogDeployment(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Log Deployment</DialogTitle>
             <DialogDescription>
-              {logDeployment?.commitMessage || logDeployment?.commitHash || "Deploy manual"}
+              {selectedLogDeployment?.commitMessage || selectedLogDeployment?.commitHash || "Deploy manual"}
             </DialogDescription>
           </DialogHeader>
           <pre className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
-            {logDeployment?.buildLog || "Belum ada log untuk deployment ini."}
+            {selectedLogDeployment?.buildLog || "Belum ada log untuk deployment ini."}
           </pre>
         </DialogContent>
       </Dialog>

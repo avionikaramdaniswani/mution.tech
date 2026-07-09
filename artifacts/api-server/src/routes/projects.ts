@@ -204,7 +204,7 @@ router.delete("/projects/:id", async (req, res): Promise<void> => {
       await deleteProjectWithCoolify(id);
     } catch (err) {
       res.status(err instanceof CoolifyError ? 502 : 500).json({
-        error: err instanceof CoolifyError ? err.message : "Gagal menghapus resource di Coolify",
+        error: err instanceof CoolifyError ? err.message : "Gagal menghapus resource deployment",
       });
       return;
     }
@@ -239,12 +239,12 @@ router.post("/projects/:id/stop", async (req, res): Promise<void> => {
     try {
       const stopped = await stopProjectWithCoolify(id);
       if (!stopped) {
-        res.status(409).json({ error: "Project belum punya resource Coolify. Jalankan deploy dulu." });
+        res.status(409).json({ error: "Project belum punya resource deployment. Jalankan deploy dulu." });
         return;
       }
     } catch (err) {
       res.status(err instanceof CoolifyError ? 502 : 500).json({
-        error: err instanceof CoolifyError ? err.message : "Gagal menghentikan resource di Coolify",
+        error: err instanceof CoolifyError ? err.message : "Gagal menghentikan resource deployment",
       });
       return;
     }
@@ -296,12 +296,12 @@ router.post("/projects/:id/restart", async (req, res): Promise<void> => {
     try {
       const restarted = await restartProjectWithCoolify(id);
       if (!restarted) {
-        res.status(409).json({ error: "Project belum punya resource Coolify. Jalankan deploy dulu." });
+        res.status(409).json({ error: "Project belum punya resource deployment. Jalankan deploy dulu." });
         return;
       }
     } catch (err) {
       res.status(err instanceof CoolifyError ? 502 : 500).json({
-        error: err instanceof CoolifyError ? err.message : "Gagal me-restart resource di Coolify",
+        error: err instanceof CoolifyError ? err.message : "Gagal me-restart resource deployment",
       });
       return;
     }

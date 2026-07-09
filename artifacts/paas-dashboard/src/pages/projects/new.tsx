@@ -173,11 +173,20 @@ export default function NewProject() {
   }
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!selectedRepo) {
+      toast({
+        title: "Pilih repository dulu",
+        description: "Mution butuh repo GitHub untuk memulai deployment otomatis.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createProject.mutate(
       {
         data: {
           ...values,
-          repoUrl: selectedRepo?.cloneUrl ?? undefined,
+          repoUrl: selectedRepo.cloneUrl,
         },
       },
       {
@@ -439,7 +448,7 @@ export default function NewProject() {
                 <Link href="/projects">
                   <Button type="button" variant="ghost">Batal</Button>
                 </Link>
-                <Button type="submit" disabled={createProject.isPending || triggerDeploy.isPending}>
+                <Button type="submit" disabled={createProject.isPending || triggerDeploy.isPending || !selectedRepo}>
                   {createProject.isPending ? "Membuat..." : "Buat & Deploy"}
                 </Button>
               </div>
