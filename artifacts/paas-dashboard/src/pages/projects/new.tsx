@@ -229,7 +229,7 @@ export default function NewProject() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Proyek Baru</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Deploy dari repository GitHub kamu.</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Pilih repository, lalu Mution langsung membuat project dan memulai deploy.</p>
         </div>
       </div>
 
@@ -440,7 +440,7 @@ export default function NewProject() {
                   <Button type="button" variant="ghost">Batal</Button>
                 </Link>
                 <Button type="submit" disabled={createProject.isPending || triggerDeploy.isPending}>
-                  {createProject.isPending ? "Membuat..." : "Buat Proyek"}
+                  {createProject.isPending ? "Membuat..." : "Buat & Deploy"}
                 </Button>
               </div>
             </form>

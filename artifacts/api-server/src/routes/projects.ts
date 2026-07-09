@@ -237,7 +237,11 @@ router.post("/projects/:id/stop", async (req, res): Promise<void> => {
 
   if (isCoolifyConfigured()) {
     try {
-      await stopProjectWithCoolify(id);
+      const stopped = await stopProjectWithCoolify(id);
+      if (!stopped) {
+        res.status(409).json({ error: "Project belum punya resource Coolify. Jalankan deploy dulu." });
+        return;
+      }
     } catch (err) {
       res.status(err instanceof CoolifyError ? 502 : 500).json({
         error: err instanceof CoolifyError ? err.message : "Gagal menghentikan resource di Coolify",
@@ -290,7 +294,11 @@ router.post("/projects/:id/restart", async (req, res): Promise<void> => {
 
   if (isCoolifyConfigured()) {
     try {
-      await restartProjectWithCoolify(id);
+      const restarted = await restartProjectWithCoolify(id);
+      if (!restarted) {
+        res.status(409).json({ error: "Project belum punya resource Coolify. Jalankan deploy dulu." });
+        return;
+      }
     } catch (err) {
       res.status(err instanceof CoolifyError ? 502 : 500).json({
         error: err instanceof CoolifyError ? err.message : "Gagal me-restart resource di Coolify",

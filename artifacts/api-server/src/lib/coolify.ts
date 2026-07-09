@@ -163,10 +163,28 @@ function parseResponseBody(text: string): unknown {
 function getErrorMessage(value: unknown): string | null {
   if (!value || typeof value !== "object") return null;
   const obj = value as Record<string, unknown>;
-  if (typeof obj.message === "string") return obj.message;
-  if (typeof obj.error === "string") return obj.error;
-  if (typeof obj.errors === "object") return JSON.stringify(obj.errors);
+  const errorDetails = formatValidationErrors(obj.errors);
+  const baseMessage =
+    typeof obj.message === "string"
+      ? obj.message
+      : typeof obj.error === "string"
+        ? obj.error
+        : null;
+  if (baseMessage && errorDetails) return `${baseMessage} ${errorDetails}`;
+  if (baseMessage) return baseMessage;
+  if (errorDetails) return errorDetails;
   return null;
+}
+
+function formatValidationErrors(errors: unknown): string | null {
+  if (!errors || typeof errors !== "object") return null;
+
+  const parts = Object.entries(errors as Record<string, unknown>).map(([field, value]) => {
+    const messages = Array.isArray(value) ? value : [value];
+    return `${field}: ${messages.map((message) => String(message)).join(", ")}`;
+  });
+
+  return parts.length > 0 ? parts.join("; ") : null;
 }
 
 function slugify(value: string, fallback: string): string {
@@ -255,7 +273,7 @@ async function resolveServerUuid(): Promise<string> {
 async function createCoolifyProject(project: Project): Promise<CoolifyProject> {
   return coolifyRequest<CoolifyProject>("POST", "/projects", {
     name: coolifyProjectName(project),
-    description: `Mution project #${project.id}`,
+    description: `Mution project ${project.id}`,
   });
 }
 
@@ -288,7 +306,7 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
     server_uuid: resource.coolifyServerUuid,
     environment_name: resource.coolifyEnvironmentName,
     name: coolifyApplicationName(project),
-    description: `Mution app for project #${project.id}`,
+    description: `Mution app for project ${project.id}`,
     git_repository: normalizeRepoUrl(project.repoUrl),
     git_branch: process.env.COOLIFY_DEFAULT_GIT_BRANCH?.trim() || "main",
     build_pack: runtimeBuildPack(runtime),

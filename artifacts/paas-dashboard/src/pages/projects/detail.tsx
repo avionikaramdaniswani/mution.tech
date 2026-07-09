@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Copy, Database, FileText, Globe, Play, Power, RotateCcw, Trash } from "lucide-react";
+import { ArrowLeft, Copy, Database, FileText, Globe, Power, RefreshCw, RotateCcw, Trash } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -45,6 +45,7 @@ export default function ProjectDetail() {
   });
   
   const projectDeployments = deployments?.filter(d => d.projectId === projectId) || [];
+  const latestDeployment = projectDeployments[0] ?? null;
 
   const { data: envVars, isLoading: isLoadingEnv } = useGetProjectEnv(projectId, {
     query: { enabled: !!projectId, queryKey: getGetProjectEnvQueryKey(projectId) }
@@ -165,12 +166,6 @@ export default function ProjectDetail() {
           >
             <RotateCcw className="h-4 w-4 mr-2" /> Restart
           </Button>
-          <Button 
-            onClick={handleDeploy}
-            disabled={triggerDeploy.isPending || project.status === 'deploying'}
-          >
-            <Play className="h-4 w-4 mr-2" /> Deploy
-          </Button>
         </div>
       </div>
 
@@ -249,11 +244,43 @@ export default function ProjectDetail() {
 
         <TabsContent value="deployments" className="mt-6">
           <Card className="border-border/50">
-            <CardHeader>
-              <CardTitle>Riwayat Deployment</CardTitle>
-              <CardDescription>Semua deployment yang pernah dijalankan untuk proyek ini.</CardDescription>
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle>Deployment</CardTitle>
+                <CardDescription>Log build dan riwayat deployment project ini.</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleDeploy}
+                disabled={triggerDeploy.isPending || project.status === 'deploying'}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${triggerDeploy.isPending ? "animate-spin" : ""}`} />
+                Deploy ulang
+              </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
+              <div className="rounded-lg border border-border bg-muted/30">
+                <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                  <div>
+                    <div className="text-sm font-medium">Log Terbaru</div>
+                    <div className="text-xs text-muted-foreground">
+                      {latestDeployment
+                        ? `${latestDeployment.status} - ${formatDistanceToNow(new Date(latestDeployment.createdAt), { addSuffix: true, locale: id })}`
+                        : "Belum ada deployment yang berjalan"}
+                    </div>
+                  </div>
+                  {latestDeployment && (
+                    <Button variant="ghost" size="sm" onClick={() => setLogDeployment(latestDeployment)}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Buka penuh
+                    </Button>
+                  )}
+                </div>
+                <pre className="max-h-[360px] min-h-[160px] overflow-auto p-4 text-xs leading-relaxed whitespace-pre-wrap">
+                  {latestDeployment?.buildLog || "Log deployment akan muncul di sini setelah project dibuat dan deploy otomatis dimulai."}
+                </pre>
+              </div>
+
               {isLoadingDeployments ? (
                 <Skeleton className="h-[200px]" />
               ) : projectDeployments.length === 0 ? (
