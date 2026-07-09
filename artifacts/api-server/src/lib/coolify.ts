@@ -31,6 +31,7 @@ type CoolifyEnvironment = {
 type CoolifyApplication = {
   uuid: string;
   name?: string;
+  install_command?: string | null;
 };
 
 type CoolifyDeploymentResponse = {
@@ -244,7 +245,7 @@ function runtimePort(runtime: Runtime): string {
 function getNodeInstallCommand(): string {
   return process.env.MUTION_NODE_INSTALL_COMMAND?.trim()
     || process.env.COOLIFY_NODE_INSTALL_COMMAND?.trim()
-    || "if [ -f pnpm-lock.yaml ]; then pnpm install --no-frozen-lockfile; elif [ -f yarn.lock ]; then yarn install --frozen-lockfile || yarn install; elif [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then npm ci || npm install; else npm install; fi";
+    || "pnpm install --no-frozen-lockfile";
 }
 
 function runtimeDeploymentSettings(runtime: Runtime): Record<string, unknown> {
@@ -261,7 +262,14 @@ function buildApplicationEnv(runtime: Runtime, rows: Array<{ key: string; value:
   if ((runtime === "nodejs" || runtime === "python") && !env.some((row) => row.key === "PORT")) {
     env.push({ key: "PORT", value: runtimePort(runtime) });
   }
+  if (runtime === "nodejs" && !env.some((row) => row.key === "NIXPACKS_INSTALL_CMD")) {
+    env.push({ key: "NIXPACKS_INSTALL_CMD", value: getNodeInstallCommand() });
+  }
   return env;
+}
+
+function normalizeCommand(command: string | null | undefined): string {
+  return (command ?? "").trim().replace(/\s+/g, " ");
 }
 
 function mapCoolifyDeploymentStatus(status: string | undefined): DeploymentStatus {
@@ -371,6 +379,14 @@ async function updateCoolifyApplicationSettings(project: Project, applicationUui
     ...settings,
     ports_exposes: runtimePort(runtime),
   });
+
+  const updated = await coolifyRequest<CoolifyApplication>("GET", `/applications/${applicationUuid}`);
+  if (
+    runtime === "nodejs"
+    && normalizeCommand(updated.install_command) !== normalizeCommand(getNodeInstallCommand())
+  ) {
+    throw new CoolifyError("Build setting belum tersimpan di deployment engine. Coba deploy ulang dari dashboard Mution setelah app Mution selesai di-deploy ke Heroku.");
+  }
 }
 
 async function syncApplicationEnv(applicationUuid: string, runtime: Runtime, projectId: number): Promise<void> {
