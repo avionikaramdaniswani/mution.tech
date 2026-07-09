@@ -4,9 +4,11 @@ import {
   coolifyResourcesTable,
   db,
   envVarsTable,
+  usersTable,
   type Project,
 } from "@workspace/db";
 import { ensureCoolifyTables } from "./coolify-schema";
+import { decryptSecret } from "./secret-box";
 
 type Runtime = "nodejs" | "python" | "php" | "static";
 type DeploymentStatus = "queued" | "building" | "deploying" | "running" | "failed" | "stopped" | "rolled_back";
@@ -229,8 +231,70 @@ function normalizeDomain(domain: string | null): string | undefined {
   return clean.startsWith("http://") || clean.startsWith("https://") ? clean : `https://${clean}`;
 }
 
-function runtimeBuildPack(runtime: Runtime): "nixpacks" | "static" {
-  return runtime === "static" ? "static" : "nixpacks";
+type BuildPack = "nixpacks" | "static" | "dockerfile";
+
+/**
+ * Nixpacks builds on Mution's server resolve packages from a pinned nixpkgs
+ * snapshot. If a project ships its own root Dockerfile, prefer that instead:
+ * Docker builds aren't limited by that pin (e.g. newer Node/runtime versions
+ * requested by the project's own nixpacks.toml/package.json that the pinned
+ * snapshot doesn't know about yet), so this lets far more repos deploy as-is.
+ */
+/** Extracts a strict `owner/repo` pair from a GitHub URL, failing closed on anything else. */
+function parseGithubOwnerRepo(repoUrl: string): string | null {
+  try {
+    const withScheme = /^https?:\/\//i.test(repoUrl) ? repoUrl : `https://${repoUrl}`;
+    const url = new URL(withScheme);
+    if (!/^(www\.)?github\.com$/i.test(url.hostname)) return null;
+
+    const segments = url.pathname.split("/").filter(Boolean);
+    if (segments.length < 2) return null;
+
+    const owner = segments[0];
+    const repo = segments[1].replace(/\.git$/i, "");
+    if (!owner || !repo) return null;
+    return `${owner}/${repo}`;
+  } catch {
+    return null;
+  }
+}
+
+async function detectRootDockerfile(project: Project): Promise<boolean> {
+  if (!project.repoUrl) return false;
+  const repoPath = parseGithubOwnerRepo(project.repoUrl);
+  if (!repoPath) return false;
+
+  try {
+    const [owner] = await db
+      .select({ githubAccessToken: usersTable.githubAccessToken })
+      .from(usersTable)
+      .where(eq(usersTable.id, project.userId));
+
+    // A token raises the GitHub API rate limit and is required for private
+    // repos, but detection must still work for public repos without one.
+    const token = decryptSecret(owner?.githubAccessToken);
+
+    const baseDirectory = normalizeBaseDirectory(project.baseDirectory) ?? "";
+    const dockerfileDir = baseDirectory ? baseDirectory.replace(/^\//, "") : "";
+    const contentsUrl = `https://api.github.com/repos/${repoPath}/contents/${dockerfileDir ? `${dockerfileDir}/Dockerfile` : "Dockerfile"}`;
+
+    const res = await fetch(contentsUrl, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        Accept: "application/vnd.github+json",
+        "User-Agent": "mution-platform",
+      },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveBuildPack(project: Project, runtime: Runtime): Promise<BuildPack> {
+  if (runtime === "static") return "static";
+  if (await detectRootDockerfile(project)) return "dockerfile";
+  return "nixpacks";
 }
 
 function runtimePort(runtime: Runtime): string {
@@ -257,12 +321,12 @@ function runtimeDeploymentSettings(runtime: Runtime): Record<string, unknown> {
   return {};
 }
 
-function buildApplicationEnv(runtime: Runtime, rows: Array<{ key: string; value: string }>): Array<{ key: string; value: string }> {
+function buildApplicationEnv(runtime: Runtime, buildPack: BuildPack, rows: Array<{ key: string; value: string }>): Array<{ key: string; value: string }> {
   const env = rows.map((row) => ({ key: row.key, value: row.value }));
   if ((runtime === "nodejs" || runtime === "python") && !env.some((row) => row.key === "PORT")) {
     env.push({ key: "PORT", value: runtimePort(runtime) });
   }
-  if (runtime === "nodejs" && !env.some((row) => row.key === "NIXPACKS_INSTALL_CMD")) {
+  if (runtime === "nodejs" && buildPack === "nixpacks" && !env.some((row) => row.key === "NIXPACKS_INSTALL_CMD")) {
     env.push({ key: "NIXPACKS_INSTALL_CMD", value: getNodeInstallCommand() });
   }
   return env;
@@ -342,6 +406,7 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
   const runtime = project.runtime as Runtime;
   const port = runtimePort(runtime);
   const baseDirectory = normalizeBaseDirectory(project.baseDirectory);
+  const buildPack = await resolveBuildPack(project, runtime);
   const commonPayload: Record<string, unknown> = {
     project_uuid: resource.coolifyProjectUuid,
     server_uuid: resource.coolifyServerUuid,
@@ -350,10 +415,13 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
     description: `Mution app for project ${project.id}`,
     git_repository: normalizeRepoUrl(project.repoUrl),
     git_branch: process.env.COOLIFY_DEFAULT_GIT_BRANCH?.trim() || "main",
-    build_pack: runtimeBuildPack(runtime),
+    build_pack: buildPack,
     ports_exposes: port,
     ...(baseDirectory ? { base_directory: baseDirectory } : {}),
-    ...runtimeDeploymentSettings(runtime),
+    // A project's own Dockerfile already defines install/build/start steps —
+    // forcing Nixpacks-specific settings on top of it would be meaningless
+    // (and some Coolify versions reject unknown fields for this build pack).
+    ...(buildPack === "nixpacks" ? runtimeDeploymentSettings(runtime) : {}),
     is_auto_deploy_enabled: true,
     is_force_https_enabled: true,
     autogenerate_domain: !domain,
@@ -361,7 +429,7 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
   };
 
   if (domain) commonPayload.domains = domain;
-  if (runtime === "static") {
+  if (runtime === "static" && buildPack === "static") {
     commonPayload.is_static = true;
     commonPayload.static_image = process.env.COOLIFY_STATIC_IMAGE?.trim() || "nginx:alpine";
   }
@@ -379,16 +447,24 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
   return coolifyRequest<CoolifyApplication>("POST", "/applications/public", commonPayload);
 }
 
-async function updateCoolifyApplicationSettings(project: Project, applicationUuid: string): Promise<void> {
+async function updateCoolifyApplicationSettings(project: Project, applicationUuid: string, buildPack: BuildPack): Promise<void> {
   const runtime = project.runtime as Runtime;
-  const settings = runtimeDeploymentSettings(runtime);
+  const settings = buildPack === "nixpacks" ? runtimeDeploymentSettings(runtime) : {};
   const baseDirectory = normalizeBaseDirectory(project.baseDirectory);
 
   await coolifyRequest("PATCH", `/applications/${applicationUuid}`, {
+    // Retrofits existing applications (created before this project added a
+    // Dockerfile, or before this feature existed) onto the right build pack
+    // on the next deploy, instead of only applying it to brand-new apps.
+    build_pack: buildPack,
     ...settings,
     ports_exposes: runtimePort(runtime),
     base_directory: baseDirectory ?? "/",
   });
+
+  // Dockerfile-based apps own their own install/build/start steps, so there's
+  // no Nixpacks install_command to reconcile against.
+  if (buildPack !== "nixpacks") return;
 
   const updated = await coolifyRequest<CoolifyApplication>("GET", `/applications/${applicationUuid}`);
   if (
@@ -399,13 +475,13 @@ async function updateCoolifyApplicationSettings(project: Project, applicationUui
   }
 }
 
-async function syncApplicationEnv(applicationUuid: string, runtime: Runtime, projectId: number): Promise<void> {
+async function syncApplicationEnv(applicationUuid: string, runtime: Runtime, buildPack: BuildPack, projectId: number): Promise<void> {
   const rows = await db
     .select({ key: envVarsTable.key, value: envVarsTable.value })
     .from(envVarsTable)
     .where(eq(envVarsTable.projectId, projectId));
 
-  const envs = buildApplicationEnv(runtime, rows);
+  const envs = buildApplicationEnv(runtime, buildPack, rows);
   if (envs.length === 0) return;
 
   await coolifyRequest("PATCH", `/applications/${applicationUuid}/envs/bulk`, {
@@ -482,8 +558,9 @@ export async function deployProjectWithCoolify(project: Project, deploymentId: n
     throw new CoolifyError("Application resource tidak tersedia setelah provisioning.");
   }
 
-  await updateCoolifyApplicationSettings(project, resource.coolifyApplicationUuid);
-  await syncApplicationEnv(resource.coolifyApplicationUuid, project.runtime as Runtime, project.id);
+  const buildPack = await resolveBuildPack(project, project.runtime as Runtime);
+  await updateCoolifyApplicationSettings(project, resource.coolifyApplicationUuid, buildPack);
+  await syncApplicationEnv(resource.coolifyApplicationUuid, project.runtime as Runtime, buildPack, project.id);
 
   const response = await coolifyRequest<CoolifyDeploymentResponse>(
     "POST",
@@ -525,9 +602,9 @@ const BUILD_FAILURE_PATTERNS: Array<{ test: (logs: string) => boolean; diagnose:
       const match = logs.match(/undefined variable '(nodejs_\d+)'/);
       const requested = match?.[1] ?? "versi Node yang diminta";
       return {
-        title: "Versi Node.js tidak dikenali oleh builder",
+        title: "Versi Node.js tidak dikenali oleh builder Nixpacks",
         explanation: `Project ini punya \`nixpacks.toml\` yang minta paket \`${requested}\`, tapi builder Nixpacks di server Mution memakai snapshot Nix yang belum mengenal paket tersebut (biasanya karena versi Node terlalu baru untuk snapshot yang terpasang).`,
-        suggestion: "Coba turunkan versi di nixpacks.toml (mis. `nodejs_22` atau `nodejs_20`, keduanya LTS dan didukung), lalu deploy ulang. Jika masalah berlanjut untuk semua project, builder Nixpacks di server Mution perlu diperbarui oleh admin platform.",
+        suggestion: "Tambahkan `Dockerfile` di root repo (kalau belum ada) — Mution otomatis memakai Dockerfile itu dan skip Nixpacks kalau terdeteksi, jadi masalah ini gak muncul lagi. Alternatif cepat: turunkan versi di nixpacks.toml ke `nodejs_22` atau `nodejs_20`, lalu deploy ulang.",
       };
     },
   },
