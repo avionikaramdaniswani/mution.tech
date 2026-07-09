@@ -1,0 +1,370 @@
+Deployment is
+Failed
+Find in logs
+
+
+
+
+
+
+2026-Jul-09 16:03:48.520912
+Docker 29.6.1 with BuildKit and Buildx detected on deployment server (Mution Server B).
+2026-Jul-09 16:03:48.529126
+Starting deployment of avionikaramdaniswani/piodev.studio.git:main to Mution Server B.
+2026-Jul-09 16:03:52.367529
+Preparing container with helper image: ghcr.io/coollabsio/coolify-helper:1.0.14
+2026-Jul-09 16:03:58.255506
+----------------------------------------
+2026-Jul-09 16:03:58.264196
+Importing avionikaramdaniswani/piodev.studio.git:main (commit sha f8c4bb50790585d1777dae711b01ea91196beb3d) to /artifacts/wcbxuwtsy5lszy9y9bfumh86.
+2026-Jul-09 16:04:06.772681
+Generating nixpacks configuration with: nixpacks plan -f json --env 'NIXPACKS_NODE_VERSION=22' --env 'NIXPACKS_INSTALL_CMD=pnpm install --no-frozen-lockfile' --env 'COOLIFY_URL=http://bth7cy65qza5fy363pefzfok.168.110.215.158.sslip.io' --env 'COOLIFY_FQDN=bth7cy65qza5fy363pefzfok.168.110.215.158.sslip.io' --env 'COOLIFY_BRANCH=main' --env 'COOLIFY_RESOURCE_UUID=bth7cy65qza5fy363pefzfok' --install-cmd 'pnpm install --no-frozen-lockfile' /artifacts/wcbxuwtsy5lszy9y9bfumh86
+2026-Jul-09 16:04:09.466216
+Found application type: node.
+2026-Jul-09 16:04:09.473626
+If you need further customization, please check the documentation of Nixpacks: https://nixpacks.com/docs/providers/node
+2026-Jul-09 16:04:14.744439
+----------------------------------------
+2026-Jul-09 16:04:14.752132
+Building docker image started.
+2026-Jul-09 16:04:14.759689
+To check the current progress, click on Show Debug Logs.
+2026-Jul-09 16:07:12.620785
+========================================
+2026-Jul-09 16:07:12.633918
+Deployment failed: Command execution failed (exit code 1): sudo docker exec wcbxuwtsy5lszy9y9bfumh86 bash -c 'bash /artifacts/build.sh'
+2026-Jul-09 16:07:12.633918
+Error: #0 building with "default" instance using docker driver
+2026-Jul-09 16:07:12.633918
+2026-Jul-09 16:07:12.633918
+#1 [internal] load build definition from Dockerfile
+2026-Jul-09 16:07:12.633918
+#1 transferring dockerfile: 1.26kB done
+2026-Jul-09 16:07:12.633918
+#1 DONE 0.0s
+2026-Jul-09 16:07:12.633918
+2026-Jul-09 16:07:12.633918
+#2 [internal] load metadata for ghcr.io/railwayapp/nixpacks:ubuntu-1745885067
+2026-Jul-09 16:07:12.633918
+#2 DONE 0.8s
+2026-Jul-09 16:07:12.633918
+2026-Jul-09 16:07:12.633918
+#3 [internal] load .dockerignore
+2026-Jul-09 16:07:12.633918
+#3 transferring context: 100B done
+2026-Jul-09 16:07:12.633918
+#3 DONE 0.0s
+2026-Jul-09 16:07:12.633918
+2026-Jul-09 16:07:12.633918
+#4 [ 1/11] FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de
+2026-Jul-09 16:07:12.633918
+#4 resolve ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de 0.0s done
+2026-Jul-09 16:07:12.633918
+#4 DONE 0.0s
+2026-Jul-09 16:07:12.633918
+2026-Jul-09 16:07:12.633918
+#5 [ 2/11] WORKDIR /app/
+2026-Jul-09 16:07:12.633918
+#5 CACHED
+2026-Jul-09 16:07:12.633918
+2026-Jul-09 16:07:12.633918
+#6 [internal] load build context
+2026-Jul-09 16:07:12.633918
+#6 transferring context: 939.37kB 0.1s done
+2026-Jul-09 16:07:12.633918
+#6 DONE 0.1s
+2026-Jul-09 16:07:12.633918
+2026-Jul-09 16:07:12.633918
+#7 [ 3/11] COPY .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix
+2026-Jul-09 16:07:12.633918
+#7 DONE 0.1s
+2026-Jul-09 16:07:12.633918
+2026-Jul-09 16:07:12.633918
+#8 [ 4/11] RUN nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d
+2026-Jul-09 16:07:12.633918
+#8 0.123 unpacking 'https://github.com/NixOS/nixpkgs/archive/ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.tar.gz' into the Git cache...
+2026-Jul-09 16:07:12.633918
+#8 39.47 unpacking 'https:<REDACTED>@types/express-rate-limit@6.0.2
+2026-Jul-09 16:07:12.633918
+#11 2.141 Progress: resolved 56, reused 0, downloaded 55, added 0
+2026-Jul-09 16:07:12.633918
+#11 3.143 Progress: resolved 68, reused 0, downloaded 67, added 0
+2026-Jul-09 16:07:12.633918
+#11 4.143 Progress: resolved 78, reused 0, downloaded 78, added 0
+2026-Jul-09 16:07:12.633918
+#11 5.143 Progress: resolved 80, reused 0, downloaded 80, added 0
+2026-Jul-09 16:07:12.633918
+#11 6.144 Progress: resolved 81, reused 0, downloaded 81, added 0
+2026-Jul-09 16:07:12.633918
+#11 7.145 Progress: resolved 82, reused 0, downloaded 82, added 0
+2026-Jul-09 16:07:12.633918
+#11 8.145 Progress: resolved 89, reused 0, downloaded 89, added 0
+2026-Jul-09 16:07:12.633918
+#11 10.00 Progress: resolved 89, reused 0, downloaded 90, added 0
+2026-Jul-09 16:07:12.633918
+#11 11.00 Progress: resolved 207, reused 0, downloaded 191, added 0
+2026-Jul-09 16:07:12.633918
+#11 12.00 Progress: resolved 223, reused 0, downloaded 207, added 0
+2026-Jul-09 16:07:12.633918
+#11 13.00 Progress: resolved 278, reused 0, downloaded 262, added 0
+2026-Jul-09 16:07:12.633918
+#11 14.00 Progress: resolved 357, reused 0, downloaded 314, added 0
+2026-Jul-09 16:07:12.633918
+#11 15.00 Progress: resolved 430, reused 0, downloaded 316, added 0
+2026-Jul-09 16:07:12.633918
+#11 16.01 Progress: resolved 502, reused 0, downloaded 394, added 0
+2026-Jul-09 16:07:12.633918
+#11 17.01 Progress: resolved 584, reused 0, downloaded 466, added 0
+2026-Jul-09 16:07:12.633918
+#11 18.01 Progress: resolved 646, reused 0, downloaded 530, added 0
+2026-Jul-09 16:07:12.633918
+#11 19.01 Progress: resolved 675, reused 0, downloaded 561, added 0
+2026-Jul-09 16:07:12.633918
+#11 20.01 Progress: resolved 676, reused 0, downloaded 562, added 0
+2026-Jul-09 16:07:12.633918
+#11 20.41  WARN  2 deprecated subdependencies found: @esbuild-kit/core-utils@3.3.2, @esbuild-kit/esm-loader@2.6.5
+2026-Jul-09 16:07:12.633918
+#11 20.43 Packages: +562
+2026-Jul-09 16:07:12.633918
+#11 20.43 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-Jul-09 16:07:12.633918
+#11 21.01 Progress: resolved 676, reused 0, downloaded 562, added 177
+2026-Jul-09 16:07:12.633918
+#11 22.01 Progress: resolved 676, reused 0, downloaded 562, added 363
+2026-Jul-09 16:07:12.633918
+#11 22.93 Progress: resolved 676, reused 0, downloaded 562, added 562, done
+2026-Jul-09 16:07:12.633918
+#11 23.24 .../core-js@3.49.0/node_modules/core-js postinstall$ node -e "try{require('./postinstall')}catch(e){}"
+2026-Jul-09 16:07:12.633918
+#11 23.26 .../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js
+2026-Jul-09 16:07:12.633918
+#11 23.27 .../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+2026-Jul-09 16:07:12.633918
+#11 23.27 .../esbuild@0.18.20/node_modules/esbuild postinstall$ node install.js
+2026-Jul-09 16:07:12.633918
+#11 23.32 .../core-js@3.49.0/node_modules/core-js postinstall: Done
+2026-Jul-09 16:07:12.633918
+#11 23.43 .../esbuild@0.25.12/node_modules/esbuild postinstall: Done
+2026-Jul-09 16:07:12.633918
+#11 23.43 .../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+2026-Jul-09 16:07:12.633918
+#11 23.44 .../esbuild@0.18.20/node_modules/esbuild postinstall: Done
+2026-Jul-09 16:07:12.633918
+#11 25.59 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+2026-Jul-09 16:07:12.633918
+#11 25.61 . preinstall: Done
+2026-Jul-09 16:07:12.633918
+#11 25.76
+2026-Jul-09 16:07:12.633918
+#11 25.76 dependencies:
+2026-Jul-09 16:07:12.633918
+#11 25.76 + concurrently 9.2.1
+2026-Jul-09 16:07:12.633918
+#11 25.76
+2026-Jul-09 16:07:12.633918
+#11 25.76 devDependencies:
+2026-Jul-09 16:07:12.633918
+#11 25.76 + prettier 3.8.1 (3.9.4 is available)
+2026-Jul-09 16:07:12.633918
+#11 25.76 + typescript 5.9.3 (7.0.2 is available)
+2026-Jul-09 16:07:12.633918
+#11 25.76
+2026-Jul-09 16:07:12.633918
+#11 25.76  WARN  Issues with peer dependencies found
+2026-Jul-09 16:07:12.633918
+#11 25.76 artifacts/api-server
+2026-Jul-09 16:07:12.633918
+#11 25.76 └─┬ esbuild-plugin-pino 2.3.3
+2026-Jul-09 16:07:12.633918
+#11 25.76   └── ✕ unmet peer esbuild@">=0.25.0 <=0.25.8": found 0.27.3
+2026-Jul-09 16:07:12.633918
+#11 25.76
+2026-Jul-09 16:07:12.633918
+#11 25.80 Done in 25.6s using pnpm v9.15.9
+2026-Jul-09 16:07:12.633918
+#11 DONE 28.1s
+2026-Jul-09 16:07:12.633918
+2026-Jul-09 16:07:12.633918
+#12 [ 8/11] COPY . /app/.
+2026-Jul-09 16:07:12.633918
+#12 DONE 0.6s
+2026-Jul-09 16:07:12.633918
+2026-Jul-09 16:07:12.633918
+#13 [ 9/11] RUN  pnpm run build
+2026-Jul-09 16:07:12.633918
+#13 0.591
+2026-Jul-09 16:07:12.633918
+#13 0.591 > workspace@0.0.0 build /app
+2026-Jul-09 16:07:12.633918
+#13 0.591 > pnpm run typecheck && pnpm -r --if-present run build
+2026-Jul-09 16:07:12.633918
+#13 0.591
+2026-Jul-09 16:07:12.633918
+#13 1.098
+2026-Jul-09 16:07:12.633918
+#13 1.098 > workspace@0.0.0 typecheck /app
+2026-Jul-09 16:07:12.633918
+#13 1.098 > pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --if-present run typecheck
+2026-Jul-09 16:07:12.633918
+#13 1.098
+2026-Jul-09 16:07:12.633918
+#13 1.601
+2026-Jul-09 16:07:12.633918
+#13 1.601 > workspace@0.0.0 typecheck:libs /app
+2026-Jul-09 16:07:12.633918
+#13 1.601 > tsc --build
+2026-Jul-09 16:07:12.633918
+#13 1.601
+2026-Jul-09 16:07:12.633918
+#13 7.576 Scope: 3 of 8 workspace projects
+2026-Jul-09 16:07:12.633918
+#13 7.580 artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+2026-Jul-09 16:07:12.633918
+#13 7.581 artifacts/iconvault typecheck$ tsc -p tsconfig.json --noEmit
+2026-Jul-09 16:07:12.633918
+#13 7.581 scripts typecheck$ tsc -p tsconfig.json --noEmit
+2026-Jul-09 16:07:12.633918
+#13 10.37 scripts typecheck: Done
+2026-Jul-09 16:07:12.633918
+#13 14.41 artifacts/api-server typecheck: src/routes/admin-users.ts(19,12): error TS2769: No overload matches this call.
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck:   Overload 1 of 3, '(left: PgColumn<{ name: "id"; tableName: "profiles"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: true; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>, right: string | SQLWrapper): SQL<...>', gave the following error.
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck:     Argument of type 'string | string[]' is not assignable to parameter of type 'string | SQLWrapper'.
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck:       Type 'string[]' is not assignable to type 'string | SQLWrapper'.
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck:   Overload 2 of 3, '(left: Aliased<string | string[]>, right: string | string[] | SQLWrapper): SQL<unknown>', gave the following error.
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck:     Argument of type 'PgColumn<{ name: "id"; tableName: "profiles"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: true; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'Aliased<string | string[]>'.
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck:       Type 'PgColumn<{ name: "id"; tableName: "profiles"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: true; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>' is missing the following properties from type 'Aliased<string | string[]>': sql, fieldAlias
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck:   Overload 3 of 3, '(left: never, right: unknown): SQL<unknown>', gave the following error.
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck:     Argument of type 'PgColumn<{ name: "id"; tableName: "profiles"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: false; isPrimaryKey: true; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'never'.
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck: src/routes/analytics.ts(74,29): error TS2352: Conversion of type 'QueryResult<Record<string, unknown>>' to type '{ rows: { month: string; count: number; }[]; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck:   Types of property 'rows' are incompatible.
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck:     Type 'Record<string, unknown>[]' is not comparable to type '{ month: string; count: number; }[]'.
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck:       Type 'Record<string, unknown>' is missing the following properties from type '{ month: string; count: number; }': month, count
+2026-Jul-09 16:07:12.633918
+#13 14.42 artifacts/api-server typecheck: src/routes/codes.ts(55,12): error TS2769: No overload matches this call.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:   Overload 1 of 3, '(left: PgColumn<{ name: "id"; tableName: "redeem_codes"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>, right: string | SQLWrapper): SQL<...>', gave the following error.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:     Argument of type 'string | string[]' is not assignable to parameter of type 'string | SQLWrapper'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:       Type 'string[]' is not assignable to type 'string | SQLWrapper'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:   Overload 2 of 3, '(left: Aliased<string | string[]>, right: string | string[] | SQLWrapper): SQL<unknown>', gave the following error.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:     Argument of type 'PgColumn<{ name: "id"; tableName: "redeem_codes"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'Aliased<string | string[]>'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:       Type 'PgColumn<{ name: "id"; tableName: "redeem_codes"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>' is missing the following properties from type 'Aliased<string | string[]>': sql, fieldAlias
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:   Overload 3 of 3, '(left: never, right: unknown): SQL<unknown>', gave the following error.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:     Argument of type 'PgColumn<{ name: "id"; tableName: "redeem_codes"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'never'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck: src/routes/codes.ts(64,43): error TS2769: No overload matches this call.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:   Overload 1 of 3, '(left: PgColumn<{ name: "id"; tableName: "redeem_codes"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>, right: string | SQLWrapper): SQL<...>', gave the following error.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:     Argument of type 'string | string[]' is not assignable to parameter of type 'string | SQLWrapper'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:       Type 'string[]' is not assignable to type 'string | SQLWrapper'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:   Overload 2 of 3, '(left: Aliased<string | string[]>, right: string | string[] | SQLWrapper): SQL<unknown>', gave the following error.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:     Argument of type 'PgColumn<{ name: "id"; tableName: "redeem_codes"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'Aliased<string | string[]>'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:       Type 'PgColumn<{ name: "id"; tableName: "redeem_codes"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>' is missing the following properties from type 'Aliased<string | string[]>': sql, fieldAlias
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:   Overload 3 of 3, '(left: never, right: unknown): SQL<unknown>', gave the following error.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:     Argument of type 'PgColumn<{ name: "id"; tableName: "redeem_codes"; dataType: "string"; columnType: "PgUUID"; data: string; driverParam: string; notNull: true; hasDefault: true; isPrimaryKey: true; isAutoincrement: false; ... 4 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'never'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck: src/routes/icons.ts(91,7): error TS2345: Argument of type 'SQL<unknown> | undefined' is not assignable to parameter of type 'SQL<unknown>'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:   Type 'undefined' is not assignable to type 'SQL<unknown>'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck: src/routes/icons.ts(264,23): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:   Type 'string[]' is not assignable to type 'string'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck: src/routes/icons.ts(299,23): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+2026-Jul-09 16:07:12.633918
+#13 14.43 artifacts/api-server typecheck:   Type 'string[]' is not assignable to type 'string'.
+2026-Jul-09 16:07:12.633918
+#13 14.45 artifacts/api-server typecheck: Failed
+2026-Jul-09 16:07:12.633918
+#13 14.45 /app/artifacts/api-server:
+2026-Jul-09 16:07:12.633918
+#13 14.45  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 typecheck: `tsc -p tsconfig.json --noEmit`
+2026-Jul-09 16:07:12.633918
+#13 14.45 Exit status 2
+2026-Jul-09 16:07:12.633918
+#13 14.48  ELIFECYCLE  Command failed with exit code 2.
+2026-Jul-09 16:07:12.633918
+#13 14.50  ELIFECYCLE  Command failed with exit code 2.
+2026-Jul-09 16:07:12.633918
+#13 ERROR: process "/bin/bash -ol pipefail -c pnpm run build" did not complete successfully: exit code: 2
+2026-Jul-09 16:07:12.633918
+------
+2026-Jul-09 16:07:12.633918
+> [ 9/11] RUN  pnpm run build:
+2026-Jul-09 16:07:12.633918
+14.43 artifacts/api-server typecheck: src/routes/icons.ts(264,23): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+2026-Jul-09 16:07:12.633918
+14.43 artifacts/api-server typecheck:   Type 'string[]' is not assignable to type 'string'.
+2026-Jul-09 16:07:12.633918
+14.43 artifacts/api-server typecheck: src/routes/icons.ts(299,23): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+2026-Jul-09 16:07:12.633918
+14.43 artifacts/api-server typecheck:   Type 'string[]' is not assignable to type 'string'.
+2026-Jul-09 16:07:12.633918
+14.45 artifacts/api-server typecheck: Failed
+2026-Jul-09 16:07:12.633918
+14.45 /app/artifacts/api-server:
+2026-Jul-09 16:07:12.633918
+14.45  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 typecheck: `tsc -p tsconfig.json --noEmit`
+2026-Jul-09 16:07:12.633918
+14.45 Exit status 2
+2026-Jul-09 16:07:12.633918
+14.48  ELIFECYCLE  Command failed with exit code 2.
+2026-Jul-09 16:07:12.633918
+14.50  ELIFECYCLE  Command failed with exit code 2.
+2026-Jul-09 16:07:12.633918
+------
+2026-Jul-09 16:07:12.633918
+2026-Jul-09 16:07:12.633918
+1 warning found (use docker --debug to expand):
+2026-Jul-09 16:07:12.633918
+- UndefinedVar: Usage of undefined variable '$NIXPACKS_PATH' (line 18)
+2026-Jul-09 16:07:12.633918
+Dockerfile:24
+2026-Jul-09 16:07:12.633918
+--------------------
+2026-Jul-09 16:07:12.633918
+22 |     # build phase
+2026-Jul-09 16:07:12.633918
+23 |     COPY . /app/.
+2026-Jul-09 16:07:12.633918
+24 | >>> RUN  pnpm run build
+2026-Jul-09 16:07:12.633918
+25 |
+2026-Jul-09 16:07:12.633918
+26 |
+2026-Jul-09 16:07:12.633918
+--------------------
+2026-Jul-09 16:07:12.633918
+ERROR: failed to build: failed to solve: process "/bin/bash -ol pipefail -c pnpm run build" did not complete successfully: exit code: 2
+2026-Jul-09 16:07:12.633918
+exit status 1
+2026-Jul-09 16:07:12.780457
+========================================
+2026-Jul-09 16:07:12.797431
+Deployment failed. Removing the new version of your application.
