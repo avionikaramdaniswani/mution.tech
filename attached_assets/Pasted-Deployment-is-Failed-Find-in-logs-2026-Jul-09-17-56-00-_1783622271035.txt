@@ -1,0 +1,461 @@
+Deployment is
+Failed
+Find in logs
+
+
+
+
+
+
+2026-Jul-09 17:56:00.987090
+Docker 29.6.1 with BuildKit and Buildx detected on deployment server (Mution Server B).
+2026-Jul-09 17:56:00.998229
+Starting deployment of avionikaramdaniswani/konveksi.git:main to Mution Server B.
+2026-Jul-09 17:56:05.530261
+Preparing container with helper image: ghcr.io/coollabsio/coolify-helper:1.0.14
+2026-Jul-09 17:56:11.457864
+----------------------------------------
+2026-Jul-09 17:56:11.465026
+Importing avionikaramdaniswani/konveksi.git:main (commit sha f59ab30fec1b40745a5fa4b0c65459a60cc1d889) to /artifacts/k8xlf1ifx05yrelkrsjj7aw4.
+2026-Jul-09 17:56:31.275627
+----------------------------------------
+2026-Jul-09 17:56:31.283001
+Building docker image started.
+2026-Jul-09 17:56:31.290531
+To check the current progress, click on Show Debug Logs.
+2026-Jul-09 17:57:18.547056
+========================================
+2026-Jul-09 17:57:18.556594
+Deployment failed: Command execution failed (exit code 1): sudo docker exec k8xlf1ifx05yrelkrsjj7aw4 bash -c 'bash /artifacts/build.sh'
+2026-Jul-09 17:57:18.556594
+Error: #0 building with "default" instance using docker driver
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#1 [internal] load build definition from Dockerfile
+2026-Jul-09 17:57:18.556594
+#1 transferring dockerfile: 1.58kB done
+2026-Jul-09 17:57:18.556594
+#1 DONE 0.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#2 [internal] load metadata for docker.io/library/node:20-slim
+2026-Jul-09 17:57:18.556594
+#2 DONE 2.7s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#3 [internal] load .dockerignore
+2026-Jul-09 17:57:18.556594
+#3 transferring context: 128B done
+2026-Jul-09 17:57:18.556594
+#3 DONE 0.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#4 [ 1/15] FROM docker.io/library/node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
+2026-Jul-09 17:57:18.556594
+#4 resolve docker.io/library/node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 0.0s done
+2026-Jul-09 17:57:18.556594
+#4 DONE 0.1s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#5 [internal] load build context
+2026-Jul-09 17:57:18.556594
+#5 transferring context: 8.70MB 0.1s done
+2026-Jul-09 17:57:18.556594
+#5 DONE 0.1s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#4 [ 1/15] FROM docker.io/library/node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
+2026-Jul-09 17:57:18.556594
+#4 sha256:ed7f19ee07f992aa9ce9fa1ca75db4ae36641464e404f6b720b4afce41cab9e4 0B / 447B 0.2s
+2026-Jul-09 17:57:18.556594
+#4 sha256:ed7f19ee07f992aa9ce9fa1ca75db4ae36641464e404f6b720b4afce41cab9e4 447B / 447B 0.2s done
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 0B / 41.39MB 0.3s
+2026-Jul-09 17:57:18.556594
+#4 sha256:791fd1b17847094616ace4f04066a269c36bb89561d5d7f1a0dba4f615e16716 0B / 1.71MB 0.2s
+2026-Jul-09 17:57:18.556594
+#4 sha256:93f1e44b7642d94207805933fd52fd7b5a5a684cf69b340ae3df415754a0a614 0B / 3.31kB 0.2s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 0B / 28.12MB 0.2s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 3.15MB / 41.39MB 0.6s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 5.24MB / 41.39MB 1.1s
+2026-Jul-09 17:57:18.556594
+#4 sha256:791fd1b17847094616ace4f04066a269c36bb89561d5d7f1a0dba4f615e16716 1.05MB / 1.71MB 1.1s
+2026-Jul-09 17:57:18.556594
+#4 sha256:93f1e44b7642d94207805933fd52fd7b5a5a684cf69b340ae3df415754a0a614 3.31kB / 3.31kB 1.3s done
+2026-Jul-09 17:57:18.556594
+#4 sha256:791fd1b17847094616ace4f04066a269c36bb89561d5d7f1a0dba4f615e16716 1.71MB / 1.71MB 1.3s done
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 7.34MB / 41.39MB 1.5s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 9.44MB / 41.39MB 2.1s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 2.10MB / 28.12MB 2.1s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 4.19MB / 28.12MB 2.7s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 11.53MB / 41.39MB 3.0s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 6.29MB / 28.12MB 3.3s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 13.63MB / 41.39MB 3.8s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 15.73MB / 41.39MB 4.2s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 8.39MB / 28.12MB 4.4s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 17.83MB / 41.39MB 4.8s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 10.49MB / 28.12MB 5.1s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 19.92MB / 41.39MB 5.4s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 22.02MB / 41.39MB 6.0s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 12.58MB / 28.12MB 5.9s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 14.68MB / 28.12MB 6.5s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 24.12MB / 41.39MB 6.9s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 16.78MB / 28.12MB 6.9s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 18.87MB / 28.12MB 7.5s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 26.21MB / 41.39MB 8.0s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 20.97MB / 28.12MB 8.1s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 28.31MB / 41.39MB 8.7s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 23.07MB / 28.12MB 8.9s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 30.41MB / 41.39MB 9.3s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 25.17MB / 28.12MB 9.5s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 32.51MB / 41.39MB 10.1s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 27.26MB / 28.12MB 10.2s
+2026-Jul-09 17:57:18.556594
+#4 sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 28.12MB / 28.12MB 10.4s done
+2026-Jul-09 17:57:18.556594
+#4 extracting sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 35.65MB / 41.39MB 11.0s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 37.75MB / 41.39MB 11.3s
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 39.85MB / 41.39MB 11.6s
+2026-Jul-09 17:57:18.556594
+#4 extracting sha256:46ac7a0b9811e518f6b5a0d52940c913a1a560a8f78b82267804914e50244d2d 0.9s done
+2026-Jul-09 17:57:18.556594
+#4 extracting sha256:93f1e44b7642d94207805933fd52fd7b5a5a684cf69b340ae3df415754a0a614 0.0s done
+2026-Jul-09 17:57:18.556594
+#4 sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 41.39MB / 41.39MB 12.0s done
+2026-Jul-09 17:57:18.556594
+#4 extracting sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf
+2026-Jul-09 17:57:18.556594
+#4 extracting sha256:b007268d7e627275df714577a74837e42ee450306295c30b987d482c667fbedf 0.8s done
+2026-Jul-09 17:57:18.556594
+#4 DONE 13.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#4 [ 1/15] FROM docker.io/library/node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
+2026-Jul-09 17:57:18.556594
+#4 extracting sha256:791fd1b17847094616ace4f04066a269c36bb89561d5d7f1a0dba4f615e16716 0.0s done
+2026-Jul-09 17:57:18.556594
+#4 extracting sha256:ed7f19ee07f992aa9ce9fa1ca75db4ae36641464e404f6b720b4afce41cab9e4 0.0s done
+2026-Jul-09 17:57:18.556594
+#4 DONE 13.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#6 [ 2/15] WORKDIR /app
+2026-Jul-09 17:57:18.556594
+#6 DONE 1.7s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#7 [ 3/15] RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
+2026-Jul-09 17:57:18.556594
+#7 0.317 Preparing pnpm@10.26.1 for immediate activation...
+2026-Jul-09 17:57:18.556594
+#7 DONE 1.8s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#8 [ 4/15] COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+2026-Jul-09 17:57:18.556594
+#8 DONE 0.1s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#9 [ 5/15] COPY lib/api-client-react/package.json ./lib/api-client-react/
+2026-Jul-09 17:57:18.556594
+#9 DONE 0.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#10 [ 6/15] COPY lib/api-spec/package.json        ./lib/api-spec/
+2026-Jul-09 17:57:18.556594
+#10 DONE 0.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#11 [ 7/15] COPY lib/api-zod/package.json         ./lib/api-zod/
+2026-Jul-09 17:57:18.556594
+#11 DONE 0.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#12 [ 8/15] COPY lib/db/package.json              ./lib/db/
+2026-Jul-09 17:57:18.556594
+#12 DONE 0.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#13 [ 9/15] COPY scripts/package.json             ./scripts/
+2026-Jul-09 17:57:18.556594
+#13 DONE 0.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#14 [10/15] COPY artifacts/vanny-konveksi/package.json  ./artifacts/vanny-konveksi/
+2026-Jul-09 17:57:18.556594
+#14 DONE 0.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#15 [11/15] COPY artifacts/api-server/package.json      ./artifacts/api-server/
+2026-Jul-09 17:57:18.556594
+#15 DONE 0.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#16 [12/15] COPY artifacts/mockup-sandbox/package.json  ./artifacts/mockup-sandbox/
+2026-Jul-09 17:57:18.556594
+#16 DONE 0.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#17 [13/15] RUN pnpm install --frozen-lockfile
+2026-Jul-09 17:57:18.556594
+#17 0.599 Scope: all 9 workspace projects
+2026-Jul-09 17:57:18.556594
+#17 0.833 Lockfile is up to date, resolution step is skipped
+2026-Jul-09 17:57:18.556594
+#17 0.965 Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-Jul-09 17:57:18.556594
+#17 1.094 Packages: +742
+2026-Jul-09 17:57:18.556594
+#17 1.094 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-Jul-09 17:57:18.556594
+#17 1.670
+2026-Jul-09 17:57:18.556594
+#17 1.670    ╭───────────────────────────────────────────────╮
+2026-Jul-09 17:57:18.556594
+#17 1.670    │                                               │
+2026-Jul-09 17:57:18.556594
+#17 1.670    │     Update available! 10.26.1 → 11.10.0.      │
+2026-Jul-09 17:57:18.556594
+#17 1.670    │     Changelog: https://pnpm.io/v/11.10.0      │
+2026-Jul-09 17:57:18.556594
+#17 1.670    │   To update, run:<REDACTED>@11.10.0   │
+2026-Jul-09 17:57:18.556594
+#17 1.670    │                                               │
+2026-Jul-09 17:57:18.556594
+#17 1.670    ╰───────────────────────────────────────────────╯
+2026-Jul-09 17:57:18.556594
+#17 1.670
+2026-Jul-09 17:57:18.556594
+#17 1.968 Progress: resolved 742, reused 0, downloaded 13, added 0
+2026-Jul-09 17:57:18.556594
+#17 2.968 Progress: resolved 742, reused 0, downloaded 61, added 16
+2026-Jul-09 17:57:18.556594
+#17 3.968 Progress: resolved 742, reused 0, downloaded 143, added 50
+2026-Jul-09 17:57:18.556594
+#17 4.969 Progress: resolved 742, reused 0, downloaded 274, added 107
+2026-Jul-09 17:57:18.556594
+#17 5.969 Progress: resolved 742, reused 0, downloaded 334, added 334
+2026-Jul-09 17:57:18.556594
+#17 6.971 Progress: resolved 742, reused 0, downloaded 350, added 350
+2026-Jul-09 17:57:18.556594
+#17 7.971 Progress: resolved 742, reused 0, downloaded 361, added 350
+2026-Jul-09 17:57:18.556594
+#17 8.973 Progress: resolved 742, reused 0, downloaded 364, added 350
+2026-Jul-09 17:57:18.556594
+#17 9.972 Progress: resolved 742, reused 0, downloaded 433, added 432
+2026-Jul-09 17:57:18.556594
+#17 10.98 Progress: resolved 742, reused 0, downloaded 526, added 519
+2026-Jul-09 17:57:18.556594
+#17 11.52  WARN  Tarball download average speed 35 KiB/s (size 218 KiB) is below 50 KiB/s: https://registry.npmjs.org/react-resizable-panels/-/react-resizable-panels-2.1.9.tgz (GET)
+2026-Jul-09 17:57:18.556594
+#17 11.97 Progress:<REDACTED>@0.27.3/node_modules/esbuild postinstall$ node install.js
+2026-Jul-09 17:57:18.556594
+#17 16.85 .../esbuild@0.27.3/node_modules/esbuild postinstall: [esbuild] Failed to find package "@esbuild/linux-arm64" on the file system
+2026-Jul-09 17:57:18.556594
+#17 16.85 .../esbuild@0.27.3/node_modules/esbuild postinstall: This can happen if you use the "--no-optional" flag. The "optionalDependencies"
+2026-Jul-09 17:57:18.556594
+#17 16.85 .../esbuild@0.27.3/node_modules/esbuild postinstall: package.json feature is used by esbuild to install the correct binary executable
+2026-Jul-09 17:57:18.556594
+#17 16.85 .../esbuild@0.27.3/node_modules/esbuild postinstall: for your current platform. This install script will now attempt to work around
+2026-Jul-09 17:57:18.556594
+#17 16.85 .../esbuild@0.27.3/node_modules/esbuild postinstall: this. If that fails, you need to remove the "--no-optional" flag to use esbuild.
+2026-Jul-09 17:57:18.556594
+#17 16.85 .../esbuild@0.27.3/node_modules/esbuild postinstall: [esbuild] Trying to install package "@esbuild/linux-arm64" using npm
+2026-Jul-09 17:57:18.556594
+#17 17.73 .../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+2026-Jul-09 17:57:18.556594
+#17 18.15
+2026-Jul-09 17:57:18.556594
+#17 18.15 devDependencies:
+2026-Jul-09 17:57:18.556594
+#17 18.15 + prettier 3.8.1
+2026-Jul-09 17:57:18.556594
+#17 18.15 + typescript 5.9.3
+2026-Jul-09 17:57:18.556594
+#17 18.15
+2026-Jul-09 17:57:18.556594
+#17 18.19 . preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+2026-Jul-09 17:57:18.556594
+#17 18.22 . preinstall: Done
+2026-Jul-09 17:57:18.556594
+#17 18.38 Done in 18.2s using pnpm v10.26.1
+2026-Jul-09 17:57:18.556594
+#17 DONE 22.0s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#18 [14/15] COPY . .
+2026-Jul-09 17:57:18.556594
+#18 DONE 0.6s
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+#19 [15/15] RUN PORT=3000 BASE_PATH=/ pnpm --filter @workspace/vanny-konveksi run build &&     pnpm --filter @workspace/api-server run build
+2026-Jul-09 17:57:18.556594
+#19 0.507
+2026-Jul-09 17:57:18.556594
+#19 0.507 > @workspace/vanny-konveksi@0.0.0 build /app/artifacts/vanny-konveksi
+2026-Jul-09 17:57:18.556594
+#19 0.507 > vite build --config vite.config.ts
+2026-Jul-09 17:57:18.556594
+#19 0.507
+2026-Jul-09 17:57:18.556594
+#19 0.661 /app/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js:115
+2026-Jul-09 17:57:18.556594
+#19 0.661 		throw new Error(
+2026-Jul-09 17:57:18.556594
+#19 0.661 		      ^
+2026-Jul-09 17:57:18.556594
+#19 0.661
+2026-Jul-09 17:57:18.556594
+#19 0.661 Error: Cannot find module @rollup/rollup-linux-arm64-gnu. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+2026-Jul-09 17:57:18.556594
+#19 0.661     at requireWithFriendlyError (/app/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js:<REDACTED>@4.59.0/node_modules/rollup/dist/native.js:124:76)
+2026-Jul-09 17:57:18.556594
+#19 0.661     ... 3 lines matching cause stack trace ...
+2026-Jul-09 17:57:18.556594
+#19 0.661     at Module._load (node:internal/modules/cjs/loader:1091:12)
+2026-Jul-09 17:57:18.556594
+#19 0.661     at cjsLoader (node:internal/modules/esm/translators:298:15)
+2026-Jul-09 17:57:18.556594
+#19 0.661     at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:240:7)
+2026-Jul-09 17:57:18.556594
+#19 0.661     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+2026-Jul-09 17:57:18.556594
+#19 0.661     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24) {
+2026-Jul-09 17:57:18.556594
+#19 0.661   [cause]: Error: Cannot find module '@rollup/rollup-linux-arm64-gnu'
+2026-Jul-09 17:57:18.556594
+#19 0.661   Require stack:
+2026-Jul-09 17:57:18.556594
+#19 0.661   - /app/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js
+2026-Jul-09 17:57:18.556594
+#19 0.661       at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+2026-Jul-09 17:57:18.556594
+#19 0.661       at Module._load (node:internal/modules/cjs/loader:1038:27)
+2026-Jul-09 17:57:18.556594
+#19 0.661       at Module.require (node:internal/modules/cjs/loader:1289:19)
+2026-Jul-09 17:57:18.556594
+#19 0.661       at require (node:internal/modules/helpers:182:18)
+2026-Jul-09 17:57:18.556594
+#19 0.661       at requireWithFriendlyError (/app/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js:97:10)
+2026-Jul-09 17:57:18.556594
+#19 0.661       at Object.<anonymous> (/app/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js:124:76)
+2026-Jul-09 17:57:18.556594
+#19 0.661       at Module._compile (node:internal/modules/cjs/loader:1521:14)
+2026-Jul-09 17:57:18.556594
+#19 0.661       at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+2026-Jul-09 17:57:18.556594
+#19 0.661       at Module.load (node:internal/modules/cjs/loader:1266:32)
+2026-Jul-09 17:57:18.556594
+#19 0.661       at Module._load (node:internal/modules/cjs/loader:1091:12) {
+2026-Jul-09 17:57:18.556594
+#19 0.661     code: 'MODULE_NOT_FOUND',
+2026-Jul-09 17:57:18.556594
+#19 0.661     requireStack: [
+2026-Jul-09 17:57:18.556594
+#19 0.661       '/app/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js'
+2026-Jul-09 17:57:18.556594
+#19 0.661     ]
+2026-Jul-09 17:57:18.556594
+#19 0.661   }
+2026-Jul-09 17:57:18.556594
+#19 0.661 }
+2026-Jul-09 17:57:18.556594
+#19 0.661
+2026-Jul-09 17:57:18.556594
+#19 0.661 Node.js v20.20.2
+2026-Jul-09 17:57:18.556594
+#19 0.713 /app/artifacts/vanny-konveksi:
+2026-Jul-09 17:57:18.556594
+#19 0.713  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/vanny-konveksi@0.0.0 build: `vite build --config vite.config.ts`
+2026-Jul-09 17:57:18.556594
+#19 0.713 Exit status 1
+2026-Jul-09 17:57:18.556594
+#19 ERROR: process "/bin/sh -c PORT=3000 BASE_PATH=/ pnpm --filter @workspace/vanny-konveksi run build &&     pnpm --filter @workspace/api-server run build" did not complete successfully: exit code: 1
+2026-Jul-09 17:57:18.556594
+------
+2026-Jul-09 17:57:18.556594
+> [15/15] RUN PORT=3000 BASE_PATH=/ pnpm --filter @workspace/vanny-konveksi run build &&     pnpm --filter @workspace/api-server run build:
+2026-Jul-09 17:57:18.556594
+0.661     requireStack: [
+2026-Jul-09 17:57:18.556594
+0.661       '/app/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js'
+2026-Jul-09 17:57:18.556594
+0.661     ]
+2026-Jul-09 17:57:18.556594
+0.661   }
+2026-Jul-09 17:57:18.556594
+0.661 }
+2026-Jul-09 17:57:18.556594
+0.661
+2026-Jul-09 17:57:18.556594
+0.661 Node.js v20.20.2
+2026-Jul-09 17:57:18.556594
+0.713 /app/artifacts/vanny-konveksi:
+2026-Jul-09 17:57:18.556594
+0.713  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/vanny-konveksi@0.0.0 build: `vite build --config vite.config.ts`
+2026-Jul-09 17:57:18.556594
+0.713 Exit status 1
+2026-Jul-09 17:57:18.556594
+------
+2026-Jul-09 17:57:18.556594
+2026-Jul-09 17:57:18.556594
+2 warnings found (use docker --debug to expand):
+2026-Jul-09 17:57:18.556594
+- SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "VITE_SUPABASE_ANON_KEY") (line 32)
+2026-Jul-09 17:57:18.556594
+- SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "VITE_SUPABASE_ANON_KEY") (line 36)
+2026-Jul-09 17:57:18.556594
+Dockerfile:38
+2026-Jul-09 17:57:18.556594
+--------------------
+2026-Jul-09 17:57:18.556594
+37 |
+2026-Jul-09 17:57:18.556594
+38 | >>> RUN PORT=3000 BASE_PATH=/ pnpm --filter @workspace/vanny-konveksi run build && \
+2026-Jul-09 17:57:18.556594
+39 | >>>     pnpm --filter @workspace/api-server run build
+2026-Jul-09 17:57:18.556594
+40 |
+2026-Jul-09 17:57:18.556594
+--------------------
+2026-Jul-09 17:57:18.556594
+ERROR: failed to build: failed to solve: process "/bin/sh -c PORT=3000 BASE_PATH=/ pnpm --filter @workspace/vanny-konveksi run build &&     pnpm --filter @workspace/api-server run build" did not complete successfully: exit code: 1
+2026-Jul-09 17:57:18.556594
+exit status 1
+2026-Jul-09 17:57:18.654338
+========================================
+2026-Jul-09 17:57:18.664241
+Deployment failed. Removing the new version of your application.
