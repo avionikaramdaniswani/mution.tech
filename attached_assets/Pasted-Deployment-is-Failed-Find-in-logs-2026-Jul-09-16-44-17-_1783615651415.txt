@@ -1,0 +1,328 @@
+Deployment is
+Failed
+Find in logs
+
+
+
+
+
+
+2026-Jul-09 16:44:17.027574
+Docker 29.6.1 with BuildKit and Buildx detected on deployment server (Mution Server B).
+2026-Jul-09 16:44:17.037130
+Starting deployment of avionikaramdaniswani/konveksi.git:main to Mution Server B.
+2026-Jul-09 16:44:20.750894
+Preparing container with helper image: ghcr.io/coollabsio/coolify-helper:1.0.14
+2026-Jul-09 16:44:26.552942
+----------------------------------------
+2026-Jul-09 16:44:26.560133
+Importing avionikaramdaniswani/konveksi.git:main (commit sha f59ab30fec1b40745a5fa4b0c65459a60cc1d889) to /artifacts/n52lxfig7ed1oi6b54jehxwd.
+2026-Jul-09 16:44:35.665978
+Generating nixpacks configuration with: nixpacks plan -f json --env 'NIXPACKS_NODE_VERSION=22' --env 'NIXPACKS_INSTALL_CMD=pnpm install --no-frozen-lockfile' --env 'COOLIFY_URL=http://iuuvkskcb1sh1dzy9fng73bw.168.110.215.158.sslip.io' --env 'COOLIFY_FQDN=iuuvkskcb1sh1dzy9fng73bw.168.110.215.158.sslip.io' --env 'COOLIFY_BRANCH=main' --env 'COOLIFY_RESOURCE_UUID=iuuvkskcb1sh1dzy9fng73bw' --install-cmd 'pnpm install --no-frozen-lockfile' /artifacts/n52lxfig7ed1oi6b54jehxwd
+2026-Jul-09 16:44:38.342662
+Found application type: node.
+2026-Jul-09 16:44:38.350062
+If you need further customization, please check the documentation of Nixpacks: https://nixpacks.com/docs/providers/node
+2026-Jul-09 16:44:43.543258
+----------------------------------------
+2026-Jul-09 16:44:43.551334
+Building docker image started.
+2026-Jul-09 16:44:43.559584
+To check the current progress, click on Show Debug Logs.
+2026-Jul-09 16:46:03.565940
+========================================
+2026-Jul-09 16:46:03.579309
+Deployment failed: Command execution failed (exit code 1): sudo docker exec n52lxfig7ed1oi6b54jehxwd bash -c 'bash /artifacts/build.sh'
+2026-Jul-09 16:46:03.579309
+Error: #0 building with "default" instance using docker driver
+2026-Jul-09 16:46:03.579309
+2026-Jul-09 16:46:03.579309
+#1 [internal] load build definition from Dockerfile
+2026-Jul-09 16:46:03.579309
+#1 transferring dockerfile: 1.42kB done
+2026-Jul-09 16:46:03.579309
+#1 DONE 0.0s
+2026-Jul-09 16:46:03.579309
+2026-Jul-09 16:46:03.579309
+#2 [internal] load metadata for ghcr.io/railwayapp/nixpacks:ubuntu-1745885067
+2026-Jul-09 16:46:03.579309
+#2 DONE 2.4s
+2026-Jul-09 16:46:03.579309
+2026-Jul-09 16:46:03.579309
+#3 [internal] load .dockerignore
+2026-Jul-09 16:46:03.579309
+#3 transferring context: 128B done
+2026-Jul-09 16:46:03.579309
+#3 DONE 0.0s
+2026-Jul-09 16:46:03.579309
+2026-Jul-09 16:46:03.579309
+#4 [ 1/12] FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de
+2026-Jul-09 16:46:03.579309
+#4 resolve ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de 0.0s done
+2026-Jul-09 16:46:03.579309
+#4 DONE 0.1s
+2026-Jul-09 16:46:03.579309
+2026-Jul-09 16:46:03.579309
+#5 [internal] load build context
+2026-Jul-09 16:46:03.579309
+#5 transferring context: 8.70MB 0.1s done
+2026-Jul-09 16:46:03.579309
+#5 DONE 0.2s
+2026-Jul-09 16:46:03.579309
+2026-Jul-09 16:46:03.579309
+#4 [ 1/12] FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de
+2026-Jul-09 16:46:03.579309
+#4 sha256:8d858e3aea7089e8d688727c3cb9377e58147c19b9450db5837728260f027ca3 0B / 337B 0.2s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 0B / 73.58MB 0.2s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 0B / 33.35MB 0.2s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 0B / 28.85MB 0.2s
+2026-Jul-09 16:46:03.579309
+#4 sha256:8d858e3aea7089e8d688727c3cb9377e58147c19b9450db5837728260f027ca3 337B / 337B 0.5s done
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 2.10MB / 28.85MB 0.8s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 2.10MB / 33.35MB 1.1s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 4.19MB / 28.85MB 1.7s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 6.29MB / 28.85MB 2.1s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 4.19MB / 33.35MB 2.4s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 8.39MB / 28.85MB 2.9s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 4.19MB / 73.58MB 3.3s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 6.29MB / 33.35MB 3.8s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 8.39MB / 73.58MB 4.7s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 8.39MB / 33.35MB 4.7s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 10.49MB / 28.85MB 4.7s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 10.49MB / 33.35MB 5.6s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 12.58MB / 28.85MB 5.9s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 12.58MB / 33.35MB 6.3s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 12.58MB / 73.58MB 6.9s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 14.68MB / 28.85MB 6.9s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 14.68MB / 33.35MB 7.7s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 16.78MB / 28.85MB 7.7s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 16.78MB / 33.35MB 8.4s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 18.87MB / 28.85MB 8.6s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 16.78MB / 73.58MB 9.5s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 18.87MB / 33.35MB 9.5s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 20.97MB / 28.85MB 9.8s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 20.97MB / 33.35MB 10.2s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 23.07MB / 28.85MB 11.0s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 23.07MB / 33.35MB 11.1s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 20.97MB / 73.58MB 11.7s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 25.17MB / 33.35MB 12.0s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 25.17MB / 28.85MB 12.0s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 27.26MB / 33.35MB 12.9s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 27.26MB / 28.85MB 13.4s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 25.17MB / 73.58MB 13.8s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 29.36MB / 33.35MB 14.1s
+2026-Jul-09 16:46:03.579309
+#4 sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 28.85MB / 28.85MB 14.2s done
+2026-Jul-09 16:46:03.579309
+#4 extracting sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 29.36MB / 73.58MB 15.0s
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 31.46MB / 33.35MB 15.0s
+2026-Jul-09 16:46:03.579309
+#4 extracting sha256:49b96e96358d7aed127d4f4cd2294d77d497c683123bbad89fa80a83d8ef64aa 0.9s done
+2026-Jul-09 16:46:03.579309
+#4 sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 33.35MB / 33.35MB 16.0s done
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 34.60MB / 73.58MB 16.2s
+2026-Jul-09 16:46:03.579309
+#4 extracting sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 38.80MB / 73.58MB 16.8s
+2026-Jul-09 16:46:03.579309
+#4 extracting sha256:37e0df5dbcdb8797436de5a0e034f92acb4faaf6b97977d1fd7dda237818e5bc 1.1s done
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 42.99MB / 73.58MB 17.6s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 47.19MB / 73.58MB 18.3s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 51.38MB / 73.58MB 18.9s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 55.57MB / 73.58MB 19.7s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 59.77MB / 73.58MB 20.4s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 63.96MB / 73.58MB 21.0s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 68.16MB / 73.58MB 21.8s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 72.35MB / 73.58MB 22.5s
+2026-Jul-09 16:46:03.579309
+#4 sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 73.58MB / 73.58MB 23.0s done
+2026-Jul-09 16:46:03.579309
+#4 extracting sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef
+2026-Jul-09 16:46:03.579309
+#4 extracting sha256:a9227ddc258c6ba11629c3a0294e7ce4c77eda7ed939636d67c2a361c6e820ef 1.0s done
+2026-Jul-09 16:46:03.579309
+#4 DONE 24.2s
+2026-Jul-09 16:46:03.579309
+2026-Jul-09 16:46:03.579309
+#4 [ 1/12] FROM ghcr.io/railwayapp/nixpacks:ubuntu-1745885067@sha256:d45c89d80e13d7ad0fd555b5130f22a866d9dd10e861f589932303ef2314c7de
+2026-Jul-09 16:46:03.579309
+#4 extracting sha256:8d858e3aea7089e8d688727c3cb9377e58147c19b9450db5837728260f027ca3 0.0s done
+2026-Jul-09 16:46:03.579309
+#4 DONE 24.2s
+2026-Jul-09 16:46:03.579309
+2026-Jul-09 16:46:03.579309
+#6 [ 2/12] WORKDIR /app/
+2026-Jul-09 16:46:03.579309
+#6 DONE 4.3s
+2026-Jul-09 16:46:03.579309
+2026-Jul-09 16:46:03.579309
+#7 [ 3/12] COPY .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix
+2026-Jul-09 16:46:03.579309
+#7 DONE 0.0s
+2026-Jul-09 16:46:03.579309
+2026-Jul-09 16:46:03.579309
+#8 [ 4/12] RUN nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d
+2026-Jul-09 16:46:03.579309
+#8 0.170 unpacking 'https://github.com/NixOS/nixpkgs/archive/ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.tar.gz' into the Git cache...
+2026-Jul-09 16:46:03.579309
+#8 38.81 unpacking 'https://github.com/railwayapp/nix-npm-overlay/archive/main.tar.gz' into the Git cache...
+2026-Jul-09 16:46:03.579309
+#8 39.82 installing 'ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7-env'
+2026-Jul-09 16:46:03.579309
+#8 40.09 error:
+2026-Jul-09 16:46:03.579309
+#8 40.09        … while calling the 'derivationStrict' builtin
+2026-Jul-09 16:46:03.579309
+#8 40.09          at <nix/derivation-internal.nix>:37:12:
+2026-Jul-09 16:46:03.579309
+#8 40.09            36|
+2026-Jul-09 16:46:03.579309
+#8 40.09            37|   strict = derivationStrict drvAttrs;
+2026-Jul-09 16:46:03.579309
+#8 40.09              |            ^
+2026-Jul-09 16:46:03.579309
+#8 40.09            38|
+2026-Jul-09 16:46:03.579309
+#8 40.09
+2026-Jul-09 16:46:03.579309
+#8 40.09        … while evaluating derivation 'ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7-env'
+2026-Jul-09 16:46:03.579309
+#8 40.09          whose name attribute is located at /nix/store/lwi59jcfwk2lnrakmm1y5vw85hj3n1bi-source/pkgs/stdenv/generic/make-derivation.nix:375:7
+2026-Jul-09 16:46:03.579309
+#8 40.09
+2026-Jul-09 16:46:03.579309
+#8 40.09        … while evaluating attribute 'passAsFile' of derivation 'ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7-env'
+2026-Jul-09 16:46:03.579309
+#8 40.09          at /nix/store/lwi59jcfwk2lnrakmm1y5vw85hj3n1bi-source/pkgs/build-support/trivial-builders/default.nix:60:9:
+2026-Jul-09 16:46:03.579309
+#8 40.09            59|         inherit buildCommand name;
+2026-Jul-09 16:46:03.579309
+#8 40.09            60|         passAsFile = [ "buildCommand" ]
+2026-Jul-09 16:46:03.579309
+#8 40.09              |         ^
+2026-Jul-09 16:46:03.579309
+#8 40.09            61|           ++ (derivationArgs.passAsFile or [ ]);
+2026-Jul-09 16:46:03.579309
+#8 40.09
+2026-Jul-09 16:46:03.579309
+#8 40.09        (stack trace truncated; use '--show-trace' to show the full, detailed trace)
+2026-Jul-09 16:46:03.579309
+#8 40.09
+2026-Jul-09 16:46:03.579309
+#8 40.09        error: undefined variable 'nodejs_24'
+2026-Jul-09 16:46:03.579309
+#8 40.09        at /app/.nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix:19:9:
+2026-Jul-09 16:46:03.579309
+#8 40.09            18|         '')
+2026-Jul-09 16:46:03.579309
+#8 40.09            19|         nodejs_24 pnpm_10
+2026-Jul-09 16:46:03.579309
+#8 40.09              |         ^
+2026-Jul-09 16:46:03.579309
+#8 40.09            20|       ];
+2026-Jul-09 16:46:03.579309
+#8 ERROR: process "/bin/bash -ol pipefail -c nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d" did not complete successfully: exit code: 1
+2026-Jul-09 16:46:03.579309
+------
+2026-Jul-09 16:46:03.579309
+> [ 4/12] RUN nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d:
+2026-Jul-09 16:46:03.579309
+40.09            61|           ++ (derivationArgs.passAsFile or [ ]);
+2026-Jul-09 16:46:03.579309
+40.09
+2026-Jul-09 16:46:03.579309
+40.09        (stack trace truncated; use '--show-trace' to show the full, detailed trace)
+2026-Jul-09 16:46:03.579309
+40.09
+2026-Jul-09 16:46:03.579309
+40.09        error: undefined variable 'nodejs_24'
+2026-Jul-09 16:46:03.579309
+40.09        at /app/.nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix:19:9:
+2026-Jul-09 16:46:03.579309
+40.09            18|         '')
+2026-Jul-09 16:46:03.579309
+40.09            19|         nodejs_24 pnpm_10
+2026-Jul-09 16:46:03.579309
+40.09              |         ^
+2026-Jul-09 16:46:03.579309
+40.09            20|       ];
+2026-Jul-09 16:46:03.579309
+------
+2026-Jul-09 16:46:03.579309
+2026-Jul-09 16:46:03.579309
+1 warning found (use docker --debug to expand):
+2026-Jul-09 16:46:03.579309
+- UndefinedVar: Usage of undefined variable '$NIXPACKS_PATH' (line 18)
+2026-Jul-09 16:46:03.579309
+Dockerfile:8
+2026-Jul-09 16:46:03.579309
+--------------------
+2026-Jul-09 16:46:03.579309
+6 |
+2026-Jul-09 16:46:03.579309
+7 |     COPY .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix
+2026-Jul-09 16:46:03.579309
+8 | >>> RUN nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d
+2026-Jul-09 16:46:03.579309
+9 |     RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends curl wget
+2026-Jul-09 16:46:03.579309
+10 |
+2026-Jul-09 16:46:03.579309
+--------------------
+2026-Jul-09 16:46:03.579309
+ERROR: failed to build: failed to solve: process "/bin/bash -ol pipefail -c nix-env -if .nixpacks/nixpkgs-ffeebf0acf3ae8b29f8c7049cd911b9636efd7e7.nix && nix-collect-garbage -d" did not complete successfully: exit code: 1
+2026-Jul-09 16:46:03.579309
+exit status 1
+2026-Jul-09 16:46:03.705780
+========================================
+2026-Jul-09 16:46:03.717634
+Deployment failed. Removing the new version of your application.
