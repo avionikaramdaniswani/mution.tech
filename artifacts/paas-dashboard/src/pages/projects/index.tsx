@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { useListProjects, useDeleteProject, getListProjectsQueryKey } from "@workspace/api-client-react";
+import type { Project } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,8 +50,18 @@ export function ProjectStatusBadge({ status }: { status: string }) {
   );
 }
 
+const ACTIVE_PROJECT_STATUSES = new Set(["building", "deploying"]);
+
 export default function Projects() {
-  const { data: projects, isLoading } = useListProjects();
+  const { data: projects, isLoading } = useListProjects({
+    query: {
+      queryKey: getListProjectsQueryKey(),
+      refetchInterval: (query) => {
+        const current = query.state.data as Project[] | undefined;
+        return current?.some((p) => ACTIVE_PROJECT_STATUSES.has(p.status)) ? 2500 : false;
+      },
+    },
+  });
   const deleteProject = useDeleteProject();
   const queryClient = useQueryClient();
   const { toast } = useToast();
