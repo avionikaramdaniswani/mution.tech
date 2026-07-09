@@ -79,6 +79,7 @@ export default function NewProject() {
   const [showRuntimeOverride, setShowRuntimeOverride] = useState(false);
   const [detectedRuntime, setDetectedRuntime] = useState<{ runtime: string; confidence: string } | null>(null);
   const [detectingRuntime, setDetectingRuntime] = useState(false);
+  const [detectedBaseDirectory, setDetectedBaseDirectory] = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const { data: ghStatus, refetch: refetchStatus } = useQuery<GithubStatus>({
@@ -119,25 +120,43 @@ export default function NewProject() {
       form.setValue("name", slug);
     }
 
+    // Guards against a slow response for a previously-selected repo landing
+    // after the user has already switched to another one.
+    let cancelled = false;
+
     setDetectedRuntime(null);
     setShowRuntimeOverride(false);
     setDetectingRuntime(true);
+    setDetectedBaseDirectory(null);
+    form.setValue("baseDirectory", "");
 
-    apiFetch<{ runtime: string; confidence: string }>(
+    apiFetch<{ runtime: string; confidence: string; baseDirectory: string | null }>(
       `/api/github/detect-runtime?repo=${encodeURIComponent(selectedRepo.fullName)}`,
     )
       .then((result) => {
+        if (cancelled) return;
         setDetectedRuntime(result);
         form.setValue("runtime", result.runtime as any);
+        if (result.baseDirectory && !form.getValues("baseDirectory")) {
+          form.setValue("baseDirectory", result.baseDirectory);
+          setDetectedBaseDirectory(result.baseDirectory);
+        }
       })
       .catch(() => {
+        if (cancelled) return;
         const fallback = selectedRepo.language
           ? (LANGUAGE_TO_RUNTIME[selectedRepo.language] ?? "nodejs")
           : "nodejs";
         setDetectedRuntime({ runtime: fallback, confidence: "fallback" });
         form.setValue("runtime", fallback as any);
       })
-      .finally(() => setDetectingRuntime(false));
+      .finally(() => {
+        if (!cancelled) setDetectingRuntime(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedRepo]);
 
   useEffect(() => {
@@ -392,9 +411,21 @@ export default function NewProject() {
                     <FormControl>
                       <Input placeholder="/apps/api" {...field} />
                     </FormControl>
-                    <FormDescription>
-                      Isi kalau repo ini monorepo dan aplikasinya ada di subfolder. Build & typecheck hanya dijalankan dari folder ini, jadi error di package lain di monorepo tidak menggagalkan deploy.
-                    </FormDescription>
+                    {detectingRuntime ? (
+                      <FormDescription className="flex items-center gap-1.5">
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                        Mendeteksi folder proyek dari repo...
+                      </FormDescription>
+                    ) : detectedBaseDirectory && field.value === detectedBaseDirectory ? (
+                      <FormDescription className="flex items-center gap-1.5 text-foreground">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                        Terdeteksi otomatis dari struktur repo (monorepo). Bisa diubah manual kalau kurang tepat.
+                      </FormDescription>
+                    ) : (
+                      <FormDescription>
+                        Isi kalau repo ini monorepo dan aplikasinya ada di subfolder. Build & typecheck hanya dijalankan dari folder ini, jadi error di package lain di monorepo tidak menggagalkan deploy.
+                      </FormDescription>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}

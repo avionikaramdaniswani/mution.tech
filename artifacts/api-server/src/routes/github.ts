@@ -201,6 +201,112 @@ router.get("/github/repos", requireAuth, async (req, res): Promise<void> => {
   );
 });
 
+type GithubContentEntry = { name: string; type: string };
+
+/** Inspects a directory's file listing for the marker files that reveal its runtime. Returns null if none match. */
+function detectRuntimeFromNames(names: string[]): string | null {
+  if (names.includes("package.json")) return "nodejs";
+  if (
+    names.includes("requirements.txt")
+    || names.includes("pyproject.toml")
+    || names.includes("pipfile")
+    || names.includes("setup.py")
+  ) return "python";
+  if (names.includes("composer.json") || names.some((n) => n.endsWith(".php"))) return "php";
+  if (names.includes("index.html") || names.some((n) => n.endsWith(".html"))) return "static";
+  return null;
+}
+
+// Common monorepo container folders whose immediate children (not the container
+// itself) tend to hold the actual deployable app, e.g. apps/api, packages/server.
+const MONOREPO_CONTAINERS = ["apps", "packages", "services", "cmd"];
+// When multiple subfolders look deployable, prefer the ones that read like a
+// backend/API entry point over docs, tooling, or frontend-only folders.
+const PREFERRED_APP_DIR_HINTS = ["api", "server", "backend", "app", "web", "worker"];
+const MAX_DIRECTORY_PROBES = 12;
+
+async function fetchDirContents(repo: string, path: string, headers: Record<string, string>): Promise<GithubContentEntry[] | null> {
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  const res = await fetch(`https://api.github.com/repos/${repo}/contents/${encodedPath}`, { headers });
+  if (!res.ok) return null;
+  return res.json() as Promise<GithubContentEntry[]>;
+}
+
+/**
+ * Detects both the runtime and, for monorepos, the subfolder that holds the
+ * actual deployable app (mirroring what a developer would look for by eye:
+ * "where's the package.json / requirements.txt actually sitting?").
+ */
+async function detectRuntimeAndBaseDirectory(
+  repo: string,
+  headers: Record<string, string>,
+): Promise<{ runtime: string; confidence: string; baseDirectory: string | null }> {
+  const rootFiles = await fetchDirContents(repo, "", headers);
+  if (!rootFiles) return { runtime: "nodejs", confidence: "fallback", baseDirectory: null };
+
+  const rootNames = rootFiles.map((f) => f.name.toLowerCase());
+  const rootRuntime = detectRuntimeFromNames(rootNames);
+  if (rootRuntime) {
+    return { runtime: rootRuntime, confidence: "detected", baseDirectory: null };
+  }
+
+  const rootDirs = rootFiles.filter((f) => f.type === "dir").map((f) => f.name);
+  // Every GitHub Contents API call (including container listings) counts
+  // against this budget, so worst case is always bounded regardless of how
+  // deep/wide a repo's folder tree is.
+  let probes = 0;
+  const candidates: Array<{ path: string; runtime: string }> = [];
+
+  // Always probe monorepo containers (apps/, packages/, ...) alongside plain
+  // top-level folders in the same pass, so a repo like `web/` + `apps/api`
+  // doesn't get stuck on the wrong candidate just because `web/` was probed
+  // first — the "preferred" hint ranking below is what actually decides.
+  const depth1Targets: string[] = [];
+  for (const dirName of rootDirs) {
+    if (MONOREPO_CONTAINERS.includes(dirName.toLowerCase())) continue;
+    depth1Targets.push(dirName);
+  }
+
+  for (const dirName of depth1Targets) {
+    if (probes >= MAX_DIRECTORY_PROBES) break;
+    probes += 1;
+    const contents = await fetchDirContents(repo, dirName, headers);
+    if (!contents) continue;
+    const runtime = detectRuntimeFromNames(contents.map((f) => f.name.toLowerCase()));
+    if (runtime) candidates.push({ path: dirName, runtime });
+  }
+
+  for (const containerName of MONOREPO_CONTAINERS) {
+    if (probes >= MAX_DIRECTORY_PROBES) break;
+    if (!rootDirs.some((d) => d.toLowerCase() === containerName)) continue;
+
+    probes += 1;
+    const containerContents = await fetchDirContents(repo, containerName, headers);
+    if (!containerContents) continue;
+    const containerSubdirs = containerContents.filter((f) => f.type === "dir").map((f) => f.name);
+
+    for (const subdirName of containerSubdirs) {
+      if (probes >= MAX_DIRECTORY_PROBES) break;
+      probes += 1;
+      const subPath = `${containerName}/${subdirName}`;
+      const contents = await fetchDirContents(repo, subPath, headers);
+      if (!contents) continue;
+      const runtime = detectRuntimeFromNames(contents.map((f) => f.name.toLowerCase()));
+      if (runtime) candidates.push({ path: subPath, runtime });
+    }
+  }
+
+  if (candidates.length === 0) {
+    return { runtime: "nodejs", confidence: "fallback", baseDirectory: null };
+  }
+
+  const preferred = candidates.find((c) =>
+    PREFERRED_APP_DIR_HINTS.some((hint) => c.path.toLowerCase().split("/").pop()?.includes(hint)),
+  ) ?? candidates[0];
+
+  return { runtime: preferred.runtime, confidence: "detected", baseDirectory: `/${preferred.path}` };
+}
+
 router.get("/github/detect-runtime", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
   const { repo } = req.query as { repo?: string };
@@ -223,40 +329,8 @@ router.get("/github/detect-runtime", requireAuth, async (req, res): Promise<void
     "User-Agent": "paas-platform",
   };
 
-  const contentsRes = await fetch(`https://api.github.com/repos/${repo}/contents/`, { headers });
-
-  if (!contentsRes.ok) {
-    res.json({ runtime: "nodejs", confidence: "fallback" });
-    return;
-  }
-
-  const files = await contentsRes.json() as Array<{ name: string }>;
-  const names = files.map((f) => f.name.toLowerCase());
-
-  let runtime = "nodejs";
-  let confidence = "detected";
-
-  if (names.includes("package.json")) {
-    runtime = "nodejs";
-  } else if (
-    names.includes("requirements.txt") ||
-    names.includes("pyproject.toml") ||
-    names.includes("pipfile") ||
-    names.includes("setup.py")
-  ) {
-    runtime = "python";
-  } else if (names.includes("composer.json") || names.some((n) => n.endsWith(".php"))) {
-    runtime = "php";
-  } else if (
-    names.includes("index.html") ||
-    names.some((n) => n.endsWith(".html"))
-  ) {
-    runtime = "static";
-  } else {
-    confidence = "fallback";
-  }
-
-  res.json({ runtime, confidence });
+  const result = await detectRuntimeAndBaseDirectory(repo, headers);
+  res.json(result);
 });
 
 router.delete("/github/disconnect", requireAuth, async (req, res): Promise<void> => {
