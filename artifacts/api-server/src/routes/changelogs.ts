@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { changelogsTable, insertChangelogSchema } from "@workspace/db/schema";
+import { changelogsTable, insertChangelogSchema, type ChangelogChange } from "@workspace/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 
@@ -11,6 +11,44 @@ function parseRouteId(param: string | string[]): number {
   return parseInt(raw, 10);
 }
 
+type LegacyChange = {
+  type?: unknown;
+  title?: unknown;
+  description?: unknown;
+  text?: unknown;
+};
+
+function normalizeChange(change: LegacyChange): ChangelogChange {
+  const title = typeof change.title === "string" ? change.title : typeof change.text === "string" ? change.text : "";
+  const description = typeof change.description === "string" ? change.description : undefined;
+
+  return {
+    type: change.type === "fix" || change.type === "chore" || change.type === "feat" ? change.type : "chore",
+    title,
+    description,
+  };
+}
+
+function normalizeChanges(changes: unknown): ChangelogChange[] {
+  if (!Array.isArray(changes)) return [];
+  return changes.map((change) => normalizeChange((change ?? {}) as LegacyChange));
+}
+
+function normalizeChangelogPayload<T extends Record<string, unknown>>(payload: T): T {
+  if (!("changes" in payload)) return payload;
+  return {
+    ...payload,
+    changes: normalizeChanges(payload.changes),
+  };
+}
+
+function normalizeChangelogRecord<T extends { changes: unknown }>(record: T) {
+  return {
+    ...record,
+    changes: normalizeChanges(record.changes),
+  };
+}
+
 // Public route to get all changelogs
 router.get("/changelog", async (req, res) => {
   try {
@@ -18,7 +56,7 @@ router.get("/changelog", async (req, res) => {
       .select()
       .from(changelogsTable)
       .orderBy(desc(changelogsTable.createdAt));
-    res.json(changelogs);
+    res.json(changelogs.map(normalizeChangelogRecord));
   } catch (error) {
     console.error("Error fetching changelogs:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -28,9 +66,9 @@ router.get("/changelog", async (req, res) => {
 // Admin routes
 router.post("/admin/changelog", requireAdmin, async (req, res) => {
   try {
-    const data = insertChangelogSchema.parse(req.body);
+    const data = insertChangelogSchema.parse(normalizeChangelogPayload(req.body));
     const [inserted] = await db.insert(changelogsTable).values(data).returning();
-    res.json(inserted);
+    res.json(normalizeChangelogRecord(inserted));
   } catch (error) {
     console.error("Error creating changelog:", error);
     res.status(400).json({ error: "Invalid data or internal error" });
@@ -40,7 +78,7 @@ router.post("/admin/changelog", requireAdmin, async (req, res) => {
 router.put("/admin/changelog/:id", requireAdmin, async (req, res) => {
   try {
     const id = parseRouteId(req.params.id);
-    const data = insertChangelogSchema.partial().parse(req.body);
+    const data = insertChangelogSchema.partial().parse(normalizeChangelogPayload(req.body));
     
     // Ensure changes array is well-formed if it exists
     const updateData = {
@@ -58,7 +96,7 @@ router.put("/admin/changelog/:id", requireAdmin, async (req, res) => {
       res.status(404).json({ error: "Changelog not found" });
       return;
     }
-    res.json(updated);
+    res.json(normalizeChangelogRecord(updated));
     return;
   } catch (error) {
     console.error("Error updating changelog:", error);

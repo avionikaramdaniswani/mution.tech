@@ -10,6 +10,7 @@
     "cleanup:inactive-api-keys": "pnpm --filter @workspace/scripts run cleanup:inactive-api-keys",
     "db:check-api-usage-key-fk": "pnpm --filter @workspace/scripts run db:check-api-usage-key-fk",
     "db:fix-api-usage-key-fk": "pnpm --filter @workspace/scripts run db:fix-api-usage-key-fk",
+    "db:migrate-changelog-changes": "pnpm --filter @workspace/scripts run db:migrate-changelog-changes",
     "test:api-keys": "pnpm --filter @workspace/api-server run test:api-keys",
     "heroku-postbuild": "pnpm --filter @workspace/paas-dashboard run build && pnpm --filter @workspace/api-server run build",
     "start": "pnpm --filter @workspace/api-server run start",

@@ -4,6 +4,13 @@ import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth } from "../lib/auth";
 import { logActivity } from "../lib/activity";
+import {
+  CoolifyError,
+  deployProjectWithCoolify,
+  formatCoolifyBuildLog,
+  isCoolifyConfigured,
+  syncDeploymentFromCoolify,
+} from "../lib/coolify";
 
 const router = Router();
 
@@ -47,6 +54,51 @@ function mapDeployment(d: typeof deploymentsTable.$inferSelect) {
   };
 }
 
+type SyncedDeploymentStatus = NonNullable<Awaited<ReturnType<typeof syncDeploymentFromCoolify>>>["status"];
+
+function toProjectStatus(status: SyncedDeploymentStatus): "idle" | "running" | "stopped" | "building" | "deploying" | "failed" {
+  if (status === "queued") return "deploying";
+  if (status === "rolled_back") return "running";
+  return status;
+}
+
+async function refreshDeploymentStatus(d: typeof deploymentsTable.$inferSelect): Promise<typeof deploymentsTable.$inferSelect> {
+  if (!isCoolifyConfigured()) return d;
+
+  try {
+    const synced = await syncDeploymentFromCoolify(d.id);
+    if (!synced) return d;
+
+    const shouldSetDeployedAt = ["running", "failed", "stopped"].includes(synced.status) && !d.deployedAt;
+    const [updated] = await db
+      .update(deploymentsTable)
+      .set({
+        status: synced.status,
+        buildLog: synced.logs ?? d.buildLog,
+        deployedAt: shouldSetDeployedAt ? new Date() : d.deployedAt,
+      })
+      .where(eq(deploymentsTable.id, d.id))
+      .returning();
+
+    await db
+      .update(projectsTable)
+      .set({
+        status: toProjectStatus(synced.status),
+        lastDeployedAt: shouldSetDeployedAt ? new Date() : undefined,
+      })
+      .where(eq(projectsTable.id, d.projectId));
+
+    return updated ?? d;
+  } catch {
+    return d;
+  }
+}
+
+function deploymentErrorLog(err: unknown): string {
+  const message = err instanceof CoolifyError ? err.message : (err as Error)?.message || "Deployment gagal";
+  return `[${new Date().toISOString()}] Deployment gagal dikirim ke Coolify\n${message}`;
+}
+
 // List deployments
 router.get("/projects/:id/deployments", async (req, res): Promise<void> => {
   const user = (req as any).user;
@@ -69,7 +121,10 @@ router.get("/projects/:id/deployments", async (req, res): Promise<void> => {
     .where(eq(deploymentsTable.projectId, id))
     .orderBy(desc(deploymentsTable.createdAt));
 
-  res.json(deployments.map(mapDeployment));
+  const refreshed = await Promise.all(
+    deployments.map((deployment, index) => index < 10 ? refreshDeploymentStatus(deployment) : deployment),
+  );
+  res.json(refreshed.map(mapDeployment));
 });
 
 // Trigger deployment
@@ -96,31 +151,79 @@ router.post("/projects/:id/deployments", async (req, res): Promise<void> => {
   const commitHash = body.data.commitHash ?? generateFakeHash();
   const commitMessage = body.data.commitMessage ?? "Manual deploy";
 
-  const deployedAt = new Date();
-  const durationMs = Math.floor(Math.random() * 20000) + 15000;
-
   const [deployment] = await db
     .insert(deploymentsTable)
     .values({
       projectId: id,
-      status: "running",
+      status: isCoolifyConfigured() ? "queued" : "running",
       commitHash,
       commitMessage,
-      buildLog: FAKE_BUILD_LOG,
-      deployedAt,
-      durationMs,
+      buildLog: isCoolifyConfigured() ? "Deployment masuk antrean Coolify." : FAKE_BUILD_LOG,
+      deployedAt: isCoolifyConfigured() ? null : new Date(),
+      durationMs: isCoolifyConfigured() ? null : Math.floor(Math.random() * 20000) + 15000,
     })
     .returning();
 
-  // Update project status
+  if (!isCoolifyConfigured()) {
+    await db
+      .update(projectsTable)
+      .set({ status: "running", lastDeployedAt: deployment.deployedAt })
+      .where(eq(projectsTable.id, id));
+
+    await logActivity(user.id, "deployment.triggered", id, { commitHash, commitMessage, provider: "simulated" });
+    res.status(201).json(mapDeployment(deployment));
+    return;
+  }
+
   await db
     .update(projectsTable)
-    .set({ status: "running", lastDeployedAt: deployedAt })
+    .set({ status: "deploying" })
     .where(eq(projectsTable.id, id));
 
-  await logActivity(user.id, "deployment.triggered", id, { commitHash, commitMessage });
+  try {
+    const result = await deployProjectWithCoolify(project, deployment.id);
+    const [updated] = await db
+      .update(deploymentsTable)
+      .set({
+        status: "deploying",
+        buildLog: formatCoolifyBuildLog({
+          message: result.message,
+          applicationUuid: result.applicationUuid,
+          deploymentUuid: result.deploymentUuid,
+        }),
+      })
+      .where(eq(deploymentsTable.id, deployment.id))
+      .returning();
 
-  res.status(201).json(mapDeployment(deployment));
+    await logActivity(user.id, "deployment.triggered", id, {
+      commitHash,
+      commitMessage,
+      provider: "coolify",
+      coolifyDeploymentUuid: result.deploymentUuid,
+    });
+
+    res.status(201).json(mapDeployment(updated ?? deployment));
+  } catch (err) {
+    const [failed] = await db
+      .update(deploymentsTable)
+      .set({
+        status: "failed",
+        buildLog: deploymentErrorLog(err),
+        deployedAt: new Date(),
+      })
+      .where(eq(deploymentsTable.id, deployment.id))
+      .returning();
+
+    await db
+      .update(projectsTable)
+      .set({ status: "failed" })
+      .where(eq(projectsTable.id, id));
+
+    res.status(err instanceof CoolifyError ? 502 : 500).json({
+      error: err instanceof CoolifyError ? err.message : "Deployment gagal dikirim ke Coolify",
+      deployment: mapDeployment(failed ?? deployment),
+    });
+  }
 });
 
 // Get deployment
@@ -150,7 +253,8 @@ router.get("/projects/:id/deployments/:deploymentId", async (req, res): Promise<
     return;
   }
 
-  res.json(mapDeployment(deployment));
+  const refreshed = await refreshDeploymentStatus(deployment);
+  res.json(mapDeployment(refreshed));
 });
 
 // Rollback

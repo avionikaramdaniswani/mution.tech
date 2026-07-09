@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Menu, X } from "lucide-react";
 
 const navLinks = [
-  { label: "Harga", href: "/harga" },
+  { label: "Pricing", href: "/harga" },
   { label: "FAQ", href: "/faq" },
-  { label: "Tentang Kami", href: "/tentang-kami" },
+  { label: "About", href: "/tentang-kami" },
 ];
 
 export function PublicNavbar() {
@@ -72,13 +72,13 @@ export function PublicNavbar() {
               >
                 <Link href="/login">
                   <Button variant="ghost" className="shrink-0 rounded-full text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">
-                    Masuk
+                    Log in
                   </Button>
                 </Link>
               </span>
               <Link href="/register">
                 <Button className="gap-2 rounded-full bg-[#f97316] text-white hover:bg-[#ea580c]">
-                  Mulai
+                  Get Started
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
@@ -117,11 +117,11 @@ export function PublicNavbar() {
                 <>
                   <Link href="/login" onClick={() => setMobileOpen(false)}>
                     <Button variant="outline" className="w-full rounded-full border-[#c9d8e7] bg-white text-[#172033] hover:bg-[#eef8ff]">
-                      Masuk
+                      Log in
                     </Button>
                   </Link>
                   <Link href="/register" onClick={() => setMobileOpen(false)}>
-                    <Button className="w-full rounded-full bg-[#f97316] text-white hover:bg-[#ea580c]">Mulai</Button>
+                    <Button className="w-full rounded-full bg-[#f97316] text-white hover:bg-[#ea580c]">Get Started</Button>
                   </Link>
                 </>
               )}

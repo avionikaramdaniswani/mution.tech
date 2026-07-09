@@ -10,10 +10,10 @@ async function run() {
       title: 'Fitur Monitoring API & Redesign', 
       description: 'Pembaruan besar pada sisi monitoring penggunaan API dan peningkatan pengalaman pengguna pada halaman navigasi dan riwayat transaksi.', 
       changes: [
-        {type: 'feat', text: 'Halaman API Usage ditambahkan untuk memantau pemakaian token, model AI, dan kredit secara transparan.'}, 
-        {type: 'feat', text: 'Summary Cards yang memberikan insight total request dan biaya API pada bulan berjalan.'}, 
-        {type: 'chore', text: 'Desain ulang halaman Riwayat Transaksi menjadi bentuk Card List dengan efek elegan dark mode.'}, 
-        {type: 'chore', text: 'Restrukturisasi menu navigasi Sidebar dan Dropdown Profil.'}
+        {type: 'feat', title: 'Halaman API Usage', description: 'Memantau pemakaian token, model AI, dan kredit secara transparan.'}, 
+        {type: 'feat', title: 'Summary Cards', description: 'Memberikan insight total request dan biaya API pada bulan berjalan.'}, 
+        {type: 'chore', title: 'Redesign Riwayat Transaksi', description: 'Halaman diubah menjadi card list dengan tampilan yang lebih rapi.'}, 
+        {type: 'chore', title: 'Navigasi lebih ringkas', description: 'Restrukturisasi menu sidebar dan dropdown profil.'}
       ]
     }, 
     {
@@ -21,9 +21,9 @@ async function run() {
       date: 'Kemarin', 
       title: 'Penyesuaian Harga & Dokumentasi Lengkap', 
       changes: [
-        {type: 'feat', text: 'Rilis Halaman Dokumentasi (Docs) lengkap dengan contoh integrasi via cURL, OpenAI SDK, dan Claude Code.'}, 
-        {type: 'chore', text: 'Penurunan harga model Claude Opus (semua varian) sebesar 10%.'}, 
-        {type: 'fix', text: 'Menghapus bagian FAQ yang duplikat pada halaman Harga serta menghapus blok tarif usang di halaman Dokumentasi.'}
+        {type: 'feat', title: 'Halaman Dokumentasi', description: 'Docs dirilis dengan contoh integrasi yang lebih lengkap.'}, 
+        {type: 'chore', title: 'Penyesuaian harga model', description: 'Harga model Claude Opus disesuaikan untuk semua varian.'}, 
+        {type: 'fix', title: 'Konten pricing dirapikan', description: 'Bagian FAQ duplikat dan blok tarif lama dihapus.'}
       ]
     }, 
     {
@@ -32,9 +32,9 @@ async function run() {
       title: 'Rilis Awal Mution AI Proxy', 
       description: 'Peluncuran perdana platform Mution AI Proxy. Satu endpoint, beragam model LLM kelas dunia.', 
       changes: [
-        {type: 'feat', text: 'Sistem Proxy API yang sepenuhnya kompatibel dengan OpenAI SDK.'}, 
-        {type: 'feat', text: 'Manajemen API Key cerdas.'}, 
-        {type: 'feat', text: 'Sistem Billing & Top Up otomatis terintegrasi TriPay.'}
+        {type: 'feat', title: 'Proxy API', description: 'Sistem proxy API yang kompatibel dengan alur integrasi populer.'}, 
+        {type: 'feat', title: 'Manajemen API Key', description: 'Pengelolaan API key dibuat lebih mudah dari dashboard.'}, 
+        {type: 'feat', title: 'Billing dan top up', description: 'Sistem billing dan top up otomatis untuk penggunaan layanan.'}
       ]
     }
   ]); 

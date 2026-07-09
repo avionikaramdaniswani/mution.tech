@@ -12,3 +12,4 @@ export * from "./api_usage";
 export * from "./api_requests";
 export * from "./changelogs";
 export * from "./ai_provider_settings";
+export * from "./coolify_resources";

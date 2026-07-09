@@ -4,6 +4,13 @@ import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth } from "../lib/auth";
 import { logActivity } from "../lib/activity";
+import {
+  CoolifyError,
+  deleteProjectWithCoolify,
+  isCoolifyConfigured,
+  restartProjectWithCoolify,
+  stopProjectWithCoolify,
+} from "../lib/coolify";
 
 const router = Router();
 
@@ -182,14 +189,30 @@ router.delete("/projects/:id", async (req, res): Promise<void> => {
   if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [project] = await db
-    .delete(projectsTable)
+    .select()
+    .from(projectsTable)
     .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, user.id)))
-    .returning();
+    .limit(1);
 
   if (!project) {
     res.status(404).json({ error: "Project not found" });
     return;
   }
+
+  if (isCoolifyConfigured()) {
+    try {
+      await deleteProjectWithCoolify(id);
+    } catch (err) {
+      res.status(err instanceof CoolifyError ? 502 : 500).json({
+        error: err instanceof CoolifyError ? err.message : "Gagal menghapus resource di Coolify",
+      });
+      return;
+    }
+  }
+
+  await db
+    .delete(projectsTable)
+    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, user.id)));
 
   await logActivity(user.id, "project.deleted", undefined, { name: project.name });
   res.json({ success: true });
@@ -200,6 +223,28 @@ router.post("/projects/:id/stop", async (req, res): Promise<void> => {
   const user = (req as any).user;
   const id = parseRouteId(req.params.id);
   if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [existingProject] = await db
+    .select()
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, user.id)))
+    .limit(1);
+
+  if (!existingProject) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  if (isCoolifyConfigured()) {
+    try {
+      await stopProjectWithCoolify(id);
+    } catch (err) {
+      res.status(err instanceof CoolifyError ? 502 : 500).json({
+        error: err instanceof CoolifyError ? err.message : "Gagal menghentikan resource di Coolify",
+      });
+      return;
+    }
+  }
 
   const [project] = await db
     .update(projectsTable)
@@ -231,6 +276,28 @@ router.post("/projects/:id/restart", async (req, res): Promise<void> => {
   const user = (req as any).user;
   const id = parseRouteId(req.params.id);
   if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [existingProject] = await db
+    .select()
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, user.id)))
+    .limit(1);
+
+  if (!existingProject) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  if (isCoolifyConfigured()) {
+    try {
+      await restartProjectWithCoolify(id);
+    } catch (err) {
+      res.status(err instanceof CoolifyError ? 502 : 500).json({
+        error: err instanceof CoolifyError ? err.message : "Gagal me-restart resource di Coolify",
+      });
+      return;
+    }
+  }
 
   const [project] = await db
     .update(projectsTable)

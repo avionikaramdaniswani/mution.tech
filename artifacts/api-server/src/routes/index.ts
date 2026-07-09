@@ -12,6 +12,7 @@ import billingRouter from "./billing";
 import apiKeysRouter from "./api-keys";
 import apiUsageRouter from "./api-usage";
 import changelogsRouter from "./changelogs";
+import integrationsRouter from "./integrations";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(adminRouter);
 router.use(eventsRouter);
 router.use(apiUsageRouter);
 router.use(changelogsRouter);
+router.use(integrationsRouter);
 
 export default router;
