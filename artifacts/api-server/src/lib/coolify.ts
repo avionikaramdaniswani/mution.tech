@@ -512,6 +512,72 @@ export async function deployProjectWithCoolify(project: Project, deploymentId: n
   };
 }
 
+interface BuildFailureDiagnosis {
+  title: string;
+  explanation: string;
+  suggestion: string;
+}
+
+const BUILD_FAILURE_PATTERNS: Array<{ test: (logs: string) => boolean; diagnose: (logs: string) => BuildFailureDiagnosis }> = [
+  {
+    test: (logs) => /error: undefined variable 'nodejs_\d+'/.test(logs),
+    diagnose: (logs) => {
+      const match = logs.match(/undefined variable '(nodejs_\d+)'/);
+      const requested = match?.[1] ?? "versi Node yang diminta";
+      return {
+        title: "Versi Node.js tidak dikenali oleh builder",
+        explanation: `Project ini punya \`nixpacks.toml\` yang minta paket \`${requested}\`, tapi builder Nixpacks di server Mution memakai snapshot Nix yang belum mengenal paket tersebut (biasanya karena versi Node terlalu baru untuk snapshot yang terpasang).`,
+        suggestion: "Coba turunkan versi di nixpacks.toml (mis. `nodejs_22` atau `nodejs_20`, keduanya LTS dan didukung), lalu deploy ulang. Jika masalah berlanjut untuk semua project, builder Nixpacks di server Mution perlu diperbarui oleh admin platform.",
+      };
+    },
+  },
+  {
+    test: (logs) => /ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL[\s\S]*typecheck/.test(logs) || /tsc(?: -p| --build)[\s\S]*error TS\d+/.test(logs),
+    diagnose: () => ({
+      title: "Build gagal karena error TypeScript",
+      explanation: "Script build project ini menjalankan typecheck (`tsc`) sebelum bundling, dan ditemukan error tipe pada kode sumbernya. Ini adalah error asli di kode, bukan masalah dari platform deployment.",
+      suggestion: "Perbaiki error TypeScript yang ditunjukkan di log lengkap di atas, commit, lalu deploy ulang.",
+    }),
+  },
+  {
+    test: (logs) => /ERR_MODULE_NOT_FOUND/.test(logs) || /Cannot find module/.test(logs),
+    diagnose: (logs) => {
+      const match = logs.match(/Cannot find (?:package|module) '([^']+)'/);
+      const pkg = match?.[1] ?? "sebuah package";
+      return {
+        title: "Package tidak ditemukan saat build/runtime",
+        explanation: `Kode mencoba import \`${pkg}\` tapi package itu tidak ada di \`node_modules\` saat dijalankan. Biasanya karena package ada di devDependencies tapi dipakai di kode production, atau belum ditambahkan ke package.json sama sekali.`,
+        suggestion: `Pastikan \`${pkg}\` ada sebagai dependency langsung (bukan devDependency) di package.json service yang menjalankannya, lalu deploy ulang.`,
+      };
+    },
+  },
+];
+
+const DIAGNOSIS_LOG_WINDOW = 20_000;
+
+export function diagnoseBuildFailure(logs: string | null | undefined): BuildFailureDiagnosis | null {
+  if (!logs) return null;
+  const window = logs.length > DIAGNOSIS_LOG_WINDOW ? logs.slice(-DIAGNOSIS_LOG_WINDOW) : logs;
+  for (const pattern of BUILD_FAILURE_PATTERNS) {
+    if (pattern.test(window)) return pattern.diagnose(window);
+  }
+  return null;
+}
+
+function appendFailureDiagnosis(logs: string, status: DeploymentStatus): string {
+  if (status !== "failed") return logs;
+  const diagnosis = diagnoseBuildFailure(logs);
+  if (!diagnosis) return logs;
+  return [
+    logs,
+    "",
+    "──────── Diagnosis Mution ────────",
+    `${diagnosis.title}`,
+    diagnosis.explanation,
+    `Saran: ${diagnosis.suggestion}`,
+  ].join("\n");
+}
+
 export async function syncDeploymentFromCoolify(deploymentId: number): Promise<{
   status: DeploymentStatus;
   logs: string | null;
@@ -527,9 +593,11 @@ export async function syncDeploymentFromCoolify(deploymentId: number): Promise<{
   if (!mapping) return null;
 
   const details = await coolifyRequest<CoolifyDeploymentDetails>("GET", `/deployments/${mapping.coolifyDeploymentUuid}`);
+  const status = mapCoolifyDeploymentStatus(details.status);
+  const rawLogs = details.logs ? sanitizeDeploymentProviderText(details.logs) : null;
   return {
-    status: mapCoolifyDeploymentStatus(details.status),
-    logs: details.logs ? sanitizeDeploymentProviderText(details.logs) : null,
+    status,
+    logs: rawLogs ? appendFailureDiagnosis(rawLogs, status) : null,
   };
 }
 
