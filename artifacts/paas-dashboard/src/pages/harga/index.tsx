@@ -22,7 +22,7 @@ import { MODEL_CATALOG, groupModelsByProvider } from "@workspace/model-catalog";
 
 const hostingRates = [
   { ram: "256 MB", perMinute: 0.25, fit: "Prototype ringan" },
-  { ram: "512 MB", perMinute: 0.45, fit: "API kecil" },
+  { ram: "512 MB", perMinute: 0.49, fit: "API kecil" },
   { ram: "1 GB", perMinute: 0.9, fit: "Web app aktif" },
   { ram: "2 GB", perMinute: 1.8, fit: "Backend produksi" },
   { ram: "4 GB", perMinute: 3.6, fit: "Worker dan API ramai" },
