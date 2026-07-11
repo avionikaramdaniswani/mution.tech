@@ -16,17 +16,17 @@ function OsTabs({ linux, powershell, cmd }: { linux: string; powershell: string;
   ];
   const code = active === "linux" ? linux : active === "powershell" ? powershell : cmd;
   return (
-    <div className="rounded-lg my-4 overflow-hidden" style={{ background: "#0f1117", border: "1px solid #2a2d3a" }}>
-      <div className="flex" style={{ borderBottom: "1px solid #2a2d3a", background: "#161922" }}>
+    <div className="rounded-lg my-4 overflow-hidden" style={{ background: "#f6f8fa", border: "1px solid #e1e4e8" }}>
+      <div className="flex" style={{ borderBottom: "1px solid #e1e4e8", background: "#f0f2f4" }}>
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setActive(t.key)}
             className="px-3 py-2 text-xs font-medium transition-colors"
             style={{
-              borderRight: "1px solid #2a2d3a",
-              color: active === t.key ? "#f1f5f9" : "#64748b",
-              background: active === t.key ? "#0f1117" : "transparent",
+              borderRight: "1px solid #e1e4e8",
+              color: active === t.key ? "#24292e" : "#6e7781",
+              background: active === t.key ? "#f6f8fa" : "transparent",
             }}
           >
             {t.label}
@@ -35,7 +35,7 @@ function OsTabs({ linux, powershell, cmd }: { linux: string; powershell: string;
       </div>
       <div className="relative">
         <CopyBtn text={code} />
-        <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed" style={{ color: "#e2e8f0" }}>{code}</pre>
+        <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed" style={{ color: "#24292e" }}>{code}</pre>
       </div>
     </div>
   );
@@ -46,7 +46,10 @@ function CopyBtn({ text }: { text: string }) {
   return (
     <button
       onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded border border-border bg-background hover:bg-muted transition-colors"
+      className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded transition-colors"
+      style={{ border: "1px solid #d0d7de", background: "#ffffff", color: "#57606a" }}
+      onMouseEnter={e => (e.currentTarget.style.background = "#f3f4f6")}
+      onMouseLeave={e => (e.currentTarget.style.background = "#ffffff")}
       aria-label="Copy code"
     >
       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -56,12 +59,12 @@ function CopyBtn({ text }: { text: string }) {
 
 function CodeBlock({ code, lang = "bash" }: { code: string; lang?: string }) {
   return (
-    <div className="relative rounded-lg my-4 overflow-hidden" style={{ background: "#0f1117", border: "1px solid #2a2d3a" }}>
-      <div className="flex items-center justify-between px-4 py-2" style={{ borderBottom: "1px solid #2a2d3a", background: "#161922" }}>
-        <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "#64748b" }}>{lang}</span>
+    <div className="relative rounded-lg my-4 overflow-hidden" style={{ background: "#f6f8fa", border: "1px solid #e1e4e8" }}>
+      <div className="flex items-center justify-between px-4 py-2" style={{ borderBottom: "1px solid #e1e4e8", background: "#f0f2f4" }}>
+        <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "#6e7781" }}>{lang}</span>
         <CopyBtn text={code} />
       </div>
-      <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed" style={{ color: "#e2e8f0" }}>{code}</pre>
+      <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed" style={{ color: "#24292e" }}>{code}</pre>
     </div>
   );
 }
