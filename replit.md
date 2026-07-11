@@ -4,12 +4,24 @@ Platform as a Service berbasis web, mirip Railway/Render — untuk deploy dan ma
 
 ## Run & Operate
 
+### On Replit (production mode — port 5000)
+The configured workflow builds both packages and starts the production server:
+```
+pnpm --filter @workspace/api-server run build && \
+pnpm --filter @workspace/paas-dashboard run build && \
+NODE_ENV=production PORT=5000 node --enable-source-maps artifacts/api-server/dist/index.mjs
+```
+The Express server serves the frontend static files and API from a single port (5000).
+
+### Local development
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 3001)
 - `pnpm --filter @workspace/paas-dashboard run dev` — run the frontend (port 5000)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/db run push` — push DB schema changes interactively (dev only, requires TTY)
+- `pnpm --filter @workspace/db run generate` — generate SQL migration files from schema changes
+- `pnpm --filter @workspace/db run migrate` — apply SQL migrations non-interactively (CI/Replit-safe, used in post-merge.sh)
 - Required env: `SUPABASE_DATABASE_URL` — Supabase Postgres connection string
 - `CONDUIT_API_KEY` — Conduit API key (sk-cdt-...)
 - `CONDUIT_BASE_URL` — Conduit base URL (default: https://conduit.ozdoev.net)
