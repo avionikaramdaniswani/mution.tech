@@ -57,11 +57,13 @@ function CopyBtn({ text }: { text: string }) {
   );
 }
 
-function CodeBlock({ code, lang = "bash" }: { code: string; lang?: string }) {
+function CodeBlock({ code, lang = "bash", filename }: { code: string; lang?: string; filename?: string }) {
   return (
     <div className="not-prose relative rounded-lg my-4 overflow-hidden" style={{ background: "#f6f8fa", border: "1px solid #e1e4e8" }}>
       <div className="flex items-center justify-between px-4 py-2" style={{ borderBottom: "1px solid #e1e4e8", background: "#f0f2f4" }}>
-        <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "#6e7781" }}>{lang}</span>
+        <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "#6e7781" }}>
+          {filename ? <span style={{ color: "#24292e", textTransform: "none" }}>{filename}</span> : lang}
+        </span>
         <CopyBtn text={code} />
       </div>
       <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed" style={{ color: "#24292e", background: "#f6f8fa", margin: 0 }}>{code}</pre>
@@ -417,63 +419,63 @@ console.log(message.content[0].type === "text" ? message.content[0].text : "");`
               <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-foreground/70 mb-4 flex items-start gap-2">
                 <span className="mt-0.5">💡</span>
                 <span>
-                  Codex CLI dari OpenAI bisa langsung pakai API Mution — cukup arahkan <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">OPENAI_BASE_URL</code> ke endpoint Mution dan set <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">OPENAI_API_KEY</code> dengan key kamu.
+                  Codex CLI dikonfigurasi lewat file <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">config.toml</code> dan <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">auth.json</code> di direktori <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">.codex</code> — bukan env var.
                 </span>
-              </div>
-
-              <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm mb-5">
-                <p className="font-medium text-foreground mb-2">Catatan Penting</p>
-                <p className="text-foreground/70 text-xs leading-relaxed">
-                  Gunakan model OpenAI yang tersedia di Mution (contoh: <code className="bg-background px-1 py-0.5 rounded border border-border text-foreground/90 font-mono">gpt-5.5</code>). Codex CLI secara default akan menggunakan model yang kamu set lewat flag <code className="bg-background px-1 py-0.5 rounded border border-border text-foreground/90 font-mono">--model</code> atau env var <code className="bg-background px-1 py-0.5 rounded border border-border text-foreground/90 font-mono">OPENAI_MODEL</code>.
-                </p>
               </div>
 
               <H3>1. Install Codex CLI</H3>
               <CodeBlock lang="bash" code="npm install -g @openai/codex" />
 
-              <H3>2. Set environment variables</H3>
-              <p className="text-foreground/70 text-sm mb-3">Isi dengan API key Mution kamu:</p>
+              <H3>2. Buat config directory</H3>
               <OsTabs
-                linux={`export OPENAI_BASE_URL="${base}/v1"
-export OPENAI_API_KEY="mk_live_YOUR_KEY_HERE"`}
-                powershell={`$env:OPENAI_BASE_URL = "${base}/v1"
-$env:OPENAI_API_KEY = "mk_live_YOUR_KEY_HERE"`}
-                cmd={`set OPENAI_BASE_URL=${base}/v1
-set OPENAI_API_KEY=mk_live_YOUR_KEY_HERE`}
+                linux="mkdir -p ~/.codex"
+                powershell={`New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\\.codex"`}
+                cmd={`mkdir "%USERPROFILE%\\.codex"`}
+              />
+              <p className="text-xs text-foreground/50 -mt-2 mb-1">
+                Windows: tekan <kbd className="font-mono bg-muted border border-border rounded px-1">Win+R</kbd> lalu ketik <code className="font-mono">%userprofile%\.codex</code> untuk buka foldernya langsung.
+              </p>
+
+              <H3>3. Tambahkan config.toml</H3>
+              <p className="text-foreground/60 text-xs mb-1">
+                macOS / Linux: <code className="font-mono">~/.codex/config.toml</code> &nbsp;·&nbsp; Windows: <code className="font-mono">%USERPROFILE%\.codex\config.toml</code>
+              </p>
+              <CodeBlock
+                lang="toml"
+                filename="config.toml"
+                code={`model_provider = "OpenAI"
+model = "gpt-5.5"
+review_model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+disable_response_storage = true
+network_access = "enabled"
+windows_wsl_setup_acknowledged = true
+
+[model_providers.OpenAI]
+name = "OpenAI"
+base_url = "${base}"
+wire_api = "responses"
+requires_openai_auth = true
+
+[features]
+goals = true`}
               />
 
-              <p className="text-xs mt-4 text-foreground/70 mb-3">Untuk menyimpan permanen:</p>
-              <OsTabs
-                linux={`echo 'export OPENAI_BASE_URL="${base}/v1"' >> ~/.zshrc
-echo 'export OPENAI_API_KEY="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc
-source ~/.zshrc
-
-# Untuk bash ganti ~/.zshrc dengan ~/.bashrc`}
-                powershell={`[System.Environment]::SetEnvironmentVariable("OPENAI_BASE_URL", "${base}/v1", "User")
-[System.Environment]::SetEnvironmentVariable("OPENAI_API_KEY", "mk_live_YOUR_KEY_HERE", "User")
-
-# Restart PowerShell setelah ini`}
-                cmd={`setx OPENAI_BASE_URL "${base}/v1"
-setx OPENAI_API_KEY "mk_live_YOUR_KEY_HERE"
-
-REM Buka CMD baru setelah ini`}
+              <H3>4. Tambahkan auth.json</H3>
+              <p className="text-foreground/60 text-xs mb-1">
+                macOS / Linux: <code className="font-mono">~/.codex/auth.json</code> &nbsp;·&nbsp; Windows: <code className="font-mono">%USERPROFILE%\.codex\auth.json</code>
+              </p>
+              <CodeBlock
+                lang="json"
+                filename="auth.json"
+                code={`{
+  "OPENAI_API_KEY": "mk_live_YOUR_KEY_HERE"
+}`}
               />
+              <p className="text-xs text-foreground/50 -mt-2">Ganti <code className="font-mono">mk_live_YOUR_KEY_HERE</code> dengan API key kamu dari halaman <span className="underline underline-offset-2 cursor-pointer" onClick={() => window.location.href = "/api-keys"}>API Keys</span>.</p>
 
-              <H3>3. Jalankan Codex CLI</H3>
-              <OsTabs
-                linux={`codex
-# Atau langsung dengan prompt:
-codex "Buat REST API dengan Express dan TypeScript"`}
-                powershell={`codex
-# Atau langsung dengan prompt:
-codex "Buat REST API dengan Express dan TypeScript"`}
-                cmd={`codex
-REM Atau langsung dengan prompt:
-codex "Buat REST API dengan Express dan TypeScript"`}
-              />
-
-              <H3>Pilih model spesifik</H3>
-              <CodeBlock lang="bash" code={`codex --model gpt-5.5 "Jelaskan kode ini"`} />
+              <H3>5. Jalankan Codex</H3>
+              <CodeBlock lang="bash" code={`codex\n# Atau langsung dengan prompt:\ncodex "Buat REST API dengan Express dan TypeScript"`} />
             </div>
           )}
 
