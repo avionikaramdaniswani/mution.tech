@@ -16,7 +16,7 @@ function OsTabs({ linux, powershell, cmd }: { linux: string; powershell: string;
   ];
   const code = active === "linux" ? linux : active === "powershell" ? powershell : cmd;
   return (
-    <div className="rounded-lg my-4 overflow-hidden" style={{ background: "#f6f8fa", border: "1px solid #e1e4e8" }}>
+    <div className="not-prose rounded-lg my-4 overflow-hidden" style={{ background: "#f6f8fa", border: "1px solid #e1e4e8" }}>
       <div className="flex" style={{ borderBottom: "1px solid #e1e4e8", background: "#f0f2f4" }}>
         {tabs.map((t) => (
           <button
@@ -35,7 +35,7 @@ function OsTabs({ linux, powershell, cmd }: { linux: string; powershell: string;
       </div>
       <div className="relative">
         <CopyBtn text={code} />
-        <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed" style={{ color: "#24292e" }}>{code}</pre>
+        <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed" style={{ color: "#24292e", background: "#f6f8fa", margin: 0 }}>{code}</pre>
       </div>
     </div>
   );
@@ -59,12 +59,12 @@ function CopyBtn({ text }: { text: string }) {
 
 function CodeBlock({ code, lang = "bash" }: { code: string; lang?: string }) {
   return (
-    <div className="relative rounded-lg my-4 overflow-hidden" style={{ background: "#f6f8fa", border: "1px solid #e1e4e8" }}>
+    <div className="not-prose relative rounded-lg my-4 overflow-hidden" style={{ background: "#f6f8fa", border: "1px solid #e1e4e8" }}>
       <div className="flex items-center justify-between px-4 py-2" style={{ borderBottom: "1px solid #e1e4e8", background: "#f0f2f4" }}>
         <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "#6e7781" }}>{lang}</span>
         <CopyBtn text={code} />
       </div>
-      <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed" style={{ color: "#24292e" }}>{code}</pre>
+      <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed" style={{ color: "#24292e", background: "#f6f8fa", margin: 0 }}>{code}</pre>
     </div>
   );
 }
