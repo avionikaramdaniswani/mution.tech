@@ -707,8 +707,32 @@ export async function restartProjectWithCoolify(projectId: number): Promise<bool
 
 export async function deleteProjectWithCoolify(projectId: number): Promise<boolean> {
   const resource = await getProjectResource(projectId);
-  if (!resource?.coolifyApplicationUuid) return false;
-  await coolifyRequest("DELETE", `/applications/${resource.coolifyApplicationUuid}`);
+  if (!resource) return false;
+
+  // Delete application first (if it was ever created), then the project.
+  // Deleting the Coolify project also cascades to its environments, but
+  // deleting the application first avoids orphaned running containers.
+  if (resource.coolifyApplicationUuid) {
+    try {
+      await coolifyRequest("DELETE", `/applications/${resource.coolifyApplicationUuid}`, {
+        delete_configurations: true,
+        delete_volumes: true,
+        docker_cleanup: true,
+      });
+    } catch (err) {
+      // 404 = already gone on Coolify side; treat as success and continue cleanup.
+      if (!(err instanceof CoolifyError && err.statusCode === 404)) throw err;
+    }
+  }
+
+  if (resource.coolifyProjectUuid) {
+    try {
+      await coolifyRequest("DELETE", `/projects/${resource.coolifyProjectUuid}`);
+    } catch (err) {
+      if (!(err instanceof CoolifyError && err.statusCode === 404)) throw err;
+    }
+  }
+
   return true;
 }
 
