@@ -90,7 +90,7 @@ router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
   const passwordHash = await bcrypt.hash(password, 12);
   const [user] = await db
     .insert(usersTable)
-    .values({ email, name, passwordHash, role: "user", plan: "hobby" })
+    .values({ email, name, passwordHash, role: "user", plan: "hobby", lastLoginAt: new Date() })
     .returning();
 
   const sessionId = await createSession(user.id);
