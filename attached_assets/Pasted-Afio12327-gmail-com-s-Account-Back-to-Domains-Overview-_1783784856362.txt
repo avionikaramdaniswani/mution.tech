@@ -1,0 +1,168 @@
+Afio12327@gmail.com's Account
+Back to Domains
+Overview
+
+Recents
+
+AI Crawl Control
+
+Investigate
+
+Analytics
+
+DNS
+
+Email
+
+SSL/TLS
+
+Security
+Access
+
+Speed
+
+Caching
+Workers Routes
+
+Rules
+Error Pages
+Network
+
+Traffic
+Web3
+
+Manage account
+
+mution.tech
+
+
+free
+Help us make Cloudflare even better for your domain and others like it. 
+Share your feedback
+
+Overview
+
+mution.tech
+Monitor and configure how Cloudflare processes your web traffic with the services in the menu.
+
+Review Cloudflare fundamentals
+Your domain is now protected by Cloudflare
+Your web traffic is proxying through Cloudflare, meaning:
+
+Your website or app loads faster with caching, speed, and traffic services
+Attacks and bots are mitigated by security products
+Data is encrypted with SSL/TLS
+You can customize how HTTP traffic is handled with rules and Workers Routes
+Not sure where to start? Follow our 
+learning path
+Your traffic data will show under Analytics & Logs once available.
+
+Next steps
+Go to 
+DNS
+ to verify your existing records and configure proxy status.
+
+Use 
+SSL/TLS
+ to manage certificates. We will issue you a free universal SSL certificate to cover your root domain (example.com) and first-level subdomains (www.example.com, blog.example.com, etc.).
+
+Automatic SSL/TLS regularly scans your origin to set an encryption mode that suits your setup, in case you uploaded a new certificate or changed your TLS settings. Next scan: Jul 17, 2026.
+
+Add tag
+Quick start guide
+
+Hide
+Your website or app is now behind Cloudflare. Requests to mution.tech come to Cloudflare first, so we can stop attacks and speed up your web traffic.
+Get more out of your Free plan
+
+Several features are on by default, including CDN/caching, DDoS protection, SSL/TLS, and WAF. Explore other features included in your plan below and in the menu.
+These features are generally low risk, but we recommend reviewing the documentation (look for the ) for limitations and edge cases. If you notice any issues, deactivate one feature at a time to troubleshoot.
+Security
+Performance
+Activate one-click features that mitigate threats we find in your traffic. Find more options under Security.
+Feature
+Activate?
+Client-side security
+
+
+Ensure the safety and privacy of your visitors by monitoring third-party scripts, connections, and cookies loaded in web browsers.
+Bot Fight Mode
+
+
+Challenge known bots that may carry out attacks. Defend against threats like content scraping, click fraud, and credential stuffing by challenging simple bots with known traffic signatures.
+Leaked credentials mitigation
+
+Turn on leaked credentials detection and deploy a rate limiting rule to meter the number of requests from IP addresses attempting to use leaked or stolen passwords for 10 seconds.
+Customize and test your configuration
+
+Monitor traffic and threats
+
+Get notified
+
+DNS
+DNS Setup:
+Full
+DNS Records
+Manage AI bot access
+Block AI training bots
+
+Deploys a Cloudflare-managed rule to block bots that we categorize as AI training crawlers from visiting your site.
+Block only on pages with ads
+See the list of bots and learn more
+Manage your robots.txt
+Set how Cloudflare manages your robots.txt file, which tells bots and crawlers how they should interact with your site.
+Set your preference to block training in robots.txt
+Learn more
+Quick Actions
+Markdown for Agents
+Pro plan
+Automatically convert HTML to Markdown for requests that use content negotiation headers (Accept: text/markdown)
+About Markdown for Agents
+
+
+Upgrade plan
+About Markdown for Agents
+Under Attack Mode
+Show visitors a non-interactive challenge when they visit your site.
+About Under Attack Mode
+
+Development Mode
+Temporarily bypass our cache. See changes to your origin server in realtime.
+About Development Mode
+
+
+Run speed test
+
+Configure caching
+Domain Registration
+Registrar:
+Unknown (TucowsRadix-dotserve)
+
+Transfer to Cloudflare
+Active Subscriptions
+Billing
+Processing
+Free plan
+Support Resources
+Documentation
+
+Community
+
+API
+Zone ID
+91373f84ba9f47fcbfba2786eb055957
+Account ID
+80c695f5903e9905b67624af10e13f95
+Get your API token
+API documentation
+Advanced Actions
+Pause Cloudflare
+Remove from Cloudflare
+Support
+System status
+Careers
+Terms of Use
+Report Security Issues
+Privacy Policy
+A blue and white pill with a checkmark and an x, representing privacy choicesCookie Preferences
+© 2026 Cloudflare, Inc.
