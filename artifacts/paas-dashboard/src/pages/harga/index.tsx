@@ -21,12 +21,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MODEL_CATALOG, groupModelsByProvider } from "@workspace/model-catalog";
 
 const hostingRates = [
-  { ram: "256 MB", perMinute: 0.2, fit: "Prototype ringan" },
-  { ram: "512 MB", perMinute: 0.4, fit: "API kecil" },
-  { ram: "1 GB", perMinute: 0.8, fit: "Web app aktif" },
-  { ram: "2 GB", perMinute: 1.6, fit: "Backend produksi" },
-  { ram: "4 GB", perMinute: 3.2, fit: "Worker dan API ramai" },
-  { ram: "8 GB", perMinute: 6.4, fit: "Beban berat" },
+  { ram: "256 MB", perMinute: 0.25, fit: "Prototype ringan" },
+  { ram: "512 MB", perMinute: 0.45, fit: "API kecil" },
+  { ram: "1 GB", perMinute: 0.9, fit: "Web app aktif" },
+  { ram: "2 GB", perMinute: 1.8, fit: "Backend produksi" },
+  { ram: "4 GB", perMinute: 3.6, fit: "Worker dan API ramai" },
+  { ram: "8 GB", perMinute: 7.2, fit: "Beban berat" },
 ] as const;
 
 const pricingSignals = [
