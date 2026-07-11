@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, projectsTable, deploymentsTable, envVarsTable, projectDatabasesTable } from "@workspace/db";
+import { db, projectsTable, deploymentsTable, envVarsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth } from "../lib/auth";
@@ -388,114 +388,6 @@ router.delete("/projects/:id/env/:envId", async (req, res): Promise<void> => {
   }
 
   await db.delete(envVarsTable).where(and(eq(envVarsTable.id, envId), eq(envVarsTable.projectId, id)));
-  res.json({ success: true });
-});
-
-// Database
-router.get("/projects/:id/database", async (req, res): Promise<void> => {
-  const user = (req as any).user;
-  const id = parseRouteId(req.params.id);
-  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
-
-  const [project] = await db
-    .select()
-    .from(projectsTable)
-    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, user.id)));
-
-  if (!project) {
-    res.status(404).json({ error: "Project not found" });
-    return;
-  }
-
-  const [database] = await db
-    .select()
-    .from(projectDatabasesTable)
-    .where(eq(projectDatabasesTable.projectId, id));
-
-  if (!database) {
-    res.status(404).json({ error: "No database provisioned" });
-    return;
-  }
-
-  res.json({
-    id: database.id,
-    projectId: database.projectId,
-    type: database.type,
-    connectionString: database.connectionString ? "postgresql://***:***@host:5432/db" : null,
-    sizeMb: database.sizeMb,
-    status: database.status,
-    createdAt: database.createdAt.toISOString(),
-  });
-});
-
-router.post("/projects/:id/database", async (req, res): Promise<void> => {
-  const user = (req as any).user;
-  const id = parseRouteId(req.params.id);
-  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
-
-  const [project] = await db
-    .select()
-    .from(projectsTable)
-    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, user.id)));
-
-  if (!project) {
-    res.status(404).json({ error: "Project not found" });
-    return;
-  }
-
-  const [existing] = await db
-    .select()
-    .from(projectDatabasesTable)
-    .where(eq(projectDatabasesTable.projectId, id));
-
-  if (existing) {
-    res.status(409).json({ error: "Database already provisioned" });
-    return;
-  }
-
-  // Simulate provisioning
-  const fakeConn = `postgresql://user_${id}:pass_${Math.random().toString(36).slice(2)}@db.paas.local:5432/project_${id}`;
-  const [database] = await db
-    .insert(projectDatabasesTable)
-    .values({
-      projectId: id,
-      type: "postgresql",
-      connectionString: fakeConn,
-      sizeMb: 0,
-      status: "ready",
-    })
-    .returning();
-
-  await logActivity(user.id, "database.provisioned", id, { type: "postgresql" });
-
-  res.status(201).json({
-    id: database.id,
-    projectId: database.projectId,
-    type: database.type,
-    connectionString: "postgresql://***:***@host:5432/db",
-    sizeMb: database.sizeMb,
-    status: database.status,
-    createdAt: database.createdAt.toISOString(),
-  });
-});
-
-router.delete("/projects/:id/database", async (req, res): Promise<void> => {
-  const user = (req as any).user;
-  const id = parseRouteId(req.params.id);
-  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
-
-  const [project] = await db
-    .select()
-    .from(projectsTable)
-    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, user.id)));
-
-  if (!project) {
-    res.status(404).json({ error: "Project not found" });
-    return;
-  }
-
-  await db.delete(projectDatabasesTable).where(eq(projectDatabasesTable.projectId, id));
-  await logActivity(user.id, "database.deleted", id);
   res.json({ success: true });
 });
 

@@ -5,7 +5,6 @@ import {
   useStopProject, useRestartProject, useDeleteProject,
   useGetProjectEnv, getGetProjectEnvQueryKey, useSetProjectEnv, useDeleteProjectEnv,
   useListDeployments, getListDeploymentsQueryKey, useTriggerDeployment, useRollbackDeployment,
-  useGetProjectDatabase, getGetProjectDatabaseQueryKey, useProvisionDatabase, useDeleteDatabase,
   getListProjectsQueryKey, useUpdateProject,
 } from "@workspace/api-client-react";
 import type { Deployment } from "@workspace/api-client-react";
@@ -23,7 +22,9 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Copy, Database, FileText, Globe, Power, RefreshCw, RotateCcw, Trash } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, BookOpen, Code2, Copy, FileText, Globe, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -74,10 +75,6 @@ export default function ProjectDetail() {
 
   const { data: envVars, isLoading: isLoadingEnv } = useGetProjectEnv(projectId, {
     query: { enabled: !!projectId, queryKey: getGetProjectEnvQueryKey(projectId) }
-  });
-
-  const { data: database, isLoading: isLoadingDb } = useGetProjectDatabase(projectId, {
-    query: { enabled: !!projectId, queryKey: getGetProjectDatabaseQueryKey(projectId), retry: false }
   });
 
   const triggerDeploy = useTriggerDeployment();
@@ -223,7 +220,6 @@ export default function ProjectDetail() {
           <TabsTrigger value="overview">Ringkasan</TabsTrigger>
           <TabsTrigger value="deployments">Deployment</TabsTrigger>
           <TabsTrigger value="environment">Variabel Env</TabsTrigger>
-          <TabsTrigger value="database">Database</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6 space-y-6">
@@ -437,10 +433,6 @@ export default function ProjectDetail() {
         <TabsContent value="environment" className="mt-6">
           <EnvVarsTab projectId={projectId} envVars={envVars} isLoading={isLoadingEnv} />
         </TabsContent>
-
-        <TabsContent value="database" className="mt-6">
-          <DatabaseTab projectId={projectId} database={database} isLoading={isLoadingDb} />
-        </TabsContent>
       </Tabs>
 
       <Dialog open={!!selectedLogDeployment} onOpenChange={(open) => !open && setLogDeployment(null)}>
@@ -460,25 +452,34 @@ export default function ProjectDetail() {
   );
 }
 
-function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number, envVars: any, isLoading: boolean }) {
+function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number; envVars: any; isLoading: boolean }) {
   const [newKey, setNewKey] = useState("");
   const [newVal, setNewVal] = useState("");
+  const [showGuide, setShowGuide] = useState(false);
+  const [bulkMode, setBulkMode] = useState<"env" | "json" | null>(null);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [isBulkSaving, setIsBulkSaving] = useState(false);
+
   const setEnv = useSetProjectEnv();
   const delEnv = useDeleteProjectEnv();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const handleAdd = () => {
-    if (!newKey || !newVal) return;
+    if (!newKey.trim() || !newVal) return;
     setEnv.mutate(
-      { id: projectId, data: { key: newKey, value: newVal } },
+      { id: projectId, data: { key: newKey.trim(), value: newVal } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetProjectEnvQueryKey(projectId) });
           setNewKey("");
           setNewVal("");
           toast({ title: "Variabel environment ditambahkan" });
-        }
+        },
+        onError: (err: any) => {
+          toast({ title: "Gagal menyimpan", description: err?.message ?? "Coba lagi", variant: "destructive" });
+        },
       }
     );
   };
@@ -490,169 +491,254 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number, envV
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetProjectEnvQueryKey(projectId) });
           toast({ title: "Variabel environment dihapus" });
-        }
+        },
+        onError: (err: any) => {
+          toast({ title: "Gagal menghapus", description: err?.message ?? "Coba lagi", variant: "destructive" });
+        },
       }
     );
+  };
+
+  const openBulkEdit = (mode: "env" | "json") => {
+    const keys: string[] = (envVars || []).map((e: any) => e.key);
+    if (mode === "env") {
+      setBulkText(keys.length ? keys.map((k) => `${k}=`).join("\n") : "# Contoh:\n# API_KEY=nilai_kamu\n# DATABASE_URL=postgresql://...");
+    } else {
+      const obj: Record<string, string> = {};
+      keys.forEach((k) => { obj[k] = ""; });
+      setBulkText(keys.length ? JSON.stringify(obj, null, 2) : '{\n  "API_KEY": "nilai_kamu"\n}');
+    }
+    setBulkMode(mode);
+    setBulkError(null);
+  };
+
+  const parseBulkPairs = (): Array<{ key: string; value: string }> | string => {
+    if (bulkMode === "env") {
+      const pairs: Array<{ key: string; value: string }> = [];
+      for (const line of bulkText.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const idx = trimmed.indexOf("=");
+        if (idx < 0) return `Baris tidak valid: "${trimmed}" — format harus KEY=value`;
+        const key = trimmed.slice(0, idx).trim();
+        const value = trimmed.slice(idx + 1);
+        if (!key || !value) continue;
+        pairs.push({ key, value });
+      }
+      return pairs;
+    } else {
+      try {
+        const obj = JSON.parse(bulkText);
+        if (typeof obj !== "object" || Array.isArray(obj) || obj === null)
+          return 'JSON harus berupa objek, contoh: { "KEY": "value" }';
+        const pairs: Array<{ key: string; value: string }> = [];
+        for (const [key, value] of Object.entries(obj)) {
+          if (typeof value !== "string" || !value) continue;
+          pairs.push({ key, value });
+        }
+        return pairs;
+      } catch {
+        return "JSON tidak valid — periksa format dan tanda baca";
+      }
+    }
+  };
+
+  const handleBulkSave = async () => {
+    setBulkError(null);
+    const result = parseBulkPairs();
+    if (typeof result === "string") { setBulkError(result); return; }
+    if (result.length === 0) { setBulkError("Tidak ada nilai yang diisi. Tulis value untuk key yang ingin disimpan."); return; }
+
+    setIsBulkSaving(true);
+    let saved = 0;
+    let failed = 0;
+    for (const { key, value } of result) {
+      try {
+        await setEnv.mutateAsync({ id: projectId, data: { key, value } });
+        saved++;
+      } catch {
+        failed++;
+      }
+    }
+    setIsBulkSaving(false);
+    queryClient.invalidateQueries({ queryKey: getGetProjectEnvQueryKey(projectId) });
+    setBulkMode(null);
+    toast({
+      title: failed === 0 ? `${saved} variabel disimpan` : `${saved} disimpan, ${failed} gagal`,
+      variant: failed > 0 ? "destructive" : "default",
+    });
   };
 
   return (
-    <Card className="border-border/50">
-      <CardHeader>
-        <CardTitle>Variabel Environment</CardTitle>
-        <CardDescription>Secret dan konfigurasi yang tersedia di aplikasi kamu saat runtime.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-end gap-4">
-          <div className="space-y-2 flex-1">
-            <Label>Nama</Label>
-            <Input placeholder="API_KEY" value={newKey} onChange={e => setNewKey(e.target.value)} />
-          </div>
-          <div className="space-y-2 flex-1">
-            <Label>Nilai</Label>
-            <Input type="password" placeholder="********" value={newVal} onChange={e => setNewVal(e.target.value)} />
-          </div>
-          <Button onClick={handleAdd} disabled={setEnv.isPending || !newKey || !newVal}>Tambah</Button>
-        </div>
-
-        {isLoading ? (
-          <Skeleton className="h-[200px]" />
-        ) : !envVars || envVars.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-            Belum ada variabel environment
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nama</TableHead>
-                <TableHead>Nilai</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {envVars.map((env: any) => (
-                <TableRow key={env.id}>
-                  <TableCell className="font-mono text-sm">{env.key}</TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">{env.value || "********"}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(env.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function DatabaseTab({ projectId, database, isLoading }: { projectId: number, database: any, isLoading: boolean }) {
-  const provisionDb = useProvisionDatabase();
-  const deleteDb = useDeleteDatabase();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  const handleProvision = () => {
-    provisionDb.mutate(
-      { id: projectId },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetProjectDatabaseQueryKey(projectId) });
-          toast({ title: "Provisioning database dimulai" });
-        }
-      }
-    );
-  };
-
-  const handleDelete = () => {
-    deleteDb.mutate(
-      { id: projectId },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetProjectDatabaseQueryKey(projectId) });
-          toast({ title: "Database dihapus" });
-        }
-      }
-    );
-  };
-
-  return (
-    <Card className="border-border/50">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Database className="h-5 w-5 text-primary" />
-          Database Terpasang
-        </CardTitle>
-        <CardDescription>Provisioning database PostgreSQL untuk proyek ini.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <Skeleton className="h-[150px]" />
-        ) : database ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border border-border p-4 rounded-lg bg-muted/50">
-              <div>
-                <div className="font-medium text-lg">PostgreSQL</div>
-                <div className="text-sm text-muted-foreground mt-1">Status: <Badge variant="outline">{database.status || 'siap'}</Badge></div>
-                <div className="text-sm text-muted-foreground">Ukuran: {database.sizeMb} MB</div>
-              </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" disabled={deleteDb.isPending}>
-                    <Trash className="h-4 w-4 mr-2" /> Hapus Database
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Hapus databasex</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Semua data di database ini akan hilang permanen. Tindakan ini tidak bisa dibatalkan.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      Hapus
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+    <>
+      <Card className="border-border/50">
+        <CardHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle>Variabel Environment</CardTitle>
+              <CardDescription>Secret dan konfigurasi yang tersedia di aplikasi kamu saat runtime.</CardDescription>
             </div>
-            
-            <div className="space-y-2">
-              <Label>Connection String</Label>
-              <div className="flex gap-2">
-                <Input value={database.connectionString || "********************************************"} readOnly type="password" />
-                <Button variant="outline" onClick={() => {
-                  navigator.clipboard.writeText(database.connectionString || "");
-                  toast({ title: "Disalin ke clipboard" });
-                }}>
-                  <Copy className="h-4 w-4" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                  <MoreHorizontal className="h-4 w-4" />
                 </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Tersedia juga di environment proyek kamu sebagai <code className="font-mono bg-muted px-1 rounded">DATABASE_URL</code>.
-              </p>
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => setShowGuide(true)}>
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Panduan
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => openBulkEdit("env")}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Edit dengan ENV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openBulkEdit("json")}>
+                  <Code2 className="h-4 w-4 mr-2" />
+                  Edit dengan JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        ) : (
-          <div className="text-center py-12 border border-dashed border-border rounded-lg flex flex-col items-center">
-            <div className="rounded-full bg-primary/10 p-4 mb-4 text-primary">
-              <Database className="h-8 w-8" />
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-end gap-3">
+            <div className="space-y-1.5 flex-1">
+              <Label>Nama</Label>
+              <Input
+                placeholder="API_KEY"
+                value={newKey}
+                onChange={(e) => setNewKey(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              />
             </div>
-            <h3 className="text-lg font-medium">Belum ada database</h3>
-            <p className="text-muted-foreground max-w-sm mt-2 mb-6">
-              Tambahkan database PostgreSQL ke proyek ini. Connection string akan otomatis tersedia di environment kamu.
-            </p>
-            <Button onClick={handleProvision} disabled={provisionDb.isPending}>
-              {provisionDb.isPending ? "Menyiapkan..." : "Provision Database PostgreSQL"}
+            <div className="space-y-1.5 flex-1">
+              <Label>Nilai</Label>
+              <Input
+                type="password"
+                placeholder="Nilai secret"
+                value={newVal}
+                onChange={(e) => setNewVal(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              />
+            </div>
+            <Button onClick={handleAdd} disabled={setEnv.isPending || !newKey.trim() || !newVal}>
+              Tambah
             </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          {isLoading ? (
+            <Skeleton className="h-[200px]" />
+          ) : !envVars || envVars.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
+              Belum ada variabel environment
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nama</TableHead>
+                  <TableHead>Nilai</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {envVars.map((env: any) => (
+                  <TableRow key={env.id}>
+                    <TableCell className="font-mono text-sm">{env.key}</TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">••••••••</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(env.id)}
+                        disabled={delEnv.isPending}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Panduan */}
+      <Dialog open={showGuide} onOpenChange={setShowGuide}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" /> Panduan Variabel Environment
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <div>
+              <p className="font-semibold mb-1">Apa itu env vars?</p>
+              <p className="text-muted-foreground">Variabel environment adalah cara menyimpan konfigurasi dan secret (API key, password, URL) di luar kode supaya aman dan mudah diubah tanpa mengubah source code.</p>
+            </div>
+            <div>
+              <p className="font-semibold mb-2">Cara akses di kode</p>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Node.js</p>
+                  <code className="block bg-muted rounded px-3 py-2 font-mono text-xs">process.env.API_KEY</code>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Python</p>
+                  <code className="block bg-muted rounded px-3 py-2 font-mono text-xs">import os; os.environ['API_KEY']</code>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">PHP</p>
+                  <code className="block bg-muted rounded px-3 py-2 font-mono text-xs">$_ENV['API_KEY']</code>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="font-semibold mb-1">Format nama</p>
+              <p className="text-muted-foreground">Gunakan huruf kapital dan underscore: <code className="bg-muted px-1 rounded font-mono">DATABASE_URL</code>, <code className="bg-muted px-1 rounded font-mono">API_SECRET_KEY</code>.</p>
+            </div>
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2.5 text-amber-700 dark:text-amber-400 text-xs">
+              ⚠️ Perubahan env vars berlaku setelah deploy ulang dari tab Deployment.
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Edit */}
+      <Dialog open={!!bulkMode} onOpenChange={(open) => !open && setBulkMode(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {bulkMode === "env" ? "Edit dengan ENV" : "Edit dengan JSON"}
+            </DialogTitle>
+            <DialogDescription>
+              {bulkMode === "env"
+                ? "Satu baris per variabel, format KEY=value. Baris # diabaikan. Key dengan value kosong tidak akan diubah."
+                : 'Format { "KEY": "value" }. Key dengan value string kosong tidak akan diubah.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              className="font-mono text-xs min-h-[220px] resize-y"
+              value={bulkText}
+              onChange={(e) => { setBulkText(e.target.value); setBulkError(null); }}
+              spellCheck={false}
+              placeholder={bulkMode === "env" ? "API_KEY=nilai_kamu\nDATABASE_URL=postgresql://..." : '{\n  "API_KEY": "nilai_kamu"\n}'}
+            />
+            {bulkError && <p className="text-xs text-destructive">{bulkError}</p>}
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={() => setBulkMode(null)} disabled={isBulkSaving}>Batal</Button>
+            <Button onClick={handleBulkSave} disabled={isBulkSaving}>
+              {isBulkSaving ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
