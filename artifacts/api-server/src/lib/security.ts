@@ -98,11 +98,36 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  // Content-Security-Policy: restrict resource origins, block inline scripts except
+  // those explicitly needed by the SPA (Vite injects inline style in dev).
+  res.setHeader(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      "script-src 'self'",
+      // Allow inline styles (Vite/Tailwind injects them) and fonts from Google
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      // API calls only go to self; allow data: for chart SVGs
+      "img-src 'self' data: https:",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; "),
+  );
   if (process.env.NODE_ENV === "production") {
     res.setHeader("Strict-Transport-Security", "max-age=15552000; includeSubDomains");
   }
   next();
 }
+
+/** Global rate limiter for all /api routes — 120 requests per minute per IP. */
+export const globalApiRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  keyPrefix: "global",
+});
 
 function setCsrfCookie(res: Response, token: string): void {
   res.cookie(CSRF_COOKIE, token, {
