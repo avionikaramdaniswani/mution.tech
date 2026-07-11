@@ -190,6 +190,14 @@ export default function DocsPage() {
               </div>
 
               <H3>Model Tersedia</H3>
+              <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-foreground/70 mb-3 flex items-start gap-2">
+                <span className="mt-0.5">💡</span>
+                <span>
+                  Model default yang dipakai di semua contoh kode adalah{" "}
+                  <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">{defaultModel}</code>.
+                  {" "}Kamu bisa ganti ke model mana saja dari tabel di bawah.
+                </span>
+              </div>
               <div className="rounded-lg border border-border bg-card overflow-hidden">
                 <table className="w-full text-xs">
                   <thead>
@@ -202,7 +210,19 @@ export default function DocsPage() {
                   <tbody>
                     {MODEL_CATALOG.map((model) => (
                       <tr key={model.id} className="border-b border-border last:border-0">
-                        <td className="px-4 py-2.5 font-mono text-xs text-foreground/90">{model.id}</td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-foreground/90">
+                          <span>{model.id}</span>
+                          {model.id === defaultModel && (
+                            <span className="ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "#dbeafe", color: "#1d4ed8" }}>
+                              default
+                            </span>
+                          )}
+                          {model.note && model.id !== defaultModel && (
+                            <span className="ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "#dcfce7", color: "#15803d" }}>
+                              {model.note}
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-2.5 text-muted-foreground">{model.provider}</td>
                         <td className="px-4 py-2.5 text-muted-foreground">{model.description}</td>
                       </tr>
@@ -216,6 +236,10 @@ export default function DocsPage() {
           {activeTab === "openai" && (
             <div>
               <h2 className="text-2xl font-bold mb-5 text-foreground">OpenAI SDK (Python)</h2>
+              <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-foreground/70 mb-4 flex items-start gap-2">
+                <span className="mt-0.5">💡</span>
+                <span>Contoh di bawah menggunakan model <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">{defaultModel}</code> (default). Ganti nilai <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">model</code> ke ID lain dari tabel <span className="underline underline-offset-2 cursor-pointer" onClick={() => setActiveTab("quickstart")}>Model Tersedia</span>.</span>
+              </div>
               <CodeBlock lang="bash" code="pip install openai" />
 
               <H3>Chat Completion</H3>
@@ -258,6 +282,10 @@ with client.chat.completions.stream(
           {activeTab === "openai-node" && (
             <div>
               <h2 className="text-2xl font-bold mb-5 text-foreground">OpenAI SDK (Node.js / TypeScript)</h2>
+              <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-foreground/70 mb-4 flex items-start gap-2">
+                <span className="mt-0.5">💡</span>
+                <span>Contoh di bawah menggunakan model <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">{defaultModel}</code> (default). Ganti nilai <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">model</code> ke ID lain dari tabel <span className="underline underline-offset-2 cursor-pointer" onClick={() => setActiveTab("quickstart")}>Model Tersedia</span>.</span>
+              </div>
               <CodeBlock lang="bash" code="npm install openai" />
               <CodeBlock lang="typescript" code={`import OpenAI from "openai";
 
@@ -281,6 +309,10 @@ console.log(response.choices[0].message.content);`} />
           {activeTab === "claude-code" && (
             <div>
               <h2 className="text-2xl font-bold mb-5 text-foreground">Claude Code</h2>
+              <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-foreground/70 mb-4 flex items-start gap-2">
+                <span className="mt-0.5">💡</span>
+                <span>Claude Code secara otomatis memilih model terbaik yang tersedia. Untuk memaksa model tertentu, set env var <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">ANTHROPIC_MODEL={defaultModel}</code>. Lihat daftar model di tab <span className="underline underline-offset-2 cursor-pointer" onClick={() => setActiveTab("quickstart")}>Quick Start</span>.</span>
+              </div>
               <p className="text-foreground/70 mb-5">
                 Claude Code adalah CLI dari Anthropic untuk coding dengan AI. Mution mendukung format Anthropic Messages API
                 secara penuh, termasuk streaming - sehingga Claude Code bisa langsung dipakai dengan API key Mution.
@@ -381,6 +413,10 @@ console.log(message.content[0].type === "text" ? message.content[0].text : "");`
           {activeTab === "curl" && (
             <div>
               <h2 className="text-2xl font-bold mb-5 text-foreground">cURL</h2>
+              <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-foreground/70 mb-4 flex items-start gap-2">
+                <span className="mt-0.5">💡</span>
+                <span>Contoh di bawah menggunakan model <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">{defaultModel}</code> (default). Ganti nilai <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">"model"</code> ke ID lain dari tabel <span className="underline underline-offset-2 cursor-pointer" onClick={() => setActiveTab("quickstart")}>Model Tersedia</span>.</span>
+              </div>
               <H3>OpenAI-compatible</H3>
               <CodeBlock lang="bash" code={`curl "${base}/v1/chat/completions" \\
   -H "Authorization: Bearer mk_live_YOUR_KEY_HERE" \\
