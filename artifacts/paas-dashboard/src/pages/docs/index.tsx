@@ -5,7 +5,7 @@ import { Link } from "wouter";
 import { DEFAULT_MODEL_ID, MODEL_CATALOG } from "@workspace/model-catalog";
 
 type OsTab = "linux" | "powershell" | "cmd";
-type ActiveTab = "quickstart" | "openai" | "openai-node" | "claude-code" | "curl";
+type ActiveTab = "quickstart" | "openai" | "openai-node" | "claude-code" | "codex" | "curl";
 
 function OsTabs({ linux, powershell, cmd }: { linux: string; powershell: string; cmd: string }) {
   const [active, setActive] = useState<OsTab>("linux");
@@ -79,6 +79,7 @@ function TableOfContents({ activeTab, onTabChange }: { activeTab: ActiveTab; onT
     { id: "openai", label: "Python", icon: Code },
     { id: "openai-node", label: "Node.js", icon: Code },
     { id: "claude-code", label: "Claude Code", icon: Terminal },
+    { id: "codex", label: "Codex", icon: Terminal },
     { id: "curl", label: "cURL", icon: Terminal },
   ];
 
@@ -407,6 +408,72 @@ const message = await client.messages.create({
 });
 
 console.log(message.content[0].type === "text" ? message.content[0].text : "");`} />
+            </div>
+          )}
+
+          {activeTab === "codex" && (
+            <div>
+              <h2 className="text-2xl font-bold mb-5 text-foreground">OpenAI Codex CLI</h2>
+              <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-foreground/70 mb-4 flex items-start gap-2">
+                <span className="mt-0.5">💡</span>
+                <span>
+                  Codex CLI dari OpenAI bisa langsung pakai API Mution — cukup arahkan <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">OPENAI_BASE_URL</code> ke endpoint Mution dan set <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">OPENAI_API_KEY</code> dengan key kamu.
+                </span>
+              </div>
+
+              <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm mb-5">
+                <p className="font-medium text-foreground mb-2">Catatan Penting</p>
+                <p className="text-foreground/70 text-xs leading-relaxed">
+                  Gunakan model OpenAI yang tersedia di Mution (contoh: <code className="bg-background px-1 py-0.5 rounded border border-border text-foreground/90 font-mono">gpt-5.5</code>). Codex CLI secara default akan menggunakan model yang kamu set lewat flag <code className="bg-background px-1 py-0.5 rounded border border-border text-foreground/90 font-mono">--model</code> atau env var <code className="bg-background px-1 py-0.5 rounded border border-border text-foreground/90 font-mono">OPENAI_MODEL</code>.
+                </p>
+              </div>
+
+              <H3>1. Install Codex CLI</H3>
+              <CodeBlock lang="bash" code="npm install -g @openai/codex" />
+
+              <H3>2. Set environment variables</H3>
+              <p className="text-foreground/70 text-sm mb-3">Isi dengan API key Mution kamu:</p>
+              <OsTabs
+                linux={`export OPENAI_BASE_URL="${base}/v1"
+export OPENAI_API_KEY="mk_live_YOUR_KEY_HERE"`}
+                powershell={`$env:OPENAI_BASE_URL = "${base}/v1"
+$env:OPENAI_API_KEY = "mk_live_YOUR_KEY_HERE"`}
+                cmd={`set OPENAI_BASE_URL=${base}/v1
+set OPENAI_API_KEY=mk_live_YOUR_KEY_HERE`}
+              />
+
+              <p className="text-xs mt-4 text-foreground/70 mb-3">Untuk menyimpan permanen:</p>
+              <OsTabs
+                linux={`echo 'export OPENAI_BASE_URL="${base}/v1"' >> ~/.zshrc
+echo 'export OPENAI_API_KEY="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc
+source ~/.zshrc
+
+# Untuk bash ganti ~/.zshrc dengan ~/.bashrc`}
+                powershell={`[System.Environment]::SetEnvironmentVariable("OPENAI_BASE_URL", "${base}/v1", "User")
+[System.Environment]::SetEnvironmentVariable("OPENAI_API_KEY", "mk_live_YOUR_KEY_HERE", "User")
+
+# Restart PowerShell setelah ini`}
+                cmd={`setx OPENAI_BASE_URL "${base}/v1"
+setx OPENAI_API_KEY "mk_live_YOUR_KEY_HERE"
+
+REM Buka CMD baru setelah ini`}
+              />
+
+              <H3>3. Jalankan Codex CLI</H3>
+              <OsTabs
+                linux={`codex
+# Atau langsung dengan prompt:
+codex "Buat REST API dengan Express dan TypeScript"`}
+                powershell={`codex
+# Atau langsung dengan prompt:
+codex "Buat REST API dengan Express dan TypeScript"`}
+                cmd={`codex
+REM Atau langsung dengan prompt:
+codex "Buat REST API dengan Express dan TypeScript"`}
+              />
+
+              <H3>Pilih model spesifik</H3>
+              <CodeBlock lang="bash" code={`codex --model gpt-5.5 "Jelaskan kode ini"`} />
             </div>
           )}
 

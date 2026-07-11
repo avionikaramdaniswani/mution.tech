@@ -88,16 +88,6 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     aliases: ["gpt-5.5"],
   },
   {
-    id: "codex-mini-latest",
-    label: "Codex Mini",
-    provider: "OpenAI",
-    pricing: { input: 5700, output: 22800 },
-    context: "200K",
-    note: "Terbaru",
-    description: "Model coding dari OpenAI. Dioptimalkan untuk penulisan, debugging, dan pemahaman kode.",
-    aliases: ["codex-mini"],
-  },
-  {
     id: "glm-5-2",
     label: "GLM 5.2",
     provider: "Zhipu AI",
