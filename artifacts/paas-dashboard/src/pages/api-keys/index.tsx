@@ -52,10 +52,31 @@ async function apiFetch(path: string, options?: RequestInit) {
   return res.json();
 }
 
+function writeToClipboard(text: string): boolean {
+  // Try execCommand first — works synchronously and survives async await
+  try {
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none";
+    document.body.appendChild(el);
+    el.focus();
+    el.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(el);
+    if (ok) return true;
+  } catch { /* fall through */ }
+  // Try modern clipboard API
+  if (navigator?.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {});
+    return true;
+  }
+  return false;
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
-    navigator.clipboard.writeText(text);
+    writeToClipboard(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -248,37 +269,11 @@ export default function ApiKeysPage() {
   };
 
   const copyApiKey = async (key: ApiKey) => {
-    // If already revealed, copy directly — no async needed
-    if (revealedKeys[key.id]) {
-      try {
-        await navigator.clipboard.writeText(revealedKeys[key.id]);
-        toast.success("API key disalin");
-      } catch {
-        toast.error("Gagal menyalin API key");
-      }
-      return;
-    }
-
-    // Key not revealed yet — use ClipboardItem so the user gesture stays alive
-    // while the fetch resolves in the background.
-    try {
-      const blobPromise = fetchFullKey(key).then((k) => {
-        if (!k) throw new Error("Key tidak ditemukan");
-        return new Blob([k], { type: "text/plain" });
-      });
-      await navigator.clipboard.write([new ClipboardItem({ "text/plain": blobPromise })]);
-      toast.success("API key disalin");
-    } catch {
-      // ClipboardItem not supported (Firefox) — fall back: fetch then write
-      const fullKey = await fetchFullKey(key);
-      if (!fullKey) return;
-      try {
-        await navigator.clipboard.writeText(fullKey);
-        toast.success("API key disalin");
-      } catch {
-        toast.error("Gagal menyalin API key");
-      }
-    }
+    const fullKey = revealedKeys[key.id] ?? (await fetchFullKey(key));
+    if (!fullKey) return;
+    const ok = writeToClipboard(fullKey);
+    if (ok) toast.success("API key disalin");
+    else toast.error("Gagal menyalin API key");
   };
 
   const { data: keys = [], isLoading } = useQuery<ApiKey[]>({
