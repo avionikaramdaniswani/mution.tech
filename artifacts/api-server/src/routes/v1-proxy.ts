@@ -97,7 +97,7 @@ function apiRequestLogger(req: Request, res: Response, next: NextFunction): void
 // ─── Per-Model Pricing (kredit per 1M token) ──────────────────────────────────
   // Try partial match — sort by key length DESC so "claude-sonnet-4-7" beats "claude-sonnet-4"
 /** Safe fallback token estimate — capped to prevent overcharging when usage data is missing. */
-const MAX_OUTPUT_TOKENS = 8_192;
+const MAX_OUTPUT_TOKENS = 65_536;
 const DEFAULT_OUTPUT_TOKENS = 4_096;
 const FALLBACK_MAX_TOKENS = MAX_OUTPUT_TOKENS;
 function estimateFallbackTokens(reqBody: any): number {
