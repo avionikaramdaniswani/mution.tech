@@ -248,14 +248,36 @@ export default function ApiKeysPage() {
   };
 
   const copyApiKey = async (key: ApiKey) => {
-    const fullKey = revealedKeys[key.id] ?? (await fetchFullKey(key));
-    if (!fullKey) return;
+    // If already revealed, copy directly — no async needed
+    if (revealedKeys[key.id]) {
+      try {
+        await navigator.clipboard.writeText(revealedKeys[key.id]);
+        toast.success("API key disalin");
+      } catch {
+        toast.error("Gagal menyalin API key");
+      }
+      return;
+    }
 
+    // Key not revealed yet — use ClipboardItem so the user gesture stays alive
+    // while the fetch resolves in the background.
     try {
-      await navigator.clipboard.writeText(fullKey);
+      const blobPromise = fetchFullKey(key).then((k) => {
+        if (!k) throw new Error("Key tidak ditemukan");
+        return new Blob([k], { type: "text/plain" });
+      });
+      await navigator.clipboard.write([new ClipboardItem({ "text/plain": blobPromise })]);
       toast.success("API key disalin");
     } catch {
-      toast.error("Gagal menyalin API key");
+      // ClipboardItem not supported (Firefox) — fall back: fetch then write
+      const fullKey = await fetchFullKey(key);
+      if (!fullKey) return;
+      try {
+        await navigator.clipboard.writeText(fullKey);
+        toast.success("API key disalin");
+      } catch {
+        toast.error("Gagal menyalin API key");
+      }
     }
   };
 
