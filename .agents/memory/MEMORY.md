@@ -2,3 +2,4 @@
 - [Supabase DB Constraint](supabase-constraint.md) — database HARUS Supabase, jangan pernah ganti ke Replit DB atau DB lain apapun
 - [AuthProvider publicRoutes guard](auth-public-routes.md) — use-auth.tsx redirects unauthenticated users to "/" for any route NOT in publicRoutes; always add new public pages there
 - [CSRF/CORS origin allowlist on Replit](csrf-origin-replit-proxy.md) — hardcoded origin allowlists break on Replit's rotating preview domains; also Origin port often differs from Host header behind the proxy
+- [Cached token transparency (Opsi C)](cached-token-pricing.md) — cached_tokens tracked/shown in usage dashboard but NEVER enters credit/pricing calc; decision pending before adding a cache discount tier

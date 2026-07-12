@@ -23,6 +23,14 @@ export const apiUsageTable = pgTable(
     promptTokens: integer("prompt_tokens").notNull().default(0),
     completionTokens: integer("completion_tokens").notNull().default(0),
     totalTokens: integer("total_tokens").notNull().default(0),
+    /**
+     * Bagian dari `promptTokens` yang dilaporkan provider sebagai cache hit
+     * (mis. `prompt_tokens_details.cached_tokens` OpenAI-compat, atau
+     * `cache_read_input_tokens` Anthropic). Murni informasi transparansi ke
+     * user — TIDAK memengaruhi kalkulasi kredit/pricing (lihat calculateCredits
+     * di v1-proxy.ts, yang tetap pakai promptTokens/completionTokens flat).
+     */
+    cachedTokens: integer("cached_tokens").notNull().default(0),
     credits: integer("credits").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },

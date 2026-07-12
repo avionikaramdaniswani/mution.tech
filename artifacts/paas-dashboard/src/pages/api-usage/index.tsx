@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Activity, AlertTriangle, CheckCircle2, Clock, Download, Filter, Hash, Loader2, RotateCcw } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, Clock, Database, Download, Filter, Hash, Loader2, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ interface ApiUsageItem {
   errorType: string | null;
   latencyMs: number;
   promptTokens: number;
+  cachedTokens: number;
   completionTokens: number;
   totalTokens: number;
   credits: number;
@@ -49,6 +50,7 @@ interface ApiUsageResponse {
     totalCredits: number;
     totalTokens: number;
     promptTokens: number;
+    cachedTokens: number;
     completionTokens: number;
     successfulRequests: number;
     failedRequests: number;
@@ -296,7 +298,7 @@ export default function ApiUsagePage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
             <SummaryCard
               title="Total Requests"
               value={data?.summary.totalRequests.toLocaleString("id-ID") || 0}
@@ -308,6 +310,16 @@ export default function ApiUsagePage() {
               value={data?.summary.totalTokens.toLocaleString("id-ID") || 0}
               icon={Hash}
               description={`${(data?.summary.promptTokens || 0).toLocaleString("id-ID")} input - ${(data?.summary.completionTokens || 0).toLocaleString("id-ID")} output`}
+            />
+            <SummaryCard
+              title="Cached Tokens"
+              value={(data?.summary.cachedTokens || 0).toLocaleString("id-ID")}
+              icon={Database}
+              description={
+                data && data.summary.promptTokens > 0
+                  ? `${Math.round(((data.summary.cachedTokens || 0) / data.summary.promptTokens) * 100)}% dari input tokens - info saja, harga tidak berubah`
+                  : "Belum ada cache hit pada filter ini"
+              }
             />
             <SummaryCard
               title="Error Requests"
@@ -433,6 +445,11 @@ export default function ApiUsagePage() {
                           <div className="text-xs">
                             {item.promptTokens.toLocaleString("id-ID")} in - {item.completionTokens.toLocaleString("id-ID")} out
                           </div>
+                          {item.cachedTokens > 0 && (
+                            <div className="text-xs text-emerald-400" title="Bagian dari input tokens yang cache hit di provider — info saja, tidak mengubah harga">
+                              {item.cachedTokens.toLocaleString("id-ID")} cached
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-right tabular-nums text-muted-foreground">
                           {item.latencyMs.toLocaleString("id-ID")} ms

@@ -20,6 +20,8 @@ export const apiRequestsTable = pgTable(
     promptTokens: integer("prompt_tokens").notNull().default(0),
     completionTokens: integer("completion_tokens").notNull().default(0),
     totalTokens: integer("total_tokens").notNull().default(0),
+    /** Lihat catatan di schema/api_usage.ts — info transparansi saja, tidak memengaruhi pricing. */
+    cachedTokens: integer("cached_tokens").notNull().default(0),
     credits: integer("credits").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },

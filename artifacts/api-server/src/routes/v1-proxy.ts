@@ -28,6 +28,8 @@ type ApiRequestLogState = {
   promptTokens?: number;
   completionTokens?: number;
   totalTokens?: number;
+  /** Bagian dari promptTokens yang cache hit di provider — info saja, tidak memengaruhi credits. */
+  cachedTokens?: number;
   credits?: number;
 };
 
@@ -70,6 +72,7 @@ async function writeApiRequestLog(state: ApiRequestLogState, statusCode: number)
       promptTokens: state.promptTokens ?? 0,
       completionTokens: state.completionTokens ?? 0,
       totalTokens: state.totalTokens ?? 0,
+      cachedTokens: state.cachedTokens ?? 0,
       credits: state.credits ?? 0,
     });
   } catch (err) {
@@ -460,7 +463,19 @@ async function resolveKeyAndUser(token: string) {
   return row;
 }
 
-type CreditBreakdown = { inputTokens?: number; outputTokens?: number };
+/**
+ * `cachedTokens` (subset of inputTokens reused from provider cache) is carried
+ * through purely for dashboard transparency (Opsi C) — it never enters the
+ * credit calculation below, so pricing/margin stays exactly as before.
+ */
+type CreditBreakdown = { inputTokens?: number; outputTokens?: number; cachedTokens?: number };
+
+/** Reads cached-token count from an OpenAI-compat or Anthropic-style usage object, defaulting to 0. */
+function extractCachedTokens(usage: any): number {
+  if (!usage) return 0;
+  const cached = usage.prompt_tokens_details?.cached_tokens ?? usage.cache_read_input_tokens;
+  return typeof cached === "number" && cached > 0 ? cached : 0;
+}
 type CreditReservation = {
   userId: number;
   keyId: number;
@@ -486,11 +501,13 @@ function updateApiRequestUsageLog(
 ): void {
   const inputTokens = breakdown?.inputTokens ?? 0;
   const outputTokens = breakdown?.outputTokens ?? (inputTokens === 0 ? tokensUsed : 0);
+  const cachedTokens = Math.min(breakdown?.cachedTokens ?? 0, inputTokens);
   updateApiRequestLog(res, {
     model,
     promptTokens: inputTokens,
     completionTokens: outputTokens,
     totalTokens: tokensUsed,
+    cachedTokens,
     credits: calculateCredits(tokensUsed, model, { inputTokens, outputTokens }),
   });
 }
@@ -550,6 +567,7 @@ async function finalizeCredits(
 ): Promise<void> {
   const inputTokens = breakdown?.inputTokens ?? 0;
   const outputTokens = breakdown?.outputTokens ?? (inputTokens === 0 ? tokensUsed : 0);
+  const cachedTokens = Math.min(breakdown?.cachedTokens ?? 0, inputTokens);
   const credits = calculateCredits(tokensUsed, model, { inputTokens, outputTokens });
   const adjustment = reservation.credits - credits;
 
@@ -591,6 +609,7 @@ async function finalizeCredits(
       promptTokens: inputTokens,
       completionTokens: outputTokens,
       totalTokens: tokensUsed,
+      cachedTokens,
       credits,
     });
 
@@ -813,6 +832,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (!reader) { res.end(); return; }
           let totalInputTokens = 0;
           let totalOutputTokens = 0;
+          let totalCachedTokens = 0;
           const decoder = new TextDecoder();
           let sseBuffer = "";
 
@@ -828,7 +848,10 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
               if (!line.startsWith("data: ")) continue;
               try {
                 const d = JSON.parse(line.slice(6));
-                if (d.type === "message_start") totalInputTokens = d.message?.usage?.input_tokens ?? 0;
+                if (d.type === "message_start") {
+                  totalInputTokens = d.message?.usage?.input_tokens ?? 0;
+                  totalCachedTokens = extractCachedTokens(d.message?.usage);
+                }
                 if (d.type === "message_delta") totalOutputTokens = d.usage?.output_tokens ?? 0;
               } catch { }
             }
@@ -839,20 +862,21 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (totalInputTokens + totalOutputTokens === 0) {
             logger.warn({ model: originalModel, fallbackTokens: tokens }, "Conduit stream: usage missing, using capped fallback");
           }
-          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
-          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
+          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, cachedTokens: totalCachedTokens });
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, cachedTokens: totalCachedTokens });
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         } else {
           const data = await upstream.json() as any;
           res.status(200).json(data);
           const inputTokens = data.usage?.input_tokens ?? 0;
           const outputTokens = data.usage?.output_tokens ?? 0;
+          const cachedTokens = extractCachedTokens(data.usage);
           const tokens = (inputTokens + outputTokens) || estimateFallbackTokens(req.body);
           if (inputTokens + outputTokens === 0) {
             logger.warn({ model: originalModel, fallbackTokens: tokens }, "Conduit non-stream: usage missing, using capped fallback");
           }
-          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens });
-          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens });
+          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         }
         return;
@@ -896,6 +920,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (!reader) { res.end(); return; }
           let actualInputTokens = 0;
           let actualOutputTokens = 0;
+          let actualCachedTokens = 0;
           let estimatedOutputChars = 0;
           const decoder = new TextDecoder();
           let buffer = "";
@@ -923,6 +948,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
                 if (chunk.usage) {
                   actualInputTokens = chunk.usage.prompt_tokens ?? actualInputTokens;
                   actualOutputTokens = chunk.usage.completion_tokens ?? actualOutputTokens;
+                  actualCachedTokens = extractCachedTokens(chunk.usage) || actualCachedTokens;
                 }
               } catch { }
             }
@@ -945,8 +971,8 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (actualInputTokens + actualOutputTokens === 0) {
             logger.warn({ model: originalModel, fallbackTokens: tokens, estimatedChars: estimatedOutputChars }, "Generic stream: usage missing, using estimate");
           }
-          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens: finalInput, outputTokens: finalOutput });
-          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: finalInput, outputTokens: finalOutput });
+          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens: finalInput, outputTokens: finalOutput, cachedTokens: actualCachedTokens });
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: finalInput, outputTokens: finalOutput, cachedTokens: actualCachedTokens });
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         } else {
           const contentType = upstream.headers.get("content-type") ?? "";
@@ -968,9 +994,10 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
 
           const inputTokens = data.usage?.prompt_tokens ?? 0;
           const outputTokens = data.usage?.completion_tokens ?? 0;
+          const cachedTokens = extractCachedTokens(data.usage);
           const tokens = (inputTokens + outputTokens) || estimateFallbackTokens(req.body);
-          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens });
-          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens });
+          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         }
         return;
@@ -1107,6 +1134,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
         if (!reader) { res.end(); return; }
         let streamInputTokens = 0;
         let streamOutputTokens = 0;
+        let streamCachedTokens = 0;
         const decoder = new TextDecoder();
         let sseBuf = "";
         while (true) {
@@ -1124,6 +1152,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
                 if (d.usage) {
                   streamInputTokens = d.usage.prompt_tokens ?? streamInputTokens;
                   streamOutputTokens = d.usage.completion_tokens ?? streamOutputTokens;
+                  streamCachedTokens = extractCachedTokens(d.usage) || streamCachedTokens;
                 }
               } catch { }
             }
@@ -1135,8 +1164,8 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
           logger.warn({ model: req.body?.model, fallbackTokens: tokens }, "OpenAI stream: usage missing, using capped fallback");
         }
         if (reservation) {
-          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens: streamInputTokens, outputTokens: streamOutputTokens });
-          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: streamInputTokens, outputTokens: streamOutputTokens });
+          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens: streamInputTokens, outputTokens: streamOutputTokens, cachedTokens: streamCachedTokens });
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: streamInputTokens, outputTokens: streamOutputTokens, cachedTokens: streamCachedTokens });
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         }
         return;
@@ -1151,13 +1180,14 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
         if (upstream.ok) {
           const inputTokens = data.usage?.prompt_tokens ?? 0;
           const outputTokens = data.usage?.completion_tokens ?? 0;
+          const cachedTokens = extractCachedTokens(data.usage);
           const tokens = (data.usage?.total_tokens ?? (inputTokens + outputTokens)) || estimateFallbackTokens(req.body);
           if (!data.usage?.total_tokens && inputTokens + outputTokens === 0) {
             logger.warn({ model: data.model ?? req.body?.model, fallbackTokens: tokens }, "OpenAI non-stream: usage missing, using capped fallback");
           }
           if (reservation) {
-            updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, { inputTokens, outputTokens });
-            reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, { inputTokens, outputTokens });
+            updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, { inputTokens, outputTokens, cachedTokens });
+            reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, { inputTokens, outputTokens, cachedTokens });
             if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
           }
         } else {
@@ -1250,6 +1280,7 @@ function chatResponseToResponsesBody(
   const text = data.choices?.[0]?.message?.content ?? "";
   const inputTokens = data.usage?.prompt_tokens ?? 0;
   const outputTokens = data.usage?.completion_tokens ?? 0;
+  const cachedTokens = extractCachedTokens(data.usage);
   return {
     id: respId,
     object: "response",
@@ -1279,7 +1310,7 @@ function chatResponseToResponsesBody(
     truncation: "disabled",
     usage: {
       input_tokens: inputTokens,
-      input_tokens_details: { cached_tokens: 0 },
+      input_tokens_details: { cached_tokens: cachedTokens },
       output_tokens: outputTokens,
       output_tokens_details: { reasoning_tokens: 0 },
       total_tokens: inputTokens + outputTokens,
@@ -1304,7 +1335,7 @@ async function streamChatToResponses(
   msgId: string,
   createdAt: number,
   model: string,
-): Promise<{ inputTokens: number; outputTokens: number }> {
+): Promise<{ inputTokens: number; outputTokens: number; cachedTokens: number }> {
   // ── Initial events ────────────────────────────────────────────────────────
   res.write(responsesSseEvent("response.created", {
     type: "response.created",
@@ -1327,6 +1358,7 @@ async function streamChatToResponses(
   let fullText = "";
   let inputTokens = 0;
   let outputTokens = 0;
+  let cachedTokens = 0;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -1349,6 +1381,7 @@ async function streamChatToResponses(
         if (d.usage) {
           inputTokens = d.usage.prompt_tokens ?? inputTokens;
           outputTokens = d.usage.completion_tokens ?? outputTokens;
+          cachedTokens = extractCachedTokens(d.usage) || cachedTokens;
         }
       } catch { /* ignore malformed SSE */ }
     }
@@ -1375,7 +1408,7 @@ async function streamChatToResponses(
       output: [{ type: "message", id: msgId, status: "completed", role: "assistant", content: [{ type: "output_text", text: fullText, annotations: [] }] }],
       usage: {
         input_tokens: inputTokens,
-        input_tokens_details: { cached_tokens: 0 },
+        input_tokens_details: { cached_tokens: cachedTokens },
         output_tokens: outputTokens,
         output_tokens_details: { reasoning_tokens: 0 },
         total_tokens: inputTokens + outputTokens,
@@ -1384,7 +1417,7 @@ async function streamChatToResponses(
   }));
   res.end();
 
-  return { inputTokens, outputTokens };
+  return { inputTokens, outputTokens, cachedTokens };
 }
 
 async function proxyResponses(req: Request, res: Response): Promise<void> {
@@ -1456,10 +1489,10 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
         res.setHeader("Connection", "keep-alive");
         const reader = upstream.body?.getReader();
         if (!reader) { res.end(); return; }
-        const { inputTokens, outputTokens } = await streamChatToResponses(reader, res, respId, msgId, createdAt, originalModel);
+        const { inputTokens, outputTokens, cachedTokens } = await streamChatToResponses(reader, res, respId, msgId, createdAt, originalModel);
         const tokens = (inputTokens + outputTokens) || estimateFallbackTokens(chatBody);
-        updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens });
-        reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens });
+        updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
+        reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
         if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         return;
 
@@ -1478,9 +1511,10 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
         res.status(200).json(responsesBody);
         const inputTokens = data.usage?.prompt_tokens ?? 0;
         const outputTokens = data.usage?.completion_tokens ?? 0;
+        const cachedTokens = extractCachedTokens(data.usage);
         const tokens = (data.usage?.total_tokens ?? (inputTokens + outputTokens)) || estimateFallbackTokens(chatBody);
-        updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, { inputTokens, outputTokens });
-        reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, { inputTokens, outputTokens });
+        updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, { inputTokens, outputTokens, cachedTokens });
+        reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, { inputTokens, outputTokens, cachedTokens });
         if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         return;
 
