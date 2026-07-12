@@ -1,0 +1,111 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.dahl.global/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Models
+
+> Available model IDs, defaults, and how to pick the right model for your task.
+
+Dahl exposes models through the OpenAI-compatible **`GET /v1/models`** endpoint. Always read IDs from the live response — IDs can change as the Gonka network adds or rotates capacity.
+
+```bash theme={null}
+curl https://inference.dahl.global/v1/models
+```
+
+## Currently available
+
+These models are typically returned from production (verify with `GET /v1/models`):
+
+| Model ID                 | Notes                                                |
+| ------------------------ | ---------------------------------------------------- |
+| `MiniMaxAI/MiniMax-M2.7` | **Default recommendation** — general chat and coding |
+| `moonshotai/Kimi-K2.6`   | Long-context and reasoning workloads                 |
+| `zai-org/GLM-5.2`        | Coming soon — not available for inference yet        |
+
+The [landing page](https://inference.dahl.global/#models) shows the same model IDs in copy-paste `curl` examples (MiniMax and Kimi tabs). Only the `model` field changes between them.
+
+## Default choice
+
+Start with **MiniMax M2.7** (`MiniMaxAI/MiniMax-M2.7`). It is the default in the [Dahl chat UI](https://inference.dahl.global/chat) and matches the examples on [inference.dahl.global](https://inference.dahl.global).
+
+## Using a model in chat completions
+
+Set the `model` field to the exact `id` string from `GET /v1/models`. All requests require `Authorization: Bearer` (see [API keys](/authentication)).
+
+**MiniMax M2.7:**
+
+```bash theme={null}
+curl https://inference.dahl.global/v1/chat/completions \
+  -H "Authorization: Bearer $DAHL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "MiniMaxAI/MiniMax-M2.7",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+**Kimi K2.6** — same request shape, different `model` value:
+
+```bash theme={null}
+curl https://inference.dahl.global/v1/chat/completions \
+  -H "Authorization: Bearer $DAHL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "moonshotai/Kimi-K2.6",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## Model availability
+
+`GET /v1/status` reports recent probe results per model (uptime and operational flag). It is public — no API key required.
+
+```bash theme={null}
+curl "https://inference.dahl.global/v1/status?window=24h"
+```
+
+Supported `window` values: `1h`, `24h`, `7d`, `30d` (default `24h` if omitted).
+
+Example response shape:
+
+```json theme={null}
+{
+  "models": [
+    { "id": "MiniMaxAI/MiniMax-M2.7", "operational": true, "uptime": 98.5 }
+  ],
+  "window": "24h",
+  "updated_at": "2026-07-05T00:00:00Z"
+}
+```
+
+Use this when a model appears in `GET /v1/models` but requests fail or time out — the status page and this endpoint reflect the same probe data.
+
+## Streaming
+
+Add `"stream": true` to the JSON body for token streaming. Dahl forwards streaming responses from the upstream network in **OpenAI SSE format** (`data: {...}` lines, ending with `data: [DONE]`).
+
+Streaming uses the same `Authorization: Bearer` header and `model` id as non-streaming requests. For long completions, streaming is usually preferable so your client can render tokens as they arrive instead of waiting for the full response body.
+
+```bash theme={null}
+curl https://inference.dahl.global/v1/chat/completions \
+  -H "Authorization: Bearer $DAHL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "MiniMaxAI/MiniMax-M2.7",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }'
+```
+
+When the upstream includes usage metadata in the stream, successful requests also update your key balance (see [Check remaining balance](/authentication#check-remaining-balance)).
+
+## When a model fails
+
+If you receive a **4xx** or **502** mentioning the model:
+
+1. Call `GET /v1/models` again
+2. Check `GET /v1/status` for recent uptime
+3. Switch to an `id` present in the response
+4. Retry with short backoff if the network reports overload (`503` or timeouts)
+
+See [Quickstart](/quickstart) for a full first-request walkthrough.
