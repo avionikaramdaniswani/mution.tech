@@ -314,7 +314,7 @@ export default function ApiUsagePage() {
               value={(data?.summary.totalTokens ?? 0).toLocaleString("id-ID")}
               icon={Hash}
               accent="border-orange-100 bg-orange-50 text-primary"
-              description={`${(data?.summary.promptTokens || 0).toLocaleString("id-ID")} input - ${(data?.summary.completionTokens || 0).toLocaleString("id-ID")} output`}
+              description={`${Math.max(0, (data?.summary.promptTokens || 0) - (data?.summary.cachedTokens || 0)).toLocaleString("id-ID")} input - ${(data?.summary.completionTokens || 0).toLocaleString("id-ID")} output - ${(data?.summary.cachedTokens || 0).toLocaleString("id-ID")} cached`}
             />
             <SummaryCard
               title="Total Cost"
@@ -399,7 +399,7 @@ export default function ApiUsagePage() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-right tabular-nums text-foreground">
-                          {item.promptTokens.toLocaleString("id-ID")}
+                          {Math.max(0, item.promptTokens - item.cachedTokens).toLocaleString("id-ID")}
                         </td>
                         <td className="px-6 py-4 text-right tabular-nums text-foreground">
                           {item.completionTokens.toLocaleString("id-ID")}
