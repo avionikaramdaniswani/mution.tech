@@ -1163,12 +1163,331 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
   }
 }
 
+// ─── Responses API adapter (OpenAI Responses API → Chat Completions) ──────────
+
+/**
+ * Convert a Responses API request body to an OpenAI Chat Completions body.
+ * Responses API ref: https://platform.openai.com/docs/api-reference/responses
+ */
+function responsesBodyToChatBody(body: any): any {
+  const messages: any[] = [];
+
+  // `instructions` maps to a system message
+  if (typeof body.instructions === "string" && body.instructions) {
+    messages.push({ role: "system", content: body.instructions });
+  }
+
+  // `input` can be a string or an array of message-like objects
+  if (typeof body.input === "string") {
+    messages.push({ role: "user", content: body.input });
+  } else if (Array.isArray(body.input)) {
+    for (const item of body.input) {
+      if (!item || typeof item !== "object") continue;
+      // Content may be a string or an array of content parts
+      let content: any = item.content;
+      if (Array.isArray(content)) {
+        // Flatten Responses-API content parts to OpenAI format
+        content = content.map((p: any) => {
+          if (p.type === "input_text" || p.type === "output_text") return { type: "text", text: p.text ?? "" };
+          return p;
+        });
+        // If all parts are text, collapse to a plain string for simplicity
+        if (content.every((p: any) => p.type === "text")) {
+          content = content.map((p: any) => p.text).join("");
+        }
+      }
+      messages.push({ role: item.role ?? "user", content: content ?? "" });
+    }
+  }
+
+  return {
+    model: body.model,
+    messages,
+    stream: body.stream ?? false,
+    ...(body.max_output_tokens != null ? { max_tokens: body.max_output_tokens } : {}),
+    ...(body.temperature != null ? { temperature: body.temperature } : {}),
+    ...(body.top_p != null ? { top_p: body.top_p } : {}),
+    ...(body.presence_penalty != null ? { presence_penalty: body.presence_penalty } : {}),
+    ...(body.frequency_penalty != null ? { frequency_penalty: body.frequency_penalty } : {}),
+  };
+}
+
+/** Build a complete Responses API response object from a Chat Completions response. */
+function chatResponseToResponsesBody(
+  data: any,
+  respId: string,
+  msgId: string,
+  createdAt: number,
+): any {
+  const text = data.choices?.[0]?.message?.content ?? "";
+  const inputTokens = data.usage?.prompt_tokens ?? 0;
+  const outputTokens = data.usage?.completion_tokens ?? 0;
+  return {
+    id: respId,
+    object: "response",
+    created_at: createdAt,
+    status: "completed",
+    error: null,
+    incomplete_details: null,
+    instructions: null,
+    max_output_tokens: null,
+    model: data.model ?? "unknown",
+    output: [{
+      type: "message",
+      id: msgId,
+      status: "completed",
+      role: "assistant",
+      content: [{ type: "output_text", text, annotations: [] }],
+    }],
+    parallel_tool_calls: true,
+    previous_response_id: null,
+    reasoning: { effort: null, summary: null },
+    store: false,
+    temperature: data.temperature ?? 1,
+    text: { format: { type: "text" } },
+    tool_choice: "auto",
+    tools: [],
+    top_p: 1,
+    truncation: "disabled",
+    usage: {
+      input_tokens: inputTokens,
+      input_tokens_details: { cached_tokens: 0 },
+      output_tokens: outputTokens,
+      output_tokens_details: { reasoning_tokens: 0 },
+      total_tokens: inputTokens + outputTokens,
+    },
+    user: null,
+    metadata: {},
+  };
+}
+
+function responsesSseEvent(event: string, data: any): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+/**
+ * Stream a Chat Completions SSE response and convert it to Responses API SSE events.
+ * Returns token counts extracted from the stream.
+ */
+async function streamChatToResponses(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  res: Response,
+  respId: string,
+  msgId: string,
+  createdAt: number,
+  model: string,
+): Promise<{ inputTokens: number; outputTokens: number }> {
+  // ── Initial events ────────────────────────────────────────────────────────
+  res.write(responsesSseEvent("response.created", {
+    type: "response.created",
+    response: { id: respId, object: "response", created_at: createdAt, status: "in_progress", model, output: [], usage: null },
+  }));
+  res.write(responsesSseEvent("response.output_item.added", {
+    type: "response.output_item.added",
+    output_index: 0,
+    item: { type: "message", id: msgId, status: "in_progress", role: "assistant", content: [] },
+  }));
+  res.write(responsesSseEvent("response.content_part.added", {
+    type: "response.content_part.added",
+    item_id: msgId, output_index: 0, content_index: 0,
+    part: { type: "output_text", text: "", annotations: [] },
+  }));
+
+  // ── Read + forward deltas ─────────────────────────────────────────────────
+  const decoder = new TextDecoder();
+  let sseBuf = "";
+  let fullText = "";
+  let inputTokens = 0;
+  let outputTokens = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    sseBuf += decoder.decode(value, { stream: true });
+    const lines = sseBuf.split("\n");
+    sseBuf = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.startsWith("data: ") || line.includes("[DONE]")) continue;
+      try {
+        const d = JSON.parse(line.slice(6));
+        const delta = d.choices?.[0]?.delta?.content;
+        if (typeof delta === "string" && delta) {
+          fullText += delta;
+          res.write(responsesSseEvent("response.output_text.delta", {
+            type: "response.output_text.delta",
+            item_id: msgId, output_index: 0, content_index: 0, delta,
+          }));
+        }
+        if (d.usage) {
+          inputTokens = d.usage.prompt_tokens ?? inputTokens;
+          outputTokens = d.usage.completion_tokens ?? outputTokens;
+        }
+      } catch { /* ignore malformed SSE */ }
+    }
+  }
+
+  // ── Closing events ────────────────────────────────────────────────────────
+  res.write(responsesSseEvent("response.output_text.done", {
+    type: "response.output_text.done",
+    item_id: msgId, output_index: 0, content_index: 0, text: fullText,
+  }));
+  res.write(responsesSseEvent("response.content_part.done", {
+    type: "response.content_part.done",
+    item_id: msgId, output_index: 0, content_index: 0,
+    part: { type: "output_text", text: fullText, annotations: [] },
+  }));
+  res.write(responsesSseEvent("response.output_item.done", {
+    type: "response.output_item.done", output_index: 0,
+    item: { type: "message", id: msgId, status: "completed", role: "assistant", content: [{ type: "output_text", text: fullText, annotations: [] }] },
+  }));
+  res.write(responsesSseEvent("response.completed", {
+    type: "response.completed",
+    response: {
+      id: respId, object: "response", created_at: createdAt, status: "completed", model,
+      output: [{ type: "message", id: msgId, status: "completed", role: "assistant", content: [{ type: "output_text", text: fullText, annotations: [] }] }],
+      usage: {
+        input_tokens: inputTokens,
+        input_tokens_details: { cached_tokens: 0 },
+        output_tokens: outputTokens,
+        output_tokens_details: { reasoning_tokens: 0 },
+        total_tokens: inputTokens + outputTokens,
+      },
+    },
+  }));
+  res.end();
+
+  return { inputTokens, outputTokens };
+}
+
+async function proxyResponses(req: Request, res: Response): Promise<void> {
+  const row = await authenticate(req, res);
+  if (!row) return;
+  const { key, user } = row;
+
+  let providers: Provider[];
+  try { providers = getProviders(); } catch (e: any) {
+    updateApiRequestLog(res, { errorType: "api_error" });
+    res.status(503).json({ error: { message: e.message, type: "server_error" } });
+    return;
+  }
+  await refreshProviderSettingsForProxy();
+  providers = providers.filter((p) => !_disabledProviders.has(p.id));
+  if (providers.length === 0) {
+    updateApiRequestLog(res, { errorType: "api_error" });
+    res.status(503).json({ error: { message: "All AI providers are disabled", type: "server_error" } });
+    return;
+  }
+
+  // Convert Responses API body → Chat Completions body
+  const chatBody = responsesBodyToChatBody(req.body);
+  const originalModel = chatBody.model ?? "unknown";
+  const isStream = chatBody.stream === true;
+  updateApiRequestLog(res, { model: originalModel });
+
+  if (key.allowedModels && key.allowedModels.length > 0 && !key.allowedModels.includes(originalModel)) {
+    updateApiRequestLog(res, { errorType: "forbidden" });
+    res.status(403).json({ error: { message: `API key is not allowed to use model: ${originalModel}`, type: "forbidden" } });
+    return;
+  }
+
+  const requestedOutputTokens = chatBody.max_tokens ?? DEFAULT_OUTPUT_TOKENS;
+  const reservation = await reserveCredits(
+    user.id, key.id,
+    estimateReserveCredits(chatBody, originalModel, requestedOutputTokens),
+  );
+  if (!reservation) {
+    updateApiRequestLog(res, { errorType: "insufficient_quota" });
+    res.status(402).json({ error: { message: "Insufficient credits or API key credit limit for this request", type: "insufficient_quota" } });
+    return;
+  }
+  let reservationClosed = false;
+
+  const respId = `resp_${crypto.randomUUID().replace(/-/g, "")}`;
+  const msgId  = `msg_${crypto.randomUUID().replace(/-/g, "")}`;
+  const createdAt = Math.floor(Date.now() / 1000);
+
+  try {
+  for (let attempt = 0; attempt < providers.length; attempt++) {
+    const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
+    updateApiRequestLog(res, { providerId: provider.id });
+    logger.info({ provider: provider.id }, "Proxying Responses API → /chat/completions");
+
+    try {
+      const upstream = await fetch(`${provider.openaiBase}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${provider.apiKey}` },
+        body: JSON.stringify(chatBody),
+      });
+
+      const contentType = upstream.headers.get("content-type") ?? "";
+
+      if (isStream && contentType.includes("text/event-stream")) {
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        const reader = upstream.body?.getReader();
+        if (!reader) { res.end(); return; }
+        const { inputTokens, outputTokens } = await streamChatToResponses(reader, res, respId, msgId, createdAt, originalModel);
+        const tokens = (inputTokens + outputTokens) || estimateFallbackTokens(chatBody);
+        updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens });
+        reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens });
+        if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
+        return;
+
+      } else if (contentType.includes("application/json")) {
+        if (!upstream.ok && (upstream.status === 429 || upstream.status >= 500)) {
+          markCooldown(provider);
+          if (attempt < providers.length - 1) continue;
+        }
+        const data = await upstream.json() as any;
+        if (!upstream.ok) {
+          updateApiRequestLog(res, { errorType: classifyErrorType(upstream.status) });
+          res.status(upstream.status).json(data);
+          return;
+        }
+        const responsesBody = chatResponseToResponsesBody(data, respId, msgId, createdAt);
+        res.status(200).json(responsesBody);
+        const inputTokens = data.usage?.prompt_tokens ?? 0;
+        const outputTokens = data.usage?.completion_tokens ?? 0;
+        const tokens = (data.usage?.total_tokens ?? (inputTokens + outputTokens)) || estimateFallbackTokens(chatBody);
+        updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, { inputTokens, outputTokens });
+        reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, { inputTokens, outputTokens });
+        if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
+        return;
+
+      } else {
+        const text = await upstream.text();
+        logger.error({ provider: provider.id, status: upstream.status, body: text.slice(0, 300) }, "Responses proxy: unexpected content-type");
+        if (upstream.status === 429 || upstream.status >= 500) {
+          markCooldown(provider);
+          if (attempt < providers.length - 1) continue;
+        }
+        updateApiRequestLog(res, { errorType: "upstream_non_json" });
+        res.status(502).json({ error: { message: `Upstream error (${upstream.status})`, type: "server_error" } });
+        return;
+      }
+    } catch (err) {
+      logger.error({ err, provider: provider.id }, "Responses proxy error");
+      markCooldown(provider);
+      if (attempt >= providers.length - 1) {
+        updateApiRequestLog(res, { errorType: "upstream_error" });
+        if (!res.headersSent) res.status(502).json({ error: { message: "All upstream providers failed", type: "server_error" } });
+        return;
+      }
+    }
+  }
+  } finally {
+    if (!reservationClosed) await refundUnfinalizedReservation(reservation);
+  }
+}
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 router.use(apiRequestLogger);
 router.use(AiProxyLimiter);
 router.post("/messages", (req, res) => proxyMessages(req, res));
 router.post("/chat/completions", (req, res) => proxyOpenAI(req, res, "/chat/completions"));
+router.post("/responses", (req, res) => proxyResponses(req, res));
 router.get("/models", (req, res) => listModels(req, res));
 router.post("/completions", (req, res) => proxyOpenAI(req, res, "/completions"));
 router.post("/embeddings", (req, res) => proxyOpenAI(req, res, "/embeddings"));
