@@ -380,6 +380,32 @@ function getProviders(): Provider[] {
   return providers;
 }
 
+/**
+ * Models that must only be served by a specific provider (by prefix ID).
+ * Key: model name (exact, case-sensitive).
+ * Value: provider ID prefix (lowercase), e.g. "j3gb" matches env prefix J3GB_*.
+ *
+ * To add more: just extend this map.
+ */
+const MODEL_PROVIDER_AFFINITY: Record<string, string> = {
+  "gpt-5.5": "j3gb",
+  "gpt-5.5-turbo": "j3gb",
+};
+
+/**
+ * If the requested model has a provider affinity, filter providers to only
+ * those that match. Falls back to the full list if no matching provider is
+ * available (so the request still gets a chance rather than silently failing).
+ */
+function filterProvidersForModel(providers: Provider[], model: string): Provider[] {
+  const targetId = MODEL_PROVIDER_AFFINITY[model];
+  if (!targetId) return providers;
+  const matched = providers.filter((p) => p.id === targetId && !_disabledProviders.has(p.id));
+  if (matched.length > 0) return matched;
+  logger.warn({ model, targetId }, "Model affinity provider not available — falling back to all providers");
+  return providers;
+}
+
 /** Pick the best available provider (skips disabled + cooldown avoidance). */
 function pickProvider(providers: Provider[]): Provider {
   const now = Date.now();
@@ -715,6 +741,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
 
   const originalModel = req.body?.model ?? "unknown";
   const isStream = req.body?.stream === true;
+  providers = filterProvidersForModel(providers, originalModel);
   updateApiRequestLog(res, { model: originalModel });
 
   if (key.allowedModels && key.allowedModels.length > 0 && !key.allowedModels.includes(originalModel)) {
@@ -1021,6 +1048,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
   }
 
   const originalModel = req.method !== "GET" ? req.body?.model ?? "unknown" : "unknown";
+  if (req.method !== "GET") providers = filterProvidersForModel(providers, originalModel);
   updateApiRequestLog(res, { model: originalModel });
   let reservation: CreditReservation | null = null;
   let reservationClosed = true;
@@ -1382,6 +1410,7 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
   const chatBody = responsesBodyToChatBody(req.body);
   const originalModel = chatBody.model ?? "unknown";
   const isStream = chatBody.stream === true;
+  providers = filterProvidersForModel(providers, originalModel);
   updateApiRequestLog(res, { model: originalModel });
 
   if (key.allowedModels && key.allowedModels.length > 0 && !key.allowedModels.includes(originalModel)) {
