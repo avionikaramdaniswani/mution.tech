@@ -52,13 +52,22 @@ app.use("/api", csrfOriginGuard);
 
 app.use("/api", router);
 app.use("/v1", v1Router);
+// Also serve AI proxy routes at root level (no /v1 prefix) for clients like
+// Codex CLI that use base_url without a path and append e.g. /responses directly.
+app.use("/", v1Router);
+
+const V1_PROXY_PATHS = ["/chat", "/completions", "/embeddings", "/messages", "/responses", "/models"];
 
 if (existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
   // SPA fallback: serve index.html for all non-API routes
   app.get(/(.*)/, (_req: Request, res: Response) => {
     // Skip API routes - they're already handled above
-    if (_req.path === "/api" || _req.path.startsWith("/api/") || _req.path === "/v1" || _req.path.startsWith("/v1/")) {
+    if (
+      _req.path === "/api" || _req.path.startsWith("/api/") ||
+      _req.path === "/v1" || _req.path.startsWith("/v1/") ||
+      V1_PROXY_PATHS.some((p) => _req.path === p || _req.path.startsWith(p + "/"))
+    ) {
       res.status(404).json({ error: "Not found" });
       return;
     }
