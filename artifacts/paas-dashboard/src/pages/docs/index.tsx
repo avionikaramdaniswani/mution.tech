@@ -460,6 +460,15 @@ requires_openai_auth = true
 [features]
 goals = true`}
               />
+              <p className="text-xs text-foreground/50 -mt-2 mb-1">
+                Mau ganti model? Cukup ubah nilai <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">model</code> dan <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">review_model</code> di atas ke ID model lain dari tabel <span className="underline underline-offset-2 cursor-pointer" onClick={() => setActiveTab("quickstart")}>Quick Start</span> — tidak perlu ubah bagian lain.
+              </p>
+              <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-foreground/70 mb-4 flex items-start gap-2">
+                <span className="mt-0.5">⚠️</span>
+                <span>
+                  Untuk model non-OpenAI (mis. MiniMax, Kimi, GLM), Codex akan menampilkan warning <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">Model metadata ... not found, defaulting to fallback metadata</code> — ini aman, cuma karena Codex tidak punya info bawaan soal model tersebut. Fitur tool-call/agent (edit file, jalankan shell, MCP) tetap jalan normal karena sudah otomatis diterjemahkan oleh proxy Mution.
+                </span>
+              </div>
 
               <H3>4. Tambahkan auth.json</H3>
               <p className="text-foreground/60 text-xs mb-1">
