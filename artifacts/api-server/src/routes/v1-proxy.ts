@@ -1145,27 +1145,48 @@ async function listModels(req: Request, res: Response): Promise<void> {
   const row = await authenticate(req, res);
   if (!row) return;
 
+  // Pastikan cache harga ter-refresh sebelum merespons
+  await refreshModelPricingOverrides();
+
   const allowed = row.key.allowedModels && row.key.allowedModels.length > 0
     ? new Set(row.key.allowedModels)
     : null;
 
   const models = MODEL_CATALOG
     .filter((model) => !allowed || allowed.has(model.id))
-    .map((model) => ({
-      id: model.id,
-      object: "model",
-      created: 0,
-      owned_by: providerOwner(model.provider),
-      mution: {
-        label: model.label,
-        provider: model.provider,
-        pricing: model.pricing,
-        context: model.context,
-        note: model.note ?? null,
-        description: model.description,
-        aliases: model.aliases ?? [],
-      },
-    }));
+    .map((model) => {
+      const override = _modelPricingOverrides.get(model.id);
+      let effectivePricing = model.pricing;
+
+      if (override?.mode === "free") {
+        effectivePricing = { input: 0, output: 0 };
+      } else if (override?.mode === "discount_percent" && override.discountPercent != null) {
+        const factor = 1 - Math.min(100, Math.max(0, override.discountPercent)) / 100;
+        effectivePricing = { input: model.pricing.input * factor, output: model.pricing.output * factor };
+      } else if (override?.mode === "fixed_price") {
+        effectivePricing = {
+          input: override.inputPriceOverride != null ? parseFloat(override.inputPriceOverride) : model.pricing.input,
+          output: override.outputPriceOverride != null ? parseFloat(override.outputPriceOverride) : model.pricing.output,
+        };
+      }
+
+      return {
+        id: model.id,
+        object: "model",
+        created: 0,
+        owned_by: providerOwner(model.provider),
+        mution: {
+          label: model.label,
+          provider: model.provider,
+          pricing: effectivePricing,
+          basePricing: model.pricing,
+          context: model.context,
+          note: model.note ?? null,
+          description: model.description,
+          aliases: model.aliases ?? [],
+        },
+      };
+    });
 
   res.json({
     object: "list",

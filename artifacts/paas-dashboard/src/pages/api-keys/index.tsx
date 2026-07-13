@@ -5,7 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { MODEL_CATALOG, groupModelsByProvider } from "@workspace/model-catalog";
+import { MODEL_CATALOG, groupModelsByProvider, type ModelCatalogEntry } from "@workspace/model-catalog";
+
+type EffectiveCatalogEntry = ModelCatalogEntry & { basePricing?: { input: number; output: number }; pricingMode?: string };
+
+async function fetchCatalog(): Promise<EffectiveCatalogEntry[]> {
+  const res = await fetch("/api/catalog");
+  if (!res.ok) throw new Error("gagal");
+  return res.json();
+}
 import {
   Dialog,
   DialogContent,
@@ -127,8 +135,6 @@ function ResponsivePanel({ open, onOpenChange, title, description, children, foo
   );
 }
 
-const MODEL_GROUPS = groupModelsByProvider(MODEL_CATALOG);
-
 function formatCredits(value: number) {
   return value.toLocaleString("id-ID");
 }
@@ -136,10 +142,13 @@ function formatCredits(value: number) {
 function ModelAccessSelector({
   value,
   onChange,
+  catalog,
 }: {
   value: string[];
   onChange: (models: string[]) => void;
+  catalog: EffectiveCatalogEntry[];
 }) {
+  const modelGroups = groupModelsByProvider(catalog as readonly ModelCatalogEntry[]);
   const selected = new Set(value);
 
   const toggleModel = (modelId: string, checked: boolean) => {
@@ -158,7 +167,7 @@ function ModelAccessSelector({
         </Button>
       </div>
       <div className="max-h-72 overflow-y-auto rounded-lg border border-border/50">
-        {Object.entries(MODEL_GROUPS).map(([provider, models]) => (
+        {Object.entries(modelGroups).map(([provider, models]) => (
           <div key={provider} className="border-b border-border/40 last:border-b-0">
             <div className="sticky top-0 z-10 bg-background/95 px-3 py-2 text-xs font-semibold text-muted-foreground">
               {provider}
@@ -198,6 +207,14 @@ function ModelAccessSelector({
 
 export default function ApiKeysPage() {
   const qc = useQueryClient();
+
+  const { data: fetchedCatalog } = useQuery({
+    queryKey: ["catalog"],
+    queryFn: fetchCatalog,
+    staleTime: 30_000,
+  });
+  const catalog: EffectiveCatalogEntry[] = fetchedCatalog ?? (MODEL_CATALOG as EffectiveCatalogEntry[]);
+
   const [showCreate, setShowCreate] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyExpiresAt, setNewKeyExpiresAt] = useState("");
@@ -518,7 +535,7 @@ export default function ApiKeysPage() {
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Akses Model (Opsional)</label>
-            <ModelAccessSelector value={newKeyAllowedModels} onChange={setNewKeyAllowedModels} />
+            <ModelAccessSelector value={newKeyAllowedModels} onChange={setNewKeyAllowedModels} catalog={catalog} />
           </div>
         </div>
       </ResponsivePanel>
@@ -647,7 +664,7 @@ export default function ApiKeysPage() {
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Akses Model (Opsional)</label>
-            <ModelAccessSelector value={editAllowedModels} onChange={setEditAllowedModels} />
+            <ModelAccessSelector value={editAllowedModels} onChange={setEditAllowedModels} catalog={catalog} />
           </div>
         </div>
       </ResponsivePanel>

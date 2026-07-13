@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   ArrowRight,
@@ -18,7 +19,18 @@ import { PublicNavbar } from "@/components/public-navbar";
 import { PageFooter } from "@/components/page-footer";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MODEL_CATALOG, groupModelsByProvider } from "@workspace/model-catalog";
+import { MODEL_CATALOG, groupModelsByProvider, type ModelCatalogEntry } from "@workspace/model-catalog";
+
+type EffectiveCatalogEntry = ModelCatalogEntry & {
+  basePricing: { input: number; output: number };
+  pricingMode: string;
+};
+
+async function fetchCatalog(): Promise<EffectiveCatalogEntry[]> {
+  const res = await fetch("/api/catalog");
+  if (!res.ok) throw new Error("gagal");
+  return res.json();
+}
 
 const hostingRates = [
   { ram: "256 MB", perMinute: 0.25, fit: "Prototype ringan" },
@@ -170,7 +182,15 @@ function getProviderIcon(provider: string, baseClassName = "h-5 w-5") {
 }
 
 export default function HargaPage() {
-  const grouped = groupModelsByProvider(MODEL_CATALOG);
+  // Fetch catalog dengan harga efektif dari server (setelah admin override diterapkan)
+  const { data: fetchedCatalog } = useQuery({
+    queryKey: ["catalog"],
+    queryFn: fetchCatalog,
+    staleTime: 30_000,
+  });
+  const catalog = fetchedCatalog ?? MODEL_CATALOG;
+
+  const grouped = useMemo(() => groupModelsByProvider(catalog as readonly ModelCatalogEntry[]), [catalog]);
   const [selectedRam, setSelectedRam] = useState("1 GB");
   const [hoursPerDay, setHoursPerDay] = useState(8);
   const [daysPerMonth, setDaysPerMonth] = useState(20);
@@ -185,7 +205,7 @@ export default function HargaPage() {
   );
 
   const selectedModel = useMemo(
-    () => MODEL_CATALOG.find((model) => model.id === selectedModelId) ?? DEFAULT_MODEL,
+    () => (catalog.find((model) => model.id === selectedModelId) ?? DEFAULT_MODEL) as EffectiveCatalogEntry,
     [selectedModelId],
   );
 
@@ -373,7 +393,7 @@ export default function HargaPage() {
                     onChange={(event) => setSelectedModelId(event.target.value)}
                     className="mt-2 h-11 w-full rounded-md border border-[#dbe8f3] bg-[#f8fbff] px-3 text-sm font-semibold text-[#172033] outline-none transition-colors focus:border-[#f97316] focus:bg-white"
                   >
-                    {MODEL_CATALOG.map((model) => (
+                    {catalog.map((model) => (
                       <option key={model.id} value={model.id}>
                         {model.label} - {model.provider}
                       </option>

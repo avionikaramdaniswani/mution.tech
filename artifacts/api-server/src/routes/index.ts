@@ -13,12 +13,19 @@ import apiKeysRouter from "./api-keys";
 import apiUsageRouter from "./api-usage";
 import changelogsRouter from "./changelogs";
 import integrationsRouter from "./integrations";
+import catalogRouter from "./catalog";
 
 const router: IRouter = Router();
 
+// Public routes — harus didaftarkan SEBELUM router yang punya global requireAuth
 router.use(healthRouter);
+router.use(catalogRouter);   // /catalog — public, tidak butuh auth
+
+// Auth routes
 router.use(authRouter);
 router.use(githubRouter);
+
+// Authenticated routes
 router.use(billingRouter);
 router.use(apiKeysRouter);
 router.use(projectsRouter);
