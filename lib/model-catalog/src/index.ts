@@ -1,4 +1,4 @@
-export type ModelProvider = "Anthropic" | "OpenAI" | "Zhipu AI";
+export type ModelProvider = "Anthropic" | "OpenAI" | "Zhipu AI" | "MiniMax" | "Moonshot AI";
 
 export interface ModelPricing {
   input: number;
@@ -96,6 +96,24 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     description: "Model open-weight terkemuka dengan efisiensi biaya luar biasa.",
     aliases: ["glm-5.2"],
   },
+  {
+    id: "MiniMaxAI/MiniMax-M2.7",
+    label: "MiniMax M2.7",
+    provider: "MiniMax",
+    pricing: { input: 3200, output: 9800 },
+    context: "200K",
+    note: "Baru",
+    description: "Model chat & coding umum dari MiniMax, harga efisien untuk tugas sehari-hari.",
+  },
+  {
+    id: "moonshotai/Kimi-K2.6",
+    label: "Kimi K2.6",
+    provider: "Moonshot AI",
+    pricing: { input: 3800, output: 11500 },
+    context: "200K",
+    note: "Baru",
+    description: "Model dari Moonshot AI yang unggul untuk long-context dan reasoning.",
+  },
 ];
 
 export const DEFAULT_MODEL_ID = "claude-opus-4-8";
@@ -136,6 +154,6 @@ export function groupModelsByProvider(models: readonly ModelCatalogEntry[] = MOD
       acc[model.provider].push(model);
       return acc;
     },
-    { Anthropic: [], OpenAI: [], "Zhipu AI": [] },
+    { Anthropic: [], OpenAI: [], "Zhipu AI": [], MiniMax: [], "Moonshot AI": [] },
   );
 }

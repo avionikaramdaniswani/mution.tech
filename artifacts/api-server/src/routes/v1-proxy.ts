@@ -393,6 +393,8 @@ function getProviders(): Provider[] {
 const MODEL_PROVIDER_AFFINITY: Record<string, string> = {
   "gpt-5.5": "j3gb",
   "gpt-5.5-turbo": "j3gb",
+  "MiniMaxAI/MiniMax-M2.7": "dahl",
+  "moonshotai/Kimi-K2.6": "dahl",
 };
 
 /**
@@ -1227,6 +1229,31 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
  * Convert a Responses API request body to an OpenAI Chat Completions body.
  * Responses API ref: https://platform.openai.com/docs/api-reference/responses
  */
+function responsesToolToChatTool(tool: any): any {
+  // Responses API tools are flat: { type: "function", name, description, parameters }
+  // Chat Completions tools are nested: { type: "function", function: { name, description, parameters } }
+  if (tool?.type === "function" && !tool.function) {
+    return {
+      type: "function",
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters,
+      },
+    };
+  }
+  return tool;
+}
+
+function responsesToolChoiceToChat(toolChoice: any): any {
+  if (!toolChoice || typeof toolChoice === "string") return toolChoice;
+  // Responses API: { type: "function", name }. Chat Completions: { type: "function", function: { name } }.
+  if (toolChoice.type === "function" && !toolChoice.function) {
+    return { type: "function", function: { name: toolChoice.name } };
+  }
+  return toolChoice;
+}
+
 function responsesBodyToChatBody(body: any): any {
   const messages: any[] = [];
 
@@ -1235,12 +1262,37 @@ function responsesBodyToChatBody(body: any): any {
     messages.push({ role: "system", content: body.instructions });
   }
 
-  // `input` can be a string or an array of message-like objects
+  // `input` can be a string or an array of message-like / tool-call-like objects
   if (typeof body.input === "string") {
     messages.push({ role: "user", content: body.input });
   } else if (Array.isArray(body.input)) {
     for (const item of body.input) {
       if (!item || typeof item !== "object") continue;
+
+      // A previous assistant tool call the client is replaying back to us
+      if (item.type === "function_call") {
+        messages.push({
+          role: "assistant",
+          content: null,
+          tool_calls: [{
+            id: item.call_id ?? item.id,
+            type: "function",
+            function: { name: item.name, arguments: item.arguments ?? "{}" },
+          }],
+        });
+        continue;
+      }
+
+      // The result of a tool call, sent back by the client
+      if (item.type === "function_call_output") {
+        messages.push({
+          role: "tool",
+          tool_call_id: item.call_id,
+          content: typeof item.output === "string" ? item.output : JSON.stringify(item.output ?? ""),
+        });
+        continue;
+      }
+
       // Content may be a string or an array of content parts
       let content: any = item.content;
       if (Array.isArray(content)) {
@@ -1262,6 +1314,10 @@ function responsesBodyToChatBody(body: any): any {
     model: body.model,
     messages,
     stream: body.stream ?? false,
+    ...(Array.isArray(body.tools) && body.tools.length > 0
+      ? { tools: body.tools.map(responsesToolToChatTool) }
+      : {}),
+    ...(body.tool_choice != null ? { tool_choice: responsesToolChoiceToChat(body.tool_choice) } : {}),
     ...(body.max_output_tokens != null ? { max_tokens: body.max_output_tokens } : {}),
     ...(body.temperature != null ? { temperature: body.temperature } : {}),
     ...(body.top_p != null ? { top_p: body.top_p } : {}),
@@ -1271,13 +1327,43 @@ function responsesBodyToChatBody(body: any): any {
 }
 
 /** Build a complete Responses API response object from a Chat Completions response. */
+/** Build Responses API output items from a Chat Completions message (text and/or tool calls). */
+function chatMessageToResponsesOutput(message: any, msgId: string): any[] {
+  const output: any[] = [];
+  const toolCalls = message?.tool_calls;
+  if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+    for (const call of toolCalls) {
+      output.push({
+        type: "function_call",
+        id: `fc_${call.id ?? crypto.randomUUID().replace(/-/g, "")}`,
+        call_id: call.id,
+        name: call.function?.name ?? "",
+        arguments: call.function?.arguments ?? "{}",
+        status: "completed",
+      });
+    }
+  }
+  const text = message?.content;
+  if (typeof text === "string" && text.length > 0) {
+    output.push({
+      type: "message",
+      id: msgId,
+      status: "completed",
+      role: "assistant",
+      content: [{ type: "output_text", text, annotations: [] }],
+    });
+  }
+  return output;
+}
+
 function chatResponseToResponsesBody(
   data: any,
   respId: string,
   msgId: string,
   createdAt: number,
 ): any {
-  const text = data.choices?.[0]?.message?.content ?? "";
+  const message = data.choices?.[0]?.message;
+  const output = chatMessageToResponsesOutput(message, msgId);
   const inputTokens = data.usage?.prompt_tokens ?? 0;
   const outputTokens = data.usage?.completion_tokens ?? 0;
   const cachedTokens = extractCachedTokens(data.usage);
@@ -1291,13 +1377,7 @@ function chatResponseToResponsesBody(
     instructions: null,
     max_output_tokens: null,
     model: data.model ?? "unknown",
-    output: [{
-      type: "message",
-      id: msgId,
-      status: "completed",
-      role: "assistant",
-      content: [{ type: "output_text", text, annotations: [] }],
-    }],
+    output,
     parallel_tool_calls: true,
     previous_response_id: null,
     reasoning: { effort: null, summary: null },
@@ -1360,6 +1440,11 @@ async function streamChatToResponses(
   let outputTokens = 0;
   let cachedTokens = 0;
 
+  // Tool calls stream incrementally by index; accumulate arguments per index.
+  type PendingCall = { outputIndex: number; id: string; name: string; arguments: string };
+  const pendingCalls = new Map<number, PendingCall>();
+  let nextOutputIndex = 1; // 0 is reserved for the text message item
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -1370,13 +1455,39 @@ async function streamChatToResponses(
       if (!line.startsWith("data: ") || line.includes("[DONE]")) continue;
       try {
         const d = JSON.parse(line.slice(6));
-        const delta = d.choices?.[0]?.delta?.content;
-        if (typeof delta === "string" && delta) {
-          fullText += delta;
+        const delta = d.choices?.[0]?.delta;
+        const textDelta = delta?.content;
+        if (typeof textDelta === "string" && textDelta) {
+          fullText += textDelta;
           res.write(responsesSseEvent("response.output_text.delta", {
             type: "response.output_text.delta",
-            item_id: msgId, output_index: 0, content_index: 0, delta,
+            item_id: msgId, output_index: 0, content_index: 0, delta: textDelta,
           }));
+        }
+        const toolCallDeltas = delta?.tool_calls;
+        if (Array.isArray(toolCallDeltas)) {
+          for (const tc of toolCallDeltas) {
+            const idx = tc.index ?? 0;
+            let call = pendingCalls.get(idx);
+            if (!call) {
+              call = { outputIndex: nextOutputIndex++, id: tc.id ?? `call_${idx}`, name: tc.function?.name ?? "", arguments: "" };
+              pendingCalls.set(idx, call);
+              res.write(responsesSseEvent("response.output_item.added", {
+                type: "response.output_item.added",
+                output_index: call.outputIndex,
+                item: { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: call.name, arguments: "", status: "in_progress" },
+              }));
+            }
+            if (tc.function?.name) call.name = tc.function.name;
+            const argDelta = tc.function?.arguments;
+            if (typeof argDelta === "string" && argDelta) {
+              call.arguments += argDelta;
+              res.write(responsesSseEvent("response.function_call_arguments.delta", {
+                type: "response.function_call_arguments.delta",
+                item_id: `fc_${call.id}`, output_index: call.outputIndex, delta: argDelta,
+              }));
+            }
+          }
         }
         if (d.usage) {
           inputTokens = d.usage.prompt_tokens ?? inputTokens;
@@ -1388,24 +1499,38 @@ async function streamChatToResponses(
   }
 
   // ── Closing events ────────────────────────────────────────────────────────
-  res.write(responsesSseEvent("response.output_text.done", {
-    type: "response.output_text.done",
-    item_id: msgId, output_index: 0, content_index: 0, text: fullText,
-  }));
-  res.write(responsesSseEvent("response.content_part.done", {
-    type: "response.content_part.done",
-    item_id: msgId, output_index: 0, content_index: 0,
-    part: { type: "output_text", text: fullText, annotations: [] },
-  }));
-  res.write(responsesSseEvent("response.output_item.done", {
-    type: "response.output_item.done", output_index: 0,
-    item: { type: "message", id: msgId, status: "completed", role: "assistant", content: [{ type: "output_text", text: fullText, annotations: [] }] },
-  }));
+  const output: any[] = [];
+
+  if (fullText) {
+    res.write(responsesSseEvent("response.output_text.done", {
+      type: "response.output_text.done",
+      item_id: msgId, output_index: 0, content_index: 0, text: fullText,
+    }));
+    res.write(responsesSseEvent("response.content_part.done", {
+      type: "response.content_part.done",
+      item_id: msgId, output_index: 0, content_index: 0,
+      part: { type: "output_text", text: fullText, annotations: [] },
+    }));
+    const messageItem = { type: "message", id: msgId, status: "completed", role: "assistant", content: [{ type: "output_text", text: fullText, annotations: [] }] };
+    res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: 0, item: messageItem }));
+    output.push(messageItem);
+  }
+
+  for (const call of pendingCalls.values()) {
+    res.write(responsesSseEvent("response.function_call_arguments.done", {
+      type: "response.function_call_arguments.done",
+      item_id: `fc_${call.id}`, output_index: call.outputIndex, arguments: call.arguments,
+    }));
+    const callItem = { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: call.name, arguments: call.arguments, status: "completed" };
+    res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: call.outputIndex, item: callItem }));
+    output.push(callItem);
+  }
+
   res.write(responsesSseEvent("response.completed", {
     type: "response.completed",
     response: {
       id: respId, object: "response", created_at: createdAt, status: "completed", model,
-      output: [{ type: "message", id: msgId, status: "completed", role: "assistant", content: [{ type: "output_text", text: fullText, annotations: [] }] }],
+      output,
       usage: {
         input_tokens: inputTokens,
         input_tokens_details: { cached_tokens: cachedTokens },

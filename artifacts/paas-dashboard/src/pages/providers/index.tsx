@@ -47,7 +47,8 @@ function getProviderIcon(provider: string, baseClassName?: string) {
   const cls = baseClassName || "h-5 w-5";
   if (provider === "Anthropic") return <AnthropicLogo className={`${cls} text-amber-500`} />;
   if (provider === "OpenAI") return <OpenAILogo className={`${cls} text-emerald-500`} />;
-  return <ZhipuLogo className={`${cls} text-blue-500`} />;
+  if (provider === "Zhipu AI") return <ZhipuLogo className={`${cls} text-blue-500`} />;
+  return <Sparkles className={`${cls} text-violet-500`} />;
 }
 
 // --- Component ------------------------------------------------------------------
