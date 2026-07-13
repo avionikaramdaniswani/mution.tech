@@ -10,10 +10,20 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { MODEL_CATALOG, groupModelsByProvider, type ModelCatalogEntry } from "@workspace/model-catalog";
+import { Tag } from "lucide-react";
 
 // --- Data -----------------------------------------------------------------------
 
-type Model = ModelCatalogEntry;
+type Model = ModelCatalogEntry & {
+  basePricing?: { input: number; output: number };
+  pricingMode?: string;
+};
+
+async function fetchCatalog(): Promise<Model[]> {
+  const res = await fetch("/api/catalog");
+  if (!res.ok) throw new Error("gagal");
+  return res.json();
+}
 
 function formatPricing(value: number) {
   return value.toLocaleString("id-ID");
@@ -63,6 +73,13 @@ export default function ProvidersPage() {
   const { toast } = useToast();
   const [detailsModel, setDetailsModel] = useState<Model | null>(null);
 
+  const { data: fetchedCatalog } = useQuery<Model[]>({
+    queryKey: ["catalog"],
+    queryFn: fetchCatalog,
+    staleTime: 30_000,
+  });
+  const catalog: Model[] = fetchedCatalog ?? (MODEL_CATALOG as Model[]);
+
   const { data: health } = useQuery<UpstreamHealth>({
     queryKey: ["provider-health"],
     queryFn: async () => {
@@ -85,8 +102,8 @@ export default function ProvidersPage() {
     toast({ title: "ID Model disalin", description: id });
   }
 
-  // group models by provider
-  const grouped = groupModelsByProvider(MODEL_CATALOG);
+  // group models by provider — gunakan catalog efektif dari API
+  const grouped = groupModelsByProvider(catalog as readonly ModelCatalogEntry[]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-10">
@@ -143,16 +160,57 @@ export default function ProvidersPage() {
 
                     {/* Pricing details */}
                     <div className="space-y-2 mb-6">
-                      <div className="flex items-center gap-3 text-xs">
-                        <span className="text-muted-foreground/80 w-12 font-medium">Input</span>
-                        <div className="h-1.5 w-4 rounded-full bg-primary/40" />
-                        <span className="font-semibold tabular-nums">{formatPricing(m.pricing.input)} <span className="text-muted-foreground/60 font-normal">/ 1M</span></span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs">
-                        <span className="text-muted-foreground/80 w-12 font-medium">Output</span>
-                        <div className="h-1.5 w-6 rounded-full bg-primary" />
-                        <span className="font-semibold tabular-nums">{formatPricing(m.pricing.output)} <span className="text-muted-foreground/60 font-normal">/ 1M</span></span>
-                      </div>
+                      {m.pricingMode === "free" ? (
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                            <Sparkles className="h-3 w-3" /> Gratis
+                          </span>
+                          {m.basePricing && (
+                            <span className="text-muted-foreground/50 line-through tabular-nums text-[11px]">
+                              {formatPricing(m.basePricing.input)} / {formatPricing(m.basePricing.output)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-3 text-xs">
+                            <span className="text-muted-foreground/80 w-12 font-medium">Input</span>
+                            <div className="h-1.5 w-4 rounded-full bg-primary/40" />
+                            <span className="font-semibold tabular-nums">
+                              {formatPricing(m.pricing.input)}{" "}
+                              <span className="text-muted-foreground/60 font-normal">/ 1M</span>
+                            </span>
+                            {m.pricingMode && m.pricingMode !== "default" && m.basePricing && m.basePricing.input !== m.pricing.input && (
+                              <span className="ml-1 text-muted-foreground/40 line-through text-[10px] tabular-nums">
+                                {formatPricing(m.basePricing.input)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs">
+                            <span className="text-muted-foreground/80 w-12 font-medium">Output</span>
+                            <div className="h-1.5 w-6 rounded-full bg-primary" />
+                            <span className="font-semibold tabular-nums">
+                              {formatPricing(m.pricing.output)}{" "}
+                              <span className="text-muted-foreground/60 font-normal">/ 1M</span>
+                            </span>
+                            {m.pricingMode && m.pricingMode !== "default" && m.basePricing && m.basePricing.output !== m.pricing.output && (
+                              <span className="ml-1 text-muted-foreground/40 line-through text-[10px] tabular-nums">
+                                {formatPricing(m.basePricing.output)}
+                              </span>
+                            )}
+                          </div>
+                          {m.pricingMode === "discount_percent" && (
+                            <div className="flex items-center gap-1.5 text-[10px] text-orange-600">
+                              <Tag className="h-2.5 w-2.5" /> Harga sudah didiskon
+                            </div>
+                          )}
+                          {m.pricingMode === "fixed_price" && (
+                            <div className="flex items-center gap-1.5 text-[10px] text-sky-600">
+                              <Tag className="h-2.5 w-2.5" /> Harga custom
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
 
                     {/* Description */}
@@ -241,15 +299,38 @@ export default function ProvidersPage() {
 
                 {/* Pricing section */}
                 <div className="space-y-3 pt-2">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Harga (Kredit / 1M Token)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Harga (Kredit / 1M Token)</label>
+                    {detailsModel.pricingMode === "free" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                        <Sparkles className="h-3 w-3" /> Gratis
+                      </span>
+                    )}
+                    {detailsModel.pricingMode === "discount_percent" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-700">
+                        <Tag className="h-3 w-3" /> Diskon
+                      </span>
+                    )}
+                    {detailsModel.pricingMode === "fixed_price" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                        <Tag className="h-3 w-3" /> Custom
+                      </span>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="border border-border/50 rounded-xl p-4 bg-muted/10">
                       <p className="text-xs text-muted-foreground mb-1 font-medium">Input Tokens</p>
                       <p className="text-2xl font-bold tabular-nums">{formatPricing(detailsModel.pricing.input)}</p>
+                      {detailsModel.basePricing && detailsModel.basePricing.input !== detailsModel.pricing.input && (
+                        <p className="text-xs text-muted-foreground/50 line-through mt-0.5">{formatPricing(detailsModel.basePricing.input)}</p>
+                      )}
                     </div>
                     <div className="border border-border/50 rounded-xl p-4 bg-muted/10">
                       <p className="text-xs text-muted-foreground mb-1 font-medium">Output Tokens</p>
                       <p className="text-2xl font-bold tabular-nums">{formatPricing(detailsModel.pricing.output)}</p>
+                      {detailsModel.basePricing && detailsModel.basePricing.output !== detailsModel.pricing.output && (
+                        <p className="text-xs text-muted-foreground/50 line-through mt-0.5">{formatPricing(detailsModel.basePricing.output)}</p>
+                      )}
                     </div>
                   </div>
                 </div>
