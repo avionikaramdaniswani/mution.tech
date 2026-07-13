@@ -1254,7 +1254,46 @@ function responsesToolChoiceToChat(toolChoice: any): any {
   return toolChoice;
 }
 
-function responsesBodyToChatBody(body: any): any {
+/** Maps a flattened Chat Completions function name back to its Responses API {namespace, name}. */
+type NamespaceMap = Map<string, { namespace: string; name: string }>;
+
+/**
+ * Codex sends several Responses API tool shapes that generic (non-OpenAI) Chat Completions
+ * backends reject outright, since they strictly require every tools[i].type === "function":
+ *  - `namespace` tools (used for MCP servers): a wrapper holding nested `function` tools.
+ *    We flatten each nested tool into a single function named `${namespace}${name}` so the
+ *    model can call it, and remember the split so we can restore `namespace`/`name` on output.
+ *  - OpenAI-hosted builtin tools (`local_shell`, `web_search_preview`, `image_generation`,
+ *    `computer_use_preview`, `code_interpreter`, `custom`, ...) have no generic equivalent and
+ *    would 400 the whole request — we drop just those entries instead of failing everything.
+ */
+function flattenResponsesTools(tools: any[]): { chatTools: any[]; namespaceMap: NamespaceMap } {
+  const chatTools: any[] = [];
+  const namespaceMap: NamespaceMap = new Map();
+  for (const tool of tools) {
+    if (!tool || typeof tool !== "object") continue;
+    if (tool.type === "function") {
+      chatTools.push(responsesToolToChatTool(tool));
+      continue;
+    }
+    if (tool.type === "namespace" && Array.isArray(tool.tools)) {
+      for (const nested of tool.tools) {
+        if (!nested || nested.type !== "function" || !nested.name) continue;
+        const flatName = `${tool.name ?? ""}${nested.name}`;
+        namespaceMap.set(flatName, { namespace: tool.name ?? "", name: nested.name });
+        chatTools.push({
+          type: "function",
+          function: { name: flatName, description: nested.description, parameters: nested.parameters },
+        });
+      }
+      continue;
+    }
+    logger.warn({ toolType: tool.type }, "Dropping unsupported Responses API tool type for generic provider");
+  }
+  return { chatTools, namespaceMap };
+}
+
+function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMap: NamespaceMap } {
   const messages: any[] = [];
 
   // `instructions` maps to a system message
@@ -1310,13 +1349,19 @@ function responsesBodyToChatBody(body: any): any {
     }
   }
 
-  return {
+  let chatTools: any[] = [];
+  let namespaceMap: NamespaceMap = new Map();
+  if (Array.isArray(body.tools) && body.tools.length > 0) {
+    const flattened = flattenResponsesTools(body.tools);
+    chatTools = flattened.chatTools;
+    namespaceMap = flattened.namespaceMap;
+  }
+
+  const chatBody = {
     model: body.model,
     messages,
     stream: body.stream ?? false,
-    ...(Array.isArray(body.tools) && body.tools.length > 0
-      ? { tools: body.tools.map(responsesToolToChatTool) }
-      : {}),
+    ...(chatTools.length > 0 ? { tools: chatTools } : {}),
     ...(body.tool_choice != null ? { tool_choice: responsesToolChoiceToChat(body.tool_choice) } : {}),
     ...(body.max_output_tokens != null ? { max_tokens: body.max_output_tokens } : {}),
     ...(body.temperature != null ? { temperature: body.temperature } : {}),
@@ -1324,20 +1369,29 @@ function responsesBodyToChatBody(body: any): any {
     ...(body.presence_penalty != null ? { presence_penalty: body.presence_penalty } : {}),
     ...(body.frequency_penalty != null ? { frequency_penalty: body.frequency_penalty } : {}),
   };
+
+  return { chatBody, namespaceMap };
 }
 
-/** Build a complete Responses API response object from a Chat Completions response. */
+/** Splits a flattened function name back into {namespace, name} if it came from a namespace tool. */
+function splitNamespacedName(flatName: string, namespaceMap: NamespaceMap): { namespace: string | null; name: string } {
+  const split = namespaceMap.get(flatName);
+  return split ? { namespace: split.namespace, name: split.name } : { namespace: null, name: flatName };
+}
+
 /** Build Responses API output items from a Chat Completions message (text and/or tool calls). */
-function chatMessageToResponsesOutput(message: any, msgId: string): any[] {
+function chatMessageToResponsesOutput(message: any, msgId: string, namespaceMap: NamespaceMap): any[] {
   const output: any[] = [];
   const toolCalls = message?.tool_calls;
   if (Array.isArray(toolCalls) && toolCalls.length > 0) {
     for (const call of toolCalls) {
+      const { namespace, name } = splitNamespacedName(call.function?.name ?? "", namespaceMap);
       output.push({
         type: "function_call",
         id: `fc_${call.id ?? crypto.randomUUID().replace(/-/g, "")}`,
         call_id: call.id,
-        name: call.function?.name ?? "",
+        name,
+        ...(namespace != null ? { namespace } : {}),
         arguments: call.function?.arguments ?? "{}",
         status: "completed",
       });
@@ -1361,9 +1415,10 @@ function chatResponseToResponsesBody(
   respId: string,
   msgId: string,
   createdAt: number,
+  namespaceMap: NamespaceMap,
 ): any {
   const message = data.choices?.[0]?.message;
-  const output = chatMessageToResponsesOutput(message, msgId);
+  const output = chatMessageToResponsesOutput(message, msgId, namespaceMap);
   const inputTokens = data.usage?.prompt_tokens ?? 0;
   const outputTokens = data.usage?.completion_tokens ?? 0;
   const cachedTokens = extractCachedTokens(data.usage);
@@ -1415,6 +1470,7 @@ async function streamChatToResponses(
   msgId: string,
   createdAt: number,
   model: string,
+  namespaceMap: NamespaceMap,
 ): Promise<{ inputTokens: number; outputTokens: number; cachedTokens: number }> {
   // ── Initial events ────────────────────────────────────────────────────────
   res.write(responsesSseEvent("response.created", {
@@ -1472,10 +1528,11 @@ async function streamChatToResponses(
             if (!call) {
               call = { outputIndex: nextOutputIndex++, id: tc.id ?? `call_${idx}`, name: tc.function?.name ?? "", arguments: "" };
               pendingCalls.set(idx, call);
+              const added = splitNamespacedName(call.name, namespaceMap);
               res.write(responsesSseEvent("response.output_item.added", {
                 type: "response.output_item.added",
                 output_index: call.outputIndex,
-                item: { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: call.name, arguments: "", status: "in_progress" },
+                item: { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: added.name, ...(added.namespace != null ? { namespace: added.namespace } : {}), arguments: "", status: "in_progress" },
               }));
             }
             if (tc.function?.name) call.name = tc.function.name;
@@ -1521,7 +1578,8 @@ async function streamChatToResponses(
       type: "response.function_call_arguments.done",
       item_id: `fc_${call.id}`, output_index: call.outputIndex, arguments: call.arguments,
     }));
-    const callItem = { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: call.name, arguments: call.arguments, status: "completed" };
+    const split = splitNamespacedName(call.name, namespaceMap);
+    const callItem = { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: split.name, ...(split.namespace != null ? { namespace: split.namespace } : {}), arguments: call.arguments, status: "completed" };
     res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: call.outputIndex, item: callItem }));
     output.push(callItem);
   }
@@ -1565,7 +1623,7 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
   }
 
   // Convert Responses API body → Chat Completions body
-  const chatBody = responsesBodyToChatBody(req.body);
+  const { chatBody, namespaceMap } = responsesBodyToChatBody(req.body);
   const originalModel = chatBody.model ?? "unknown";
   const isStream = chatBody.stream === true;
   providers = filterProvidersForModel(providers, originalModel);
@@ -1614,7 +1672,7 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
         res.setHeader("Connection", "keep-alive");
         const reader = upstream.body?.getReader();
         if (!reader) { res.end(); return; }
-        const { inputTokens, outputTokens, cachedTokens } = await streamChatToResponses(reader, res, respId, msgId, createdAt, originalModel);
+        const { inputTokens, outputTokens, cachedTokens } = await streamChatToResponses(reader, res, respId, msgId, createdAt, originalModel, namespaceMap);
         const tokens = (inputTokens + outputTokens) || estimateFallbackTokens(chatBody);
         updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
         reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
@@ -1632,7 +1690,7 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
           res.status(upstream.status).json(data);
           return;
         }
-        const responsesBody = chatResponseToResponsesBody(data, respId, msgId, createdAt);
+        const responsesBody = chatResponseToResponsesBody(data, respId, msgId, createdAt, namespaceMap);
         res.status(200).json(responsesBody);
         const inputTokens = data.usage?.prompt_tokens ?? 0;
         const outputTokens = data.usage?.completion_tokens ?? 0;
