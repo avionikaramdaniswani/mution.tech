@@ -41,6 +41,7 @@ import AdminUsers from "@/pages/admin/users";
 import AdminProjects from "@/pages/admin/projects";
 import AdminActivity from "@/pages/admin/activity";
 import AdminProviders from "@/pages/admin/providers";
+import AdminModels from "@/pages/admin/models";
 import AdminPayments from "@/pages/admin/payments";
 import AdminUsage from "@/pages/admin/usage";
 import AdminChangelog from "@/pages/admin/changelog";
@@ -125,6 +126,7 @@ function Router() {
         <Route path="/admin/payments" component={() => <AdminRoute component={AdminPayments} />} />
         <Route path="/admin/activity" component={() => <AdminRoute component={AdminActivity} />} />
         <Route path="/admin/providers" component={() => <AdminRoute component={AdminProviders} />} />
+        <Route path="/admin/models" component={() => <AdminRoute component={AdminModels} />} />
         <Route path="/admin/usage" component={() => <AdminRoute component={AdminUsage} />} />
         <Route path="/admin/changelog" component={() => <AdminRoute component={AdminChangelog} />} />
         <Route path="/admin" component={() => <AdminRoute component={AdminOverview} />} />

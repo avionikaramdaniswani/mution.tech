@@ -1,0 +1,33 @@
+oiya kita bisa setup di admin panel ga yah nanti kan ada tabel model, nah kita bisa setup disana kek discount/gratis gitu biar enak. dan itu benar benar berfungsi. kalo menurut kamu gimna tuh konsepnya?
+
+11 minutes ago
+
+3 actions
+Konsepnya jelas bisa dan berguna — sekarang harga model itu hardcoded di lib/model-catalog (kode), belum ada tabel database buat override-nya, jadi admin belum bisa ubah harga dari UI. Ini rancangan yang saya usulkan:
+
+1. Tabel baru di database — model_pricing_overrides
+
+modelId (cocok dengan id di katalog, mis. MiniMaxAI/MiniMax-M2.7)
+mode: default | discount_percent | fixed_price | free
+discountPercent (buat mode discount, misal 50 = setengah harga)
+inputPriceOverride / outputPriceOverride (buat mode fixed_price, custom per-token)
+updatedAt, updatedBy
+2. Halaman baru di admin panel — tab "Models"
+
+Tabel semua model dari katalog (join dengan override kalau ada), tiap baris nunjukin: nama model, provider, harga default.
+Per model bisa diedit: toggle "Gratis", atau isi "Diskon %", atau isi harga custom input/output.
+Save langsung nyimpen ke tabel di atas.
+3. Runtime — dipakai beneran saat charging
+
+Saat proxy hitung credit (calculateCredits/estimateReserveCredits/finalizeReservation), sebelum ambil harga dari katalog statis, cek dulu override dari tabel (di-cache di memory + refresh berkala, pola yang sama kayak provider on/off sekarang) — kalau ada override, pakai itu.
+Mode "Gratis" beneran charge 0 credit (bukan dibulatkan ke minimal 1 seperti sekarang), tapi tetap dicatat di log usage biar kelihatan di dashboard admin/user (transparan, bukan disembunyikan).
+Diskon dan fixed price langsung mempengaruhi angka yang dipotong dari saldo user, real-time, bukan cuma tampilan.
+4. Dampak tempat lain
+
+Dashboard /api-usage user otomatis ikut nunjukin harga yang sudah didiskon/gratis (karena ambil dari log yang sama).
+Halaman pricing publik (/harga) idealnya juga baca dari sumber yang sama biar konsisten — kalau ada promo, kelihatan di situ juga.
+Kalau oke, saya langsung kerjakan (schema + migration + endpoint admin + halaman UI + wiring ke proxy billing). Ada preferensi soal bentuknya — mau simpel (cuma toggle Gratis + input diskon %), atau sekalian ada opsi "harga custom" per token juga?
+
+
+Worked for 1 minute
+sekalian aja deh yaa biar bagus, yuk buatin

@@ -5,7 +5,8 @@ import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { computePlan } from "../lib/plan";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
-import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider } from "./v1-proxy";
+import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride } from "./v1-proxy";
+import { MODEL_CATALOG } from "@workspace/model-catalog";
 
 const router = Router();
 
@@ -541,6 +542,76 @@ router.post("/admin/providers/:id/reset-cooldown", (req, res) => {
   // Just return ok — cooldown resets naturally; this endpoint is for UI feedback
   const id = decodeURIComponent(req.params.id);
   res.json({ ok: true, id, message: "Cooldown will expire naturally or on next restart" });
+});
+
+// ─── Model Pricing Overrides ──────────────────────────────────────────────────
+
+router.get("/admin/model-pricing", async (_req, res) => {
+  try {
+    const overrides = await adminGetModelPricingOverrides();
+    const overrideMap = new Map(overrides.map((o) => [o.modelId, o]));
+
+    const result = MODEL_CATALOG.map((m) => {
+      const ov = overrideMap.get(m.id);
+      return {
+        modelId: m.id,
+        label: m.label,
+        provider: m.provider,
+        basePricingInput: m.pricing.input,
+        basePricingOutput: m.pricing.output,
+        context: m.context,
+        override: ov
+          ? {
+              mode: ov.mode,
+              discountPercent: ov.discountPercent,
+              inputPriceOverride: ov.inputPriceOverride,
+              outputPriceOverride: ov.outputPriceOverride,
+              updatedAt: ov.updatedAt.toISOString(),
+            }
+          : null,
+      };
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("Failed to fetch model pricing:", error);
+    res.status(500).json({ error: "Gagal mengambil data harga model" });
+  }
+});
+
+router.patch("/admin/model-pricing/:modelId", async (req, res) => {
+  try {
+    const modelId = decodeURIComponent(req.params.modelId);
+    const { mode, discountPercent, inputPriceOverride, outputPriceOverride } = req.body;
+
+    const validModes = ["default", "discount_percent", "fixed_price", "free"];
+    if (!validModes.includes(mode)) {
+      res.status(400).json({ error: "Mode tidak valid" });
+      return;
+    }
+
+    const admin = (req as any).user;
+    await adminSetModelPricingOverride(
+      modelId,
+      { mode, discountPercent: discountPercent ?? null, inputPriceOverride: inputPriceOverride ?? null, outputPriceOverride: outputPriceOverride ?? null },
+      admin.id,
+    );
+    res.json({ ok: true, modelId, mode });
+  } catch (error) {
+    console.error("Failed to update model pricing:", error);
+    res.status(500).json({ error: "Gagal mengubah harga model" });
+  }
+});
+
+router.delete("/admin/model-pricing/:modelId", async (req, res) => {
+  try {
+    const modelId = decodeURIComponent(req.params.modelId);
+    await adminDeleteModelPricingOverride(modelId);
+    res.json({ ok: true, modelId });
+  } catch (error) {
+    console.error("Failed to reset model pricing:", error);
+    res.status(500).json({ error: "Gagal mereset harga model" });
+  }
 });
 
 export default router;

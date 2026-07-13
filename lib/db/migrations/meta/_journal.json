@@ -15,6 +15,13 @@
       "when": 1783842772346,
       "tag": "0001_vengeful_secret_warriors",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783931100000,
+      "tag": "0002_model_pricing_overrides",
+      "breakpoints": true
     }
   ]
 }

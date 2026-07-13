@@ -1,5 +1,5 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
-import { db, apiKeysTable, usersTable, creditTransactionsTable, apiUsageTable, aiProviderSettingsTable, apiRequestsTable } from "@workspace/db";
+import { db, apiKeysTable, usersTable, creditTransactionsTable, apiUsageTable, aiProviderSettingsTable, apiRequestsTable, modelPricingOverridesTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { logger } from "../lib/logger";
@@ -176,6 +176,41 @@ let _providerSettingsLoadedAt = 0;
 let _providerSettingsRefresh: Promise<void> | null = null;
 const PROVIDER_SETTINGS_REFRESH_MS = 5_000;
 
+// ─── Model pricing override cache ─────────────────────────────────────────────
+type CachedPricingOverride = {
+  mode: "default" | "discount_percent" | "fixed_price" | "free";
+  discountPercent: number | null;
+  inputPriceOverride: string | null;
+  outputPriceOverride: string | null;
+};
+const _modelPricingOverrides = new Map<string, CachedPricingOverride>();
+let _pricingOverridesLoadedAt = 0;
+let _pricingOverridesRefresh: Promise<void> | null = null;
+const PRICING_OVERRIDES_REFRESH_MS = 10_000;
+
+async function refreshModelPricingOverrides(force = false): Promise<void> {
+  const now = Date.now();
+  if (!force && now - _pricingOverridesLoadedAt < PRICING_OVERRIDES_REFRESH_MS) return;
+
+  _pricingOverridesRefresh ??= (async () => {
+    const rows = await db.select().from(modelPricingOverridesTable);
+    _modelPricingOverrides.clear();
+    for (const row of rows) {
+      _modelPricingOverrides.set(row.modelId, {
+        mode: row.mode,
+        discountPercent: row.discountPercent ?? null,
+        inputPriceOverride: row.inputPriceOverride ?? null,
+        outputPriceOverride: row.outputPriceOverride ?? null,
+      });
+    }
+    _pricingOverridesLoadedAt = Date.now();
+  })().finally(() => {
+    _pricingOverridesRefresh = null;
+  });
+
+  await _pricingOverridesRefresh;
+}
+
 async function refreshProviderSettings(force = false): Promise<void> {
   const now = Date.now();
   if (!force && now - _providerSettingsLoadedAt < PROVIDER_SETTINGS_REFRESH_MS) return;
@@ -196,9 +231,12 @@ async function refreshProviderSettings(force = false): Promise<void> {
 
 async function refreshProviderSettingsForProxy(): Promise<void> {
   try {
-    await refreshProviderSettings();
+    await Promise.all([
+      refreshProviderSettings(),
+      refreshModelPricingOverrides(),
+    ]);
   } catch (error) {
-    logger.error({ err: error }, "Failed to refresh provider settings; using cached provider state");
+    logger.error({ err: error }, "Failed to refresh provider/pricing settings; using cached state");
   }
 }
 
@@ -234,6 +272,66 @@ export async function adminGetProviderStatuses() {
       ? new Date(_cooldowns.get(p.id)!).toISOString()
       : null,
   }));
+}
+
+// ─── Admin: Model Pricing Overrides ──────────────────────────────────────────
+export async function adminGetModelPricingOverrides() {
+  await refreshModelPricingOverrides(true);
+  const rows = await db.select().from(modelPricingOverridesTable);
+  return rows;
+}
+
+export async function adminSetModelPricingOverride(
+  modelId: string,
+  payload: {
+    mode: "default" | "discount_percent" | "fixed_price" | "free";
+    discountPercent?: number | null;
+    inputPriceOverride?: string | null;
+    outputPriceOverride?: string | null;
+  },
+  updatedBy?: number,
+) {
+  const now = new Date();
+  await db
+    .insert(modelPricingOverridesTable)
+    .values({
+      modelId,
+      mode: payload.mode,
+      discountPercent: payload.discountPercent ?? null,
+      inputPriceOverride: payload.inputPriceOverride ?? null,
+      outputPriceOverride: payload.outputPriceOverride ?? null,
+      updatedAt: now,
+      updatedBy: updatedBy ?? null,
+    })
+    .onConflictDoUpdate({
+      target: modelPricingOverridesTable.modelId,
+      set: {
+        mode: payload.mode,
+        discountPercent: payload.discountPercent ?? null,
+        inputPriceOverride: payload.inputPriceOverride ?? null,
+        outputPriceOverride: payload.outputPriceOverride ?? null,
+        updatedAt: now,
+        updatedBy: updatedBy ?? null,
+      },
+    });
+
+  // Update in-memory cache immediately
+  if (payload.mode === "default") {
+    _modelPricingOverrides.delete(modelId);
+  } else {
+    _modelPricingOverrides.set(modelId, {
+      mode: payload.mode,
+      discountPercent: payload.discountPercent ?? null,
+      inputPriceOverride: payload.inputPriceOverride ?? null,
+      outputPriceOverride: payload.outputPriceOverride ?? null,
+    });
+  }
+}
+
+export async function adminDeleteModelPricingOverride(modelId: string) {
+  const { eq } = await import("drizzle-orm");
+  await db.delete(modelPricingOverridesTable).where(eq(modelPricingOverridesTable.modelId, modelId));
+  _modelPricingOverrides.delete(modelId);
 }
 
 // ─── Upstream Health Checker ──────────────────────────────────────────────────
@@ -489,9 +587,27 @@ const MODEL_PRICING_TOKEN_UNIT = 1_000_000;
 function calculateCredits(tokensUsed: number, model: string, breakdown?: CreditBreakdown): number {
   const inputTokens = breakdown?.inputTokens ?? 0;
   const outputTokens = breakdown?.outputTokens ?? (inputTokens === 0 ? tokensUsed : 0);
-  const pricing = getCatalogModelPricing(model);
-  const inputCredits = (inputTokens * pricing.input) / MODEL_PRICING_TOKEN_UNIT;
-  const outputCredits = (outputTokens * pricing.output) / MODEL_PRICING_TOKEN_UNIT;
+
+  const override = _modelPricingOverrides.get(model);
+
+  // Mode "free" → 0 credit, tetap tercatat di log usage (transparan)
+  if (override?.mode === "free") return 0;
+
+  const basePricing = getCatalogModelPricing(model);
+  let inputPrice = basePricing.input;
+  let outputPrice = basePricing.output;
+
+  if (override?.mode === "discount_percent" && override.discountPercent != null) {
+    const factor = 1 - Math.min(100, Math.max(0, override.discountPercent)) / 100;
+    inputPrice = inputPrice * factor;
+    outputPrice = outputPrice * factor;
+  } else if (override?.mode === "fixed_price") {
+    if (override.inputPriceOverride != null) inputPrice = parseFloat(override.inputPriceOverride);
+    if (override.outputPriceOverride != null) outputPrice = parseFloat(override.outputPriceOverride);
+  }
+
+  const inputCredits = (inputTokens * inputPrice) / MODEL_PRICING_TOKEN_UNIT;
+  const outputCredits = (outputTokens * outputPrice) / MODEL_PRICING_TOKEN_UNIT;
   return Math.max(1, Math.ceil(inputCredits + outputCredits));
 }
 
