@@ -18,11 +18,55 @@ export interface ModelCatalogEntry {
 }
 
 export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
+  // ── Claude Haiku ──────────────────────────────────────────────────────────
+  {
+    id: "claude-haiku-4-5",
+    label: "Claude Haiku 4.5",
+    provider: "Anthropic",
+    pricing: { input: 2500, output: 10000 },
+    context: "200K",
+    description: "Model Claude paling ringan dan cepat. Ideal untuk tugas sederhana dengan biaya minimal.",
+  },
+  // ── Claude Sonnet ─────────────────────────────────────────────────────────
+  {
+    id: "claude-sonnet-4-5",
+    label: "Claude Sonnet 4.5",
+    provider: "Anthropic",
+    pricing: { input: 5000, output: 25000 },
+    context: "200K",
+    description: "Sonnet generasi terbaru. Keseimbangan antara kecepatan dan kecerdasan.",
+  },
+  {
+    id: "claude-sonnet-4-6",
+    label: "Claude Sonnet 4.6",
+    provider: "Anthropic",
+    pricing: { input: 6500, output: 32500 },
+    context: "200K",
+    description: "Model cerdas dan cepat, cocok untuk mayoritas use-case.",
+  },
+  {
+    id: "claude-sonnet-5",
+    label: "Claude Sonnet 5.0",
+    provider: "Anthropic",
+    pricing: { input: 9500, output: 47500 },
+    context: "200K",
+    note: "Terbaru",
+    description: "Generasi ke-5 Sonnet dengan pemahaman logika lebih kuat.",
+  },
+  // ── Claude Opus ───────────────────────────────────────────────────────────
+  {
+    id: "claude-opus-4-5",
+    label: "Claude Opus 4.5",
+    provider: "Anthropic",
+    pricing: { input: 11000, output: 55000 },
+    context: "200K",
+    description: "Opus generasi pertama seri ke-4. Sangat kuat untuk tugas kompleks.",
+  },
   {
     id: "claude-opus-4-6",
     label: "Claude Opus 4.6",
     provider: "Anthropic",
-    pricing: { input: 26900, output: 134900 },
+    pricing: { input: 14000, output: 70000 },
     context: "200K",
     description: "Model kuat dari Anthropic untuk tugas yang sangat kompleks.",
   },
@@ -30,7 +74,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     id: "claude-opus-4-7",
     label: "Claude Opus 4.7",
     provider: "Anthropic",
-    pricing: { input: 27900, output: 139900 },
+    pricing: { input: 18000, output: 90000 },
     context: "200K",
     description: "Versi pembaruan Opus dengan stabilitas reasoning lebih baik.",
   },
@@ -38,42 +82,28 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     id: "claude-opus-4-8",
     label: "Claude Opus 4.8",
     provider: "Anthropic",
-    pricing: { input: 28900, output: 146000 },
+    pricing: { input: 22000, output: 110000 },
     context: "200K",
     note: "Terbaru",
     description: "Iterasi terbaru Opus. Kecepatan dan kecerdasan maksimal.",
   },
+  // ── Claude Fable ──────────────────────────────────────────────────────────
   {
-    id: "claude-sonnet-4-6",
-    label: "Claude Sonnet 4.6",
+    id: "claude-fable-5",
+    label: "Claude Fable 5",
     provider: "Anthropic",
-    pricing: { input: 9900, output: 49500 },
+    pricing: { input: 28000, output: 140000 },
     context: "200K",
-    description: "Model cerdas dan cepat, cocok untuk mayoritas use-case.",
+    note: "Baru",
+    description: "Model Claude terbaru generasi ke-5 dengan kemampuan penalaran tingkat lanjut.",
   },
-  {
-    id: "claude-sonnet-4-7",
-    label: "Claude Sonnet 4.7",
-    provider: "Anthropic",
-    pricing: { input: 10500, output: 52500 },
-    context: "200K",
-    description: "Keseimbangan ideal antara kecepatan, harga, dan kecerdasan.",
-  },
-  {
-    id: "claude-sonnet-5",
-    label: "Claude Sonnet 5.0",
-    provider: "Anthropic",
-    pricing: { input: 11500, output: 57500 },
-    context: "200K",
-    note: "Terbaru",
-    description: "Generasi ke-5 Sonnet dengan pemahaman logika lebih kuat.",
-  },
+  // ── OpenAI ────────────────────────────────────────────────────────────────
   {
     id: "gpt-5-4",
     label: "GPT 5.4",
     provider: "OpenAI",
     pricing: { input: 8500, output: 51000 },
-    context: "128K",
+    context: "1M",
     description: "Standar industri. Performa sangat baik untuk berbagai tugas.",
     aliases: ["gpt-5.4"],
   },
@@ -82,11 +112,12 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     label: "GPT 5.5",
     provider: "OpenAI",
     pricing: { input: 16900, output: 99900 },
-    context: "128K",
+    context: "1M",
     note: "Terbaru",
     description: "Peningkatan dari seri GPT-5. Respons lebih cepat dan lebih patuh instruksi.",
     aliases: ["gpt-5.5"],
   },
+  // ── Zhipu AI ──────────────────────────────────────────────────────────────
   {
     id: "glm-5-2",
     label: "GLM 5.2",
@@ -96,6 +127,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     description: "Model open-weight terkemuka dengan efisiensi biaya luar biasa.",
     aliases: ["glm-5.2"],
   },
+  // ── MiniMax ───────────────────────────────────────────────────────────────
   {
     id: "MiniMaxAI/MiniMax-M2.7",
     label: "MiniMax M2.7",
@@ -105,6 +137,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     note: "Baru",
     description: "Model chat & coding umum dari MiniMax, harga efisien untuk tugas sehari-hari.",
   },
+  // ── Moonshot AI ───────────────────────────────────────────────────────────
   {
     id: "moonshotai/Kimi-K2.6",
     label: "Kimi K2.6",

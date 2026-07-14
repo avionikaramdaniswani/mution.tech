@@ -455,8 +455,8 @@ function getProviders(): Provider[] {
   for (const [envKey, envVal] of Object.entries(process.env)) {
     if (!envKey.endsWith("_API_KEY") || !envVal?.trim()) continue;
     const prefix = envKey.slice(0, -"_API_KEY".length);
-    // Skip unrelated env vars
-    if (["SESSION", "DATABASE", "SUPABASE", "AGENTROUTER"].some((s) => prefix.includes(s))) continue;
+    // Skip unrelated env vars dan provider yang dinonaktifkan
+    if (["SESSION", "DATABASE", "SUPABASE", "AGENTROUTER", "IYH", "CONDUIT"].some((s) => prefix.includes(s))) continue;
 
     const rawUrl = (process.env[`${prefix}_BASE_URL`] ?? "").trim();
     if (!rawUrl) {
@@ -489,10 +489,22 @@ function getProviders(): Provider[] {
  * To add more: just extend this map.
  */
 const MODEL_PROVIDER_AFFINITY: Record<string, string> = {
+  // OpenAI via J3GB
   "gpt-5.5": "j3gb",
   "gpt-5.5-turbo": "j3gb",
+  // MiniMax & Kimi via Dahl
   "MiniMaxAI/MiniMax-M2.7": "dahl",
   "moonshotai/Kimi-K2.6": "dahl",
+  // Semua Claude via XSTX
+  "claude-haiku-4-5": "xstx",
+  "claude-sonnet-4-5": "xstx",
+  "claude-sonnet-4-6": "xstx",
+  "claude-sonnet-5": "xstx",
+  "claude-opus-4-5": "xstx",
+  "claude-opus-4-6": "xstx",
+  "claude-opus-4-7": "xstx",
+  "claude-opus-4-8": "xstx",
+  "claude-fable-5": "xstx",
 };
 
 /**
