@@ -1,0 +1,433 @@
+
+logo
+星途 AI 大模型聚合平台
+Home
+Console
+Model Square
+Docs
+Model Square
+This site currently has 48 models enabled
+
+Discover curated AI models, compare pricing and capabilities, and choose the right model for every scenario.
+
+Search model name, provider, endpoint, or tag...
+⌘K
+Filter
+Refine models by provider, group, type, and tags.
+
+Filters active
+
+Groups
+
+All Groups
+
+Claude按量（官转MAX20X）
+x2
+
+Claude按量（逆向）
+x0.25
+
+claude按次
+x1
+
+default
+x1
+
+gemini按次
+x0.5
+
+gpt按次
+x1
+
+gpt按量
+x0.2
+
+grok按次
+x1
+
+grok按量
+x0.2
+
+国产按次
+x1
+
+白嫖
+x0.01
+
+All Vendors
+
+All Vendors
+48
+
+OpenAI
+9
+
+Google
+5
+
+Anthropic
+30
+
+Anthropic
+30
+
+DeepSeek
+2
+
+OpenAI
+9
+
+xAI
+2
+
+Google
+5
+
+DeepSeek
+2
+
+Model Tags
+
+All Tags
+48
+
+1.1m
+1
+
+1m
+4
+
+200k
+6
+
+多模态
+11
+
+工具
+11
+
+推理
+11
+
+文件
+11
+
+音频
+1
+
+Pricing Type
+
+All Models
+48
+
+Token-based
+16
+
+Per Request
+32
+
+Endpoint Type
+
+All Types
+48
+
+Chat
+48
+
+Response
+0
+
+Anthropic
+30
+
+Gemini
+0
+
+Rerank
+0
+
+Image
+0
+
+Embeddings
+0
+
+Video
+0
+9
+models
+/ 48
+Standard
+Recharge
+/1M
+/1K
+
+
+gpt-5.4
+¥0.05 / request
+Details
+
+GPT-5.4 是由 opencode 提供的人工智能模型。
+
+gpt按次
+Per Request
+Lat.
+13s
+TPS
+63t
+Status
+openai
+推理
+工具
+1M
++3
+gpt-5.4-codex
+Input ¥1
+Output ¥6
+Details
+
+No description available.
+
+gpt按量
+Token-based
+Lat.
+47s
+TPS
+42t
+Status
+openai
+1M
+gpt-5.5
+¥0.05 / request
+Details
+
+No description available.
+
+gpt按次
+Per Request
+Lat.
+28s
+TPS
+58t
+Status
+openai
+1M
+gpt-5.5-codex
+Input ¥1
+Output ¥6
+Details
+
+No description available.
+
+gpt按量
+Token-based
+Lat.
+27s
+TPS
+64t
+Status
+openai
+1M
+gpt-5.5-pro
+¥0.06 / request
+Details
+
+No description available.
+
+gpt按次
+Per Request
+Lat.
+35s
+TPS
+50t
+Status
+openai
+1M
+gpt-5.6-luna
+¥0.05 / request
+Details
+
+No description available.
+
+gpt按次
+Per Request
+Lat.
+31s
+TPS
+67t
+Status
+openai
+1M
+gpt-5.6-sol
+¥0.05 / request
+Details
+
+No description available.
+
+gpt按次
+Per Request
+Lat.
+26s
+TPS
+62t
+Status
+openai
+1M
+gpt-5.6-terra
+¥0.05 / request
+Details
+
+No description available.
+
+gpt按次
+Per Request
+Lat.
+28s
+TPS
+56t
+Status
+openai
+1M
+gpt-image-2
+¥0.1 / request
+Details
+
+No description available.
+
+gpt按次
+Per Request
+Lat.
+116s
+TPS
+122t
+Status
+openai
+1M
+gpt-5.4
+Model details
+
+gpt-5.4
+OpenAI
+·
+Per Request
+GPT-5.4 是由 opencode 提供的人工智能模型。
+
+
+Overview
+
+Performance
+
+API
+Code samples
+cURL
+Python
+TypeScript
+JavaScript
+curl https://api.xstx.info/v1/chat/completions \
+  -H "Authorization: Bearer $NEW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+       "model": "gpt-5.4",
+       "messages": [
+         {
+           "role": "user",
+           "content": "Explain quantum entanglement in one paragraph."
+         }
+       ],
+       "temperature": 0.7
+     }'
+Replace <YOUR_API_KEY> with the API key from your token settings.
+
+Authentication
+All requests must include Authorization: Bearer <TOKEN> header. Anthropic-formatted endpoints accept the x-api-key header instead.
+
+Generate tokens from the Tokens page; you can scope them to specific models, groups, IPs, and rate-limits.
+
+Supported parameters
+Parameter	Type	Default / range	Description
+temperature
+number
+=
+1
+0 ~ 2
+Sampling temperature; lower is more deterministic
+top_p
+number
+=
+1
+0 ~ 1
+Nucleus sampling probability mass
+max_tokens
+integer
+>= 1	
+Maximum number of tokens in the response
+frequency_penalty
+number
+=
+0
+-2 ~ 2
+Penalises repetition of frequent tokens
+presence_penalty
+number
+=
+0
+-2 ~ 2
+Encourages introducing new topics
+stop
+array
+—	
+Up to 4 strings that stop generation
+seed
+integer
+—	
+Deterministic sampling seed (best-effort)
+n
+integer
+=
+1
+>= 1
+Number of completions to generate
+stream
+boolean
+=
+false
+Stream tokens via Server-Sent Events
+response_format
+object
+—	
+Force JSON object or schema-conforming output
+tools
+array
+—	
+Tool / function declarations the model may call
+tool_choice
+string
+auto
+none
+required
+Tool-choice policy or specific tool name
+logprobs
+boolean
+=
+false
+Return per-token log probabilities
+top_logprobs
+integer
+0 ~ 20	
+Number of top log probabilities returned per token
+logit_bias
+object
+—	
+Per-token logit bias map
+user
+string
+—	
+End-user identifier for abuse monitoring
+Rate limits
+Group	RPM	TPM	RPD
+gpt按次
+490
+196K
+9.8K
+RPM = requests per minute, TPM = tokens per minute, RPD = requests per day. Limits apply per token group.
+

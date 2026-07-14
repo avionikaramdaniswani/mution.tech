@@ -1,0 +1,652 @@
+
+logo
+星途 AI 大模型聚合平台
+Home
+Console
+Model Square
+Docs
+Model Square
+This site currently has 48 models enabled
+
+Discover curated AI models, compare pricing and capabilities, and choose the right model for every scenario.
+
+Search model name, provider, endpoint, or tag...
+⌘K
+Filter
+Refine models by provider, group, type, and tags.
+
+Filters active
+
+Groups
+
+All Groups
+
+Claude按量（官转MAX20X）
+x2
+
+Claude按量（逆向）
+x0.25
+
+claude按次
+x1
+
+default
+x1
+
+gemini按次
+x0.5
+
+gpt按次
+x1
+
+gpt按量
+x0.2
+
+grok按次
+x1
+
+grok按量
+x0.2
+
+国产按次
+x1
+
+白嫖
+x0.01
+
+All Vendors
+
+All Vendors
+48
+
+OpenAI
+9
+
+Google
+5
+
+Anthropic
+30
+
+Anthropic
+30
+
+DeepSeek
+2
+
+OpenAI
+9
+
+xAI
+2
+
+Google
+5
+
+DeepSeek
+2
+
+Model Tags
+
+All Tags
+48
+
+1.1m
+1
+
+1m
+4
+
+200k
+6
+
+多模态
+11
+
+工具
+11
+
+推理
+11
+
+文件
+11
+
+音频
+1
+
+Pricing Type
+
+All Models
+48
+
+Token-based
+16
+
+Per Request
+32
+
+Endpoint Type
+
+All Types
+48
+
+Chat
+48
+
+Response
+0
+
+Anthropic
+30
+
+Gemini
+0
+
+Rerank
+0
+
+Image
+0
+
+Embeddings
+0
+
+Video
+0
+30
+models
+/ 48
+Standard
+Recharge
+/1M
+/1K
+
+
+claude-fable-5
+¥0.2 / request
+Details
+
+No description available.
+
+claude按次
+Per Request
+Lat.
+20s
+TPS
+1Kt
+Status
+anthropic
+openai
+1M
+claude-fable-5-thinking
+¥0.2 / request
+Details
+
+No description available.
+
+claude按次
+Per Request
+Lat.
+15s
+TPS
+1Kt
+Status
+anthropic
+openai
+1M
+claude-haiku-4-5
+¥0.03 / request
+Details
+
+No description available.
+
+claude按次
+Per Request
+Lat.
+7s
+TPS
+25t
+Status
+anthropic
+openai
+1M
++1
+claude-haiku-4-5-20251001
+Input ¥0.25
+Output ¥1.25
+Cached ¥0.3125
+Details
+
+Claude Haiku 4.5 是由 qihang-ai 提供的人工智能模型。
+
+Claude 逆向（按量）
+Token-based
+Lat.
+2s
+TPS
+16t
+Status
+anthropic
+openai
+推理
+工具
+1M
++4
+claude-opus-4-5
+¥0.07 / request
+Details
+
+Claude Opus 4.5 是由 opencode 提供的人工智能模型。
+
+claude按次
+Per Request
+Lat.
+20s
+TPS
+160t
+Status
+anthropic
+openai
+推理
+工具
+1M
++4
+claude-opus-4-5-20251101
+Input ¥1.25
+Output ¥6.25
+Cached ¥0.9375
+Details
+
+Claude Opus 4.5 是由 qihang-ai 提供的人工智能模型。
+
+Claude按量（逆向）
+Token-based
+Lat.
+37s
+TPS
+148t
+Status
+anthropic
+openai
+推理
+工具
+1M
++3
+claude-opus-4-5-20251101-thinking
+Input ¥1.25
+Output ¥6.25
+Cached ¥0.9375
+Details
+
+claude-opus-4-5-20251101-thinking 是由 302ai 提供的人工智能模型。
+
+Claude按量（逆向）
+Token-based
+Lat.
+18s
+TPS
+219t
+Status
+anthropic
+openai
+推理
+工具
+1M
++3
+claude-opus-4-5-thinking
+¥0.07 / request
+Details
+
+No description available.
+
+claude按次
+Per Request
+Lat.
+18s
+TPS
+335t
+Status
+anthropic
+openai
+1M
++1
+claude-opus-4-6
+¥0.11 / request
+Details
+
+Claude Opus 4.6 是由 venice 提供的人工智能模型。
+
+claude按次
+Per Request
+Lat.
+16s
+TPS
+1Kt
+Status
+anthropic
+openai
+推理
+工具
+1M
++3
+claude-opus-4-6-20260205
+Input ¥1.25
+Output ¥6.25
+Cached ¥0.9375
+Details
+
+No description available.
+
+Claude 逆向（按量）
+Token-based
+Lat.
+10s
+TPS
+2Kt
+Status
+anthropic
+openai
+1M
++2
+claude-opus-4-6-20260205-thinking
+Input ¥1.25
+Output ¥6.25
+Cached ¥0.9375
+Details
+
+No description available.
+
+Claude按量（逆向）
+Token-based
+Lat.
+14s
+TPS
+77t
+Status
+anthropic
+openai
+1M
++2
+claude-opus-4-6-thinking
+¥0.11 / request
+Details
+
+No description available.
+
+claude按次
+Per Request
+Lat.
+46s
+TPS
+127t
+Status
+anthropic
+openai
+1M
+claude-opus-4-7
+¥0.14 / request
+Details
+
+No description available.
+
+claude按次
+Per Request
+Lat.
+26s
+TPS
+266t
+Status
+anthropic
+openai
+1M
+claude-opus-4-7-liang
+Input ¥1.25
+Output ¥6.25
+Cached ¥0.9375
+Details
+
+No description available.
+
+Claude 逆向（按量）
+Token-based
+anthropic
+openai
+1M
++2
+claude-opus-4-7-liang-thinking
+Input ¥1.25
+Output ¥6.25
+Cached ¥0.9375
+Details
+
+No description available.
+
+Claude 逆向（按量）
+Token-based
+Lat.
+13s
+TPS
+1Kt
+Status
+anthropic
+openai
+1M
++2
+claude-opus-4-7-thinking
+¥0.14 / request
+Details
+
+No description available.
+
+claude按次
+Per Request
+Lat.
+82s
+TPS
+339t
+Status
+anthropic
+openai
+1M
+claude-opus-4-8
+¥0.17 / request
+Details
+
+No description available.
+
+claude按次
+Per Request
+Lat.
+19s
+TPS
+2Kt
+Status
+anthropic
+openai
+1M
+claude-opus-4-8-liang
+Input ¥1.25
+Output ¥6.25
+Cached ¥0.9375
+Details
+
+No description available.
+
+Claude(官转MAX20X)（按量计费）
+Token-based
+Lat.
+23s
+TPS
+364t
+Status
+anthropic
+openai
+1M
++1
+claude-opus-4-8-liang-thinking
+Input ¥1.25
+Output ¥6.25
+Cached ¥0.3125
+Details
+
+No description available.
+
+Claude(官转MAX20X)（按量计费）
+Token-based
+Lat.
+10s
+TPS
+1Kt
+Status
+anthropic
+openai
+1M
++1
+claude-opus-4-8-thinking
+¥0.17 / request
+Details
+
+No description available.
+
+claude按次
+Per Request
+Lat.
+37s
+TPS
+497t
+Status
+anthropic
+openai
+1M
+Page 1 of 2
+
+claude-fable-5
+Model details
+
+claude-fable-5
+Anthropic
+·
+Per Request
+
+Overview
+
+Performance
+
+API
+Code samples
+anthropic
+openai
+cURL
+Python
+TypeScript
+JavaScript
+curl https://api.xstx.info/v1/messages \
+  -H "x-api-key: $NEW_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+       "model": "claude-fable-5",
+       "max_tokens": 1024,
+       "messages": [
+         {
+           "role": "user",
+           "content": "Explain quantum entanglement in one paragraph."
+         }
+       ]
+     }'
+Replace <YOUR_API_KEY> with the API key from your token settings.
+
+Authentication
+All requests must include Authorization: Bearer <TOKEN> header. Anthropic-formatted endpoints accept the x-api-key header instead.
+
+Generate tokens from the Tokens page; you can scope them to specific models, groups, IPs, and rate-limits.
+
+Supported parameters
+Parameter	Type	Default / range	Description
+temperature
+number
+=
+1
+0 ~ 2
+Sampling temperature; lower is more deterministic
+top_p
+number
+=
+1
+0 ~ 1
+Nucleus sampling probability mass
+max_tokens
+integer
+>= 1	
+Maximum number of tokens in the response
+frequency_penalty
+number
+=
+0
+-2 ~ 2
+Penalises repetition of frequent tokens
+presence_penalty
+number
+=
+0
+-2 ~ 2
+Encourages introducing new topics
+stop
+array
+—	
+Up to 4 strings that stop generation
+seed
+integer
+—	
+Deterministic sampling seed (best-effort)
+n
+integer
+=
+1
+>= 1
+Number of completions to generate
+stream
+boolean
+=
+false
+Stream tokens via Server-Sent Events
+response_format
+object
+—	
+Force JSON object or schema-conforming output
+tools
+array
+—	
+Tool / function declarations the model may call
+tool_choice
+string
+auto
+none
+required
+Tool-choice policy or specific tool name
+logprobs
+boolean
+=
+false
+Return per-token log probabilities
+top_logprobs
+integer
+0 ~ 20	
+Number of top log probabilities returned per token
+logit_bias
+object
+—	
+Per-token logit bias map
+user
+string
+—	
+End-user identifier for abuse monitoring
+Rate limits
+Group	RPM	TPM	RPD
+claude按次
+350
+141K
+7.1K
+RPM = requests per minute, TPM = tokens per minute, RPD = requests per day. Limits apply per token group.
+
