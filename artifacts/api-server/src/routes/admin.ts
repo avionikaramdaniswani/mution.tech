@@ -620,10 +620,10 @@ import { z as _z } from "zod";
 
 const PackageBody = _z.object({
   name: _z.string().trim().min(1).max(80),
-  description: _z.string().trim().max(200).optional(),
+  description: _z.string().trim().max(200).nullish(),
   priceIdr: _z.number().int().min(1000),
   creditsAmount: _z.number().int().min(1),
-  bonusLabel: _z.string().trim().max(40).optional(),
+  bonusLabel: _z.string().trim().max(40).nullish(),
   isActive: _z.boolean().optional(),
   sortOrder: _z.number().int().optional(),
 });
