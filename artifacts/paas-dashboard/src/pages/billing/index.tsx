@@ -18,10 +18,28 @@ import {
 import { Link } from "wouter";
 import { csrfFetch } from "@/lib/csrf";
 
-const PRESETS = [3_000, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000];
-
 const MIN = 3_000;
 const MAX = 10_000_000;
+
+interface CreditPackage {
+  id: number;
+  name: string;
+  description: string | null;
+  priceIdr: number;
+  creditsAmount: number;
+  bonusLabel: string | null;
+}
+
+function usePackages() {
+  const [packages, setPackages] = useState<CreditPackage[]>([]);
+  useEffect(() => {
+    fetch("/api/packages")
+      .then(r => r.json())
+      .then((data: CreditPackage[]) => { if (Array.isArray(data)) setPackages(data); })
+      .catch(() => undefined);
+  }, []);
+  return packages;
+}
 
 interface PaymentChannel {
   code: string;
@@ -310,18 +328,19 @@ interface OrderPollResult {
 
 function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [step, setStep] = useState(1);
-  const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null);
   const [customRaw, setCustomRaw] = useState("");
   const [isCustom, setIsCustom] = useState(false);
   const [method, setMethod] = useState("QRIS");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { channels, loading: chLoading, error: chError } = usePaymentChannels();
+  const packages = usePackages();
 
   useEffect(() => {
     if (open) {
       setStep(1);
-      setSelectedPreset(null);
+      setSelectedPackage(null);
       setCustomRaw("");
       setIsCustom(false);
       setMethod("QRIS");
@@ -331,32 +350,36 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   }, [open]);
 
   const resolvedAmount = (() => {
+    if (selectedPackage) return selectedPackage.priceIdr;
     if (isCustom) {
       const n = parseInt(customRaw.replace(/\D/g, ""), 10);
       return Number.isNaN(n) ? null : n;
     }
-    return selectedPreset;
+    return null;
   })();
 
+  const resolvedCredits = selectedPackage ? selectedPackage.creditsAmount : resolvedAmount;
+
   const amountError = (() => {
+    if (!isCustom) return null;
     if (resolvedAmount == null) return null;
     if (resolvedAmount < MIN) return `Minimal ${formatRp(MIN)}`;
     if (resolvedAmount > MAX) return `Maksimal ${formatRp(MAX)}`;
     return null;
   })();
 
-  const canAdvanceStep1 = resolvedAmount != null && resolvedAmount >= MIN && !amountError;
+  const canAdvanceStep1 = resolvedAmount != null && !amountError;
   const selectedMethodLabel = channels.find(c => c.code === method)?.name.replace(" Virtual Account", " VA") ?? method;
 
   function handleCustomInput(raw: string) {
     const digits = raw.replace(/\D/g, "");
     setCustomRaw(digits);
-    setSelectedPreset(null);
+    setSelectedPackage(null);
     setError(null);
   }
 
-  function pickPreset(val: number) {
-    setSelectedPreset(val);
+  function pickPackage(pkg: CreditPackage) {
+    setSelectedPackage(pkg);
     setIsCustom(false);
     setCustomRaw("");
     setError(null);
@@ -367,11 +390,14 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
     setLoading(true);
     setError(null);
     try {
+      const body = selectedPackage
+        ? { packageId: selectedPackage.id, method }
+        : { amount: resolvedAmount, method };
       const res = await csrfFetch("/api/billing/tripay/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ amount: resolvedAmount, method }),
+        body: JSON.stringify(body),
       });
       const data = await res.json() as { paymentUrl?: string; error?: string; orderId?: number };
       if (!res.ok || !data.paymentUrl) {
@@ -458,36 +484,59 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
         {/* -- Step content -- */}
         <div className="px-5 py-4">
 
-          {/* Step 1 - Nominal */}
+          {/* Step 1 - Pilih Paket */}
           {step === 1 && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-4 gap-2">
-                {PRESETS.map((val) => {
-                  const active = !isCustom && selectedPreset === val;
-                  return (
-                    <button
-                      key={val}
-                      onClick={() => pickPreset(val)}
-                      className="rounded-xl py-3 text-sm font-semibold transition-all"
-                      style={{
-                        border: active ? "1px solid rgba(249,115,22,0.7)" : "1px solid rgba(255,255,255,0.09)",
-                        background: active ? "rgba(249,115,22,0.12)" : "rgba(255,255,255,0.03)",
-                        color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.7)",
-                      }}
-                    >
-                      {shortRp(val)}
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="space-y-2">
+              {/* Package cards */}
+              {packages.length > 0 && packages.map((pkg) => {
+                const active = !isCustom && selectedPackage?.id === pkg.id;
+                const bonusPct = pkg.creditsAmount > pkg.priceIdr
+                  ? Math.round(((pkg.creditsAmount - pkg.priceIdr) / pkg.priceIdr) * 100) : null;
+                const bonusText = pkg.bonusLabel ?? (bonusPct ? `+${bonusPct}% bonus` : null);
+                return (
+                  <button
+                    key={pkg.id}
+                    onClick={() => pickPackage(pkg)}
+                    className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all text-left"
+                    style={{
+                      border: active ? "1px solid rgba(249,115,22,0.65)" : "1px solid rgba(255,255,255,0.08)",
+                      background: active ? "rgba(249,115,22,0.08)" : "rgba(255,255,255,0.025)",
+                    }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.9)" }}>
+                          {pkg.name}
+                        </span>
+                        {bonusText && (
+                          <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                            style={{ background: "rgba(16,185,129,0.1)", color: "rgb(34,197,94)", border: "1px solid rgba(16,185,129,0.2)" }}>
+                            {bonusText}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>
+                        {pkg.creditsAmount.toLocaleString("id-ID")} kredit
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.85)" }}>
+                        {formatRp(pkg.priceIdr)}
+                      </p>
+                    </div>
+                    {active && <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: "rgb(249,115,22)" }} />}
+                  </button>
+                );
+              })}
 
+              {/* Custom nominal */}
               {!isCustom ? (
                 <button
-                  onClick={() => { setIsCustom(true); setSelectedPreset(null); setError(null); }}
+                  onClick={() => { setIsCustom(true); setSelectedPackage(null); setError(null); }}
                   className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all"
-                  style={{ border: "1px dashed rgba(255,255,255,0.11)", color: "rgba(255,255,255,0.38)" }}
+                  style={{ border: "1px dashed rgba(255,255,255,0.11)", color: "rgba(255,255,255,0.35)" }}
                 >
-                  <PenLine className="h-3.5 w-3.5" /> Nominal lain
+                  <PenLine className="h-3.5 w-3.5" /> Nominal sendiri
                 </button>
               ) : (
                 <div className="relative">
@@ -507,7 +556,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                     }}
                   />
                   <button
-                    onClick={() => { setIsCustom(false); setCustomRaw(""); }}
+                    onClick={() => { setIsCustom(false); setCustomRaw(""); setSelectedPackage(null); }}
                     aria-label="Hapus nominal"
                     className="absolute right-3 top-1/2 -translate-y-1/2"
                     style={{ color: "rgba(255,255,255,0.3)" }}
@@ -518,15 +567,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
               )}
 
               <div className="h-4">
-                {amountError ? (
-                  <p className="text-xs text-red-400">{amountError}</p>
-                ) : resolvedAmount && resolvedAmount >= MIN ? (
-                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-                    = <span className="font-semibold" style={{ color: "rgb(34,197,94)" }}>
-                      {resolvedAmount.toLocaleString("id-ID")} kredit
-                    </span>
-                  </p>
-                ) : null}
+                {amountError && <p className="text-xs text-red-400">{amountError}</p>}
               </div>
             </div>
           )}
@@ -626,14 +667,28 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
           {step === 3 && (
             <div className="rounded-2xl p-4 space-y-3"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              {selectedPackage && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Paket</span>
+                  <span className="text-sm font-bold text-white">{selectedPackage.name}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Nominal</span>
+                <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Bayar</span>
                 <span className="text-sm font-bold text-white">{formatRp(resolvedAmount!)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Kredit didapat</span>
-                <span className="text-sm font-bold" style={{ color: "rgb(34,197,94)" }}>+{resolvedAmount!.toLocaleString("id-ID")}</span>
+                <span className="text-sm font-bold" style={{ color: "rgb(34,197,94)" }}>+{resolvedCredits!.toLocaleString("id-ID")}</span>
               </div>
+              {resolvedCredits !== resolvedAmount && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Bonus kredit</span>
+                  <span className="text-xs font-semibold" style={{ color: "rgb(34,197,94)" }}>
+                    +{(resolvedCredits! - resolvedAmount!).toLocaleString("id-ID")}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Metode</span>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full"

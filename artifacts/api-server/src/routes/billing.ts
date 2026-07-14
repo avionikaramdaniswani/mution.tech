@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, creditTransactionsTable, paymentOrdersTable } from "@workspace/db";
+import { db, usersTable, creditTransactionsTable, paymentOrdersTable, creditPackagesTable } from "@workspace/db";
 import { and, desc, eq, ne } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import { computePlan } from "../lib/plan";
@@ -24,8 +24,11 @@ const router = Router();
 type PaymentOrderRow = typeof paymentOrdersTable.$inferSelect;
 
 const CreateTripayBody = z.object({
-  amount: z.number().int().min(MIN_TOPUP_IDR).max(MAX_TOPUP_IDR),
+  packageId: z.number().int().optional(),
+  amount: z.number().int().min(MIN_TOPUP_IDR).max(MAX_TOPUP_IDR).optional(),
   method: z.string().trim().regex(/^[A-Z0-9_-]{2,32}$/).default("QRIS"),
+}).refine((d) => d.packageId != null || d.amount != null, {
+  message: "Harus ada packageId atau amount",
 });
 
 function cleanPaymentName(value: string): string {
@@ -422,7 +425,27 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
     res.status(400).json({ error: "Nominal tidak valid" });
     return;
   }
-  const { amount, method } = parsed.data;
+  const { packageId, method } = parsed.data;
+
+  // Resolve amount + creditsAmount dari paket atau custom
+  let amount: number;
+  let creditsAmount: number;
+  let itemName: string;
+
+  if (packageId != null) {
+    const [pkg] = await db.select().from(creditPackagesTable).where(eq(creditPackagesTable.id, packageId));
+    if (!pkg || !pkg.isActive) {
+      res.status(400).json({ error: "Paket tidak tersedia" });
+      return;
+    }
+    amount = pkg.priceIdr;
+    creditsAmount = pkg.creditsAmount;
+    itemName = `${pkg.name} — ${pkg.creditsAmount.toLocaleString("id-ID")} Kredit Mution`;
+  } else {
+    amount = parsed.data.amount!;
+    creditsAmount = amount;
+    itemName = `Topup Kredit Mution — ${amount.toLocaleString("id-ID")} Kredit`;
+  }
 
   const user = (req as any).user;
   const invoiceNumber = `MUTION-${Date.now()}-${user.id}`;
@@ -434,7 +457,7 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
       userId: user.id,
       invoiceNumber,
       amount,
-      creditsAmount: amount,
+      creditsAmount,
       provider: "tripay",
       status: "pending",
     })
@@ -443,7 +466,7 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
   const expiredTime = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
   const base = getTripayBase();
 
-  logger.info({ base, method, amount, invoiceNumber }, "Calling Tripay API");
+  logger.info({ base, method, amount, creditsAmount, invoiceNumber }, "Calling Tripay API");
 
   try {
     const tripayRes = await fetch(`${base}/transaction/create`, {
@@ -461,7 +484,7 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
         customer_phone: "08123456789",
         order_items: [
           {
-            name: `Topup Kredit Mution — ${amount.toLocaleString("id-ID")} Credits`,
+            name: itemName,
             price: amount,
             quantity: 1,
           },

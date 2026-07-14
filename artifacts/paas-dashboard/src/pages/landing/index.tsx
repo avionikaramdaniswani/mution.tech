@@ -44,40 +44,20 @@ const runtimes = [
   { label: "Docker", Icon: SiDocker, color: "#2496ed" },
 ];
 
-const plans = [
-  {
-    key: "hobby",
-    name: "Hobby",
-    priceLabel: "Gratis",
-    priceSub: "Selamanya",
-    creditsLabel: "5.000 kredit",
-    creditsSub: "sekali saat daftar",
-    cta: "Mulai Gratis",
-    highlight: false,
-    features: ["2 slot deploy proyek", "RAM 256 MB - 1 GB", "Cocok untuk eksperimen dan project kecil"],
-  },
-  {
-    key: "pro",
-    name: "Pro",
-    priceLabel: "Rp 26.000",
-    priceSub: "per bulan",
-    creditsLabel: "25.000 kredit",
-    creditsSub: "per siklus, rollover saat upgrade",
-    cta: "Mulai Pro",
-    highlight: true,
-    features: ["Unlimited slot proyek", "RAM hingga 4 GB", "Priority support"],
-  },
-  {
-    key: "team",
-    name: "Team",
-    priceLabel: "Rp 75.000",
-    priceSub: "per bulan",
-    creditsLabel: "60.000 kredit",
-    creditsSub: "per siklus, rollover saat upgrade",
-    cta: "Mulai Team",
-    highlight: false,
-    features: ["Unlimited slot proyek", "Multi user", "Shared proyek", "Priority support"],
-  },
+interface CreditPackage {
+  id: number;
+  name: string;
+  description: string | null;
+  priceIdr: number;
+  creditsAmount: number;
+  bonusLabel: string | null;
+  sortOrder: number;
+}
+
+const FALLBACK_PACKAGES: CreditPackage[] = [
+  { id: 1, name: "Starter", description: null, priceIdr: 25000, creditsAmount: 28000, bonusLabel: "+12% bonus", sortOrder: 1 },
+  { id: 2, name: "Growth", description: null, priceIdr: 75000, creditsAmount: 90000, bonusLabel: "+20% bonus", sortOrder: 2 },
+  { id: 3, name: "Scale", description: null, priceIdr: 200000, creditsAmount: 260000, bonusLabel: "+30% bonus", sortOrder: 3 },
 ];
 
 const faqs = [
@@ -345,6 +325,17 @@ function ServicesShowcase() {
 
 export default function Landing() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [packages, setPackages] = useState<CreditPackage[]>([]);
+
+  useEffect(() => {
+    fetch("/api/packages")
+      .then(r => r.json())
+      .then((data: CreditPackage[]) => {
+        if (Array.isArray(data) && data.length > 0) setPackages(data);
+        else setPackages(FALLBACK_PACKAGES);
+      })
+      .catch(() => setPackages(FALLBACK_PACKAGES));
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#f8fbff] text-[#172033]">
@@ -359,10 +350,13 @@ export default function Landing() {
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Plan Mution</p>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Paket Kredit</p>
                 <h2 className="mt-4 max-w-2xl text-3xl font-extrabold leading-tight tracking-normal text-[#172033] sm:text-4xl">
-                  Mulai kecil, naik saat produkmu butuh ruang lebih.
+                  Bayar sekali, pakai kapan mau. Makin besar, makin hemat.
                 </h2>
+                <p className="mt-3 text-sm text-[#526173]">
+                  Tidak ada langganan bulanan. Kredit kamu pakai sendiri untuk hosting, AI, dan semua layanan Mution.
+                </p>
               </div>
               <Link href="/harga">
                 <Button variant="outline" className="w-fit rounded-md border-[#c9d8e7] bg-white text-[#172033] hover:bg-[#eef8ff]">
@@ -372,71 +366,108 @@ export default function Landing() {
               </Link>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
-              {plans.map((plan) => (
-                <article
-                  key={plan.key}
-                  className={`relative overflow-hidden rounded-[2rem] border p-2 shadow-[0_24px_70px_rgba(23,32,51,0.08)] transition-all hover:-translate-y-1 hover:shadow-[0_30px_90px_rgba(23,32,51,0.12)] ${
-                    plan.highlight
-                      ? "border-[#f97316]/45 bg-[linear-gradient(180deg,#fff7ed_0%,#ffffff_72%)] text-[#172033]"
-                      : "border-[#dbe8f3] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] text-[#172033]"
-                  }`}
-                >
-                  <div
-                    className={`relative overflow-hidden rounded-[1.5rem] border p-5 ${
-                      plan.highlight
-                        ? "border-[#fdba74] bg-[linear-gradient(135deg,#ffffff_0%,#fff7ed_54%,#e6fffb_100%)] shadow-[0_18px_50px_rgba(249,115,22,0.16)]"
-                        : "border-[#dbe8f3] bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_62%,#eef8ff_100%)] shadow-[0_18px_50px_rgba(23,32,51,0.08)]"
+            {/* Gratis signup callout */}
+            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-[#14b8a6]/30 bg-[#eefdf9] px-5 py-4">
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-[#14b8a6]" />
+              <div>
+                <p className="text-sm font-bold text-[#172033]">Mulai gratis — dapat 5.000 kredit saat daftar</p>
+                <p className="text-xs text-[#526173]">Cukup untuk coba deploy aplikasi kecil dan pakai AI API. Topup kapan saja saat siap.</p>
+              </div>
+              <Link href="/register" className="ml-auto shrink-0">
+                <Button size="sm" className="rounded-full bg-[#14b8a6] text-white hover:bg-[#0d9488]">
+                  Daftar Gratis
+                </Button>
+              </Link>
+            </div>
+
+            <div className={`grid gap-4 ${packages.length === 2 ? "lg:grid-cols-2" : packages.length >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-1 max-w-sm"}`}>
+              {packages.map((pkg, idx) => {
+                const isMiddle = packages.length >= 3 && idx === Math.floor(packages.length / 2);
+                const bonusPct = pkg.creditsAmount > pkg.priceIdr
+                  ? Math.round(((pkg.creditsAmount - pkg.priceIdr) / pkg.priceIdr) * 100)
+                  : null;
+                const bonusText = pkg.bonusLabel ?? (bonusPct ? `+${bonusPct}% bonus` : null);
+
+                return (
+                  <article
+                    key={pkg.id}
+                    className={`relative overflow-hidden rounded-[2rem] border p-2 shadow-[0_24px_70px_rgba(23,32,51,0.08)] transition-all hover:-translate-y-1 hover:shadow-[0_30px_90px_rgba(23,32,51,0.12)] ${
+                      isMiddle
+                        ? "border-[#f97316]/45 bg-[linear-gradient(180deg,#fff7ed_0%,#ffffff_72%)]"
+                        : "border-[#dbe8f3] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)]"
                     }`}
                   >
-                    <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#14b8a6]/10 blur-2xl" />
-                    <div className="pointer-events-none absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-[#f97316]/10 blur-2xl" />
+                    <div className={`relative overflow-hidden rounded-[1.5rem] border p-5 ${
+                      isMiddle
+                        ? "border-[#fdba74] bg-[linear-gradient(135deg,#ffffff_0%,#fff7ed_54%,#e6fffb_100%)] shadow-[0_18px_50px_rgba(249,115,22,0.16)]"
+                        : "border-[#dbe8f3] bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_62%,#eef8ff_100%)] shadow-[0_18px_50px_rgba(23,32,51,0.08)]"
+                    }`}>
+                      <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#14b8a6]/10 blur-2xl" />
+                      <div className="pointer-events-none absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-[#f97316]/10 blur-2xl" />
 
-                    <div className="relative">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">{plan.name}</p>
-                          <div className="mt-4 flex items-end gap-2">
-                            <span className="text-4xl font-black tracking-normal text-[#172033]">{plan.priceLabel}</span>
+                      <div className="relative">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">{pkg.name}</p>
+                            <div className="mt-4 flex items-end gap-2">
+                              <span className="text-4xl font-black tracking-normal text-[#172033]">
+                                Rp {pkg.priceIdr.toLocaleString("id-ID")}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-sm text-[#526173]">sekali bayar</p>
                           </div>
-                          <p className="mt-1 text-sm text-[#526173]">{plan.priceSub}</p>
+                          {isMiddle && (
+                            <div className="rounded-full bg-[#f97316] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_10px_24px_rgba(249,115,22,0.28)]">
+                              Populer
+                            </div>
+                          )}
+                          {!isMiddle && bonusText && (
+                            <div className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-600">
+                              {bonusText}
+                            </div>
+                          )}
                         </div>
-                        {plan.highlight && (
-                          <div className="rounded-full bg-[#f97316] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-[0_10px_24px_rgba(249,115,22,0.28)]">
-                            Populer
-                          </div>
-                        )}
-                      </div>
 
-                      <div className="mt-5 border-t border-[#dbe8f3]/80 pt-4">
-                        <p className="text-sm font-bold text-[#172033]">{plan.creditsLabel}</p>
-                        <p className="mt-1 text-xs leading-5 text-[#526173]">{plan.creditsSub}</p>
-                      </div>
+                        <div className="mt-5 border-t border-[#dbe8f3]/80 pt-4">
+                          <p className="text-sm font-bold text-[#172033]">
+                            {pkg.creditsAmount.toLocaleString("id-ID")} kredit
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-[#526173]">
+                            {pkg.description ?? (bonusText ? `${bonusText} dari harga bayar` : "langsung masuk ke saldo")}
+                          </p>
+                        </div>
 
-                      <Link href="/register" className="mt-5 block">
-                        <Button
-                          className={`w-full rounded-full ${
-                            plan.highlight
+                        <Link href="/register" className="mt-5 block">
+                          <Button className={`w-full rounded-full ${
+                            isMiddle
                               ? "bg-[#f97316] text-white shadow-[0_14px_30px_rgba(249,115,22,0.25)] hover:bg-[#ea580c]"
                               : "bg-[#172033] text-white hover:bg-[#263247]"
-                          }`}
-                        >
-                          {plan.cta}
-                        </Button>
-                      </Link>
+                          }`}>
+                            Topup Sekarang
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
-                  </div>
 
-                  <ul className="space-y-3 px-4 pb-5 pt-5">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-3 text-sm leading-6 text-[#526173]">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#10b981]" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              ))}
+                    <div className="px-4 pb-5 pt-5">
+                      <p className="flex items-center gap-2 text-sm text-[#526173]">
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-[#10b981]" />
+                        Kredit tidak kadaluarsa
+                      </p>
+                      <p className="mt-2 flex items-center gap-2 text-sm text-[#526173]">
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-[#10b981]" />
+                        Untuk hosting, AI API, dan semua layanan Mution
+                      </p>
+                      {bonusText && isMiddle && (
+                        <p className="mt-2 flex items-center gap-2 text-sm text-[#526173]">
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-[#10b981]" />
+                          {bonusText} dari harga bayar
+                        </p>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>

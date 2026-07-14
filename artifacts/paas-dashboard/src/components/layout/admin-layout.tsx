@@ -23,6 +23,7 @@ import {
   Server,
   GitCommit,
   Tag,
+  ShoppingBag,
 } from "lucide-react";
 import { TopNavbar, isNavActive, type TopNavLink } from "./shared";
 import { useRealtimeEvents } from "@/hooks/use-realtime";
@@ -42,6 +43,7 @@ const adminNavGroups = [
     items: [
       { title: "AI Providers", url: "/admin/providers", icon: Brain, exact: false },
       { title: "Model Pricing", url: "/admin/models", icon: Tag, exact: false },
+      { title: "Credit Packages", url: "/admin/packages", icon: ShoppingBag, exact: false },
       { title: "Payments", url: "/admin/payments", icon: CreditCard, exact: false },
       { title: "AI Usage", url: "/admin/usage", icon: Server, exact: false },
       { title: "Changelog", url: "/admin/changelog", icon: GitCommit, exact: false },

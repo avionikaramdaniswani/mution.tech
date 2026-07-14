@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable } from "@workspace/db";
-import { eq, desc, sql, count, and, gte } from "drizzle-orm";
+import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable } from "@workspace/db";
+import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { computePlan } from "../lib/plan";
@@ -612,6 +612,59 @@ router.delete("/admin/model-pricing/:modelId", async (req, res) => {
     console.error("Failed to reset model pricing:", error);
     res.status(500).json({ error: "Gagal mereset harga model" });
   }
+});
+
+// ─── Credit Packages CRUD ─────────────────────────────────────────────────────
+
+import { z as _z } from "zod";
+
+const PackageBody = _z.object({
+  name: _z.string().trim().min(1).max(80),
+  description: _z.string().trim().max(200).optional(),
+  priceIdr: _z.number().int().min(1000),
+  creditsAmount: _z.number().int().min(1),
+  bonusLabel: _z.string().trim().max(40).optional(),
+  isActive: _z.boolean().optional(),
+  sortOrder: _z.number().int().optional(),
+});
+
+router.get("/admin/packages", async (_req, res): Promise<void> => {
+  const rows = await db
+    .select()
+    .from(creditPackagesTable)
+    .orderBy(asc(creditPackagesTable.sortOrder), asc(creditPackagesTable.id));
+  res.json(rows);
+});
+
+router.post("/admin/packages", async (req, res): Promise<void> => {
+  const parsed = PackageBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Data tidak valid" }); return; }
+  const [row] = await db.insert(creditPackagesTable).values({
+    ...parsed.data,
+    updatedAt: new Date(),
+  }).returning();
+  res.json(row);
+});
+
+router.patch("/admin/packages/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID tidak valid" }); return; }
+  const parsed = PackageBody.partial().safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Data tidak valid" }); return; }
+  const [row] = await db
+    .update(creditPackagesTable)
+    .set({ ...parsed.data, updatedAt: new Date() })
+    .where(eq(creditPackagesTable.id, id))
+    .returning();
+  if (!row) { res.status(404).json({ error: "Paket tidak ditemukan" }); return; }
+  res.json(row);
+});
+
+router.delete("/admin/packages/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "ID tidak valid" }); return; }
+  await db.delete(creditPackagesTable).where(eq(creditPackagesTable.id, id));
+  res.json({ ok: true });
 });
 
 export default router;
