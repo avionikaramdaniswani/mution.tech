@@ -11,8 +11,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { AdminLayout } from "@/components/layout/admin-layout";
 
 import Landing from "@/pages/landing";
-import Login from "@/pages/auth/login";
-import Register from "@/pages/auth/register";
+import AuthPage from "@/pages/auth/auth-page";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import NewProject from "@/pages/projects/new";
@@ -91,8 +90,8 @@ function Router() {
     <>
       <SeoController />
       <Switch>
-        <Route path="/login" component={Login} />
-        <Route path="/register" component={Register} />
+        <Route path="/login" component={() => <AuthPage initialTab="login" />} />
+        <Route path="/register" component={() => <AuthPage initialTab="register" />} />
 
         {/* User routes */}
         <Route path="/dashboard/billing" component={() => { window.location.replace("/billing" + window.location.search); return null; }} />
