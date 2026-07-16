@@ -489,9 +489,9 @@ function getProviders(): Provider[] {
  * To add more: just extend this map.
  */
 const MODEL_PROVIDER_AFFINITY: Record<string, string> = {
-  // OpenAI via J3GB
-  "gpt-5.5": "j3gb",
-  "gpt-5.5-turbo": "j3gb",
+  // OpenAI via XSTX
+  "gpt-5.5": "xstx",
+  "gpt-5.5-turbo": "xstx",
   // MiniMax & Kimi via Dahl
   "MiniMaxAI/MiniMax-M2.7": "dahl",
   "moonshotai/Kimi-K2.6": "dahl",
