@@ -1509,7 +1509,10 @@ function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMap: Name
   const chatBody = {
     model: body.model,
     messages,
-    stream: body.stream ?? false,
+    // Always stream upstream so the client gets immediate data regardless of
+    // whether the caller set stream:true — prevents 120-second timeouts on
+    // slow/reasoning-heavy models when the client's timeout fires first.
+    stream: true,
     ...(chatTools.length > 0 ? { tools: chatTools } : {}),
     ...(body.tool_choice != null ? { tool_choice: responsesToolChoiceToChat(body.tool_choice) } : {}),
     ...(body.max_output_tokens != null ? { max_tokens: body.max_output_tokens } : {}),
