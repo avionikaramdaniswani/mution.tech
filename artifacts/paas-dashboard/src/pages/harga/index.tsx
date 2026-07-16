@@ -150,18 +150,12 @@ function AiPricingUnitToggle({
   );
 }
 
-function ZhipuLogo({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 6h16l-10.5 12H20" />
-    </svg>
-  );
-}
-
 function getProviderIcon(provider: string, baseClassName = "h-5 w-5") {
   if (provider === "Anthropic") return <img src="/logo-anthropic.png" alt="Anthropic" className={baseClassName} style={{ objectFit: "contain" }} />;
   if (provider === "OpenAI") return <img src="/logo-openai.png" alt="OpenAI" className={baseClassName} style={{ objectFit: "contain" }} />;
-  if (provider === "Zhipu AI") return <ZhipuLogo className={`${baseClassName} text-blue-500`} />;
+  if (provider === "Zhipu AI") return <img src="/logo-zhipu.jpg" alt="Zhipu AI" className={baseClassName} style={{ objectFit: "contain" }} />;
+  if (provider === "MiniMax") return <img src="/logo-minimax.png" alt="MiniMax" className={baseClassName} style={{ objectFit: "contain" }} />;
+  if (provider === "Moonshot AI") return <img src="/logo-moonshot.png" alt="Moonshot AI" className={baseClassName} style={{ objectFit: "contain" }} />;
   return <Brain className={`${baseClassName} text-[#64748b]`} />;
 }
 
