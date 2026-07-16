@@ -492,6 +492,10 @@ const MODEL_PROVIDER_AFFINITY: Record<string, string> = {
   // OpenAI via XSTX
   "gpt-5.5": "xstx",
   "gpt-5.5-turbo": "xstx",
+  "gpt-5.5-pro": "xstx",
+  "gpt-5.6-luna": "xstx",
+  "gpt-5.6-sol": "xstx",
+  "gpt-5.6-terra": "xstx",
   // MiniMax & Kimi via Dahl
   "MiniMaxAI/MiniMax-M2.7": "dahl",
   "moonshotai/Kimi-K2.6": "dahl",
