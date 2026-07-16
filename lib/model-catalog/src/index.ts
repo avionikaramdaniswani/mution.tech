@@ -92,7 +92,7 @@ export const MODEL_CATALOG: readonly ModelCatalogEntry[] = [
     id: "claude-fable-5",
     label: "Claude Fable 5",
     provider: "Anthropic",
-    pricing: { input: 28000, output: 140000 },
+    pricing: { input: 36400, output: 182000 },
     context: "200K",
     note: "Baru",
     description: "Model Claude terbaru generasi ke-5 dengan kemampuan penalaran tingkat lanjut.",
