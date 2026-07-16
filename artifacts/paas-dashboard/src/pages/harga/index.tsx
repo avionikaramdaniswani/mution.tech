@@ -150,6 +150,77 @@ function AiPricingUnitToggle({
   );
 }
 
+function PriceCell({
+  effective,
+  base,
+  pricingMode,
+  unit,
+  suffix,
+}: {
+  effective: number;
+  base: number;
+  pricingMode: string;
+  unit: AiPricingDisplayUnit;
+  suffix: string;
+}) {
+  const effectiveStr = `${getAiDisplayPrice(effective, unit)}${suffix}`;
+  const baseStr = `${getAiDisplayPrice(base, unit)}${suffix}`;
+
+  // FREE
+  if (pricingMode === "free" || effective === 0) {
+    return (
+      <div className="flex flex-col gap-0.5">
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-600 ring-1 ring-emerald-200">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          GRATIS
+        </span>
+        {base > 0 && (
+          <span className="font-mono text-[11px] text-[#94a3b8] line-through">{baseStr}</span>
+        )}
+      </div>
+    );
+  }
+
+  // DISCOUNT
+  if (pricingMode === "discount_percent" && base > 0 && effective < base) {
+    const pct = Math.round((1 - effective / base) * 100);
+    return (
+      <div className="flex flex-col gap-0.5">
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono font-bold text-[#172033]">{effectiveStr}</span>
+          <span className="inline-flex items-center rounded-full bg-rose-50 px-1.5 py-0 text-[10px] font-bold text-rose-600 ring-1 ring-rose-200">
+            −{pct}%
+          </span>
+        </div>
+        <span className="font-mono text-[11px] text-[#94a3b8] line-through">{baseStr}</span>
+      </div>
+    );
+  }
+
+  // FIXED PRICE custom (differs from base)
+  if (pricingMode === "fixed_price" && base > 0 && Math.abs(effective - base) > 0.001) {
+    const isReduced = effective < base;
+    return (
+      <div className="flex flex-col gap-0.5">
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono font-bold text-[#172033]">{effectiveStr}</span>
+          <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-bold ring-1 ${
+            isReduced
+              ? "bg-amber-50 text-amber-600 ring-amber-200"
+              : "bg-sky-50 text-sky-600 ring-sky-200"
+          }`}>
+            {isReduced ? "↓ custom" : "↑ custom"}
+          </span>
+        </div>
+        <span className="font-mono text-[11px] text-[#94a3b8] line-through">{baseStr}</span>
+      </div>
+    );
+  }
+
+  // DEFAULT
+  return <span className="font-mono font-bold text-[#172033]">{effectiveStr}</span>;
+}
+
 function getProviderIcon(provider: string, baseClassName = "h-5 w-5") {
   if (provider === "Anthropic") return <img src="/logo-anthropic.png" alt="Anthropic" className={baseClassName} style={{ objectFit: "contain" }} />;
   if (provider === "OpenAI") return <img src="/logo-openai.png" alt="OpenAI" className={baseClassName} style={{ objectFit: "contain" }} />;
@@ -537,11 +608,27 @@ export default function HargaPage() {
                             </div>
                             <div>
                               <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#64748b] md:hidden">Input</p>
-                              <p className="mt-1 font-mono font-bold text-[#172033]">{getAiDisplayPrice(model.pricing.input, aiPricingDisplayUnit)}{aiPriceSuffix}</p>
+                              <div className="mt-1">
+                                <PriceCell
+                                  effective={model.pricing.input}
+                                  base={(model as EffectiveCatalogEntry).basePricing?.input ?? model.pricing.input}
+                                  pricingMode={(model as EffectiveCatalogEntry).pricingMode ?? "default"}
+                                  unit={aiPricingDisplayUnit}
+                                  suffix={aiPriceSuffix}
+                                />
+                              </div>
                             </div>
                             <div>
                               <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#64748b] md:hidden">Output</p>
-                              <p className="mt-1 font-mono font-bold text-[#172033]">{getAiDisplayPrice(model.pricing.output, aiPricingDisplayUnit)}{aiPriceSuffix}</p>
+                              <div className="mt-1">
+                                <PriceCell
+                                  effective={model.pricing.output}
+                                  base={(model as EffectiveCatalogEntry).basePricing?.output ?? model.pricing.output}
+                                  pricingMode={(model as EffectiveCatalogEntry).pricingMode ?? "default"}
+                                  unit={aiPricingDisplayUnit}
+                                  suffix={aiPriceSuffix}
+                                />
+                              </div>
                             </div>
                             <div>
                               <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#64748b] md:hidden">Context</p>
