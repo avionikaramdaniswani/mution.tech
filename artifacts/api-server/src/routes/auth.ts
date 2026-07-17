@@ -1,11 +1,17 @@
 import { Router } from "express";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, referralsTable, creditTransactionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import { z } from "zod";
 import { createSession, deleteOtherUserSessions, deleteSession, requireAuth, SESSION_COOKIE, SESSION_DURATION_MS } from "../lib/auth";
 import { computePlan } from "../lib/plan";
 import { authRateLimitKey, issueCsrfToken, rateLimit } from "../lib/security";
+import { REFEREE_BONUS } from "./referral";
+
+function generateReferralCode(): string {
+  return randomBytes(4).toString("hex");
+}
 
 const router = Router();
 
@@ -80,6 +86,7 @@ router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
   }
 
   const { email, password, name } = parsed.data;
+  const refCode = typeof req.query.ref === "string" ? req.query.ref.trim() : null;
 
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email));
   if (existing) {
@@ -87,11 +94,33 @@ router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
     return;
   }
 
+  // Resolve referrer before creating user
+  let referrer: typeof usersTable.$inferSelect | null = null;
+  if (refCode) {
+    const [found] = await db.select().from(usersTable).where(eq(usersTable.referralCode, refCode));
+    if (found) referrer = found;
+  }
+
+  const referralCode = generateReferralCode();
   const passwordHash = await bcrypt.hash(password, 12);
+
+  // Give welcome bonus if referred; default credits = 5000, add REFEREE_BONUS on top
+  const initialCredits = referrer ? 5000 + REFEREE_BONUS : 5000;
   const [user] = await db
     .insert(usersTable)
-    .values({ email, name, passwordHash, role: "user", plan: "hobby", lastLoginAt: new Date() })
+    .values({ email, name, passwordHash, role: "user", plan: "hobby", credits: initialCredits, referralCode, lastLoginAt: new Date() })
     .returning();
+
+  // Record referral & welcome bonus transaction
+  if (referrer && referrer.id !== user.id) {
+    await db.insert(referralsTable).values({ referrerId: referrer.id, refereeId: user.id });
+    await db.insert(creditTransactionsTable).values({
+      userId: user.id,
+      type: "topup",
+      amount: REFEREE_BONUS,
+      note: `Bonus welcome dari program referral (kode: ${refCode})`,
+    });
+  }
 
   const sessionId = await createSession(user.id);
   setSessionCookie(res, sessionId);

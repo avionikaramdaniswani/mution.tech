@@ -22,6 +22,20 @@
       "when": 1783931100000,
       "tag": "0002_model_pricing_overrides",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784199000000,
+      "tag": "0003_credit_packages",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784199100000,
+      "tag": "0004_referral_system",
+      "breakpoints": true
     }
   ]
 }

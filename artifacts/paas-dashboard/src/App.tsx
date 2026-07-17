@@ -34,6 +34,7 @@ import RefundPolicyPage from "@/pages/refund-policy";
 import TermsPage from "@/pages/terms";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TentangKamiPage from "@/pages/tentang-kami";
+import ReferralPage from "@/pages/referral";
 
 import AdminOverview from "@/pages/admin/overview";
 import AdminUsers from "@/pages/admin/users";
@@ -109,6 +110,7 @@ function Router() {
         <Route path="/usage" component={() => <ProtectedRoute component={UsagePage} />} />
         <Route path="/api-usage" component={() => <ProtectedRoute component={ApiUsagePage} />} />
         <Route path="/providers" component={() => <ProtectedRoute component={ProvidersPage} />} />
+        <Route path="/referral" component={() => <ProtectedRoute component={ReferralPage} />} />
         <Route path="/github-callback" component={GitHubCallback} />
 
         {/* Public static pages */}

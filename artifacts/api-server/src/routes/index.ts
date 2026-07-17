@@ -15,6 +15,7 @@ import changelogsRouter from "./changelogs";
 import integrationsRouter from "./integrations";
 import catalogRouter from "./catalog";
 import packagesRouter from "./packages";
+import referralRouter from "./referral";
 
 const router: IRouter = Router();
 
@@ -39,5 +40,6 @@ router.use(eventsRouter);
 router.use(apiUsageRouter);
 router.use(changelogsRouter);
 router.use(integrationsRouter);
+router.use(referralRouter);
 
 export default router;

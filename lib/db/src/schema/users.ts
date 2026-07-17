@@ -15,6 +15,7 @@ export const usersTable = pgTable("users", {
   plan: userPlanEnum("plan").notNull().default("hobby"),
   githubAccessToken: text("github_access_token"),
   githubLogin: text("github_login"),
+  referralCode: text("referral_code").unique(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastLoginAt: timestamp("last_login_at"),
 });

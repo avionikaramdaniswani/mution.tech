@@ -27,6 +27,7 @@ import {
   Brain,
   Wallet,
   CreditCard,
+  Gift,
 } from "lucide-react";
 import { TopNavbar, isNavActive, formatCredits, creditColor, type TopNavLink } from "./shared";
 import { useRealtimeEvents } from "@/hooks/use-realtime";
@@ -59,6 +60,12 @@ const navGroups = [
     label: "Monitoring",
     items: [
       { title: "Activity Logs",url: "/activity",   icon: Activity },
+    ],
+  },
+  {
+    label: "Komunitas",
+    items: [
+      { title: "Referral",     url: "/referral",   icon: Gift },
     ],
   },
 ];

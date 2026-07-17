@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { db, usersTable, creditTransactionsTable, paymentOrdersTable, creditPackagesTable } from "@workspace/db";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { db, usersTable, creditTransactionsTable, paymentOrdersTable, creditPackagesTable, referralsTable } from "@workspace/db";
+import { and, count, desc, eq, ne } from "drizzle-orm";
+import { REFERRER_REWARD } from "./referral";
 import { requireAuth } from "../lib/auth";
 import { computePlan } from "../lib/plan";
 import { logger } from "../lib/logger";
@@ -106,6 +107,48 @@ async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: string) 
       amount: claimed.creditsAmount,
       note: `Topup via Tripay (${cleanPaymentName(paymentName)}) - ${claimed.invoiceNumber}`,
     });
+
+    // Check if this is the user's first topup → reward referrer if applicable
+    const [{ priorPaid }] = await tx
+      .select({ priorPaid: count() })
+      .from(paymentOrdersTable)
+      .where(and(eq(paymentOrdersTable.userId, claimed.userId), eq(paymentOrdersTable.status, "paid"), ne(paymentOrdersTable.id, claimed.id)));
+
+    if (Number(priorPaid) === 0) {
+      const [pendingReferral] = await tx
+        .select()
+        .from(referralsTable)
+        .where(and(eq(referralsTable.refereeId, claimed.userId), eq(referralsTable.status, "pending")))
+        .limit(1);
+
+      if (pendingReferral) {
+        const [referrer] = await tx
+          .select()
+          .from(usersTable)
+          .where(eq(usersTable.id, pendingReferral.referrerId))
+          .limit(1);
+
+        if (referrer) {
+          const newReferrerCredits = referrer.credits + REFERRER_REWARD;
+          await tx
+            .update(usersTable)
+            .set({ credits: newReferrerCredits, plan: computePlan(newReferrerCredits) })
+            .where(eq(usersTable.id, referrer.id));
+
+          await tx.insert(creditTransactionsTable).values({
+            userId: referrer.id,
+            type: "topup",
+            amount: REFERRER_REWARD,
+            note: `Reward referral — teman kamu (ID ${claimed.userId}) berhasil topup pertama`,
+          });
+
+          await tx
+            .update(referralsTable)
+            .set({ status: "rewarded", rewardedAt: new Date() })
+            .where(eq(referralsTable.id, pendingReferral.id));
+        }
+      }
+    }
 
     return {
       processed: true,
