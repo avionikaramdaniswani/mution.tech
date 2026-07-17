@@ -488,18 +488,39 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
           className="overflow-hidden rounded-3xl border border-[#dbe8f3] shadow-[0_24px_70px_rgba(23,32,51,0.13)]"
           style={{ background: "rgba(255,255,255,0.93)", backdropFilter: "blur(20px)" }}
         >
-          {/* Header */}
-          <div className="relative px-6 pb-5 pt-8 text-center">
-            {/* Back button — top-left inside card */}
+          {/* Tab bar — full width, flush to top of card */}
+          <div className="flex items-stretch border-b border-[#e8f0f7]">
+            {/* Back arrow */}
             <Link
               href="/"
-              className="absolute left-4 top-4 flex h-8 w-8 items-center justify-center rounded-xl text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#526173]"
               title="Kembali ke beranda"
+              className="flex w-12 flex-shrink-0 items-center justify-center border-r border-[#e8f0f7] text-[#b0c0d0] transition-colors hover:bg-[#f8fbff] hover:text-[#526173]"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
 
-            {/* Title */}
+            {/* Tabs */}
+            {TAB_ITEMS.map(({ key, label }) => {
+              const active = tab === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => switchTo(key)}
+                  className="relative flex-1 py-3.5 text-sm font-semibold transition-colors duration-200"
+                  style={{ color: active ? "#172033" : "#94a3b8" }}
+                >
+                  {label}
+                  {/* Active indicator */}
+                  {active && (
+                    <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-t-full bg-[#f97316]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Title + subtitle */}
+          <div className="px-6 pb-4 pt-6 text-center">
             <h1
               key={tab + "-h"}
               className="mb-1 text-2xl font-bold tracking-tight text-[#172033]"
@@ -507,37 +528,13 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
             >
               {headings[tab]}
             </h1>
-
-            {/* Subtitle */}
             <p
               key={tab + "-s"}
-              className="mb-5 text-sm text-[#94a3b8]"
+              className="text-sm text-[#94a3b8]"
               style={{ animation: "fadeSlideIn 0.25s ease both" }}
             >
               {subtitles[tab]}
             </p>
-
-            {/* Tab switcher */}
-            <div className="relative mx-auto flex w-fit rounded-xl bg-[#f1f5f9] p-1">
-              {/* Sliding pill */}
-              <div
-                className="absolute top-1 bottom-1 rounded-lg bg-white shadow-[0_1px_6px_rgba(23,32,51,0.12)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                style={{
-                  width: "calc(50% - 2px)",
-                  left: tab === "login" ? "4px" : "calc(50% - 2px)",
-                }}
-              />
-              {TAB_ITEMS.map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => switchTo(key)}
-                  className="relative z-10 min-w-[100px] rounded-lg px-5 py-2 text-sm font-semibold transition-colors duration-200"
-                  style={{ color: tab === key ? "#172033" : "#94a3b8" }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Sliding form viewport */}
