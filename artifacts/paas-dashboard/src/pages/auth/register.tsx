@@ -3,8 +3,8 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Link, useLocation } from "wouter";
 import { useRegister, getGetMeQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, UserRound } from "lucide-react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Eye, EyeOff, Gift, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,18 @@ export default function Register() {
 
   // Extract referral code from URL (?ref=XXXX)
   const refCode = new URLSearchParams(window.location.search).get("ref") ?? "";
+
+  // Validate the ref code against the server and get referrer name
+  const { data: refCheck } = useQuery({
+    queryKey: ["check-ref", refCode],
+    queryFn: async () => {
+      if (!refCode) return { valid: false };
+      const res = await fetch(`/api/auth/check-ref?code=${encodeURIComponent(refCode)}`);
+      return res.json() as Promise<{ valid: boolean; referrerName?: string }>;
+    },
+    enabled: !!refCode,
+    staleTime: Infinity,
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -105,6 +117,17 @@ export default function Register() {
             <CardDescription className="text-sm leading-6 text-[#526173]">
               Buat akun untuk deploy project, kelola API key, dan pantau kredit.
             </CardDescription>
+            {refCheck?.valid && (
+              <div className="mx-auto flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                <Gift className="h-4 w-4 text-emerald-500" />
+                Diundang oleh <strong>{refCheck.referrerName}</strong> — dapat bonus Rp&nbsp;5.000!
+              </div>
+            )}
+            {refCode && refCheck && !refCheck.valid && (
+              <div className="mx-auto rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-600">
+                Kode referral tidak valid
+              </div>
+            )}
           </CardHeader>
           <CardContent className="px-6">
             <Form {...form}>

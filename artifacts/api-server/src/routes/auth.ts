@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createSession, deleteOtherUserSessions, deleteSession, requireAuth, SESSION_COOKIE, SESSION_DURATION_MS } from "../lib/auth";
 import { computePlan } from "../lib/plan";
 import { authRateLimitKey, issueCsrfToken, rateLimit } from "../lib/security";
+import { logger } from "../lib/logger";
 import { REFEREE_BONUS } from "./referral";
 
 function generateReferralCode(): string {
@@ -87,9 +88,10 @@ router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
 
   const { email, password, name } = parsed.data;
   // Accept ref from query string OR request body (for clients that can't set query params)
-  const refCode = (typeof req.query.ref === "string" ? req.query.ref.trim() : null)
-    || (typeof req.body.refCode === "string" ? req.body.refCode.trim() : null)
-    || null;
+  const rawRef = req.query.ref ?? req.body.refCode ?? null;
+  const refCode = typeof rawRef === "string" && rawRef.trim() ? rawRef.trim() : null;
+
+  logger.info({ email, refCode, bodyKeys: Object.keys(req.body) }, "Register attempt");
 
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email));
   if (existing) {
@@ -101,6 +103,7 @@ router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
   let referrer: typeof usersTable.$inferSelect | null = null;
   if (refCode) {
     const [found] = await db.select().from(usersTable).where(eq(usersTable.referralCode, refCode));
+    logger.info({ refCode, referrerFound: !!found, referrerId: found?.id }, "Referral lookup");
     if (found) referrer = found;
   }
 
@@ -109,6 +112,8 @@ router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
 
   // Give welcome bonus if referred; default credits = 5000, add REFEREE_BONUS on top
   const initialCredits = referrer ? 5000 + REFEREE_BONUS : 5000;
+  logger.info({ referrer: referrer?.email ?? null, initialCredits }, "Creating user");
+
   const [user] = await db
     .insert(usersTable)
     .values({ email, name, passwordHash, role: "user", plan: "hobby", credits: initialCredits, referralCode, lastLoginAt: new Date() })
@@ -123,12 +128,25 @@ router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
       amount: REFEREE_BONUS,
       note: `Bonus welcome dari program referral (kode: ${refCode})`,
     });
+    logger.info({ referrerId: referrer.id, refereeId: user.id, bonus: REFEREE_BONUS }, "Referral recorded + welcome bonus given");
   }
 
   const sessionId = await createSession(user.id);
   setSessionCookie(res, sessionId);
 
   res.status(201).json({ user: serializeUser(user) });
+});
+
+// Public endpoint to validate a referral code and return referrer's first name
+router.get("/auth/check-ref", async (req, res): Promise<void> => {
+  const code = typeof req.query.code === "string" ? req.query.code.trim() : null;
+  if (!code) { res.json({ valid: false }); return; }
+  const [found] = await db
+    .select({ name: usersTable.name })
+    .from(usersTable)
+    .where(eq(usersTable.referralCode, code));
+  if (!found) { res.json({ valid: false }); return; }
+  res.json({ valid: true, referrerName: found.name.split(" ")[0] });
 });
 
 router.post("/auth/login", AuthLimiter, async (req, res): Promise<void> => {
