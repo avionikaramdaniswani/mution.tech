@@ -348,9 +348,9 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
         </div>
 
         {regStep === "email" && refCode && refCheck?.valid && (
-          <div className="mb-3 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700">
-            <Gift className="h-4 w-4 shrink-0 text-emerald-500" />
-            Diundang oleh <strong>{refCheck.referrerName}</strong> — dapat bonus Rp&nbsp;5.000!
+          <div className="mb-3 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+            <Gift className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+            <span className="truncate">Diundang oleh <strong>{refCheck.referrerName}</strong> · bonus Rp 5.000</span>
           </div>
         )}
         {regStep === "email" && refCode && refCheck && !refCheck.valid && (
