@@ -8,6 +8,7 @@ import { ArrowLeft, Eye, EyeOff, Gift, KeyRound, LockKeyhole, Mail, RefreshCw, U
 import { useState, useRef, useLayoutEffect, useCallback, useEffect } from "react";
 import { csrfFetch } from "@/lib/csrf";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
@@ -151,6 +152,7 @@ const profileStepSchema = z.object({
   name: z.string().min(2, { message: "Nama minimal 2 karakter." }),
   password: z.string().min(8, { message: "Password minimal 8 karakter." }),
   confirmPassword: z.string().min(1, { message: "Konfirmasi password wajib diisi." }),
+  agreeTerms: z.boolean().refine(v => v === true, { message: "Kamu harus menyetujui syarat & ketentuan." }),
 }).refine(v => v.password === v.confirmPassword, {
   message: "Konfirmasi password tidak sama.",
   path: ["confirmPassword"],
@@ -198,7 +200,7 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
   });
   const profileForm = useForm<z.infer<typeof profileStepSchema>>({
     resolver: zodResolver(profileStepSchema),
-    defaultValues: { name: "", password: "", confirmPassword: "" },
+    defaultValues: { name: "", password: "", confirmPassword: "", agreeTerms: false },
   });
 
   async function sendOtp(email: string): Promise<boolean> {
@@ -243,7 +245,7 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
   }
 
   function onProfileSubmit(values: z.infer<typeof profileStepSchema>) {
-    const { confirmPassword: _, ...rest } = values;
+    const { confirmPassword: _, agreeTerms: __, ...rest } = values;
     const payload: Record<string, string> = { ...rest, email: regEmail, otp: regOtp };
     if (refCode && refCheck?.valid) payload.refCode = refCode;
     registerMutation.mutate({ data: payload as any }, {
@@ -421,6 +423,31 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
                     </div>
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={profileForm.control} name="agreeTerms" render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-start gap-3">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        className="mt-0.5 border-[#cbd5e1] data-[state=checked]:border-[#f97316] data-[state=checked]:bg-[#f97316]"
+                      />
+                    </FormControl>
+                    <FormLabel className="cursor-pointer text-sm font-normal leading-snug text-[#526173]">
+                      Saya telah membaca dan menyetujui{" "}
+                      <a href="/terms" target="_blank" className="font-semibold text-[#f97316] hover:underline">
+                        Syarat &amp; Ketentuan
+                      </a>{" "}
+                      serta{" "}
+                      <a href="/privacy" target="_blank" className="font-semibold text-[#f97316] hover:underline">
+                        Kebijakan Privasi
+                      </a>{" "}
+                      Mution.
+                    </FormLabel>
+                  </div>
+                  <FormMessage className="pl-7" />
                 </FormItem>
               )} />
               {registerMutation.isError && (
