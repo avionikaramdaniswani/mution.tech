@@ -478,35 +478,26 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
         style={{ background: "linear-gradient(135deg, rgba(249,115,22,0.16), rgba(20,184,166,0.10) 56%, transparent 100%)" }} />
 
       <div className="relative z-10 w-full max-w-md">
-        {/* Back button */}
-        <Link
-          href="/"
-          className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#dbe8f3] bg-white/75 px-3 py-2 text-xs font-semibold text-[#526173] shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-[#172033]"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Beranda
-        </Link>
-
         {/* Card */}
         <div
           className="overflow-hidden rounded-3xl border border-[#dbe8f3] shadow-[0_24px_70px_rgba(23,32,51,0.13)]"
           style={{ background: "rgba(255,255,255,0.93)", backdropFilter: "blur(20px)" }}
         >
           {/* Header */}
-          <div className="px-6 pb-5 pt-7 text-center">
+          <div className="relative px-6 pb-5 pt-7 text-center">
+            {/* Back button — top-left inside card */}
+            <Link
+              href="/"
+              className="absolute left-4 top-4 flex h-8 w-8 items-center justify-center rounded-xl text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#526173]"
+              title="Kembali ke beranda"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+
             {/* Logo */}
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#fed7aa] bg-white shadow-[0_14px_34px_rgba(249,115,22,0.16)]">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#fed7aa] bg-white shadow-[0_14px_34px_rgba(249,115,22,0.16)]">
               <img src="/mution-logo.png" alt="Mution" className="h-9 w-auto" />
             </div>
-
-            {/* Subtitle - fades on switch */}
-            <p
-              className="mb-5 text-sm leading-6 text-[#526173] transition-all duration-300"
-              key={tab}
-              style={{ animation: "fadeSlideIn 0.3s ease both" }}
-            >
-              {subtitles[tab]}
-            </p>
 
             {/* Tab switcher */}
             <div className="relative mx-auto flex w-fit rounded-xl bg-[#f1f5f9] p-1">
