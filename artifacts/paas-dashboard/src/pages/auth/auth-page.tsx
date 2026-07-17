@@ -456,9 +456,14 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
     { key: "register" as const, label: "Daftar" },
   ];
 
+  const headings = {
+    login: "Selamat Datang",
+    register: "Buat Akun",
+  };
+
   const subtitles = {
-    login: "Lanjutkan deploy, pantau usage, dan kelola API key.",
-    register: "Buat akun untuk mulai deploy dan kelola API key.",
+    login: "Masuk untuk lanjutkan ke dashboard kamu.",
+    register: "Daftar untuk mulai deploy dan kelola API key.",
   };
 
   return (
@@ -484,7 +489,7 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
           style={{ background: "rgba(255,255,255,0.93)", backdropFilter: "blur(20px)" }}
         >
           {/* Header */}
-          <div className="relative px-6 pb-5 pt-7 text-center">
+          <div className="relative px-6 pb-5 pt-8 text-center">
             {/* Back button — top-left inside card */}
             <Link
               href="/"
@@ -494,10 +499,23 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
               <ArrowLeft className="h-4 w-4" />
             </Link>
 
-            {/* Logo */}
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#fed7aa] bg-white shadow-[0_14px_34px_rgba(249,115,22,0.16)]">
-              <img src="/mution-logo.png" alt="Mution" className="h-9 w-auto" />
-            </div>
+            {/* Title */}
+            <h1
+              key={tab + "-h"}
+              className="mb-1 text-2xl font-bold tracking-tight text-[#172033]"
+              style={{ animation: "fadeSlideIn 0.25s ease both" }}
+            >
+              {headings[tab]}
+            </h1>
+
+            {/* Subtitle */}
+            <p
+              key={tab + "-s"}
+              className="mb-5 text-sm text-[#94a3b8]"
+              style={{ animation: "fadeSlideIn 0.25s ease both" }}
+            >
+              {subtitles[tab]}
+            </p>
 
             {/* Tab switcher */}
             <div className="relative mx-auto flex w-fit rounded-xl bg-[#f1f5f9] p-1">
