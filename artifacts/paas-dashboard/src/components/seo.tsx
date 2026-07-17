@@ -167,6 +167,7 @@ const privatePrefixes = [
   "/profile",
   "/projects",
   "/providers",
+  "/referral",
   "/usage",
 ];
 
