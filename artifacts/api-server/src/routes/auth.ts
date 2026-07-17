@@ -1,17 +1,27 @@
 import { Router } from "express";
-import { db, usersTable, referralsTable, creditTransactionsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, referralsTable, creditTransactionsTable, otpVerificationsTable } from "@workspace/db";
+import { eq, and, isNull, gt } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import { createSession, deleteOtherUserSessions, deleteSession, requireAuth, SESSION_COOKIE, SESSION_DURATION_MS } from "../lib/auth";
 import { computePlan } from "../lib/plan";
 import { authRateLimitKey, issueCsrfToken, rateLimit } from "../lib/security";
 import { logger } from "../lib/logger";
 import { REFEREE_BONUS } from "./referral";
+import { sendOtpEmail } from "../lib/email";
 
 function generateReferralCode(): string {
   return randomBytes(4).toString("hex");
+}
+
+function generateOtp(): string {
+  // 6-digit numeric OTP
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function hashOtp(otp: string): string {
+  return createHash("sha256").update(otp).digest("hex");
 }
 
 const router = Router();
@@ -21,6 +31,16 @@ const AuthLimiter = rateLimit({
   max: 20,
   keyPrefix: "auth",
   key: authRateLimitKey,
+});
+
+const OtpSendLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyPrefix: "otp-send",
+  key: (req) => {
+    const email = typeof req.body?.email === "string" ? req.body.email.toLowerCase().trim() : "";
+    return `${req.ip ?? "unknown"}:${email}`;
+  },
 });
 
 const PasswordLimiter = rateLimit({
@@ -34,6 +54,7 @@ const RegisterBody = z.object({
   email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
   password: z.string().min(8).max(128),
   name: z.string().trim().min(2).max(80),
+  otp: z.string().length(6).regex(/^\d{6}$/),
 });
 
 const LoginBody = z.object({
@@ -45,6 +66,12 @@ const ChangePasswordBody = z.object({
   currentPassword: z.string().min(1),
   newPassword: z.string().min(8).max(128),
 });
+
+const OtpSendBody = z.object({
+  email: z.string().trim().email().max(254).transform((v) => v.toLowerCase()),
+});
+
+const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 function serializeUser(user: typeof usersTable.$inferSelect) {
   return {
@@ -79,47 +106,109 @@ router.get("/auth/csrf", (req, res): void => {
   res.json({ csrfToken: issueCsrfToken(req, res) });
 });
 
+// ─── OTP: Send ────────────────────────────────────────────────────────────────
+router.post("/auth/otp/send", OtpSendLimiter, async (req, res): Promise<void> => {
+  const parsed = OtpSendBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Format email tidak valid" });
+    return;
+  }
+
+  const { email } = parsed.data;
+
+  // Check if email is already registered
+  const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email));
+  if (existing) {
+    res.status(409).json({ error: "Email sudah terdaftar. Silakan login." });
+    return;
+  }
+
+  const otp = generateOtp();
+  const codeHash = hashOtp(otp);
+  const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+  // Invalidate any previous unused OTPs for this email
+  await db
+    .update(otpVerificationsTable)
+    .set({ usedAt: new Date() })
+    .where(and(eq(otpVerificationsTable.email, email), isNull(otpVerificationsTable.usedAt)));
+
+  await db.insert(otpVerificationsTable).values({ email, codeHash, expiresAt });
+
+  const sent = await sendOtpEmail(email, otp);
+  if (!sent) {
+    res.status(503).json({ error: "Gagal mengirim email. Coba lagi beberapa saat." });
+    return;
+  }
+
+  logger.info({ email }, "OTP sent for registration");
+  res.json({ success: true });
+});
+
+// ─── Register (with OTP verification) ────────────────────────────────────────
 router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Nama, email, atau password tidak valid" });
+    res.status(400).json({ error: "Data tidak valid. Pastikan semua kolom terisi dengan benar." });
     return;
   }
 
-  const { email, password, name } = parsed.data;
-  // Accept ref from query string OR request body (for clients that can't set query params)
+  const { email, password, name, otp } = parsed.data;
   const rawRef = req.query.ref ?? req.body.refCode ?? null;
   const refCode = typeof rawRef === "string" && rawRef.trim() ? rawRef.trim() : null;
 
-  logger.info({ email, refCode, bodyKeys: Object.keys(req.body) }, "Register attempt");
+  // Verify OTP
+  const codeHash = hashOtp(otp);
+  const now = new Date();
+  const [otpRecord] = await db
+    .select()
+    .from(otpVerificationsTable)
+    .where(
+      and(
+        eq(otpVerificationsTable.email, email),
+        eq(otpVerificationsTable.codeHash, codeHash),
+        isNull(otpVerificationsTable.usedAt),
+        gt(otpVerificationsTable.expiresAt, now),
+      ),
+    )
+    .limit(1);
 
-  const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-  if (existing) {
-    res.status(409).json({ error: "Email already in use" });
+  if (!otpRecord) {
+    res.status(400).json({ error: "Kode OTP tidak valid atau sudah kedaluwarsa." });
     return;
   }
 
-  // Resolve referrer before creating user
+  logger.info({ email, refCode }, "Register attempt");
+
+  const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+  if (existing) {
+    res.status(409).json({ error: "Email sudah terdaftar." });
+    return;
+  }
+
+  // Resolve referrer
   let referrer: typeof usersTable.$inferSelect | null = null;
   if (refCode) {
     const [found] = await db.select().from(usersTable).where(eq(usersTable.referralCode, refCode));
-    logger.info({ refCode, referrerFound: !!found, referrerId: found?.id }, "Referral lookup");
     if (found) referrer = found;
   }
 
   const referralCode = generateReferralCode();
   const passwordHash = await bcrypt.hash(password, 12);
-
-  // Give welcome bonus if referred; default credits = 5000, add REFEREE_BONUS on top
   const initialCredits = referrer ? 5000 + REFEREE_BONUS : 5000;
-  logger.info({ referrer: referrer?.email ?? null, initialCredits }, "Creating user");
 
   const [user] = await db
     .insert(usersTable)
     .values({ email, name, passwordHash, role: "user", plan: "hobby", credits: initialCredits, referralCode, lastLoginAt: new Date() })
     .returning();
 
-  // Record referral & welcome bonus transaction
+  // Mark OTP as used
+  await db
+    .update(otpVerificationsTable)
+    .set({ usedAt: new Date() })
+    .where(eq(otpVerificationsTable.id, otpRecord.id));
+
+  // Record referral
   if (referrer && referrer.id !== user.id) {
     await db.insert(referralsTable).values({ referrerId: referrer.id, refereeId: user.id });
     await db.insert(creditTransactionsTable).values({
@@ -128,7 +217,7 @@ router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
       amount: REFEREE_BONUS,
       note: `Bonus welcome dari program referral (kode: ${refCode})`,
     });
-    logger.info({ referrerId: referrer.id, refereeId: user.id, bonus: REFEREE_BONUS }, "Referral recorded + welcome bonus given");
+    logger.info({ referrerId: referrer.id, refereeId: user.id }, "Referral recorded");
   }
 
   const sessionId = await createSession(user.id);
@@ -137,7 +226,7 @@ router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
   res.status(201).json({ user: serializeUser(user) });
 });
 
-// Public endpoint to validate a referral code and return referrer's first name
+// Public endpoint to validate a referral code
 router.get("/auth/check-ref", async (req, res): Promise<void> => {
   const code = typeof req.query.code === "string" ? req.query.code.trim() : null;
   if (!code) { res.json({ valid: false }); return; }

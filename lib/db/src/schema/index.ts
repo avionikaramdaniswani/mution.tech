@@ -15,3 +15,4 @@ export * from "./coolify_resources";
 export * from "./model_pricing_overrides";
 export * from "./credit_packages";
 export * from "./referrals";
+export * from "./otp_verifications";
