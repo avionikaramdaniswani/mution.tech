@@ -485,42 +485,20 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
       <div className="relative z-10 w-full max-w-md">
         {/* Card */}
         <div
-          className="overflow-hidden rounded-3xl border border-[#dbe8f3] shadow-[0_24px_70px_rgba(23,32,51,0.13)]"
+          className="overflow-hidden rounded-2xl border border-[#dbe8f3] shadow-[0_24px_70px_rgba(23,32,51,0.13)]"
           style={{ background: "rgba(255,255,255,0.93)", backdropFilter: "blur(20px)" }}
         >
-          {/* Tab bar — full width, flush to top of card */}
-          <div className="flex items-stretch border-b border-[#e8f0f7]">
+          {/* Header */}
+          <div className="relative px-6 pb-4 pt-8 text-center">
             {/* Back arrow */}
             <Link
               href="/"
               title="Kembali ke beranda"
-              className="flex w-12 flex-shrink-0 items-center justify-center border-r border-[#e8f0f7] text-[#b0c0d0] transition-colors hover:bg-[#f8fbff] hover:text-[#526173]"
+              className="absolute left-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-[#b0c0d0] transition-colors hover:bg-[#f1f5f9] hover:text-[#526173]"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
 
-            {/* Tabs */}
-            {TAB_ITEMS.map(({ key, label }) => {
-              const active = tab === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => switchTo(key)}
-                  className="relative flex-1 py-3.5 text-sm font-semibold transition-colors duration-200"
-                  style={{ color: active ? "#172033" : "#94a3b8" }}
-                >
-                  {label}
-                  {/* Active indicator */}
-                  {active && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-t-full bg-[#f97316]" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Title + subtitle */}
-          <div className="px-6 pb-4 pt-6 text-center">
             <h1
               key={tab + "-h"}
               className="mb-1 text-2xl font-bold tracking-tight text-[#172033]"
