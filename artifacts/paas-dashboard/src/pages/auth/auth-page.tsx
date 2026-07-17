@@ -71,63 +71,68 @@ function LoginPanel({ onSwitchTab }: { onSwitchTab: () => void }) {
   }
 
   return (
-    <div className="px-6 pb-6">
+    <div>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField control={form.control} name="email" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-[#172033]">Email</FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <Mail className={ICON_CLS} />
-                  <Input placeholder="kamu@contoh.com" autoComplete="email" className={INPUT_CLS} {...field} />
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          {/* Fields */}
+          <div className="space-y-4 px-6 pb-5">
+            <FormField control={form.control} name="email" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-[#172033]">Email</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Mail className={ICON_CLS} />
+                    <Input placeholder="kamu@contoh.com" autoComplete="email" className={INPUT_CLS} {...field} />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
 
-          <FormField control={form.control} name="password" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-[#172033]">Password</FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <LockKeyhole className={ICON_CLS} />
-                  <Input
-                    type={showPw ? "text" : "password"}
-                    placeholder="Masukkan password"
-                    autoComplete="current-password"
-                    className={INPUT_CLS + " pr-11"}
-                    {...field}
-                  />
-                  <PasswordToggle show={showPw} onToggle={() => setShowPw(v => !v)}
-                    label={showPw ? "Sembunyikan password" : "Tampilkan password"} />
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
+            <FormField control={form.control} name="password" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-[#172033]">Password</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <LockKeyhole className={ICON_CLS} />
+                    <Input
+                      type={showPw ? "text" : "password"}
+                      placeholder="Masukkan password"
+                      autoComplete="current-password"
+                      className={INPUT_CLS + " pr-11"}
+                      {...field}
+                    />
+                    <PasswordToggle show={showPw} onToggle={() => setShowPw(v => !v)}
+                      label={showPw ? "Sembunyikan password" : "Tampilkan password"} />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
 
-          {loginMutation.isError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
-              {/* @ts-ignore */}
-              {loginMutation.error?.error || "Login gagal. Periksa kembali email dan password kamu."}
-            </div>
-          )}
+            {loginMutation.isError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+                {/* @ts-ignore */}
+                {loginMutation.error?.error || "Login gagal. Periksa kembali email dan password kamu."}
+              </div>
+            )}
+          </div>
 
-          <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]"
-            disabled={loginMutation.isPending}>
-            {loginMutation.isPending ? "Masuk..." : "Masuk"}
-          </Button>
+          {/* Sticky footer */}
+          <div className="border-t border-[#e8f0f7] px-6 pb-6 pt-4">
+            <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]"
+              disabled={loginMutation.isPending}>
+              {loginMutation.isPending ? "Masuk..." : "Masuk"}
+            </Button>
+            <p className="mt-4 text-center text-sm text-[#526173]">
+              Belum punya akun?{" "}
+              <button type="button" onClick={onSwitchTab} className="font-semibold text-[#f97316] hover:underline">
+                Daftar sekarang
+              </button>
+            </p>
+          </div>
         </form>
       </Form>
-
-      <p className="mt-5 text-center text-sm text-[#526173]">
-        Belum punya akun?{" "}
-        <button onClick={onSwitchTab} className="font-semibold text-[#f97316] hover:underline">
-          Daftar sekarang
-        </button>
-      </p>
     </div>
   );
 }
@@ -253,58 +258,67 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
   const stepIdx = STEPS.indexOf(regStep);
 
   return (
-    <div className="px-6 pb-6">
-      {/* Step indicator */}
-      <div className="mb-4 flex items-center justify-center gap-2">
-        {STEPS.map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
-            <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-colors ${
-              s === regStep ? "bg-[#f97316] text-white" :
-              stepIdx > i ? "bg-emerald-500 text-white" :
-              "bg-[#e2e8f0] text-[#94a3b8]"
-            }`}>
-              {stepIdx > i ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
+    <div>
+      {/* Step indicator + banners */}
+      <div className="px-6 pb-2">
+        <div className="mb-4 flex items-center justify-center gap-2">
+          {STEPS.map((s, i) => (
+            <div key={s} className="flex items-center gap-2">
+              <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-colors ${
+                s === regStep ? "bg-[#f97316] text-white" :
+                stepIdx > i ? "bg-emerald-500 text-white" :
+                "bg-[#e2e8f0] text-[#94a3b8]"
+              }`}>
+                {stepIdx > i ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
+              </div>
+              {i < 2 && <div className={`h-px w-6 transition-colors ${stepIdx > i ? "bg-emerald-400" : "bg-[#e2e8f0]"}`} />}
             </div>
-            {i < 2 && <div className={`h-px w-6 transition-colors ${stepIdx > i ? "bg-emerald-400" : "bg-[#e2e8f0]"}`} />}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      {/* Referral banner — only on step 1 */}
-      {regStep === "email" && refCode && refCheck?.valid && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700">
-          <Gift className="h-4 w-4 shrink-0 text-emerald-500" />
-          Diundang oleh <strong>{refCheck.referrerName}</strong> — dapat bonus Rp&nbsp;5.000!
-        </div>
-      )}
-      {regStep === "email" && refCode && refCheck && !refCheck.valid && (
-        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-600">
-          Kode referral tidak valid atau sudah tidak berlaku.
-        </div>
-      )}
+        {regStep === "email" && refCode && refCheck?.valid && (
+          <div className="mb-3 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700">
+            <Gift className="h-4 w-4 shrink-0 text-emerald-500" />
+            Diundang oleh <strong>{refCheck.referrerName}</strong> — dapat bonus Rp&nbsp;5.000!
+          </div>
+        )}
+        {regStep === "email" && refCode && refCheck && !refCheck.valid && (
+          <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-600">
+            Kode referral tidak valid atau sudah tidak berlaku.
+          </div>
+        )}
+      </div>
 
       {/* ── Step 1: Email ── */}
       {regStep === "email" && (
         <Form {...emailForm}>
-          <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
-            <FormField control={emailForm.control} name="email" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-[#172033]">Email</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Mail className={ICON_CLS} />
-                    <Input placeholder="kamu@contoh.com" autoComplete="email" className={INPUT_CLS} {...field} />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            {otpError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">{otpError}</div>
-            )}
-            <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]" disabled={sendingOtp}>
-              {sendingOtp ? "Mengirim kode..." : "Kirim kode verifikasi"}
-            </Button>
+          <form onSubmit={emailForm.handleSubmit(onEmailSubmit)}>
+            <div className="space-y-4 px-6 pb-5">
+              <FormField control={emailForm.control} name="email" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-[#172033]">Email</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Mail className={ICON_CLS} />
+                      <Input placeholder="kamu@contoh.com" autoComplete="email" className={INPUT_CLS} {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              {otpError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">{otpError}</div>
+              )}
+            </div>
+            <div className="border-t border-[#e8f0f7] px-6 pb-6 pt-4">
+              <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]" disabled={sendingOtp}>
+                {sendingOtp ? "Mengirim kode..." : "Kirim kode verifikasi"}
+              </Button>
+              <p className="mt-4 text-center text-sm text-[#526173]">
+                Sudah punya akun?{" "}
+                <button type="button" onClick={onSwitchTab} className="font-semibold text-[#f97316] hover:underline">Masuk</button>
+              </p>
+            </div>
           </form>
         </Form>
       )}
@@ -312,47 +326,51 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
       {/* ── Step 2: OTP ── */}
       {regStep === "otp" && (
         <Form {...otpForm}>
-          <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-4">
-            <p className="text-center text-sm text-[#526173]">Kode 6 digit dikirim ke <span className="font-semibold text-[#172033]">{regEmail}</span></p>
-            <FormField control={otpForm.control} name="otp" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-[#172033]">Kode OTP</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <KeyRound className={ICON_CLS} />
-                    <Input
-                      placeholder="123456"
-                      maxLength={6}
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      className={INPUT_CLS + " text-center text-xl font-bold tracking-[0.3em]"}
-                      {...field}
-                    />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            {otpError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">{otpError}</div>
-            )}
-            <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]">
-              Verifikasi kode
-            </Button>
-            <div className="flex items-center justify-between">
-              <button type="button" className="text-xs text-[#526173] hover:text-[#172033] transition-colors"
-                onClick={() => { setRegStep("email"); setOtpError(null); }}>
-                ← Ganti email
-              </button>
-              <button
-                type="button"
-                className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${resendCooldown > 0 || sendingOtp ? "cursor-not-allowed text-[#94a3b8]" : "text-[#f97316] hover:text-[#ea580c]"}`}
-                onClick={onResend}
-                disabled={resendCooldown > 0 || sendingOtp}
-              >
-                <RefreshCw className={`h-3 w-3 ${sendingOtp ? "animate-spin" : ""}`} />
-                {resendCooldown > 0 ? `Kirim ulang (${resendCooldown}s)` : "Kirim ulang kode"}
-              </button>
+          <form onSubmit={otpForm.handleSubmit(onOtpSubmit)}>
+            <div className="space-y-4 px-6 pb-5">
+              <p className="text-center text-sm text-[#526173]">Kode 6 digit dikirim ke <span className="font-semibold text-[#172033]">{regEmail}</span></p>
+              <FormField control={otpForm.control} name="otp" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-[#172033]">Kode OTP</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <KeyRound className={ICON_CLS} />
+                      <Input
+                        placeholder="123456"
+                        maxLength={6}
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        className={INPUT_CLS + " text-center text-xl font-bold tracking-[0.3em]"}
+                        {...field}
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              {otpError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">{otpError}</div>
+              )}
+            </div>
+            <div className="border-t border-[#e8f0f7] px-6 pb-6 pt-4">
+              <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]">
+                Verifikasi kode
+              </Button>
+              <div className="mt-4 flex items-center justify-between">
+                <button type="button" className="text-xs text-[#526173] transition-colors hover:text-[#172033]"
+                  onClick={() => { setRegStep("email"); setOtpError(null); }}>
+                  ← Ganti email
+                </button>
+                <button
+                  type="button"
+                  className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${resendCooldown > 0 || sendingOtp ? "cursor-not-allowed text-[#94a3b8]" : "text-[#f97316] hover:text-[#ea580c]"}`}
+                  onClick={onResend}
+                  disabled={resendCooldown > 0 || sendingOtp}
+                >
+                  <RefreshCw className={`h-3 w-3 ${sendingOtp ? "animate-spin" : ""}`} />
+                  {resendCooldown > 0 ? `Kirim ulang (${resendCooldown}s)` : "Kirim ulang kode"}
+                </button>
+              </div>
             </div>
           </form>
         </Form>
@@ -361,67 +379,66 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
       {/* ── Step 3: Profile ── */}
       {regStep === "profile" && (
         <Form {...profileForm}>
-          <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
-            <FormField control={profileForm.control} name="name" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-[#172033]">Nama Lengkap</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <UserRound className={ICON_CLS} />
-                    <Input placeholder="Budi Santoso" autoComplete="name" className={INPUT_CLS} {...field} />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={profileForm.control} name="password" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-[#172033]">Password</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <LockKeyhole className={ICON_CLS} />
-                    <Input type={showPw ? "text" : "password"} placeholder="Minimal 8 karakter"
-                      autoComplete="new-password" className={INPUT_CLS + " pr-11"} {...field} />
-                    <PasswordToggle show={showPw} onToggle={() => setShowPw(v => !v)}
-                      label={showPw ? "Sembunyikan password" : "Tampilkan password"} />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={profileForm.control} name="confirmPassword" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-[#172033]">Konfirmasi Password</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <LockKeyhole className={ICON_CLS} />
-                    <Input type={showCPw ? "text" : "password"} placeholder="Ulangi password"
-                      autoComplete="new-password" className={INPUT_CLS + " pr-11"} {...field} />
-                    <PasswordToggle show={showCPw} onToggle={() => setShowCPw(v => !v)}
-                      label={showCPw ? "Sembunyikan konfirmasi" : "Tampilkan konfirmasi"} />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            {registerMutation.isError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
-                {/* @ts-ignore */}
-                {registerMutation.error?.error || "Registrasi gagal. Silakan coba lagi."}
-              </div>
-            )}
-            <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]"
-              disabled={registerMutation.isPending}>
-              {registerMutation.isPending ? "Membuat akun..." : "Buat akun"}
-            </Button>
+          <form onSubmit={profileForm.handleSubmit(onProfileSubmit)}>
+            <div className="space-y-4 px-6 pb-5">
+              <FormField control={profileForm.control} name="name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-[#172033]">Nama Lengkap</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <UserRound className={ICON_CLS} />
+                      <Input placeholder="Budi Santoso" autoComplete="name" className={INPUT_CLS} {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={profileForm.control} name="password" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-[#172033]">Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <LockKeyhole className={ICON_CLS} />
+                      <Input type={showPw ? "text" : "password"} placeholder="Minimal 8 karakter"
+                        autoComplete="new-password" className={INPUT_CLS + " pr-11"} {...field} />
+                      <PasswordToggle show={showPw} onToggle={() => setShowPw(v => !v)}
+                        label={showPw ? "Sembunyikan password" : "Tampilkan password"} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={profileForm.control} name="confirmPassword" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-[#172033]">Konfirmasi Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <LockKeyhole className={ICON_CLS} />
+                      <Input type={showCPw ? "text" : "password"} placeholder="Ulangi password"
+                        autoComplete="new-password" className={INPUT_CLS + " pr-11"} {...field} />
+                      <PasswordToggle show={showCPw} onToggle={() => setShowCPw(v => !v)}
+                        label={showCPw ? "Sembunyikan konfirmasi" : "Tampilkan konfirmasi"} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              {registerMutation.isError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+                  {/* @ts-ignore */}
+                  {registerMutation.error?.error || "Registrasi gagal. Silakan coba lagi."}
+                </div>
+              )}
+            </div>
+            <div className="border-t border-[#e8f0f7] px-6 pb-6 pt-4">
+              <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]"
+                disabled={registerMutation.isPending}>
+                {registerMutation.isPending ? "Membuat akun..." : "Buat akun"}
+              </Button>
+            </div>
           </form>
         </Form>
       )}
-
-      <p className="mt-5 text-center text-sm text-[#526173]">
-        Sudah punya akun?{" "}
-        <button onClick={onSwitchTab} className="font-semibold text-[#f97316] hover:underline">Masuk</button>
-      </p>
     </div>
   );
 }
