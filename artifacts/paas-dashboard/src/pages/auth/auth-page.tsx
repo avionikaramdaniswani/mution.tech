@@ -3,8 +3,8 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Link, useLocation } from "wouter";
 import { useLogin, useRegister, getGetMeQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, UserRound } from "lucide-react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Eye, EyeOff, Gift, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { useState, useRef, useLayoutEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -140,6 +140,21 @@ function RegisterPanel({ onSwitchTab }: { onSwitchTab: () => void }) {
   const [showPw, setShowPw] = useState(false);
   const [showCPw, setShowCPw] = useState(false);
 
+  // Read referral code from URL (?ref=XXXX)
+  const refCode = new URLSearchParams(window.location.search).get("ref") ?? "";
+
+  // Validate code against server so we can show the referrer's name
+  const { data: refCheck } = useQuery({
+    queryKey: ["check-ref", refCode],
+    queryFn: async () => {
+      if (!refCode) return { valid: false };
+      const res = await fetch(`/api/auth/check-ref?code=${encodeURIComponent(refCode)}`);
+      return res.json() as Promise<{ valid: boolean; referrerName?: string }>;
+    },
+    enabled: !!refCode,
+    staleTime: Infinity,
+  });
+
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
@@ -147,7 +162,9 @@ function RegisterPanel({ onSwitchTab }: { onSwitchTab: () => void }) {
 
   function onSubmit(values: z.infer<typeof registerSchema>) {
     const { confirmPassword: _, ...data } = values;
-    registerMutation.mutate({ data }, {
+    // Attach refCode in body so backend can credit the welcome bonus
+    const payload = refCode && refCheck?.valid ? { ...data, refCode } : data;
+    registerMutation.mutate({ data: payload as typeof data }, {
       onSuccess: (data) => {
         queryClient.setQueryData(getGetMeQueryKey(), data.user);
         setLocation("/dashboard");
@@ -157,6 +174,18 @@ function RegisterPanel({ onSwitchTab }: { onSwitchTab: () => void }) {
 
   return (
     <div className="px-6 pb-6">
+      {/* Referral banner */}
+      {refCode && refCheck?.valid && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700">
+          <Gift className="h-4 w-4 shrink-0 text-emerald-500" />
+          Diundang oleh <strong>{refCheck.referrerName}</strong> — kamu dapat bonus Rp&nbsp;5.000!
+        </div>
+      )}
+      {refCode && refCheck && !refCheck.valid && (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-600">
+          Kode referral tidak valid atau sudah tidak berlaku.
+        </div>
+      )}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField control={form.control} name="name" render={({ field }) => (
