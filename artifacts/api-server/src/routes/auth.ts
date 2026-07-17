@@ -86,7 +86,10 @@ router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
   }
 
   const { email, password, name } = parsed.data;
-  const refCode = typeof req.query.ref === "string" ? req.query.ref.trim() : null;
+  // Accept ref from query string OR request body (for clients that can't set query params)
+  const refCode = (typeof req.query.ref === "string" ? req.query.ref.trim() : null)
+    || (typeof req.body.refCode === "string" ? req.body.refCode.trim() : null)
+    || null;
 
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email));
   if (existing) {

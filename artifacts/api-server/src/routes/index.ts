@@ -29,17 +29,17 @@ router.use(authRouter);
 router.use(githubRouter);
 
 // Authenticated routes
+router.use(referralRouter);   // must be before adminRouter (adminRouter has a catch-all requireAdmin)
 router.use(billingRouter);
 router.use(apiKeysRouter);
 router.use(projectsRouter);
 router.use(deploymentsRouter);
 router.use(statsRouter);
 router.use(activityRouter);
-router.use(adminRouter);
 router.use(eventsRouter);
 router.use(apiUsageRouter);
 router.use(changelogsRouter);
 router.use(integrationsRouter);
-router.use(referralRouter);
+router.use(adminRouter);      // last: has global requireAdmin middleware
 
 export default router;

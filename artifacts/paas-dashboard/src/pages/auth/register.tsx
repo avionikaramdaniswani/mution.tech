@@ -36,6 +36,9 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Extract referral code from URL (?ref=XXXX)
+  const refCode = new URLSearchParams(window.location.search).get("ref") ?? "";
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -49,8 +52,11 @@ export default function Register() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     const { confirmPassword, ...registerData } = values;
 
+    // Include refCode in body so backend can credit welcome bonus
+    const payload = refCode ? { ...registerData, refCode } : registerData;
+
     registerMutation.mutate(
-      { data: registerData },
+      { data: payload as typeof registerData },
       {
         onSuccess: (data) => {
           queryClient.setQueryData(getGetMeQueryKey(), data.user);
