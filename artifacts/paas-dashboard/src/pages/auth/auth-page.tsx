@@ -150,7 +150,11 @@ const otpStepSchema = z.object({
 
 const profileStepSchema = z.object({
   name: z.string().min(2, { message: "Nama minimal 2 karakter." }),
-  password: z.string().min(8, { message: "Password minimal 8 karakter." }),
+  password: z.string()
+    .min(8, { message: "Password minimal 8 karakter." })
+    .regex(/[A-Z]/, { message: "Harus mengandung minimal 1 huruf kapital." })
+    .regex(/[a-z]/, { message: "Harus mengandung minimal 1 huruf kecil." })
+    .regex(/[0-9]/, { message: "Harus mengandung minimal 1 angka." }),
   confirmPassword: z.string().min(1, { message: "Konfirmasi password wajib diisi." }),
   agreeTerms: z.boolean().refine(v => v === true, { message: "Kamu harus menyetujui syarat & ketentuan." }),
 }).refine(v => v.password === v.confirmPassword, {
@@ -159,6 +163,71 @@ const profileStepSchema = z.object({
 });
 
 type RegStep = "email" | "otp" | "profile";
+
+// ─── OTP box input ────────────────────────────────────────────────────────────
+
+function OtpBoxInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const refs = useRef<(HTMLInputElement | null)[]>([]);
+  const digits = Array.from({ length: 6 }, (_, i) => value[i] ?? "");
+
+  function handleChange(i: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const char = e.target.value.replace(/\D/g, "").slice(-1);
+    const next = [...digits];
+    next[i] = char;
+    onChange(next.join(""));
+    if (char && i < 5) refs.current[i + 1]?.focus();
+  }
+
+  function handleKeyDown(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace") {
+      if (digits[i]) {
+        const next = [...digits];
+        next[i] = "";
+        onChange(next.join(""));
+      } else if (i > 0) {
+        const next = [...digits];
+        next[i - 1] = "";
+        onChange(next.join(""));
+        refs.current[i - 1]?.focus();
+      }
+    } else if (e.key === "ArrowLeft" && i > 0) {
+      refs.current[i - 1]?.focus();
+    } else if (e.key === "ArrowRight" && i < 5) {
+      refs.current[i + 1]?.focus();
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pasted) {
+      onChange(pasted.padEnd(6, "").slice(0, 6));
+      refs.current[Math.min(pasted.length, 5)]?.focus();
+      e.preventDefault();
+    }
+  }
+
+  return (
+    <div className="flex justify-center gap-2">
+      {Array.from({ length: 6 }, (_, i) => (
+        <input
+          key={i}
+          ref={el => { refs.current[i] = el; }}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={digits[i]}
+          autoComplete={i === 0 ? "one-time-code" : "off"}
+          onChange={e => handleChange(i, e)}
+          onKeyDown={e => handleKeyDown(i, e)}
+          onPaste={handlePaste}
+          className={`h-12 w-11 rounded-xl border-2 bg-[#f8fbff] text-center text-xl font-bold text-[#172033] outline-none transition-all duration-150
+            ${digits[i] ? "border-[#f97316] bg-white shadow-[0_0_0_3px_rgba(249,115,22,0.12)]" : "border-[#dbe8f3]"}
+            focus:border-[#f97316] focus:bg-white focus:shadow-[0_0_0_3px_rgba(249,115,22,0.15)]`}
+        />
+      ))}
+    </div>
+  );
+}
 
 // ─── Register form panel ──────────────────────────────────────────────────────
 
@@ -333,21 +402,10 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
               <p className="text-center text-sm text-[#526173]">Kode 6 digit dikirim ke <span className="font-semibold text-[#172033]">{regEmail}</span></p>
               <FormField control={otpForm.control} name="otp" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[#172033]">Kode OTP</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <KeyRound className={ICON_CLS} />
-                      <Input
-                        placeholder="123456"
-                        maxLength={6}
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        className={INPUT_CLS + " text-center text-xl font-bold tracking-[0.3em]"}
-                        {...field}
-                      />
-                    </div>
+                    <OtpBoxInput value={field.value} onChange={field.onChange} />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-center" />
                 </FormItem>
               )} />
               {otpError && (
@@ -529,8 +587,8 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
       <div className="relative z-10 w-full max-w-md">
         {/* Card */}
         <div
-          className="overflow-hidden rounded-2xl border border-[#dbe8f3] shadow-[0_24px_70px_rgba(23,32,51,0.13)]"
-          style={{ background: "rgba(255,255,255,0.93)", backdropFilter: "blur(20px)" }}
+          className="scrollbar-hide overflow-x-hidden overflow-y-auto rounded-2xl border border-[#dbe8f3] shadow-[0_24px_70px_rgba(23,32,51,0.13)]"
+          style={{ background: "rgba(255,255,255,0.93)", backdropFilter: "blur(20px)", maxHeight: "calc(100vh - 2rem)" }}
         >
           {/* Header */}
           <div className="relative px-6 pb-4 pt-8 text-center">
