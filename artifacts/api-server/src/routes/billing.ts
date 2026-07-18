@@ -524,7 +524,7 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
         amount,
         customer_name: user.name,
         customer_email: user.email,
-        customer_phone: "08123456789",
+        customer_phone: "08000000000",
         order_items: [
           {
             name: itemName,
@@ -532,7 +532,7 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
             quantity: 1,
           },
         ],
-        return_url: `https://mution.tech/billing?orderId=${order.id}`,
+        return_url: `${(process.env.PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://mution.tech").replace(/\/$/, "")}/billing?orderId=${order.id}`,
         expired_time: expiredTime,
         signature,
       }),
