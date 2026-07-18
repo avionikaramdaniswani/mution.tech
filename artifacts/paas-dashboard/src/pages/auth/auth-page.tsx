@@ -5,7 +5,7 @@ import { Link, useLocation } from "wouter";
 import { useLogin, useRegister, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Eye, EyeOff, Gift, KeyRound, LockKeyhole, Mail, RefreshCw, UserRound, CheckCircle2 } from "lucide-react";
-import { useState, useRef, useLayoutEffect, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { csrfFetch } from "@/lib/csrf";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -72,11 +72,11 @@ function LoginPanel({ onSwitchTab }: { onSwitchTab: () => void }) {
   }
 
   return (
-    <div>
+    <div className="flex flex-col h-full">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          {/* Fields */}
-          <div className="space-y-4 px-6 pb-5">
+        <form id="login-form" onSubmit={form.handleSubmit(onSubmit)} className="contents">
+          {/* Scrollable fields */}
+          <div className="scrollbar-hide flex-1 overflow-y-auto px-6 pb-5 pt-1 space-y-4">
             <FormField control={form.control} name="email" render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-[#172033]">Email</FormLabel>
@@ -118,22 +118,22 @@ function LoginPanel({ onSwitchTab }: { onSwitchTab: () => void }) {
               </div>
             )}
           </div>
-
-          {/* Sticky footer */}
-          <div className="border-t border-[#e8f0f7] px-6 pb-6 pt-4">
-            <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]"
-              disabled={loginMutation.isPending}>
-              {loginMutation.isPending ? "Masuk..." : "Masuk"}
-            </Button>
-            <p className="mt-4 text-center text-sm text-[#526173]">
-              Belum punya akun?{" "}
-              <button type="button" onClick={onSwitchTab} className="font-semibold text-[#f97316] hover:underline">
-                Daftar sekarang
-              </button>
-            </p>
-          </div>
         </form>
       </Form>
+
+      {/* Docked footer */}
+      <div className="flex-none border-t border-[#e8f0f7] px-6 pb-6 pt-4">
+        <Button type="submit" form="login-form" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]"
+          disabled={loginMutation.isPending}>
+          {loginMutation.isPending ? "Masuk..." : "Masuk"}
+        </Button>
+        <p className="mt-4 text-center text-sm text-[#526173]">
+          Belum punya akun?{" "}
+          <button type="button" onClick={onSwitchTab} className="font-semibold text-[#f97316] hover:underline">
+            Daftar sekarang
+          </button>
+        </p>
+      </div>
     </div>
   );
 }
@@ -231,7 +231,7 @@ function OtpBoxInput({ value, onChange }: { value: string; onChange: (v: string)
 
 // ─── Register form panel ──────────────────────────────────────────────────────
 
-function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => void; onHeightChange?: () => void }) {
+function RegisterPanel({ onSwitchTab }: { onSwitchTab: () => void }) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const registerMutation = useRegister();
@@ -255,9 +255,6 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
     enabled: !!refCode,
     staleTime: Infinity,
   });
-
-  // Notify parent when step changes so it can remeasure height
-  useEffect(() => { onHeightChange?.(); }, [regStep]); // eslint-disable-line
 
   const emailForm = useForm<z.infer<typeof emailStepSchema>>({
     resolver: zodResolver(emailStepSchema),
@@ -329,9 +326,12 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
   const stepIdx = STEPS.indexOf(regStep);
 
   return (
-    <div>
-      {/* Step indicator + banners */}
-      <div className="px-6 pb-2">
+    <div className="flex flex-col h-full">
+
+      {/* ── Scrollable fields area ── */}
+      <div className="scrollbar-hide flex-1 overflow-y-auto px-6 pt-1 pb-4">
+
+        {/* Step indicator */}
         <div className="mb-4 flex items-center justify-center gap-2">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center gap-2">
@@ -347,6 +347,7 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
           ))}
         </div>
 
+        {/* Referral banners */}
         {regStep === "email" && refCode && refCheck?.valid && (
           <div className="mb-3 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
             <Gift className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
@@ -358,13 +359,11 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
             Kode referral tidak valid atau sudah tidak berlaku.
           </div>
         )}
-      </div>
 
-      {/* ── Step 1: Email ── */}
-      {regStep === "email" && (
-        <Form {...emailForm}>
-          <form onSubmit={emailForm.handleSubmit(onEmailSubmit)}>
-            <div className="space-y-4 px-6 pb-5">
+        {/* ── Step 1: Email ── */}
+        {regStep === "email" && (
+          <Form {...emailForm}>
+            <form id="step-form" onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
               <FormField control={emailForm.control} name="email" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-[#172033]">Email</FormLabel>
@@ -380,25 +379,14 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
               {otpError && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">{otpError}</div>
               )}
-            </div>
-            <div className="border-t border-[#e8f0f7] px-6 pb-6 pt-4">
-              <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]" disabled={sendingOtp}>
-                {sendingOtp ? "Mengirim kode..." : "Kirim kode verifikasi"}
-              </Button>
-              <p className="mt-4 text-center text-sm text-[#526173]">
-                Sudah punya akun?{" "}
-                <button type="button" onClick={onSwitchTab} className="font-semibold text-[#f97316] hover:underline">Masuk</button>
-              </p>
-            </div>
-          </form>
-        </Form>
-      )}
+            </form>
+          </Form>
+        )}
 
-      {/* ── Step 2: OTP ── */}
-      {regStep === "otp" && (
-        <Form {...otpForm}>
-          <form onSubmit={otpForm.handleSubmit(onOtpSubmit)}>
-            <div className="space-y-4 px-6 pb-5">
+        {/* ── Step 2: OTP ── */}
+        {regStep === "otp" && (
+          <Form {...otpForm}>
+            <form id="step-form" onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-4">
               <p className="text-center text-sm text-[#526173]">Kode 6 digit dikirim ke <span className="font-semibold text-[#172033]">{regEmail}</span></p>
               <FormField control={otpForm.control} name="otp" render={({ field }) => (
                 <FormItem>
@@ -411,36 +399,14 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
               {otpError && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">{otpError}</div>
               )}
-            </div>
-            <div className="border-t border-[#e8f0f7] px-6 pb-6 pt-4">
-              <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]">
-                Verifikasi kode
-              </Button>
-              <div className="mt-4 flex items-center justify-between">
-                <button type="button" className="text-xs text-[#526173] transition-colors hover:text-[#172033]"
-                  onClick={() => { setRegStep("email"); setOtpError(null); }}>
-                  ← Ganti email
-                </button>
-                <button
-                  type="button"
-                  className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${resendCooldown > 0 || sendingOtp ? "cursor-not-allowed text-[#94a3b8]" : "text-[#f97316] hover:text-[#ea580c]"}`}
-                  onClick={onResend}
-                  disabled={resendCooldown > 0 || sendingOtp}
-                >
-                  <RefreshCw className={`h-3 w-3 ${sendingOtp ? "animate-spin" : ""}`} />
-                  {resendCooldown > 0 ? `Kirim ulang (${resendCooldown}s)` : "Kirim ulang kode"}
-                </button>
-              </div>
-            </div>
-          </form>
-        </Form>
-      )}
+            </form>
+          </Form>
+        )}
 
-      {/* ── Step 3: Profile ── */}
-      {regStep === "profile" && (
-        <Form {...profileForm}>
-          <form onSubmit={profileForm.handleSubmit(onProfileSubmit)}>
-            <div className="space-y-4 px-6 pb-5">
+        {/* ── Step 3: Profile ── */}
+        {regStep === "profile" && (
+          <Form {...profileForm}>
+            <form id="step-form" onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
               <FormField control={profileForm.control} name="name" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-[#172033]">Nama Lengkap</FormLabel>
@@ -514,16 +480,53 @@ function RegisterPanel({ onSwitchTab, onHeightChange }: { onSwitchTab: () => voi
                   {registerMutation.error?.error || "Registrasi gagal. Silakan coba lagi."}
                 </div>
               )}
+            </form>
+          </Form>
+        )}
+      </div>
+
+      {/* ── Docked footer (button changes per step) ── */}
+      <div className="flex-none border-t border-[#e8f0f7] px-6 pb-6 pt-4">
+        {regStep === "email" && (
+          <>
+            <Button type="submit" form="step-form" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]" disabled={sendingOtp}>
+              {sendingOtp ? "Mengirim kode..." : "Kirim kode verifikasi"}
+            </Button>
+            <p className="mt-4 text-center text-sm text-[#526173]">
+              Sudah punya akun?{" "}
+              <button type="button" onClick={onSwitchTab} className="font-semibold text-[#f97316] hover:underline">Masuk</button>
+            </p>
+          </>
+        )}
+        {regStep === "otp" && (
+          <>
+            <Button type="submit" form="step-form" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]">
+              Verifikasi kode
+            </Button>
+            <div className="mt-4 flex items-center justify-between">
+              <button type="button" className="text-xs text-[#526173] transition-colors hover:text-[#172033]"
+                onClick={() => { setRegStep("email"); setOtpError(null); }}>
+                ← Ganti email
+              </button>
+              <button
+                type="button"
+                className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${resendCooldown > 0 || sendingOtp ? "cursor-not-allowed text-[#94a3b8]" : "text-[#f97316] hover:text-[#ea580c]"}`}
+                onClick={onResend}
+                disabled={resendCooldown > 0 || sendingOtp}
+              >
+                <RefreshCw className={`h-3 w-3 ${sendingOtp ? "animate-spin" : ""}`} />
+                {resendCooldown > 0 ? `Kirim ulang (${resendCooldown}s)` : "Kirim ulang kode"}
+              </button>
             </div>
-            <div className="border-t border-[#e8f0f7] px-6 pb-6 pt-4">
-              <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]"
-                disabled={registerMutation.isPending}>
-                {registerMutation.isPending ? "Membuat akun..." : "Buat akun"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      )}
+          </>
+        )}
+        {regStep === "profile" && (
+          <Button type="submit" form="step-form" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]"
+            disabled={registerMutation.isPending}>
+            {registerMutation.isPending ? "Membuat akun..." : "Buat akun"}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -534,37 +537,14 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
   const [tab, setTab] = useState<"login" | "register">(initialTab);
   const [, setLocation] = useLocation();
 
-  // Measure panel heights for smooth container transition
-  const loginRef  = useRef<HTMLDivElement>(null);
-  const registerRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | undefined>(undefined);
-
-  const updateHeight = useCallback((t: "login" | "register") => {
-    const el = t === "login" ? loginRef.current : registerRef.current;
-    if (el) setHeight(el.offsetHeight);
-  }, []);
-
-  // Measure on first render
-  useLayoutEffect(() => { updateHeight(tab); }, []); // eslint-disable-line
-
   function switchTo(t: "login" | "register") {
-    updateHeight(t);   // capture target height before transition
     setTab(t);
     setLocation(t === "login" ? "/login" : "/register", { replace: true });
   }
 
-  const TAB_ITEMS = [
-    { key: "login" as const, label: "Masuk" },
-    { key: "register" as const, label: "Daftar" },
-  ];
-
-  const headings = {
-    login: "Selamat Datang",
-    register: "Buat Akun",
-  };
-
-  const subtitles = {
-    login: "Masuk untuk lanjutkan ke dashboard kamu.",
+  const headings   = { login: "Selamat Datang", register: "Buat Akun" };
+  const subtitles  = {
+    login:    "Masuk untuk lanjutkan ke dashboard kamu.",
     register: "Daftar untuk mulai deploy dan kelola API key.",
   };
 
@@ -585,14 +565,21 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
         style={{ background: "linear-gradient(135deg, rgba(249,115,22,0.16), rgba(20,184,166,0.10) 56%, transparent 100%)" }} />
 
       <div className="relative z-10 w-full max-w-md">
-        {/* Card */}
+        {/*
+          Card grows to fit content but never exceeds viewport.
+          flex-col lets header stay fixed while the panel below scrolls
+          when its fields overflow the allocated space.
+        */}
         <div
-          className="scrollbar-hide overflow-x-hidden overflow-y-auto rounded-2xl border border-[#dbe8f3] shadow-[0_24px_70px_rgba(23,32,51,0.13)]"
-          style={{ background: "rgba(255,255,255,0.93)", backdropFilter: "blur(20px)", maxHeight: "calc(100vh - 2rem)" }}
+          className="flex flex-col overflow-hidden rounded-2xl border border-[#dbe8f3] shadow-[0_24px_70px_rgba(23,32,51,0.13)]"
+          style={{
+            background: "rgba(255,255,255,0.93)",
+            backdropFilter: "blur(20px)",
+            maxHeight: "min(660px, calc(100vh - 2rem))",
+          }}
         >
-          {/* Header */}
-          <div className="relative px-6 pb-4 pt-8 text-center">
-            {/* Back arrow */}
+          {/* Header — fixed, never scrolls */}
+          <div className="flex-none relative px-6 pb-4 pt-8 text-center">
             <Link
               href="/"
               title="Kembali ke beranda"
@@ -600,7 +587,6 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-
             <h1
               key={tab + "-h"}
               className="mb-1 text-2xl font-bold tracking-tight text-[#172033]"
@@ -617,50 +603,27 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
             </p>
           </div>
 
-          {/* Sliding form viewport */}
-          <div
-            className="overflow-hidden transition-[height] duration-400 ease-[cubic-bezier(0.4,0,0.2,1)]"
-            style={{ height: height !== undefined ? `${height}px` : "auto" }}
-          >
-            {/* Track — 200% wide, slides left/right */}
-            <div
-              className="flex transition-transform duration-400 ease-[cubic-bezier(0.4,0,0.2,1)]"
-              style={{
-                width: "200%",
-                transform: `translateX(${tab === "login" ? "0%" : "-50%"})`,
-              }}
-            >
-              {/* Login panel */}
-              <div ref={loginRef} style={{ width: "50%" }}>
-                <LoginPanel onSwitchTab={() => switchTo("register")} />
-              </div>
-
-              {/* Register panel */}
-              <div ref={registerRef} style={{ width: "50%" }}>
-                <RegisterPanel
-                  onSwitchTab={() => switchTo("login")}
-                  onHeightChange={() => {
-                    // Re-measure register panel height after step change
-                    setTimeout(() => {
-                      if (tab === "register" && registerRef.current) {
-                        setHeight(registerRef.current.offsetHeight);
-                      }
-                    }, 0);
-                  }}
-                />
-              </div>
-            </div>
+          {/*
+            Panel area: flex-1 so it fills the card space left after the header.
+            min-h-0 lets it shrink (required for overflow-y-auto inside to work).
+            The active panel renders here; the other is unmounted.
+          */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            {tab === "login" && (
+              <LoginPanel onSwitchTab={() => switchTo("register")} />
+            )}
+            {tab === "register" && (
+              <RegisterPanel onSwitchTab={() => switchTo("login")} />
+            )}
           </div>
         </div>
       </div>
 
-      {/* Fade-in keyframe */}
       <style>{`
         @keyframes fadeSlideIn {
           from { opacity: 0; transform: translateY(4px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .duration-400 { transition-duration: 400ms; }
       `}</style>
     </div>
   );
