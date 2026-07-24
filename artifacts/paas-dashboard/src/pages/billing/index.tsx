@@ -8,13 +8,6 @@ import {
   Loader2, PenLine, X, CheckCircle2, AlertCircle, RefreshCw,
   Lock,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Link } from "wouter";
 import { csrfFetch } from "@/lib/csrf";
 
@@ -415,19 +408,20 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   const STEP_LABELS = ["Nominal", "Metode", "Konfirmasi"];
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent
-        className="w-[calc(100vw-1.5rem)] sm:w-full max-w-sm p-0 overflow-hidden gap-0"
-        style={{
-          background: "rgb(10,10,12)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          borderRadius: "20px",
-        }}
-      >
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{
+        background: "rgba(10,10,12,0.98)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        animation: "fadeSlideIn 0.2s ease",
+      }}
+    >
         {/* -- Header -- */}
-        <DialogHeader className="px-5 pt-5 pb-4">
-          {/* Title row - back arrow when step > 1 */}
+        <div className="px-5 pt-5 pb-4">
+          {/* Title row - back arrow when step > 1, X to close on right */}
           <div className="flex items-center gap-2.5 mb-4">
             {step > 1 && (
               <button
@@ -441,7 +435,15 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </svg>
               </button>
             )}
-            <DialogTitle className="text-sm font-semibold">Topup Kredit</DialogTitle>
+            <p className="text-sm font-semibold flex-1" style={{ color: "rgba(255,255,255,0.9)" }}>Topup Kredit</p>
+            <button
+              onClick={onClose}
+              aria-label="Tutup"
+              className="h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-70"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.4)" }}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           </div>
 
           {/* Step indicator */}
@@ -477,7 +479,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
               );
             })}
           </div>
-        </DialogHeader>
+        </div>
 
         <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 20px" }} />
 
@@ -735,8 +737,7 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
             </p>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+    </div>
   );
 }
 
@@ -933,8 +934,6 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-4">
-      <TopupModal open={topupOpen} onClose={() => setTopupOpen(false)} />
-
       {/* Payment status banner */}
       {pendingOrderId && !pollDone && (
         <PaymentStatusBanner
@@ -1018,7 +1017,54 @@ export default function BillingPage() {
         <p className="text-xs font-medium" style={{ color: isCurrentPlan ? currentCard.accent : isUnlocked ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.25)" }}>
           {isCurrentPlan ? `Plan aktif kamu - ${currentCard.name}` : isUnlocked ? `${currentCard.name} - termasuk di plan kamu` : `${currentCard.name} - belum diaktifkan`}
         </p>
+
+        {/* Topup / Riwayat / Upgrade quick actions */}
+        <div className="flex items-center justify-center gap-2 mt-1">
+          <button
+            onClick={() => setTopupOpen(v => !v)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-[0.97]"
+            style={{
+              background: topupOpen ? "rgba(249,115,22,0.18)" : "rgba(249,115,22,0.1)",
+              border: `1px solid ${topupOpen ? "rgba(249,115,22,0.45)" : "rgba(249,115,22,0.22)"}`,
+              color: "rgb(251,146,60)",
+            }}
+          >
+            <Wallet className="h-3 w-3" />
+            {topupOpen ? "Tutup Topup" : "Topup"}
+          </button>
+          <Link href="/billing/riwayat">
+            <button
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.97]"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                color: "rgba(255,255,255,0.45)",
+              }}
+            >
+              <RefreshCw className="h-3 w-3" />
+              Riwayat
+            </button>
+          </Link>
+          {plan.name !== "Team" && (
+            <Link href="/harga">
+              <button
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.97]"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.09)",
+                  color: "rgba(255,255,255,0.45)",
+                }}
+              >
+                <Zap className="h-3 w-3" />
+                Upgrade
+              </button>
+            </Link>
+          )}
+        </div>
       </div>
+
+      {/* -- Inline Topup Section (below carousel, above plan benefits) -- */}
+      <TopupModal open={topupOpen} onClose={() => setTopupOpen(false)} />
 
       {/* -- Plan benefits -- */}
       <div
@@ -1030,54 +1076,10 @@ export default function BillingPage() {
           animation: "fadeSlideIn 0.22s ease",
         }}
       >
-        {/* Header row: plan name + action buttons */}
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.25)" }}>
-            {currentCard.name}
-          </p>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setTopupOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all active:scale-[0.97]"
-              style={{
-                background: "rgba(249,115,22,0.1)",
-                border: "1px solid rgba(249,115,22,0.22)",
-                color: "rgb(251,146,60)",
-              }}
-            >
-              <Wallet className="h-3 w-3" />
-              Topup
-            </button>
-            <Link href="/billing/riwayat">
-              <button
-                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all active:scale-[0.97]"
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.09)",
-                  color: "rgba(255,255,255,0.4)",
-                }}
-              >
-                <RefreshCw className="h-3 w-3" />
-                Riwayat
-              </button>
-            </Link>
-            {plan.name !== "Team" && (
-              <Link href="/harga">
-                <button
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all active:scale-[0.97]"
-                  style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.09)",
-                    color: "rgba(255,255,255,0.4)",
-                  }}
-                >
-                  <TrendingUp className="h-3 w-3" />
-                  Upgrade
-                </button>
-              </Link>
-            )}
-          </div>
-        </div>
+        {/* Header: plan name */}
+        <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: "rgba(255,255,255,0.25)" }}>
+          Fitur {currentCard.name}
+        </p>
 
         {/* Perks list */}
         <div className="space-y-2">
