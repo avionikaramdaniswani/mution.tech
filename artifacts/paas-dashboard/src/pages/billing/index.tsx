@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useListTransactions, getGetMeQueryKey } from "@workspace/api-client-react";
+import { getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
-  Wallet, Zap, TrendingUp,
-  Loader2, PenLine, X, CheckCircle2, AlertCircle, RefreshCw,
-  Lock,
+  Zap, Loader2, PenLine, X, CheckCircle2, AlertCircle, RefreshCw, Lock,
 } from "lucide-react";
 import { Link } from "wouter";
 import { csrfFetch } from "@/lib/csrf";
@@ -319,7 +317,7 @@ interface OrderPollResult {
   paymentUrl?: string | null;
 }
 
-function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function TopupSection() {
   const [step, setStep] = useState(1);
   const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null);
   const [customRaw, setCustomRaw] = useState("");
@@ -329,18 +327,6 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const { channels, loading: chLoading, error: chError } = usePaymentChannels();
   const packages = usePackages();
-
-  useEffect(() => {
-    if (open) {
-      setStep(1);
-      setSelectedPackage(null);
-      setCustomRaw("");
-      setIsCustom(false);
-      setMethod("QRIS");
-      setError(null);
-      setLoading(false);
-    }
-  }, [open]);
 
   const resolvedAmount = (() => {
     if (selectedPackage) return selectedPackage.priceIdr;
@@ -397,7 +383,6 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
         setError(data.error ?? "Gagal membuat transaksi");
         return;
       }
-      onClose();
       window.location.href = data.paymentUrl;
     } catch {
       setError("Gagal terhubung ke server");
@@ -408,335 +393,297 @@ function TopupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   const STEP_LABELS = ["Nominal", "Metode", "Konfirmasi"];
 
-  if (!open) return null;
-
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{
-        background: "rgba(10,10,12,0.98)",
-        border: "1px solid rgba(255,255,255,0.1)",
-        animation: "fadeSlideIn 0.2s ease",
-      }}
-    >
-        {/* -- Header -- */}
-        <div className="px-5 pt-5 pb-4">
-          {/* Title row - back arrow when step > 1, X to close on right */}
-          <div className="flex items-center gap-2.5 mb-4">
-            {step > 1 && (
-              <button
-                onClick={() => setStep(s => s - 1)}
-                aria-label="Kembali"
-                className="h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.55)" }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 18l-6-6 6-6"/>
-                </svg>
-              </button>
-            )}
-            <p className="text-sm font-semibold flex-1" style={{ color: "rgba(255,255,255,0.9)" }}>Topup Kredit</p>
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      {/* -- Header -- */}
+      <div className="px-5 pt-5 pb-4">
+        {/* Title row + back arrow when step > 1 */}
+        <div className="flex items-center gap-2.5 mb-4">
+          {step > 1 && (
             <button
-              onClick={onClose}
-              aria-label="Tutup"
-              className="h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-70"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.4)" }}
+              onClick={() => setStep(s => s - 1)}
+              aria-label="Kembali"
+              className="h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 border border-border bg-muted hover:bg-muted/70 transition-colors text-muted-foreground"
             >
-              <X className="h-3.5 w-3.5" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6"/>
+              </svg>
             </button>
-          </div>
-
-          {/* Step indicator */}
-          <div className="flex items-start">
-            {STEP_LABELS.map((label, i) => {
-              const num = i + 1;
-              const done = num < step;
-              const active = num === step;
-              return (
-                <div key={i} className="flex items-start" style={{ flex: i < 2 ? 1 : undefined }}>
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div
-                      className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300"
-                      style={{
-                        background: done ? "rgb(249,115,22)" : active ? "rgba(249,115,22,0.15)" : "rgba(255,255,255,0.05)",
-                        border: active ? "1px solid rgba(249,115,22,0.55)" : done ? "none" : "1px solid rgba(255,255,255,0.1)",
-                        color: done ? "white" : active ? "rgb(249,115,22)" : "rgba(255,255,255,0.25)",
-                      }}
-                    >
-                      {done ? "OK" : num}
-                    </div>
-                    <span className="text-[9px] font-medium" style={{ color: active ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.22)" }}>
-                      {label}
-                    </span>
-                  </div>
-                  {i < 2 && (
-                    <div
-                      className="flex-1 h-px mt-3 mx-2 transition-all duration-500"
-                      style={{ background: done ? "rgba(249,115,22,0.45)" : "rgba(255,255,255,0.07)" }}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          )}
+          <p className="text-sm font-semibold text-foreground flex-1">Topup Kredit</p>
         </div>
 
-        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 20px" }} />
-
-        {/* -- Step content -- */}
-        <div className="px-5 py-4">
-
-          {/* Step 1 - Pilih Paket */}
-          {step === 1 && (
-            <div className="space-y-2">
-              {/* Package cards */}
-              {packages.length > 0 && packages.map((pkg) => {
-                const active = !isCustom && selectedPackage?.id === pkg.id;
-                const bonusPct = pkg.creditsAmount > pkg.priceIdr
-                  ? Math.round(((pkg.creditsAmount - pkg.priceIdr) / pkg.priceIdr) * 100) : null;
-                const bonusText = pkg.bonusLabel ?? (bonusPct ? `+${bonusPct}% bonus` : null);
-                return (
-                  <button
-                    key={pkg.id}
-                    onClick={() => pickPackage(pkg)}
-                    className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all text-left"
-                    style={{
-                      border: active ? "1px solid rgba(249,115,22,0.65)" : "1px solid rgba(255,255,255,0.08)",
-                      background: active ? "rgba(249,115,22,0.08)" : "rgba(255,255,255,0.025)",
-                    }}
+        {/* Step indicator */}
+        <div className="flex items-start">
+          {STEP_LABELS.map((label, i) => {
+            const num = i + 1;
+            const done = num < step;
+            const active = num === step;
+            return (
+              <div key={i} className="flex items-start" style={{ flex: i < 2 ? 1 : undefined }}>
+                <div className="flex flex-col items-center gap-1.5">
+                  <div
+                    className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 ${
+                      done
+                        ? "bg-primary text-primary-foreground"
+                        : active
+                        ? "bg-primary/10 border border-primary/50 text-primary"
+                        : "bg-muted border border-border text-muted-foreground"
+                    }`}
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.9)" }}>
-                          {pkg.name}
-                        </span>
-                        {bonusText && (
-                          <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                            style={{ background: "rgba(16,185,129,0.1)", color: "rgb(34,197,94)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                            {bonusText}
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-0.5 text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>
-                        {pkg.creditsAmount.toLocaleString("id-ID")} kredit
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.85)" }}>
-                        {formatRp(pkg.priceIdr)}
-                      </p>
-                    </div>
-                    {active && <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: "rgb(249,115,22)" }} />}
-                  </button>
-                );
-              })}
-
-              {/* Custom nominal */}
-              {!isCustom ? (
-                <button
-                  onClick={() => { setIsCustom(true); setSelectedPackage(null); setError(null); }}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-all"
-                  style={{ border: "1px dashed rgba(255,255,255,0.11)", color: "rgba(255,255,255,0.35)" }}
-                >
-                  <PenLine className="h-3.5 w-3.5" /> Nominal sendiri
-                </button>
-              ) : (
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none"
-                    style={{ color: "rgba(255,255,255,0.45)" }}>Rp</span>
-                  <input
-                    autoFocus
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="0"
-                    value={customRaw ? parseInt(customRaw).toLocaleString("id-ID") : ""}
-                    onChange={(e) => handleCustomInput(e.target.value)}
-                    className="w-full rounded-xl pl-10 pr-10 py-3 text-sm font-bold bg-transparent outline-none"
-                    style={{
-                      border: amountError ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(249,115,22,0.5)",
-                      color: "white",
-                    }}
-                  />
-                  <button
-                    onClick={() => { setIsCustom(false); setCustomRaw(""); setSelectedPackage(null); }}
-                    aria-label="Hapus nominal"
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                    style={{ color: "rgba(255,255,255,0.3)" }}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              )}
-
-              <div className="h-4">
-                {amountError && <p className="text-xs text-red-400">{amountError}</p>}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2 - Metode */}
-          {step === 2 && (
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-0.5">
-              {chLoading && (
-                <div className="flex items-center justify-center py-8 gap-2" style={{ color: "rgba(255,255,255,0.3)" }}>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-xs">Memuat channel...</span>
-                </div>
-              )}
-              {chError && !chLoading && (
-                <p className="text-xs text-center py-4 text-red-400">{chError}</p>
-              )}
-              {!chLoading && !chError && channels.length === 0 && (
-                <p className="text-xs text-center py-4" style={{ color: "rgba(255,255,255,0.3)" }}>Tidak ada channel tersedia</p>
-              )}
-              {!chLoading && channels.length > 0 && (() => {
-                const qris = channels.find(c => c.code === "QRIS");
-                const others = channels.filter(c => c.code !== "QRIS");
-                const groups: Record<string, PaymentChannel[]> = {};
-                others.forEach(c => {
-                  if (!groups[c.group]) groups[c.group] = [];
-                  groups[c.group].push(c);
-                });
-                return (
-                  <>
-                    {qris && (() => {
-                      const active = method === qris.code;
-                      return (
-                        <button
-                          key={qris.code}
-                          onClick={() => setMethod(qris.code)}
-                          className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all text-left"
-                          style={{
-                            border: active ? "1px solid rgba(249,115,22,0.55)" : "1px solid rgba(255,255,255,0.08)",
-                            background: active ? "rgba(249,115,22,0.07)" : "rgba(255,255,255,0.025)",
-                          }}
-                        >
-                          <div className="h-8 w-8 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0"
-                            style={{ background: "rgba(255,255,255,0.06)" }}>
-                            <img src={qris.icon_url} alt={qris.name} className="h-7 w-7 object-contain"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold" style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.85)" }}>{qris.name}</p>
-                            <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>GoPay - OVO - Dana - ShopeePay & semua e-wallet</p>
-                          </div>
-                          {active && (
-                            <CheckCircle2 className="h-4 w-4 flex-shrink-0" style={{ color: "rgb(249,115,22)" }} />
-                          )}
-                        </button>
-                      );
-                    })()}
-
-                    {Object.entries(groups).map(([group, chs]) => (
-                      <div key={group}>
-                        <p className="text-[9px] font-semibold uppercase tracking-widest mb-1.5 mt-2"
-                          style={{ color: "rgba(255,255,255,0.22)" }}>{group}</p>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          {chs.map((c) => {
-                            const active = method === c.code;
-                            return (
-                              <button
-                                key={c.code}
-                                onClick={() => setMethod(c.code)}
-                                className="flex items-center gap-2 rounded-xl px-3 py-2 transition-all text-left"
-                                style={{
-                                  border: active ? "1px solid rgba(249,115,22,0.5)" : "1px solid rgba(255,255,255,0.07)",
-                                  background: active ? "rgba(249,115,22,0.06)" : "rgba(255,255,255,0.02)",
-                                }}
-                              >
-                                <div className="h-6 w-6 rounded-md overflow-hidden flex items-center justify-center flex-shrink-0"
-                                  style={{ background: "rgba(255,255,255,0.06)" }}>
-                                  <img src={c.icon_url} alt={c.name} className="h-5 w-5 object-contain"
-                                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                                </div>
-                                <span className="text-xs font-medium leading-tight truncate"
-                                  style={{ color: active ? "rgb(249,115,22)" : "rgba(255,255,255,0.65)" }}>
-                                  {c.name.replace(" Virtual Account", " VA")}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* Step 3 - Konfirmasi */}
-          {step === 3 && (
-            <div className="rounded-2xl p-4 space-y-3"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              {selectedPackage && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Paket</span>
-                  <span className="text-sm font-bold text-white">{selectedPackage.name}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Bayar</span>
-                <span className="text-sm font-bold text-white">{formatRp(resolvedAmount!)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Kredit didapat</span>
-                <span className="text-sm font-bold" style={{ color: "rgb(34,197,94)" }}>+{resolvedCredits!.toLocaleString("id-ID")}</span>
-              </div>
-              {resolvedCredits !== resolvedAmount && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Bonus kredit</span>
-                  <span className="text-xs font-semibold" style={{ color: "rgb(34,197,94)" }}>
-                    +{(resolvedCredits! - resolvedAmount!).toLocaleString("id-ID")}
+                    {done ? "✓" : num}
+                  </div>
+                  <span className={`text-[9px] font-medium ${active ? "text-foreground" : "text-muted-foreground/50"}`}>
+                    {label}
                   </span>
                 </div>
-              )}
+                {i < 2 && (
+                  <div
+                    className={`flex-1 h-px mt-3 mx-2 transition-all duration-500 ${done ? "bg-primary/30" : "bg-border"}`}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="border-t border-border mx-5" />
+
+      {/* -- Step content -- */}
+      <div className="px-5 py-4">
+
+        {/* Step 1 - Pilih Paket */}
+        {step === 1 && (
+          <div className="space-y-2">
+            {packages.length > 0 && packages.map((pkg) => {
+              const active = !isCustom && selectedPackage?.id === pkg.id;
+              const bonusPct = pkg.creditsAmount > pkg.priceIdr
+                ? Math.round(((pkg.creditsAmount - pkg.priceIdr) / pkg.priceIdr) * 100) : null;
+              const bonusText = pkg.bonusLabel ?? (bonusPct ? `+${bonusPct}% bonus` : null);
+              return (
+                <button
+                  key={pkg.id}
+                  onClick={() => pickPackage(pkg)}
+                  className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all text-left border ${
+                    active
+                      ? "border-primary/40 bg-primary/5"
+                      : "border-border bg-background hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-bold ${active ? "text-primary" : "text-foreground"}`}>
+                        {pkg.name}
+                      </span>
+                      {bonusText && (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-green-50 text-green-600 border border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20">
+                          {bonusText}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {pkg.creditsAmount.toLocaleString("id-ID")} kredit
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`text-sm font-bold ${active ? "text-primary" : "text-foreground"}`}>
+                      {formatRp(pkg.priceIdr)}
+                    </p>
+                  </div>
+                  {active && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
+                </button>
+              );
+            })}
+
+            {/* Custom nominal */}
+            {!isCustom ? (
+              <button
+                onClick={() => { setIsCustom(true); setSelectedPackage(null); setError(null); }}
+                className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium border border-dashed border-border text-muted-foreground hover:bg-muted/50 transition-all"
+              >
+                <PenLine className="h-3.5 w-3.5" /> Nominal sendiri
+              </button>
+            ) : (
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none text-muted-foreground">Rp</span>
+                <input
+                  autoFocus
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={customRaw ? parseInt(customRaw).toLocaleString("id-ID") : ""}
+                  onChange={(e) => handleCustomInput(e.target.value)}
+                  className={`w-full rounded-xl pl-10 pr-10 py-3 text-sm font-bold bg-background text-foreground outline-none border ${
+                    amountError ? "border-destructive/50" : "border-primary/40 focus:border-primary/70"
+                  }`}
+                />
+                <button
+                  onClick={() => { setIsCustom(false); setCustomRaw(""); setSelectedPackage(null); }}
+                  aria-label="Hapus nominal"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+
+            <div className="h-4">
+              {amountError && <p className="text-xs text-destructive">{amountError}</p>}
+            </div>
+          </div>
+        )}
+
+        {/* Step 2 - Metode */}
+        {step === 2 && (
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-0.5">
+            {chLoading && (
+              <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-xs">Memuat channel...</span>
+              </div>
+            )}
+            {chError && !chLoading && (
+              <p className="text-xs text-center py-4 text-destructive">{chError}</p>
+            )}
+            {!chLoading && !chError && channels.length === 0 && (
+              <p className="text-xs text-center py-4 text-muted-foreground">Tidak ada channel tersedia</p>
+            )}
+            {!chLoading && channels.length > 0 && (() => {
+              const qris = channels.find(c => c.code === "QRIS");
+              const others = channels.filter(c => c.code !== "QRIS");
+              const groups: Record<string, PaymentChannel[]> = {};
+              others.forEach(c => {
+                if (!groups[c.group]) groups[c.group] = [];
+                groups[c.group].push(c);
+              });
+              return (
+                <>
+                  {qris && (() => {
+                    const active = method === qris.code;
+                    return (
+                      <button
+                        key={qris.code}
+                        onClick={() => setMethod(qris.code)}
+                        className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all text-left border ${
+                          active ? "border-primary/40 bg-primary/5" : "border-border bg-background hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="h-8 w-8 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 bg-muted border border-border">
+                          <img src={qris.icon_url} alt={qris.name} className="h-7 w-7 object-contain"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-semibold ${active ? "text-primary" : "text-foreground"}`}>{qris.name}</p>
+                          <p className="text-[10px] text-muted-foreground">GoPay · OVO · Dana · ShopeePay & semua e-wallet</p>
+                        </div>
+                        {active && <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-primary" />}
+                      </button>
+                    );
+                  })()}
+
+                  {Object.entries(groups).map(([group, chs]) => (
+                    <div key={group}>
+                      <p className="text-[9px] font-semibold uppercase tracking-widest mb-1.5 mt-2 text-muted-foreground/60">{group}</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {chs.map((c) => {
+                          const active = method === c.code;
+                          return (
+                            <button
+                              key={c.code}
+                              onClick={() => setMethod(c.code)}
+                              className={`flex items-center gap-2 rounded-xl px-3 py-2 transition-all text-left border ${
+                                active ? "border-primary/40 bg-primary/5" : "border-border bg-background hover:bg-muted/50"
+                              }`}
+                            >
+                              <div className="h-6 w-6 rounded-md overflow-hidden flex items-center justify-center flex-shrink-0 bg-muted border border-border">
+                                <img src={c.icon_url} alt={c.name} className="h-5 w-5 object-contain"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                              </div>
+                              <span className={`text-xs font-medium leading-tight truncate ${active ? "text-primary" : "text-foreground"}`}>
+                                {c.name.replace(" Virtual Account", " VA")}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Step 3 - Konfirmasi */}
+        {step === 3 && (
+          <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+            {selectedPackage && (
               <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: "rgba(255,255,255,0.38)" }}>Metode</span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(249,115,22,0.1)", color: "rgb(249,115,22)", border: "1px solid rgba(249,115,22,0.2)" }}>
-                  {selectedMethodLabel}
+                <span className="text-xs text-muted-foreground">Paket</span>
+                <span className="text-sm font-bold text-foreground">{selectedPackage.name}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Bayar</span>
+              <span className="text-sm font-bold text-foreground">{formatRp(resolvedAmount!)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Kredit didapat</span>
+              <span className="text-sm font-bold text-green-600 dark:text-green-400">+{resolvedCredits!.toLocaleString("id-ID")}</span>
+            </div>
+            {resolvedCredits !== resolvedAmount && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Bonus kredit</span>
+                <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                  +{(resolvedCredits! - resolvedAmount!).toLocaleString("id-ID")}
                 </span>
               </div>
-              <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-white">Total bayar</span>
-                <span className="text-lg font-extrabold text-white">{formatRp(resolvedAmount!)}</span>
-              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Metode</span>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                {selectedMethodLabel}
+              </span>
             </div>
-          )}
-        </div>
+            <div className="border-t border-border" />
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-foreground">Total bayar</span>
+              <span className="text-lg font-extrabold text-foreground">{formatRp(resolvedAmount!)}</span>
+            </div>
+          </div>
+        )}
+      </div>
 
-        {/* -- Unified CTA footer -- */}
-        <div className="px-5 pb-5 space-y-2.5">
-          {error && <p className="text-xs text-red-400">{error}</p>}
+      {/* -- CTA footer -- */}
+      <div className="px-5 pb-5 space-y-2.5">
+        {error && <p className="text-xs text-destructive">{error}</p>}
 
-          <button
-            onClick={() => {
-              if (step === 1 && canAdvanceStep1) setStep(2);
-              else if (step === 2) setStep(3);
-              else handlePay();
-            }}
-            disabled={(step === 1 && !canAdvanceStep1) || (step === 3 && (loading || !resolvedAmount || !!amountError))}
-            className="w-full h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-            style={{
-              background: (step < 3 ? (step === 1 ? canAdvanceStep1 : true) : (resolvedAmount && !amountError)) ? "rgb(249,115,22)" : "rgba(255,255,255,0.06)",
-              color: (step < 3 ? (step === 1 ? canAdvanceStep1 : true) : (resolvedAmount && !amountError)) ? "white" : "rgba(255,255,255,0.22)",
-              opacity: loading ? 0.7 : 1,
-              cursor: ((step === 1 && !canAdvanceStep1) || (step === 3 && (loading || !resolvedAmount || !!amountError))) ? "not-allowed" : "pointer",
-            }}
-          >
-            {step === 1 && (canAdvanceStep1 ? `Lanjut - ${formatRp(resolvedAmount!)}` : "Pilih nominal dulu")}
-            {step === 2 && "Lanjut ->"}
-            {step === 3 && (loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memproses...</> : `Bayar Sekarang - ${formatRp(resolvedAmount!)}`)}
-          </button>
+        <button
+          onClick={() => {
+            if (step === 1 && canAdvanceStep1) setStep(2);
+            else if (step === 2) setStep(3);
+            else handlePay();
+          }}
+          disabled={(step === 1 && !canAdvanceStep1) || (step === 3 && (loading || !resolvedAmount || !!amountError))}
+          className={`w-full h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
+            (step < 3 ? (step === 1 ? canAdvanceStep1 : true) : (resolvedAmount && !amountError))
+              ? "bg-primary text-primary-foreground hover:opacity-90 active:opacity-80"
+              : "bg-muted text-muted-foreground cursor-not-allowed"
+          }`}
+          style={{ opacity: loading ? 0.7 : 1 }}
+        >
+          {step === 1 && (canAdvanceStep1 ? `Lanjut · ${formatRp(resolvedAmount!)}` : "Pilih nominal dulu")}
+          {step === 2 && "Lanjut →"}
+          {step === 3 && (loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Memproses...</> : `Bayar Sekarang · ${formatRp(resolvedAmount!)}`)}
+        </button>
 
-          {step === 3 && (
-            <p className="text-[10px] text-center" style={{ color: "rgba(255,255,255,0.18)" }}>
-              Kredit masuk otomatis setelah pembayaran dikonfirmasi
-            </p>
-          )}
-        </div>
+        {step === 3 && (
+          <p className="text-[10px] text-center text-muted-foreground/60">
+            Kredit masuk otomatis setelah pembayaran dikonfirmasi
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -883,9 +830,7 @@ function PaymentStatusBanner({ orderId, onDone }: { orderId: number; onDone: () 
 
 export default function BillingPage() {
   const { user } = useAuth();
-  const { data: transactions, isLoading: txLoading } = useListTransactions();
-  const [topupOpen, setTopupOpen] = useState(false);
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [pollDone, setPollDone] = useState(false);
 
@@ -906,7 +851,6 @@ export default function BillingPage() {
 
   const credits = user?.credits ?? 0;
   const plan = planStyle(user?.plan);
-  const pct = Math.min(100, Math.round((credits / 5000) * 100));
 
   const userPlanIndex = PLAN_CARDS.findIndex((p) => p.id === (user?.plan ?? "hobby"));
   const [cardIndex, setCardIndex] = useState(userPlanIndex === -1 ? 0 : userPlanIndex);
@@ -1015,46 +959,20 @@ export default function BillingPage() {
 
         {/* Plan status label */}
         <p className="text-xs font-medium" style={{ color: isCurrentPlan ? currentCard.accent : isUnlocked ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.25)" }}>
-          {isCurrentPlan ? `Plan aktif kamu - ${currentCard.name}` : isUnlocked ? `${currentCard.name} - termasuk di plan kamu` : `${currentCard.name} - belum diaktifkan`}
+          {isCurrentPlan ? `Plan aktif kamu · ${currentCard.name}` : isUnlocked ? `${currentCard.name} · termasuk di plan kamu` : `${currentCard.name} · belum diaktifkan`}
         </p>
 
-        {/* Topup / Riwayat / Upgrade quick actions */}
+        {/* Riwayat / Upgrade quick actions */}
         <div className="flex items-center justify-center gap-2 mt-1">
-          <button
-            onClick={() => setTopupOpen(v => !v)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-[0.97]"
-            style={{
-              background: topupOpen ? "rgba(249,115,22,0.18)" : "rgba(249,115,22,0.1)",
-              border: `1px solid ${topupOpen ? "rgba(249,115,22,0.45)" : "rgba(249,115,22,0.22)"}`,
-              color: "rgb(251,146,60)",
-            }}
-          >
-            <Wallet className="h-3 w-3" />
-            {topupOpen ? "Tutup Topup" : "Topup"}
-          </button>
           <Link href="/billing/riwayat">
-            <button
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.97]"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.09)",
-                color: "rgba(255,255,255,0.45)",
-              }}
-            >
+            <button className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-card hover:bg-muted transition-all active:scale-[0.97] text-muted-foreground">
               <RefreshCw className="h-3 w-3" />
               Riwayat
             </button>
           </Link>
           {plan.name !== "Team" && (
             <Link href="/harga">
-              <button
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.97]"
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.09)",
-                  color: "rgba(255,255,255,0.45)",
-                }}
-              >
+              <button className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-card hover:bg-muted transition-all active:scale-[0.97] text-muted-foreground">
                 <Zap className="h-3 w-3" />
                 Upgrade
               </button>
@@ -1063,33 +981,19 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* -- Inline Topup Section (below carousel, above plan benefits) -- */}
-      <TopupModal open={topupOpen} onClose={() => setTopupOpen(false)} />
+      {/* -- Topup Section (always visible below carousel) -- */}
+      <TopupSection />
 
       {/* -- Plan benefits -- */}
-      <div
-        key={cardIndex}
-        className="rounded-xl px-4 py-3.5"
-        style={{
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(255,255,255,0.07)",
-          animation: "fadeSlideIn 0.22s ease",
-        }}
-      >
-        {/* Header: plan name */}
-        <p className="text-[10px] font-semibold tracking-widest uppercase mb-3" style={{ color: "rgba(255,255,255,0.25)" }}>
+      <div key={cardIndex} className="rounded-xl border border-border bg-card px-4 py-3.5" style={{ animation: "fadeSlideIn 0.22s ease" }}>
+        <p className="text-[10px] font-semibold tracking-widest uppercase mb-3 text-muted-foreground/60">
           Fitur {currentCard.name}
         </p>
-
-        {/* Perks list */}
         <div className="space-y-2">
           {PLAN_PERKS[currentCard.id].map((perk, i) => (
             <div key={i} className="flex items-center gap-2.5">
-              <div
-                className="h-1 w-1 rounded-full flex-shrink-0"
-                style={{ background: isUnlocked ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.12)" }}
-              />
-              <span className="text-sm" style={{ color: isUnlocked ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.18)" }}>
+              <div className={`h-1 w-1 rounded-full flex-shrink-0 ${isUnlocked ? "bg-muted-foreground/40" : "bg-muted-foreground/15"}`} />
+              <span className={`text-sm ${isUnlocked ? "text-muted-foreground" : "text-muted-foreground/30"}`}>
                 {perk}
               </span>
             </div>
