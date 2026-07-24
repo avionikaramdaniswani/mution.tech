@@ -18,7 +18,7 @@ import {
 import { Link } from "wouter";
 import { csrfFetch } from "@/lib/csrf";
 
-const MIN = 3_000;
+const MIN = 1_000;
 const MAX = 10_000_000;
 
 interface CreditPackage {
