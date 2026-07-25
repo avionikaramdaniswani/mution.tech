@@ -70,7 +70,7 @@ function shortRp(n: number) {
   if (n >= 1_000) return `${n / 1_000}rb`;
   return String(n);
 }
-// -- Credit card (single, bright orange) ------------------------------------
+// -- Credit card (split: orange left | circuit-board right) -----------------
 function CreditCard({ credits, userName }: { credits: number; userName?: string }) {
   return (
     <div
@@ -79,54 +79,80 @@ function CreditCard({ credits, userName }: { credits: number; userName?: string 
         aspectRatio: "1.586 / 1",
         maxWidth: "22rem",
         margin: "0 auto",
-        background: "linear-gradient(135deg, #c45000 0%, #ea6500 25%, #f97316 55%, #fb923c 78%, #fdba74 100%)",
-        boxShadow: "0 20px 56px rgba(234,101,0,0.40), 0 6px 20px rgba(249,115,22,0.25)",
+        // Base: deep-to-mid orange gradient filling the whole card
+        background: "linear-gradient(130deg, #a83d00 0%, #d45600 30%, #ea6a00 55%, #f97316 80%, #fb923c 100%)",
+        boxShadow: "0 22px 60px rgba(168,61,0,0.45), 0 6px 22px rgba(234,106,0,0.28)",
       }}
     >
-      {/* Dot pattern */}
-      <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.13 }}>
+      {/* ── Right panel: hero-bg circuit board, diagonal clip ── */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: "url('/hero-bg.png')",
+          // Zoom in and focus on the circuit-rich bottom-right zone
+          backgroundSize: "200%",
+          backgroundPosition: "72% 62%",
+          // Diagonal trapezoid cut — wide at top-right, narrower at bottom
+          clipPath: "polygon(46% 0%, 100% 0%, 100% 100%, 30% 100%)",
+        }}
+      />
+
+      {/* Warm orange tint over the image so it blends with the card colour */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          clipPath: "polygon(46% 0%, 100% 0%, 100% 100%, 30% 100%)",
+          background: "rgba(180, 70, 0, 0.38)",
+        }}
+      />
+
+      {/* Smooth feathered seam between left and right panels */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(to right, #a83d00 20%, rgba(168,61,0,0.92) 32%, rgba(168,61,0,0.60) 42%, rgba(168,61,0,0.10) 55%, transparent 68%)",
+        }}
+      />
+
+      {/* Subtle dot pattern on left (over the solid orange area) */}
+      <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.10 }}>
         <defs>
           <pattern id="cdots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
             <circle cx="1" cy="1" r="0.8" fill="white" />
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill="url(#cdots)" />
+        {/* Mask to left 50% only */}
+        <rect width="50%" height="100%" fill="url(#cdots)" />
       </svg>
 
-      {/* Radial light top-left */}
-      <div className="absolute pointer-events-none" style={{
-        top: "-35%", left: "-20%", width: "75%", height: "140%",
-        background: "radial-gradient(ellipse, rgba(255,255,255,0.24) 0%, transparent 65%)",
-      }} />
+      {/* Soft glow top-left */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          top: "-40%", left: "-18%", width: "65%", height: "150%",
+          background: "radial-gradient(ellipse, rgba(255,200,120,0.18) 0%, transparent 62%)",
+        }}
+      />
 
-      {/* Decorative rings bottom-right */}
-      <div className="absolute" style={{ bottom: "-18%", right: "-5%" }}>
-        <svg width="110" height="90" viewBox="0 0 110 90">
-          <circle cx="38" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
-          <circle cx="72" cy="45" r="38" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
-          <circle cx="38" cy="45" r="38" fill="rgba(255,255,255,0.07)" />
-          <circle cx="72" cy="45" r="38" fill="rgba(255,255,255,0.07)" />
-        </svg>
-      </div>
-
-      {/* Card content */}
-      <div className="absolute inset-0 flex flex-col justify-between p-[7%]">
-        {/* Top row: logo + badge */}
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-1.5">
-            <img src="/mution-logo.png" alt="" className="h-5 w-auto brightness-200" style={{ filter: "brightness(10)" }} />
-            <span className="font-extrabold text-white tracking-tight" style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14 }}>
-              Mution
-            </span>
-          </div>
-          <span style={{
-            fontSize: 9, fontWeight: 700, letterSpacing: "0.16em",
-            color: "rgba(255,255,255,0.95)",
-            border: "1px solid rgba(255,255,255,0.38)",
-            background: "rgba(255,255,255,0.18)",
-            padding: "2px 8px", borderRadius: 99,
-          }}>
-            CREDITS
+      {/* Card content — lives entirely in the left/orange zone */}
+      <div className="absolute inset-0 flex flex-col justify-between p-[7%]" style={{ width: "62%" }}>
+        {/* Top row: logo + wordmark */}
+        <div className="flex items-center gap-1.5">
+          <img
+            src="/mution-logo.png"
+            alt=""
+            className="h-5 w-auto"
+            style={{ filter: "brightness(10)" }}
+          />
+          <span
+            className="font-extrabold text-white tracking-tight"
+            style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14 }}
+          >
+            Mution
           </span>
         </div>
 
@@ -151,22 +177,46 @@ function CreditCard({ credits, userName }: { credits: number; userName?: string 
         </div>
 
         {/* Bottom: balance + name */}
-        <div className="flex items-end justify-between gap-2">
-          <div className="min-w-0">
-            <p style={{ fontSize: 8, letterSpacing: "0.12em", color: "rgba(255,255,255,0.65)", marginBottom: 3 }}>
-              SALDO KREDIT
-            </p>
-            <p className="font-extrabold tabular-nums leading-none" style={{ fontSize: 22, color: "white" }}>
-              {credits.toLocaleString("id-ID")}
-            </p>
-            <p className="font-semibold truncate mt-2" style={{ fontSize: 10, letterSpacing: "0.06em", color: "rgba(255,255,255,0.58)" }}>
-              {(userName ?? "—").toUpperCase()}
-            </p>
-          </div>
-          <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.22em", color: "rgba(255,255,255,0.42)", flexShrink: 0 }}>
-            DEBIT
+        <div>
+          <p style={{ fontSize: 8, letterSpacing: "0.12em", color: "rgba(255,255,255,0.60)", marginBottom: 3 }}>
+            SALDO KREDIT
+          </p>
+          <p
+            className="font-extrabold tabular-nums leading-none"
+            style={{ fontSize: 21, color: "white" }}
+          >
+            {credits.toLocaleString("id-ID")}
+          </p>
+          <p
+            className="font-semibold truncate mt-2"
+            style={{ fontSize: 10, letterSpacing: "0.06em", color: "rgba(255,255,255,0.52)" }}
+          >
+            {(userName ?? "—").toUpperCase()}
           </p>
         </div>
+      </div>
+
+      {/* CREDITS badge — absolute top-right corner, inside the image zone */}
+      <div className="absolute" style={{ top: "7%", right: "6%" }}>
+        <span
+          style={{
+            fontSize: 9, fontWeight: 700, letterSpacing: "0.16em",
+            color: "rgba(255,255,255,0.88)",
+            border: "1px solid rgba(255,255,255,0.35)",
+            background: "rgba(168,61,0,0.45)",
+            padding: "2px 8px", borderRadius: 99,
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          CREDITS
+        </span>
+      </div>
+
+      {/* DEBIT label — absolute bottom-right */}
+      <div className="absolute" style={{ bottom: "8%", right: "6%" }}>
+        <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.22em", color: "rgba(255,255,255,0.35)" }}>
+          DEBIT
+        </p>
       </div>
     </div>
   );
