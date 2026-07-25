@@ -3,7 +3,6 @@ import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, cr
 import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
-import { computePlan } from "../lib/plan";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
 import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride } from "./v1-proxy";
 import { MODEL_CATALOG } from "@workspace/model-catalog";
@@ -297,13 +296,12 @@ router.post("/admin/users/:id/credits", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Saldo hasil penyesuaian tidak boleh negatif" });
     return;
   }
-  const newPlan = computePlan(newCredits);
   const cleanNote = typeof note === "string" && note.trim().length > 0
     ? note.trim()
     : `Penyesuaian admin ${amount > 0 ? "+" : ""}${amount.toLocaleString("id-ID")}`;
 
   await db.transaction(async (tx) => {
-    await tx.update(usersTable).set({ credits: newCredits, plan: newPlan }).where(eq(usersTable.id, id));
+    await tx.update(usersTable).set({ credits: newCredits }).where(eq(usersTable.id, id));
     await tx.insert(creditTransactionsTable).values({
       userId: id,
       type: "plan_credit",

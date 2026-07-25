@@ -5,7 +5,6 @@ import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import { createSession, deleteOtherUserSessions, deleteSession, requireAuth, SESSION_COOKIE, SESSION_DURATION_MS } from "../lib/auth";
-import { computePlan } from "../lib/plan";
 import { authRateLimitKey, issueCsrfToken, rateLimit } from "../lib/security";
 import { logger } from "../lib/logger";
 import { REFEREE_BONUS } from "./referral";
@@ -259,10 +258,9 @@ router.post("/auth/login", AuthLimiter, async (req, res): Promise<void> => {
     return;
   }
 
-  const newPlan = computePlan(user.credits);
   const [updated] = await db
     .update(usersTable)
-    .set({ lastLoginAt: new Date(), plan: newPlan })
+    .set({ lastLoginAt: new Date() })
     .where(eq(usersTable.id, user.id))
     .returning();
 

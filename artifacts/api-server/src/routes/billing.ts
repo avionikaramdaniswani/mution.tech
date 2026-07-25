@@ -3,7 +3,6 @@ import { db, usersTable, creditTransactionsTable, paymentOrdersTable, creditPack
 import { and, count, desc, eq, ne } from "drizzle-orm";
 import { REFERRER_REWARD } from "./referral";
 import { requireAuth } from "../lib/auth";
-import { computePlan } from "../lib/plan";
 import { logger } from "../lib/logger";
 import { broadcastToUser, broadcastAdmin } from "../lib/events";
 import { z } from "zod";
@@ -94,11 +93,10 @@ async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: string) 
     }
 
     const newCredits = freshUser.credits + claimed.creditsAmount;
-    const newPlan = computePlan(newCredits);
 
     await tx
       .update(usersTable)
-      .set({ credits: newCredits, plan: newPlan })
+      .set({ credits: newCredits })
       .where(eq(usersTable.id, claimed.userId));
 
     await tx.insert(creditTransactionsTable).values({
@@ -132,7 +130,7 @@ async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: string) 
           const newReferrerCredits = referrer.credits + REFERRER_REWARD;
           await tx
             .update(usersTable)
-            .set({ credits: newReferrerCredits, plan: computePlan(newReferrerCredits) })
+            .set({ credits: newReferrerCredits })
             .where(eq(usersTable.id, referrer.id));
 
           await tx.insert(creditTransactionsTable).values({
