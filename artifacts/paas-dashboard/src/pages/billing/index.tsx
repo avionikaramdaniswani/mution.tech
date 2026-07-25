@@ -80,7 +80,7 @@ function CreditCard({ credits, userName }: { credits: number; userName?: string 
         maxWidth: "22rem",
         margin: "0 auto",
         // Base: deep-to-mid orange gradient filling the whole card
-        background: "linear-gradient(130deg, #a83d00 0%, #d45600 30%, #ea6a00 55%, #f97316 80%, #fb923c 100%)",
+        background: "linear-gradient(130deg, #c04800 0%, #e05a00 30%, #f06a00 55%, #f97316 80%, #fb923c 100%)",
         boxShadow: "0 22px 60px rgba(168,61,0,0.45), 0 6px 22px rgba(234,106,0,0.28)",
       }}
     >
@@ -114,7 +114,7 @@ function CreditCard({ credits, userName }: { credits: number; userName?: string 
           position: "absolute",
           inset: 0,
           background:
-            "linear-gradient(to right, #a83d00 20%, rgba(168,61,0,0.92) 32%, rgba(168,61,0,0.60) 42%, rgba(168,61,0,0.10) 55%, transparent 68%)",
+            "linear-gradient(to right, #c04800 20%, rgba(192,72,0,0.88) 32%, rgba(192,72,0,0.52) 44%, rgba(192,72,0,0.08) 58%, transparent 70%)",
         }}
       />
 
@@ -146,11 +146,11 @@ function CreditCard({ credits, userName }: { credits: number; userName?: string 
             src="/mution-logo.png"
             alt=""
             className="h-5 w-auto"
-            style={{ filter: "brightness(10)" }}
+            style={{ filter: "brightness(0) invert(1)" }}
           />
           <span
-            className="font-extrabold text-white tracking-tight"
-            style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14 }}
+            className="font-extrabold tracking-tight"
+            style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, color: "#ffffff" }}
           >
             Mution
           </span>
@@ -178,18 +178,18 @@ function CreditCard({ credits, userName }: { credits: number; userName?: string 
 
         {/* Bottom: balance + name */}
         <div>
-          <p style={{ fontSize: 8, letterSpacing: "0.12em", color: "rgba(255,255,255,0.60)", marginBottom: 3 }}>
+          <p style={{ fontSize: 8, letterSpacing: "0.13em", color: "rgba(255,255,255,0.82)", marginBottom: 3, fontWeight: 600 }}>
             SALDO KREDIT
           </p>
           <p
             className="font-extrabold tabular-nums leading-none"
-            style={{ fontSize: 21, color: "white" }}
+            style={{ fontSize: 21, color: "#ffffff", textShadow: "0 1px 6px rgba(0,0,0,0.25)" }}
           >
             {credits.toLocaleString("id-ID")}
           </p>
           <p
             className="font-semibold truncate mt-2"
-            style={{ fontSize: 10, letterSpacing: "0.06em", color: "rgba(255,255,255,0.52)" }}
+            style={{ fontSize: 10, letterSpacing: "0.06em", color: "rgba(255,255,255,0.78)" }}
           >
             {(userName ?? "—").toUpperCase()}
           </p>
@@ -201,9 +201,9 @@ function CreditCard({ credits, userName }: { credits: number; userName?: string 
         <span
           style={{
             fontSize: 9, fontWeight: 700, letterSpacing: "0.16em",
-            color: "rgba(255,255,255,0.88)",
-            border: "1px solid rgba(255,255,255,0.35)",
-            background: "rgba(168,61,0,0.45)",
+            color: "#ffffff",
+            border: "1px solid rgba(255,255,255,0.45)",
+            background: "rgba(140,50,0,0.50)",
             padding: "2px 8px", borderRadius: 99,
             backdropFilter: "blur(4px)",
           }}
@@ -214,7 +214,7 @@ function CreditCard({ credits, userName }: { credits: number; userName?: string 
 
       {/* DEBIT label — absolute bottom-right */}
       <div className="absolute" style={{ bottom: "8%", right: "6%" }}>
-        <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.22em", color: "rgba(255,255,255,0.35)" }}>
+        <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.22em", color: "rgba(255,255,255,0.70)" }}>
           DEBIT
         </p>
       </div>
