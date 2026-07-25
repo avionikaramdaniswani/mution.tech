@@ -244,6 +244,15 @@ function TopupSection() {
   const { channels, loading: chLoading, error: chError } = usePaymentChannels();
   const packages = usePackages();
 
+  const PRESETS = [5_000, 10_000, 20_000, 50_000, 100_000, 200_000];
+
+  function pickPreset(amount: number) {
+    setCustomRaw(String(amount));
+    setIsCustom(true);
+    setSelectedPackage(null);
+    setError(null);
+  }
+
   const resolvedAmount = (() => {
     if (selectedPackage) return selectedPackage.priceIdr;
     if (isCustom) {
@@ -369,84 +378,126 @@ function TopupSection() {
       {/* -- Step content -- */}
       <div className="px-5 py-4">
 
-        {/* Step 1 - Pilih Paket */}
+        {/* Step 1 - Pilih Nominal */}
         {step === 1 && (
-          <div className="space-y-2">
-            {packages.length > 0 && packages.map((pkg) => {
-              const active = !isCustom && selectedPackage?.id === pkg.id;
-              const bonusPct = pkg.creditsAmount > pkg.priceIdr
-                ? Math.round(((pkg.creditsAmount - pkg.priceIdr) / pkg.priceIdr) * 100) : null;
-              const bonusText = pkg.bonusLabel ?? (bonusPct ? `+${bonusPct}% bonus` : null);
-              return (
-                <button
-                  key={pkg.id}
-                  onClick={() => pickPackage(pkg)}
-                  className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all text-left border ${
-                    active
-                      ? "border-primary/40 bg-primary/5"
-                      : "border-border bg-background hover:bg-muted/50"
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-bold ${active ? "text-primary" : "text-foreground"}`}>
-                        {pkg.name}
-                      </span>
-                      {bonusText && (
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-green-50 text-green-600 border border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20">
-                          {bonusText}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {pkg.creditsAmount.toLocaleString("id-ID")} kredit
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className={`text-sm font-bold ${active ? "text-primary" : "text-foreground"}`}>
-                      {formatRp(pkg.priceIdr)}
-                    </p>
-                  </div>
-                  {active && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
-                </button>
-              );
-            })}
+          <div className="space-y-4">
 
-            {/* Custom nominal */}
-            {!isCustom ? (
-              <button
-                onClick={() => { setIsCustom(true); setSelectedPackage(null); setError(null); }}
-                className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium border border-dashed border-border text-muted-foreground hover:bg-muted/50 transition-all"
-              >
-                <PenLine className="h-3.5 w-3.5" /> Nominal sendiri
-              </button>
-            ) : (
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none text-muted-foreground">Rp</span>
-                <input
-                  autoFocus
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={customRaw ? parseInt(customRaw).toLocaleString("id-ID") : ""}
-                  onChange={(e) => handleCustomInput(e.target.value)}
-                  className={`w-full rounded-xl pl-10 pr-10 py-3 text-sm font-bold bg-background text-foreground outline-none border ${
-                    amountError ? "border-destructive/50" : "border-primary/40 focus:border-primary/70"
-                  }`}
-                />
-                <button
-                  onClick={() => { setIsCustom(false); setCustomRaw(""); setSelectedPackage(null); }}
-                  aria-label="Hapus nominal"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+            {/* ── Paket Kredit (3-col grid) ── */}
+            {packages.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2">Paket Kredit</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {packages.map((pkg) => {
+                    const active = !isCustom && selectedPackage?.id === pkg.id;
+                    const bonusPct = pkg.creditsAmount > pkg.priceIdr
+                      ? Math.round(((pkg.creditsAmount - pkg.priceIdr) / pkg.priceIdr) * 100) : null;
+                    const bonusText = pkg.bonusLabel ?? (bonusPct ? `+${bonusPct}%` : null);
+                    return (
+                      <button
+                        key={pkg.id}
+                        onClick={() => pickPackage(pkg)}
+                        className={`relative flex flex-col items-start rounded-xl p-3 transition-all text-left border ${
+                          active
+                            ? "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
+                            : "border-border bg-background hover:bg-muted/50"
+                        }`}
+                      >
+                        {bonusText && (
+                          <span className="mb-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold bg-green-50 text-green-600 border border-green-200">
+                            {bonusText}
+                          </span>
+                        )}
+                        <span className={`text-xs font-bold leading-tight ${active ? "text-primary" : "text-foreground"}`}>
+                          {pkg.name}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+                          {pkg.creditsAmount >= 1000
+                            ? `${(pkg.creditsAmount / 1000).toFixed(0)}rb cr`
+                            : `${pkg.creditsAmount} cr`}
+                        </span>
+                        <span className={`text-xs font-bold mt-1.5 ${active ? "text-primary" : "text-foreground"}`}>
+                          {formatRp(pkg.priceIdr)}
+                        </span>
+                        {active && (
+                          <CheckCircle2 className="absolute top-2 right-2 h-3.5 w-3.5 text-primary" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            <div className="h-4">
-              {amountError && <p className="text-xs text-destructive">{amountError}</p>}
+            {/* ── Nominal Cepat (preset chips, 3-col) ── */}
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2">Nominal Cepat</p>
+              <div className="grid grid-cols-3 gap-2">
+                {PRESETS.map((amount) => {
+                  const activePreset = isCustom && !selectedPackage && parseInt(customRaw || "0") === amount;
+                  const label = amount >= 1_000_000
+                    ? `${amount / 1_000_000}jt`
+                    : `${amount / 1_000}rb`;
+                  return (
+                    <button
+                      key={amount}
+                      onClick={() => pickPreset(amount)}
+                      className={`rounded-xl py-2 text-xs font-semibold border transition-all ${
+                        activePreset
+                          ? "border-primary/50 bg-primary/5 text-primary ring-1 ring-primary/20"
+                          : "border-border bg-background text-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      Rp {label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
+            {/* ── Custom / nominal lain ── */}
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2">Nominal Lain</p>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none text-muted-foreground">
+                  Rp
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Masukkan nominal..."
+                  value={isCustom && !selectedPackage && !PRESETS.includes(parseInt(customRaw || "0"))
+                    ? (customRaw ? parseInt(customRaw).toLocaleString("id-ID") : "")
+                    : ""}
+                  onFocus={() => {
+                    if (selectedPackage || !isCustom || PRESETS.includes(parseInt(customRaw || "0"))) {
+                      setIsCustom(true);
+                      setSelectedPackage(null);
+                      setCustomRaw("");
+                      setError(null);
+                    }
+                  }}
+                  onChange={(e) => handleCustomInput(e.target.value)}
+                  className={`w-full rounded-xl pl-10 pr-10 py-2.5 text-sm font-bold bg-background text-foreground outline-none border transition-colors ${
+                    amountError
+                      ? "border-destructive/50"
+                      : isCustom && !selectedPackage && !PRESETS.includes(parseInt(customRaw || "0")) && customRaw
+                      ? "border-primary/50 ring-1 ring-primary/20"
+                      : "border-border focus:border-primary/50"
+                  }`}
+                />
+                {isCustom && !selectedPackage && customRaw && !PRESETS.includes(parseInt(customRaw)) && (
+                  <button
+                    onClick={() => { setIsCustom(false); setCustomRaw(""); setSelectedPackage(null); }}
+                    aria-label="Hapus nominal"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              {amountError && <p className="text-xs text-destructive mt-1.5">{amountError}</p>}
+            </div>
+
           </div>
         )}
 
