@@ -757,7 +757,13 @@ export function formatCleanBuildLog(rawLogs: any): string {
       if (Array.isArray(arr)) {
         for (const item of arr) {
           if (item && typeof item === "object") {
-            tryAddOutput(item.output || item.message, item.timestamp);
+            if ('output' in item && typeof item.output === 'string') {
+              tryAddOutput(item.output, item.timestamp);
+            } else if ('message' in item && typeof item.message === 'string' && !('level' in item)) {
+              tryAddOutput(item.message, item.timestamp);
+            } else {
+              tryAddOutput(JSON.stringify(item));
+            }
           } else if (typeof item === "string") {
             tryAddOutput(item);
           }
@@ -776,7 +782,17 @@ export function formatCleanBuildLog(rawLogs: any): string {
       try {
         const obj = JSON.parse(trimmed);
         if (obj && typeof obj === "object") {
-          tryAddOutput(obj.output || obj.message, obj.timestamp);
+          // Check if it's a Nixpacks/Coolify deploy log 
+          if ('output' in obj && typeof obj.output === 'string') {
+            tryAddOutput(obj.output, obj.timestamp);
+            continue;
+          }
+          if ('message' in obj && typeof obj.message === 'string' && !('level' in obj)) {
+            tryAddOutput(obj.message, obj.timestamp);
+            continue;
+          }
+          // If it doesn't match deploy log structure, it's a structured app log (e.g. Pino). Treat as raw.
+          tryAddOutput(trimmed);
           continue;
         }
       } catch {}
