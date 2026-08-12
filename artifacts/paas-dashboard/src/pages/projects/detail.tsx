@@ -485,68 +485,51 @@ export default function ProjectDetail() {
               </div>
 
               <div className="rounded-lg border border-border/50 p-4 space-y-3 bg-card">
-                <h4 className="text-sm font-semibold">Panduan Menghubungkan Domain Sendiri (Custom Domain)</h4>
+                <h4 className="text-sm font-semibold">Custom Domains</h4>
                 <p className="text-xs text-muted-foreground">
-                  Tambahkan record berikut di pengaturan DNS domain kamu (pilih salah satu sesuai jenis domain yang digunakan):
+                  Tambahkan domain kustom ke aplikasi Mution kamu, lalu arahkan DNS ke <strong>DNS Target</strong> yang diberikan.
                 </p>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto border border-border/50 rounded-md">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="w-[180px]">Jenis Domain</TableHead>
-                        <TableHead>Tipe</TableHead>
-                        <TableHead>Name / Host</TableHead>
-                        <TableHead>Target / Value</TableHead>
+                        <TableHead>Domain Name</TableHead>
+                        <TableHead>DNS Target</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       <TableRow>
-                        <TableCell className="font-medium text-xs">Subdomain<br/><span className="text-muted-foreground font-normal">(contoh: app.domain.com)</span></TableCell>
-                        <TableCell className="font-mono text-xs">CNAME</TableCell>
-                        <TableCell className="font-mono text-xs">app</TableCell>
+                        <TableCell className="font-mono text-xs">{project.domain || <span className="text-muted-foreground italic">Belum ada domain</span>}</TableCell>
                         <TableCell className="font-mono text-xs">
-                          <div className="flex items-center gap-2">
-                            cname.mution.tech
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => {
-                                navigator.clipboard.writeText("cname.mution.tech");
-                                toast({ title: "CNAME disalin!" });
-                              }}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium text-xs">Root Domain<br/><span className="text-muted-foreground font-normal">(contoh: domain.com)</span></TableCell>
-                        <TableCell className="font-mono text-xs">A</TableCell>
-                        <TableCell className="font-mono text-xs">@</TableCell>
-                        <TableCell className="font-mono text-xs">
-                          <div className="flex items-center gap-2">
-                            168.110.215.158
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => {
-                                navigator.clipboard.writeText("168.110.215.158");
-                                toast({ title: "IP Address disalin!" });
-                              }}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
+                          {project.domain && !project.domain.endsWith(".mution.tech") ? (
+                            <div className="flex items-center gap-2">
+                              target-{project.id}.mution.tech
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(`target-${project.id}.mution.tech`);
+                                  toast({ title: "DNS Target disalin!" });
+                                }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : project.domain && project.domain.endsWith(".mution.tech") ? (
+                            <span className="text-emerald-500 font-medium text-xs">Otomatis Terhubung (Tanpa DNS)</span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  <span className="font-semibold text-amber-500">Penting:</span> Jika menggunakan Cloudflare, pastikan status Proxy dimatikan (<strong className="text-foreground">DNS Only / Awan Abu-abu</strong>).
+                  Untuk <strong>subdomain</strong> (misal: <code>app.domain.com</code>), buat record tipe <strong>CNAME</strong> ke DNS Target.
+                  <br />
+                  Untuk <strong>root domain</strong> (misal: <code>domain.com</code>), buat record tipe <strong>ALIAS / ANAME</strong> ke DNS Target.
                 </p>
               </div>
             </CardContent>
