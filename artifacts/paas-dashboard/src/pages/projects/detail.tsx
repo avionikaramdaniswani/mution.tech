@@ -7,6 +7,7 @@ import {
   useListDeployments, getListDeploymentsQueryKey, useTriggerDeployment, useRollbackDeployment,
   getListProjectsQueryKey, useUpdateProject,
   useGetProjectRuntimeLogs, getGetProjectRuntimeLogsQueryKey,
+  useGetProjectUsage, getGetProjectUsageQueryKey,
 } from "@workspace/api-client-react";
 import type { Deployment } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -26,7 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash, Plus, Trash2, Info, Terminal } from "lucide-react";
+import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash, Plus, Trash2, Info, Terminal, BarChart3, Cpu, HardDrive, Wifi, Activity } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -113,6 +114,10 @@ export default function ProjectDetail() {
 
   const { data: envVars, isLoading: isLoadingEnv } = useGetProjectEnv(projectId, {
     query: { enabled: !!projectId, queryKey: getGetProjectEnvQueryKey(projectId) }
+  });
+
+  const { data: usageData, isLoading: isLoadingUsage } = useGetProjectUsage(projectId, {
+    query: { enabled: !!projectId, refetchInterval: 10000, queryKey: getGetProjectUsageQueryKey(projectId) }
   });
 
   const triggerDeploy = useTriggerDeployment();
@@ -363,6 +368,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="domain">Domain</TabsTrigger>
           <TabsTrigger value="deployments">Deployment</TabsTrigger>
           <TabsTrigger value="runtime-logs">Runtime Logs</TabsTrigger>
+          <TabsTrigger value="usage">Usage</TabsTrigger>
           <TabsTrigger value="environment">Variabel Env</TabsTrigger>
         </TabsList>
 
@@ -823,6 +829,62 @@ export default function ProjectDetail() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="usage" className="mt-6 space-y-6 animate-in fade-in-50 duration-300">
+          <div>
+            <h3 className="text-lg font-semibold leading-none tracking-tight mb-1">Resource Usage</h3>
+            <p className="text-sm text-muted-foreground">
+              Pantau konsumsi CPU, Memori, dan Bandwidth aplikasimu secara real-time.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-xl border border-border/50 bg-card/50 p-6 flex flex-col justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground mb-4">
+                <Cpu className="h-5 w-5" />
+                <span className="text-sm font-medium">CPU Usage</span>
+              </div>
+              <div className="flex items-end gap-2">
+                {isLoadingUsage ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <span className="text-3xl font-bold">{usageData?.cpu != null ? usageData.cpu.toFixed(2) : "0.00"}</span>
+                )}
+                <span className="text-sm text-muted-foreground mb-1">%</span>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/50 bg-card/50 p-6 flex flex-col justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground mb-4">
+                <HardDrive className="h-5 w-5" />
+                <span className="text-sm font-medium">Memory Usage</span>
+              </div>
+              <div className="flex items-end gap-2">
+                {isLoadingUsage ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <span className="text-3xl font-bold">{usageData?.memory != null ? usageData.memory.toFixed(2) : "0.00"}</span>
+                )}
+                <span className="text-sm text-muted-foreground mb-1">MB</span>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/50 bg-card/50 p-6 flex flex-col justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground mb-4">
+                <Wifi className="h-5 w-5" />
+                <span className="text-sm font-medium">Network I/O</span>
+              </div>
+              <div className="flex items-end gap-2">
+                {isLoadingUsage ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <span className="text-3xl font-bold">{usageData?.bandwidth != null ? usageData.bandwidth.toFixed(2) : "0.00"}</span>
+                )}
+                <span className="text-sm text-muted-foreground mb-1">MB</span>
+              </div>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="environment" className="mt-6">

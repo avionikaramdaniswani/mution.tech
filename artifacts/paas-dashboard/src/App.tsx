@@ -26,7 +26,6 @@ import RiwayatDetailPage from "@/pages/billing/riwayat-detail";
 import ApiKeysPage from "@/pages/api-keys";
 import DocsPage from "@/pages/docs";
 import ChangelogPage from "@/pages/changelog";
-import UsagePage from "@/pages/usage";
 import ApiUsagePage from "@/pages/api-usage";
 import ProvidersPage from "@/pages/providers";
 import FAQPage from "@/pages/faq";
@@ -107,7 +106,6 @@ function Router() {
         <Route path="/billing/riwayat" component={() => <ProtectedRoute component={RiwayatOrderPage} />} />
         <Route path="/api-keys" component={() => <ProtectedRoute component={ApiKeysPage} />} />
         <Route path="/docs" component={() => <ProtectedRoute component={DocsPage} />} />
-        <Route path="/usage" component={() => <ProtectedRoute component={UsagePage} />} />
         <Route path="/api-usage" component={() => <ProtectedRoute component={ApiUsagePage} />} />
         <Route path="/providers" component={() => <ProtectedRoute component={ProvidersPage} />} />
         <Route path="/referral" component={() => <ProtectedRoute component={ReferralPage} />} />

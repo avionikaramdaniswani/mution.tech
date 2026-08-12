@@ -839,6 +839,26 @@ export async function getProjectRuntimeLogsWithCoolify(projectId: number): Promi
   }
 }
 
+export async function getProjectUsageWithCoolify(projectId: number): Promise<{ cpu: number | null, memory: number | null, bandwidth: number | null } | null> {
+  const resource = await getProjectResource(projectId);
+  if (!resource?.coolifyApplicationUuid) return null;
+  
+  try {
+    // Try hitting the undocumented Sentinel metrics endpoint on the application
+    const data = await coolifyRequest<any>("GET", `/applications/${resource.coolifyApplicationUuid}/metrics`);
+    // Fallback if data structure is missing or different
+    return {
+      cpu: data?.cpu ?? null,
+      memory: data?.memory ?? null,
+      bandwidth: data?.bandwidth ?? null,
+    };
+  } catch (err) {
+    console.warn("Coolify metrics endpoint failed or not available:", err);
+    // Graceful fallback if endpoint doesn't exist (e.g. 404)
+    return { cpu: null, memory: null, bandwidth: null };
+  }
+}
+
 export async function stopProjectWithCoolify(projectId: number): Promise<boolean> {
   const resource = await getProjectResource(projectId);
   if (!resource?.coolifyApplicationUuid) return false;

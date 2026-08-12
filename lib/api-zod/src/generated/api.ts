@@ -164,6 +164,20 @@ export const GetProjectRuntimeLogsResponse = zod.object({
 
 
 /**
+ * @summary Get project resource usage
+ */
+export const GetProjectUsageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetProjectUsageResponse = zod.object({
+  "cpu": zod.number().nullish(),
+  "memory": zod.number().nullish(),
+  "bandwidth": zod.number().nullish()
+})
+
+
+/**
  * @summary Update a project
  */
 export const UpdateProjectParams = zod.object({

@@ -39,6 +39,7 @@ import type {
   EnvVarInput,
   ErrorResponse,
   GetProjectRuntimeLogs200,
+  GetProjectUsage200,
   HealthStatus,
   LoginInput,
   PaymentOrderWithUser,
@@ -734,12 +735,89 @@ export function useGetProjectRuntimeLogs<TData = Awaited<ReturnType<typeof getPr
 
 
 
+export const getGetProjectUsageUrl = (id: number,) => {
+
+
+
+
+  return `/api/projects/${id}/usage`
+}
+
+/**
+ * @summary Get project resource usage
+ */
+export const getProjectUsage = async (id: number, options?: RequestInit): Promise<GetProjectUsage200> => {
+
+  return customFetch<GetProjectUsage200>(getGetProjectUsageUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProjectUsageQueryKey = (id: number,) => {
+    return [
+    `/api/projects/${id}/usage`
+    ] as const;
+    }
+
+
+export const getGetProjectUsageQueryOptions = <TData = Awaited<ReturnType<typeof getProjectUsage>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProjectUsage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProjectUsageQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProjectUsage>>> = ({ signal }) => getProjectUsage(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProjectUsage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProjectUsageQueryResult = NonNullable<Awaited<ReturnType<typeof getProjectUsage>>>
+export type GetProjectUsageQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get project resource usage
+ */
+
+export function useGetProjectUsage<TData = Awaited<ReturnType<typeof getProjectUsage>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProjectUsage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProjectUsageQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getUpdateProjectUrl = (id: number,) => {
 
 
 
 
-  return `/api/projects/${id}/runtime-logs`
+  return `/api/projects/${id}/usage`
 }
 
 /**
@@ -811,7 +889,7 @@ export const getDeleteProjectUrl = (id: number,) => {
 
 
 
-  return `/api/projects/${id}/runtime-logs`
+  return `/api/projects/${id}/usage`
 }
 
 /**
