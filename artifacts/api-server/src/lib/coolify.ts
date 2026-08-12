@@ -327,8 +327,22 @@ function buildApplicationEnv(runtime: Runtime, buildPack: BuildPack, rows: Array
   if ((runtime === "nodejs" || runtime === "python") && !env.some((row) => row.key === "PORT")) {
     env.push({ key: "PORT", value: runtimePort(runtime) });
   }
-  if (runtime === "nodejs" && buildPack === "nixpacks" && !env.some((row) => row.key === "NIXPACKS_INSTALL_CMD")) {
-    env.push({ key: "NIXPACKS_INSTALL_CMD", value: getNodeInstallCommand() });
+  if (runtime === "nodejs" && buildPack === "nixpacks") {
+    if (!env.some((row) => row.key === "NIXPACKS_INSTALL_CMD")) {
+      env.push({ key: "NIXPACKS_INSTALL_CMD", value: getNodeInstallCommand() });
+    }
+    if (!env.some((row) => row.key === "NIXPACKS_BUILD_CMD")) {
+      env.push({
+        key: "NIXPACKS_BUILD_CMD",
+        value: "pnpm run build || (pnpm --filter @workspace/frontend --if-present run build && pnpm --filter @workspace/backend --if-present run build)",
+      });
+    }
+    if (!env.some((row) => row.key === "NIXPACKS_START_CMD")) {
+      env.push({
+        key: "NIXPACKS_START_CMD",
+        value: "node backend/dist/index.mjs || node backend/dist/index.js || node dist/index.js || pnpm --filter @workspace/backend --if-present run start || pnpm run start",
+      });
+    }
   }
   return env;
 }
