@@ -328,6 +328,9 @@ function buildApplicationEnv(
   if ((runtime === "nodejs" || runtime === "python") && !env.some((row) => row.key === "PORT")) {
     env.push({ key: "PORT", value: runtimePort(runtime) });
   }
+  if (runtime === "nodejs" && !env.some((row) => row.key === "NPM_CONFIG_PRODUCTION")) {
+    env.push({ key: "NPM_CONFIG_PRODUCTION", value: "false" });
+  }
   if (runtime === "nodejs" && buildPack === "nixpacks") {
     const pAny = project as any;
     if (pAny?.buildCommand && !env.some((row) => row.key === "NIXPACKS_BUILD_CMD")) {
