@@ -24,7 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, BookOpen, Code2, Copy, FileText, Globe, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash } from "lucide-react";
+import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -223,6 +223,47 @@ export default function ProjectDetail() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-6 space-y-6">
+          {project.domain && project.status === 'running' && (
+            <Card className="border-emerald-500/40 bg-emerald-500/5">
+              <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-5">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-emerald-500/15 p-2.5">
+                    <Globe className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-0.5">Link Aktif</div>
+                    <a
+                      href={`https://${project.domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-mono text-primary hover:underline break-all"
+                    >
+                      https://{project.domain}
+                    </a>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`https://${project.domain}`);
+                      toast({ title: "URL disalin ke clipboard" });
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5 mr-1.5" />
+                    Salin
+                  </Button>
+                  <a href={`https://${project.domain}`} target="_blank" rel="noopener noreferrer">
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                      Buka Website
+                    </Button>
+                  </a>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <div className="grid gap-6 md:grid-cols-2">
             <Card className="border-border/50">
               <CardHeader>
@@ -456,6 +497,7 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number; envV
   const [newKey, setNewKey] = useState("");
   const [newVal, setNewVal] = useState("");
   const [showGuide, setShowGuide] = useState(false);
+  const [visibleEnvIds, setVisibleEnvIds] = useState<Record<number, boolean>>({});
   const [bulkMode, setBulkMode] = useState<"env" | "json" | null>(null);
   const [bulkText, setBulkText] = useState("");
   const [bulkError, setBulkError] = useState<string | null>(null);
@@ -500,13 +542,17 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number; envV
   };
 
   const openBulkEdit = (mode: "env" | "json") => {
-    const keys: string[] = (envVars || []).map((e: any) => e.key);
+    const list: Array<{ key: string; value?: string }> = envVars || [];
     if (mode === "env") {
-      setBulkText(keys.length ? keys.map((k) => `${k}=`).join("\n") : "# Contoh:\n# API_KEY=nilai_kamu\n# DATABASE_URL=postgresql://...");
+      setBulkText(
+        list.length
+          ? list.map((e) => `${e.key}=${e.value ?? ""}`).join("\n")
+          : "# Contoh:\n# API_KEY=nilai_kamu\n# DATABASE_URL=postgresql://..."
+      );
     } else {
       const obj: Record<string, string> = {};
-      keys.forEach((k) => { obj[k] = ""; });
-      setBulkText(keys.length ? JSON.stringify(obj, null, 2) : '{\n  "API_KEY": "nilai_kamu"\n}');
+      list.forEach((e) => { obj[e.key] = e.value ?? ""; });
+      setBulkText(list.length ? JSON.stringify(obj, null, 2) : '{\n  "API_KEY": "nilai_kamu"\n}');
     }
     setBulkMode(mode);
     setBulkError(null);
@@ -644,23 +690,41 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number; envV
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {envVars.map((env: any) => (
-                  <TableRow key={env.id}>
-                    <TableCell className="font-mono text-sm">{env.key}</TableCell>
-                    <TableCell className="font-mono text-sm text-muted-foreground">••••••••</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(env.id)}
-                        disabled={delEnv.isPending}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {envVars.map((env: any) => {
+                  const isVisible = !!visibleEnvIds[env.id];
+                  return (
+                    <TableRow key={env.id}>
+                      <TableCell className="font-mono text-sm">{env.key}</TableCell>
+                      <TableCell className="font-mono text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <span className={isVisible ? "text-foreground font-sans text-xs break-all max-w-[280px]" : ""}>
+                            {isVisible ? (env.value || "—") : "••••••••"}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-foreground flex-shrink-0"
+                            onClick={() => setVisibleEnvIds((prev) => ({ ...prev, [env.id]: !prev[env.id] }))}
+                            title={isVisible ? "Sembunyikan nilai" : "Tampilkan nilai"}
+                          >
+                            {isVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(env.id)}
+                          disabled={delEnv.isPending}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

@@ -10,6 +10,7 @@ import {
   isCoolifyConfigured,
   restartProjectWithCoolify,
   stopProjectWithCoolify,
+  syncProjectEnvToCoolify,
 } from "../lib/coolify";
 
 const router = Router();
@@ -69,14 +70,30 @@ function parseRouteId(value: string | string[] | undefined): number | null {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-function mapProject(p: typeof projectsTable.$inferSelect) {
+const ACTIVE_DEPLOYMENT_STATUSES = new Set(["queued", "building", "deploying"]);
+
+async function resolveProjectStatus(p: typeof projectsTable.$inferSelect): Promise<string> {
+  const [latestDeployment] = await db
+    .select({ status: deploymentsTable.status })
+    .from(deploymentsTable)
+    .where(eq(deploymentsTable.projectId, p.id))
+    .orderBy(desc(deploymentsTable.createdAt))
+    .limit(1);
+
+  if (latestDeployment && ACTIVE_DEPLOYMENT_STATUSES.has(latestDeployment.status)) {
+    return latestDeployment.status === "queued" ? "deploying" : latestDeployment.status;
+  }
+  return p.status;
+}
+
+function mapProject(p: typeof projectsTable.$inferSelect, effectiveStatus?: string) {
   return {
     id: p.id,
     userId: p.userId,
     name: p.name,
     repoUrl: p.repoUrl ?? null,
     runtime: p.runtime,
-    status: p.status,
+    status: effectiveStatus ?? p.status,
     domain: p.domain ?? null,
     baseDirectory: p.baseDirectory ?? null,
     createdAt: p.createdAt.toISOString(),
@@ -93,8 +110,16 @@ router.get("/projects", async (req, res): Promise<void> => {
     .where(eq(projectsTable.userId, user.id))
     .orderBy(desc(projectsTable.createdAt));
 
-  res.json(projects.map(mapProject));
+  const mapped = await Promise.all(
+    projects.map(async (project) => {
+      const status = await resolveProjectStatus(project);
+      return mapProject(project, status);
+    })
+  );
+  res.json(mapped);
 });
+
+import { ensureGithubRepoWebhook } from "../lib/github-webhook";
 
 // Create project
 router.post("/projects", async (req, res): Promise<void> => {
@@ -121,6 +146,9 @@ router.post("/projects", async (req, res): Promise<void> => {
 
   await logActivity(user.id, "project.created", project.id, { name });
 
+  // Auto-register GitHub push webhook via OAuth token
+  void ensureGithubRepoWebhook(project);
+
   res.status(201).json(mapProject(project));
 });
 
@@ -140,7 +168,8 @@ router.get("/projects/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(mapProject(project));
+  const status = await resolveProjectStatus(project);
+  res.json(mapProject(project, status));
 });
 
 // Update project
@@ -326,7 +355,7 @@ router.get("/projects/:id/env", async (req, res): Promise<void> => {
       id: v.id,
       projectId: v.projectId,
       key: v.key,
-      value: "***",
+      value: v.value,
       createdAt: v.createdAt.toISOString(),
     }))
   );
@@ -362,11 +391,20 @@ router.post("/projects/:id/env", async (req, res): Promise<void> => {
     .values({ projectId: id, key, value })
     .returning();
 
+  // Sync updated environment variables to Coolify
+  if (isCoolifyConfigured()) {
+    try {
+      await syncProjectEnvToCoolify(project);
+    } catch {
+      // Ignore sync error if resource doesn't exist on Coolify yet
+    }
+  }
+
   res.json({
     id: envVar.id,
     projectId: envVar.projectId,
     key: envVar.key,
-    value: "***",
+    value: envVar.value,
     createdAt: envVar.createdAt.toISOString(),
   });
 });
@@ -388,6 +426,16 @@ router.delete("/projects/:id/env/:envId", async (req, res): Promise<void> => {
   }
 
   await db.delete(envVarsTable).where(and(eq(envVarsTable.id, envId), eq(envVarsTable.projectId, id)));
+
+  // Sync environment variables to Coolify after deletion
+  if (isCoolifyConfigured()) {
+    try {
+      await syncProjectEnvToCoolify(project);
+    } catch {
+      // Ignore sync error if resource doesn't exist on Coolify yet
+    }
+  }
+
   res.json({ success: true });
 });
 

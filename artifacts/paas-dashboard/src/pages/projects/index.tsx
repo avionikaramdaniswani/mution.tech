@@ -1,13 +1,14 @@
 import { Link } from "wouter";
 import { useListProjects, useDeleteProject, getListProjectsQueryKey } from "@workspace/api-client-react";
 import type { Project } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
-import { AlertCircle, Box, CheckCircle2, Clock, Globe, MoreHorizontal, Plus, TerminalSquare, Trash } from "lucide-react";
+import { AlertCircle, Box, CheckCircle2, Clock, Globe, MoreHorizontal, Plus, TerminalSquare, Trash, Zap } from "lucide-react";
+import { apiFetch } from "@/lib/api-fetch";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -91,21 +92,10 @@ export default function Projects() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-10 w-40" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array(3).fill(0).map((_, i) => (
-            <Card key={i} className="border-border/50">
-              <CardHeader className="pb-4">
-                <Skeleton className="h-6 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-20 w-full" />
-              </CardContent>
-            </Card>
+        <Skeleton className="h-8 w-48" />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-48 rounded-xl" />
           ))}
         </div>
       </div>
@@ -126,6 +116,27 @@ export default function Projects() {
           </Button>
         </Link>
       </div>
+
+      {githubStatus?.connected && githubStatus?.hasWebhookScope === false && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-amber-500/20 p-2 text-amber-500 flex-shrink-0">
+              <Zap className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="font-semibold text-amber-500">Aktifkan Auto-Deploy saat git push</p>
+              <p className="text-muted-foreground text-xs mt-0.5">
+                Perbarui koneksi GitHub kamu (1-klik) agar setiap commit baru di GitHub otomatis ter-deploy ke server.
+              </p>
+            </div>
+          </div>
+          <a href="/api/auth/github" className="flex-shrink-0">
+            <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-medium">
+              Hubungkan Ulang (1-Klik)
+            </Button>
+          </a>
+        </div>
+      )}
 
       {!projects || projects.length === 0 ? (
         <Card className="border-dashed border-2 border-border/50 bg-background">

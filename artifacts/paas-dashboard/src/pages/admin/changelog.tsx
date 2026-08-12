@@ -30,10 +30,10 @@ interface Changelog {
 export default function AdminChangelog() {
   const qc = useQueryClient();
   const { toast } = useToast();
-  
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  
+
   const [form, setForm] = useState<{
     version: string;
     date: string;
@@ -185,32 +185,32 @@ export default function AdminChangelog() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium">Versi (misal: v1.0.0)</label>
-                <Input value={form.version} onChange={e => setForm({...form, version: e.target.value})} placeholder="vX.X.X" />
+                <Input value={form.version} onChange={e => setForm({ ...form, version: e.target.value })} placeholder="vX.X.X" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium">Tanggal</label>
-                <Input value={form.date} onChange={e => setForm({...form, date: e.target.value})} placeholder="14 Okt 2023" />
+                <Input value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} placeholder="14 Okt 2023" />
               </div>
             </div>
-            
+
             <div className="space-y-1.5">
               <label className="text-xs font-medium">Judul Rilis</label>
-                <Input value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="Fitur baru Mution..." />
+              <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Fitur baru Mution..." />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium">Deskripsi Singkat (Opsional)</label>
-              <Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Penjelasan singkat mengenai rilis ini..." rows={2} />
+              <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Penjelasan singkat mengenai rilis ini..." rows={2} />
             </div>
 
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">Daftar Perubahan</label>
-                <Button type="button" variant="outline" size="sm" onClick={() => setForm({...form, changes: [...form.changes, { type: "feat", title: "", description: "" }]})}>
+                <Button type="button" variant="outline" size="sm" onClick={() => setForm({ ...form, changes: [...form.changes, { type: "feat", title: "", description: "" }] })}>
                   <Plus className="h-3 w-3 mr-1" /> Tambah Item
                 </Button>
               </div>
-               
+
               <div className="space-y-3">
                 {form.changes.map((change, idx) => (
                   <div key={idx} className="rounded-lg border border-[#dbe8f3] bg-[#f8fbff] p-4">
@@ -219,7 +219,7 @@ export default function AdminChangelog() {
                       <Button variant="ghost" size="icon" className="shrink-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"
                         onClick={() => {
                           const newCh = form.changes.filter((_, i) => i !== idx);
-                          setForm({...form, changes: newCh});
+                          setForm({ ...form, changes: newCh });
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -232,7 +232,7 @@ export default function AdminChangelog() {
                         <Select value={change.type} onValueChange={(val: ChangeType) => {
                           const newCh = [...form.changes];
                           newCh[idx] = { ...newCh[idx], type: val };
-                          setForm({...form, changes: newCh});
+                          setForm({ ...form, changes: newCh });
                         }}>
                           <SelectTrigger className="bg-white">
                             <SelectValue />
@@ -250,7 +250,7 @@ export default function AdminChangelog() {
                         <Input className="bg-white" value={change.title} onChange={e => {
                           const newCh = [...form.changes];
                           newCh[idx] = { ...newCh[idx], title: e.target.value };
-                          setForm({...form, changes: newCh});
+                          setForm({ ...form, changes: newCh });
                         }} placeholder="Misal: Deploy lebih cepat" />
                       </div>
 
@@ -262,7 +262,7 @@ export default function AdminChangelog() {
                           onChange={e => {
                             const newCh = [...form.changes];
                             newCh[idx] = { ...newCh[idx], description: e.target.value };
-                            setForm({...form, changes: newCh});
+                            setForm({ ...form, changes: newCh });
                           }}
                           placeholder="Detail singkat perubahan ini (opsional)..."
                           rows={2}
@@ -277,7 +277,7 @@ export default function AdminChangelog() {
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Batal</Button>
             <Button onClick={submitForm} disabled={saveMutation.isPending || !formIsValid}>

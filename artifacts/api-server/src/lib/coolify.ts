@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import {
   coolifyDeploymentsTable,
   coolifyResourcesTable,
@@ -33,6 +33,7 @@ type CoolifyEnvironment = {
 type CoolifyApplication = {
   uuid: string;
   name?: string;
+  fqdn?: string | null;
   install_command?: string | null;
 };
 
@@ -396,6 +397,20 @@ async function ensureCoolifyEnvironment(projectUuid: string): Promise<CoolifyEnv
   }
 }
 
+async function resolveProjectPort(project: Project): Promise<string> {
+  const runtime = project.runtime as Runtime;
+  const [portRow] = await db
+    .select({ value: envVarsTable.value })
+    .from(envVarsTable)
+    .where(and(eq(envVarsTable.projectId, project.id), eq(envVarsTable.key, "PORT")));
+
+  const customPort = portRow?.value?.trim();
+  if (customPort && /^\d+$/.test(customPort)) {
+    return customPort;
+  }
+  return runtimePort(runtime);
+}
+
 async function createCoolifyApplication(project: Project, resource: typeof coolifyResourcesTable.$inferSelect): Promise<CoolifyApplication> {
   if (!project.repoUrl) {
     throw new CoolifyError("Project belum punya repository. Pilih repo GitHub dulu sebelum deploy.");
@@ -404,7 +419,7 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
   const config = getCoolifyConfig();
   const domain = normalizeDomain(project.domain);
   const runtime = project.runtime as Runtime;
-  const port = runtimePort(runtime);
+  const port = await resolveProjectPort(project);
   const baseDirectory = normalizeBaseDirectory(project.baseDirectory);
   const buildPack = await resolveBuildPack(project, runtime);
   const commonPayload: Record<string, unknown> = {
@@ -451,6 +466,7 @@ async function updateCoolifyApplicationSettings(project: Project, applicationUui
   const runtime = project.runtime as Runtime;
   const settings = buildPack === "nixpacks" ? runtimeDeploymentSettings(runtime) : {};
   const baseDirectory = normalizeBaseDirectory(project.baseDirectory);
+  const port = await resolveProjectPort(project);
 
   await coolifyRequest("PATCH", `/applications/${applicationUuid}`, {
     // Retrofits existing applications (created before this project added a
@@ -458,7 +474,7 @@ async function updateCoolifyApplicationSettings(project: Project, applicationUui
     // on the next deploy, instead of only applying it to brand-new apps.
     build_pack: buildPack,
     ...settings,
-    ports_exposes: runtimePort(runtime),
+    ports_exposes: port,
     base_directory: baseDirectory ?? "/",
   });
 
@@ -783,3 +799,47 @@ export function formatCoolifyBuildLog(input: {
   if (input.deploymentUuid) lines.push(`Deployment run: ${input.deploymentUuid}`);
   return lines.join("\n");
 }
+
+/**
+ * Fetch the auto-generated (or user-set) FQDN for a project's Coolify application.
+ * Returns a clean domain string (no protocol prefix) or null if unavailable.
+ */
+export async function fetchCoolifyApplicationDomain(projectId: number): Promise<string | null> {
+  if (!isCoolifyConfigured()) return null;
+  await ensureCoolifyTables();
+
+  const [resource] = await db
+    .select()
+    .from(coolifyResourcesTable)
+    .where(eq(coolifyResourcesTable.projectId, projectId));
+
+  if (!resource?.coolifyApplicationUuid) return null;
+
+  try {
+    const app = await coolifyRequest<CoolifyApplication>("GET", `/applications/${resource.coolifyApplicationUuid}`);
+    if (!app.fqdn) return null;
+
+    // Coolify stores FQDN as "https://domain.example.com" — strip the protocol
+    const clean = app.fqdn
+      .replace(/^https?:\/\//i, "")
+      .replace(/\/+$/, "")
+      .trim();
+    return clean || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Syncs current project environment variables to Coolify application.
+ */
+export async function syncProjectEnvToCoolify(project: Project): Promise<void> {
+  if (!isCoolifyConfigured()) return;
+  const resource = await getProjectResource(project.id);
+  if (!resource?.coolifyApplicationUuid) return;
+
+  const buildPack = await resolveBuildPack(project, project.runtime as Runtime);
+  await updateCoolifyApplicationSettings(project, resource.coolifyApplicationUuid, buildPack);
+  await syncApplicationEnv(resource.coolifyApplicationUuid, project.runtime as Runtime, buildPack, project.id);
+}
+

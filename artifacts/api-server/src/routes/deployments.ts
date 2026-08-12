@@ -7,6 +7,7 @@ import { logActivity } from "../lib/activity";
 import {
   CoolifyError,
   deployProjectWithCoolify,
+  fetchCoolifyApplicationDomain,
   formatCoolifyBuildLog,
   isCoolifyConfigured,
   sanitizeDeploymentProviderText,
@@ -67,6 +68,11 @@ function toProjectStatus(status: SyncedDeploymentStatus): "idle" | "running" | "
 async function refreshDeploymentStatus(d: typeof deploymentsTable.$inferSelect): Promise<typeof deploymentsTable.$inferSelect> {
   if (!isCoolifyConfigured()) return d;
 
+  // Don't poll or overwrite project status for deployments that already reached a terminal state in DB
+  if (["running", "failed", "stopped", "rolled_back"].includes(d.status)) {
+    return d;
+  }
+
   try {
     const synced = await syncDeploymentFromCoolify(d.id);
     if (!synced) return d;
@@ -89,6 +95,24 @@ async function refreshDeploymentStatus(d: typeof deploymentsTable.$inferSelect):
         lastDeployedAt: shouldSetDeployedAt ? new Date() : undefined,
       })
       .where(eq(projectsTable.id, d.projectId));
+
+    // Sync auto-generated domain from Coolify when deployment succeeds
+    if (toProjectStatus(synced.status) === "running") {
+      const [currentProject] = await db
+        .select({ domain: projectsTable.domain })
+        .from(projectsTable)
+        .where(eq(projectsTable.id, d.projectId));
+
+      if (!currentProject?.domain) {
+        const coolifyDomain = await fetchCoolifyApplicationDomain(d.projectId);
+        if (coolifyDomain) {
+          await db
+            .update(projectsTable)
+            .set({ domain: coolifyDomain })
+            .where(eq(projectsTable.id, d.projectId));
+        }
+      }
+    }
 
     return updated ?? d;
   } catch {
@@ -129,6 +153,8 @@ router.get("/projects/:id/deployments", async (req, res): Promise<void> => {
   res.json(refreshed.map(mapDeployment));
 });
 
+import { ensureGithubRepoWebhook } from "../lib/github-webhook";
+
 // Trigger deployment
 router.post("/projects/:id/deployments", async (req, res): Promise<void> => {
   const user = (req as any).user;
@@ -144,6 +170,9 @@ router.post("/projects/:id/deployments", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Project not found" });
     return;
   }
+
+  // Ensure GitHub push webhook is registered on the repo
+  void ensureGithubRepoWebhook(project);
 
   const body = TriggerDeploymentBody.safeParse(req.body ?? {});
   if (!body.success) {

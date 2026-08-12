@@ -31,7 +31,7 @@ function getCallbackUrl() {
 }
 
 function getGithubScopes(): string {
-  return process.env.GITHUB_OAUTH_SCOPES ?? "read:user public_repo";
+  return process.env.GITHUB_OAUTH_SCOPES ?? "repo read:user write:repo_hook admin:repo_hook";
 }
 
 function setGithubStateCookie(res: any, state: string): void {
@@ -155,9 +155,27 @@ router.get("/github/status", requireAuth, async (req, res): Promise<void> => {
     .where(eq(usersTable.id, user.id));
   const token = await getStoredGithubToken(user.id);
 
+  let hasWebhookScope = true;
+  if (token) {
+    try {
+      const checkRes = await fetch("https://api.github.com/user", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "User-Agent": "paas-platform",
+        },
+      });
+      const scopes = checkRes.headers.get("x-oauth-scopes") || "";
+      hasWebhookScope = scopes.includes("write:repo_hook") || scopes.includes("repo");
+    } catch {
+      hasWebhookScope = true;
+    }
+  }
+
   res.json({
     connected: !!token,
     login: dbUser?.githubLogin ?? null,
+    hasWebhookScope,
   });
 });
 
