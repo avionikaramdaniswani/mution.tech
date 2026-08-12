@@ -152,18 +152,6 @@ export const GetProjectResponse = zod.object({
 
 
 /**
- * @summary Get project runtime logs
- */
-export const GetProjectRuntimeLogsParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-export const GetProjectRuntimeLogsResponse = zod.object({
-  "logs": zod.string().nullish()
-})
-
-
-/**
  * @summary Update a project
  */
 export const UpdateProjectParams = zod.object({
@@ -216,6 +204,18 @@ export const DeleteProjectParams = zod.object({
 
 export const DeleteProjectResponse = zod.object({
   "success": zod.boolean()
+})
+
+
+/**
+ * @summary Get project runtime logs
+ */
+export const GetProjectRuntimeLogsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetProjectRuntimeLogsResponse = zod.object({
+  "logs": zod.string().nullish()
 })
 
 
