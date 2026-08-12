@@ -159,59 +159,64 @@ export default function ProvidersPage() {
                     </div>
 
                     {/* Pricing details */}
-                    <div className="space-y-2 mb-6">
-                      {m.pricingMode === "free" ? (
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                            <Sparkles className="h-3 w-3" /> Gratis
-                          </span>
-                          {m.basePricing && (
-                            <span className="text-muted-foreground/50 line-through tabular-nums text-[11px]">
-                              {formatPricing(m.basePricing.input)} / {formatPricing(m.basePricing.output)}
-                            </span>
+                    {(() => {
+                      const item = m as any;
+                      return (
+                        <div className="space-y-2 mb-6">
+                          {item.pricingMode === "free" ? (
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                <Sparkles className="h-3 w-3" /> Gratis
+                              </span>
+                              {item.basePricing && (
+                                <span className="text-muted-foreground/50 line-through tabular-nums text-[11px]">
+                                  {formatPricing(item.basePricing.input)} / {formatPricing(item.basePricing.output)}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-3 text-xs">
+                                <span className="text-muted-foreground/80 w-12 font-medium">Input</span>
+                                <div className="h-1.5 w-4 rounded-full bg-primary/40" />
+                                <span className="font-semibold tabular-nums">
+                                  {formatPricing(m.pricing.input)}{" "}
+                                  <span className="text-muted-foreground/60 font-normal">/ 1M</span>
+                                </span>
+                                {item.pricingMode && item.pricingMode !== "default" && item.basePricing && item.basePricing.input !== m.pricing.input && (
+                                  <span className="ml-1 text-muted-foreground/40 line-through text-[10px] tabular-nums">
+                                    {formatPricing(item.basePricing.input)}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 text-xs">
+                                <span className="text-muted-foreground/80 w-12 font-medium">Output</span>
+                                <div className="h-1.5 w-6 rounded-full bg-primary" />
+                                <span className="font-semibold tabular-nums">
+                                  {formatPricing(m.pricing.output)}{" "}
+                                  <span className="text-muted-foreground/60 font-normal">/ 1M</span>
+                                </span>
+                                {item.pricingMode && item.pricingMode !== "default" && item.basePricing && item.basePricing.output !== m.pricing.output && (
+                                  <span className="ml-1 text-muted-foreground/40 line-through text-[10px] tabular-nums">
+                                    {formatPricing(item.basePricing.output)}
+                                  </span>
+                                )}
+                              </div>
+                              {item.pricingMode === "discount_percent" && (
+                                <div className="flex items-center gap-1.5 text-[10px] text-orange-600">
+                                  <Tag className="h-2.5 w-2.5" /> Harga sudah didiskon
+                                </div>
+                              )}
+                              {item.pricingMode === "fixed_price" && (
+                                <div className="flex items-center gap-1.5 text-[10px] text-sky-600">
+                                  <Tag className="h-2.5 w-2.5" /> Harga custom
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-3 text-xs">
-                            <span className="text-muted-foreground/80 w-12 font-medium">Input</span>
-                            <div className="h-1.5 w-4 rounded-full bg-primary/40" />
-                            <span className="font-semibold tabular-nums">
-                              {formatPricing(m.pricing.input)}{" "}
-                              <span className="text-muted-foreground/60 font-normal">/ 1M</span>
-                            </span>
-                            {m.pricingMode && m.pricingMode !== "default" && m.basePricing && m.basePricing.input !== m.pricing.input && (
-                              <span className="ml-1 text-muted-foreground/40 line-through text-[10px] tabular-nums">
-                                {formatPricing(m.basePricing.input)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 text-xs">
-                            <span className="text-muted-foreground/80 w-12 font-medium">Output</span>
-                            <div className="h-1.5 w-6 rounded-full bg-primary" />
-                            <span className="font-semibold tabular-nums">
-                              {formatPricing(m.pricing.output)}{" "}
-                              <span className="text-muted-foreground/60 font-normal">/ 1M</span>
-                            </span>
-                            {m.pricingMode && m.pricingMode !== "default" && m.basePricing && m.basePricing.output !== m.pricing.output && (
-                              <span className="ml-1 text-muted-foreground/40 line-through text-[10px] tabular-nums">
-                                {formatPricing(m.basePricing.output)}
-                              </span>
-                            )}
-                          </div>
-                          {m.pricingMode === "discount_percent" && (
-                            <div className="flex items-center gap-1.5 text-[10px] text-orange-600">
-                              <Tag className="h-2.5 w-2.5" /> Harga sudah didiskon
-                            </div>
-                          )}
-                          {m.pricingMode === "fixed_price" && (
-                            <div className="flex items-center gap-1.5 text-[10px] text-sky-600">
-                              <Tag className="h-2.5 w-2.5" /> Harga custom
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
+                      );
+                    })()}
 
                     {/* Description */}
                     <div className="text-[12px] leading-relaxed text-muted-foreground/80 mb-6 line-clamp-2">

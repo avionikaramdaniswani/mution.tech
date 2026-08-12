@@ -67,6 +67,11 @@ export default function Projects() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const { data: githubStatus } = useQuery<{ connected: boolean; login: string | null; hasWebhookScope?: boolean }>({
+    queryKey: ["githubStatus"],
+    queryFn: () => apiFetch("/github/status"),
+  });
+
   const handleDelete = (id: number) => {
     deleteProject.mutate(
       { id },
