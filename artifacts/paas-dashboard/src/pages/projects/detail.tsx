@@ -101,10 +101,14 @@ export default function ProjectDetail() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
           setBaseDirectoryInput(null);
-            variant: "destructive",
-          });
+          setBuildCommandInput(null);
+          setStartCommandInput(null);
+          toast({ title: "Pengaturan proyek disimpan" });
         },
-      },
+        onError: (err: any) => {
+          toast({ title: "Gagal menyimpan", description: err?.message, variant: "destructive" });
+        }
+      }
     );
   };
   
