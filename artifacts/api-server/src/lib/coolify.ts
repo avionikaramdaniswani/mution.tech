@@ -334,13 +334,13 @@ function buildApplicationEnv(runtime: Runtime, buildPack: BuildPack, rows: Array
     if (!env.some((row) => row.key === "NIXPACKS_BUILD_CMD")) {
       env.push({
         key: "NIXPACKS_BUILD_CMD",
-        value: "pnpm run build || (pnpm --filter @workspace/frontend --if-present run build && pnpm --filter @workspace/backend --if-present run build)",
+        value: "pnpm run build",
       });
     }
     if (!env.some((row) => row.key === "NIXPACKS_START_CMD")) {
       env.push({
         key: "NIXPACKS_START_CMD",
-        value: "node backend/dist/index.mjs || node backend/dist/index.js || node dist/index.js || pnpm --filter @workspace/backend --if-present run start || pnpm run start",
+        value: "node backend/dist/index.mjs",
       });
     }
   }
