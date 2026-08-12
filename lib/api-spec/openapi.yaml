@@ -221,41 +221,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /projects/{id}/usage:
-    get:
-      operationId: getProjectUsage
-      tags: [projects]
-      summary: Get project resource usage
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Project resource usage
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  cpu:
-                    type: number
-                    nullable: true
-                  memory:
-                    type: number
-                    nullable: true
-                  bandwidth:
-                    type: number
-                    nullable: true
-        "404":
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
     patch:
       operationId: updateProject
       tags: [projects]

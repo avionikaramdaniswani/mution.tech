@@ -34,7 +34,6 @@ export * from './envVar';
 export * from './envVarInput';
 export * from './errorResponse';
 export * from './getProjectRuntimeLogs200';
-export * from './getProjectUsage200';
 export * from './healthStatus';
 export * from './loginInput';
 export * from './paymentOrderWithUser';
