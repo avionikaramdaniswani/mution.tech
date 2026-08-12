@@ -314,12 +314,7 @@ function getNodeInstallCommand(): string {
     || "pnpm install --no-frozen-lockfile";
 }
 
-function runtimeDeploymentSettings(runtime: Runtime): Record<string, unknown> {
-  if (runtime === "nodejs") {
-    return {
-      install_command: getNodeInstallCommand(),
-    };
-  }
+function runtimeDeploymentSettings(_runtime: Runtime): Record<string, unknown> {
   return {};
 }
 
@@ -334,9 +329,6 @@ function buildApplicationEnv(
     env.push({ key: "PORT", value: runtimePort(runtime) });
   }
   if (runtime === "nodejs" && buildPack === "nixpacks") {
-    if (!env.some((row) => row.key === "NIXPACKS_INSTALL_CMD")) {
-      env.push({ key: "NIXPACKS_INSTALL_CMD", value: getNodeInstallCommand() });
-    }
     const pAny = project as any;
     if (pAny?.buildCommand && !env.some((row) => row.key === "NIXPACKS_BUILD_CMD")) {
       env.push({ key: "NIXPACKS_BUILD_CMD", value: pAny.buildCommand });
@@ -492,18 +484,6 @@ async function updateCoolifyApplicationSettings(project: Project, applicationUui
     ports_exposes: port,
     base_directory: baseDirectory ?? "/",
   });
-
-  // Dockerfile-based apps own their own install/build/start steps, so there's
-  // no Nixpacks install_command to reconcile against.
-  if (buildPack !== "nixpacks") return;
-
-  const updated = await coolifyRequest<CoolifyApplication>("GET", `/applications/${applicationUuid}`);
-  if (
-    runtime === "nodejs"
-    && normalizeCommand(updated.install_command) !== normalizeCommand(getNodeInstallCommand())
-  ) {
-    throw new CoolifyError("Build setting belum tersimpan di deployment engine. Coba deploy ulang dari dashboard Mution setelah app Mution selesai di-deploy ke Heroku.");
-  }
 }
 
 async function syncApplicationEnv(applicationUuid: string, runtime: Runtime, buildPack: BuildPack, projectId: number): Promise<void> {
