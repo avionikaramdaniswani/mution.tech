@@ -105,6 +105,11 @@ export default function ProjectDetail() {
       toast({ title: "Masukkan nama domain terlebih dahulu", variant: "destructive" });
       return;
     }
+    // Jika pengguna hanya mengetik 1 kata tanpa titik (contoh: "piodev"), otomatis tambahkan ".app.mution.tech"
+    if (!clean.includes(".")) {
+      clean = `${clean}.app.mution.tech`;
+      setCustomDomainInput(clean);
+    }
     updateProject.mutate(
       { id: projectId, data: { domain: clean } },
       {
@@ -112,13 +117,17 @@ export default function ProjectDetail() {
           queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
           toast({
             title: "Domain berhasil disimpan",
-            description: "Klik Deploy ulang atau Restart agar rute domain baru aktif di server.",
+            description: `Domain diatur ke https://${clean}. Klik Deploy ulang atau Restart agar rute domain baru aktif.`,
           });
         },
         onError: (err: any) => {
+          const rawErr = err?.data?.error || err?.message;
+          const msg = typeof rawErr === "string" && (rawErr.includes("invalid_string") || rawErr.includes("regex"))
+            ? "Format domain tidak valid. Tulis domain lengkap (contoh: piodev.app.mution.tech atau mydomain.com)"
+            : rawErr || "Terjadi kesalahan saat memperbarui domain";
           toast({
             title: "Gagal menyimpan domain",
-            description: err?.data?.error || err?.message || "Terjadi kesalahan saat memperbarui domain",
+            description: msg,
             variant: "destructive",
           });
         },
