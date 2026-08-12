@@ -696,8 +696,19 @@ function appendFailureDiagnosis(logs: string, status: DeploymentStatus): string 
   ].join("\n");
 }
 
-export function formatCleanBuildLog(rawLogs: string): string {
-  if (!rawLogs || !rawLogs.trim()) return "";
+export function formatCleanBuildLog(rawLogs: any): string {
+  if (!rawLogs) return "";
+  if (typeof rawLogs === "object" && typeof rawLogs.message === "string") {
+    rawLogs = rawLogs.message;
+  }
+  if (typeof rawLogs !== "string") {
+    try {
+      rawLogs = JSON.stringify(rawLogs);
+    } catch {
+      rawLogs = String(rawLogs);
+    }
+  }
+  if (!rawLogs.trim()) return "";
 
   const lines: string[] = [];
 
