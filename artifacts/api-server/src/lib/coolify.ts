@@ -228,9 +228,9 @@ function normalizeRepoUrl(repoUrl: string): string {
 
 function normalizeDomain(domain: string | null): string | undefined {
   if (!domain) return undefined;
-  const clean = domain.trim().toLowerCase();
-  if (!clean) return undefined;
-  return clean.startsWith("http://") || clean.startsWith("https://") ? clean : `https://${clean}`;
+  const parts = domain.split(',').map(p => p.trim().toLowerCase()).filter(Boolean);
+  if (parts.length === 0) return undefined;
+  return parts.map(p => p.startsWith("http://") || p.startsWith("https://") ? p : `https://${p}`).join(',');
 }
 
 type BuildPack = "nixpacks" | "static" | "dockerfile";

@@ -21,10 +21,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash } from "lucide-react";
+import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash, Plus, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -90,50 +90,88 @@ export default function ProjectDetail() {
   const restartProject = useRestartProject();
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
-  const [customDomainInput, setCustomDomainInput] = useState("");
+  const [subdomainInput, setSubdomainInput] = useState("");
+  const [isAddDomainOpen, setIsAddDomainOpen] = useState(false);
+  const [newCustomDomain, setNewCustomDomain] = useState("");
+
+  const allDomains = project?.domain ? project.domain.split(",").map(d => d.trim()).filter(Boolean) : [];
+  const mutionDomain = allDomains.find(d => d.endsWith(".mution.tech")) || "";
+  const customDomains = allDomains.filter(d => !d.endsWith(".mution.tech"));
 
   useEffect(() => {
-    if (project?.domain) {
-      setCustomDomainInput(project.domain);
+    if (mutionDomain) {
+      setSubdomainInput(mutionDomain.replace(".mution.tech", ""));
     }
-  }, [project?.domain]);
+  }, [mutionDomain]);
 
-  const handleSaveDomain = () => {
-    let clean = customDomainInput.trim().toLowerCase();
-    clean = clean.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+  const handleSaveSubdomain = () => {
+    let clean = subdomainInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
     if (!clean) {
-      toast({ title: "Masukkan nama domain terlebih dahulu", variant: "destructive" });
+      toast({ title: "Masukkan nama subdomain terlebih dahulu", variant: "destructive" });
       return;
     }
-    // Jika pengguna hanya mengetik 1 kata tanpa titik (contoh: "piodev"), otomatis tambahkan ".mution.tech"
-    if (!clean.includes(".")) {
-      clean = `${clean}.mution.tech`;
-      setCustomDomainInput(clean);
+    const newMution = `${clean}.mution.tech`;
+    if (newMution === mutionDomain) {
+      toast({ title: "Subdomain tidak berubah" });
+      return;
     }
-    updateProject.mutate(
-      { id: projectId, data: { domain: clean } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-          toast({
-            title: "Domain berhasil disimpan",
-            description: `Domain diatur ke https://${clean}. Klik Deploy ulang atau Restart agar rute domain baru aktif.`,
-          });
-        },
-        onError: (err: any) => {
-          const rawErr = err?.data?.error || err?.message;
-          const msg = typeof rawErr === "string" && (rawErr.includes("invalid_string") || rawErr.includes("regex"))
-            ? "Format domain tidak valid. Tulis domain lengkap (contoh: piodev.mution.tech atau mydomain.com)"
-            : rawErr || "Terjadi kesalahan saat memperbarui domain";
-          toast({
-            title: "Gagal menyimpan domain",
-            description: msg,
-            variant: "destructive",
-          });
-        },
-      }
-    );
+    
+    const newDomains = [newMution, ...customDomains].join(",");
+    
+    updateProject.mutate({ id: projectId, data: { domain: newDomains } }, {
+       onSuccess: () => {
+         queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+         toast({ title: "Subdomain Mution berhasil diperbarui!" });
+       },
+       onError: (err: any) => {
+         const rawErr = err?.data?.error || err?.message;
+         toast({ title: "Gagal menyimpan subdomain", description: rawErr, variant: "destructive" });
+       }
+    });
   };
+
+  const handleAddCustomDomain = () => {
+    let clean = newCustomDomain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    if (!clean || !clean.includes(".")) {
+       toast({ title: "Masukkan domain valid yang memiliki TLD", variant: "destructive" });
+       return;
+    }
+
+    if (customDomains.includes(clean) || mutionDomain === clean) {
+       toast({ title: "Domain sudah ada", variant: "destructive" });
+       return;
+    }
+
+    const newDomains = [...allDomains, clean].join(",");
+    
+    updateProject.mutate({ id: projectId, data: { domain: newDomains } }, {
+       onSuccess: () => {
+         queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+         toast({ title: "Custom domain berhasil ditambahkan!" });
+         setIsAddDomainOpen(false);
+         setNewCustomDomain("");
+       },
+       onError: (err: any) => {
+         const rawErr = err?.data?.error || err?.message;
+         toast({ title: "Gagal menyimpan domain", description: rawErr, variant: "destructive" });
+       }
+    });
+  };
+
+  const handleRemoveDomain = (domainToRemove: string) => {
+    const newDomains = allDomains.filter(d => d !== domainToRemove).join(",");
+    updateProject.mutate({ id: projectId, data: { domain: newDomains } }, {
+       onSuccess: () => {
+         queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+         toast({ title: "Domain berhasil dihapus!" });
+       },
+       onError: (err: any) => {
+         const rawErr = err?.data?.error || err?.message;
+         toast({ title: "Gagal menghapus domain", description: rawErr, variant: "destructive" });
+       }
+    });
+  };
+
   const [baseDirectoryInput, setBaseDirectoryInput] = useState<string | null>(null);
   const [buildCommandInput, setBuildCommandInput] = useState<string | null>(null);
   const [startCommandInput, setStartCommandInput] = useState<string | null>(null);
@@ -444,93 +482,134 @@ export default function ProjectDetail() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="domain-input">Nama Domain / Subdomain</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="domain-input"
-                    value={customDomainInput}
-                    onChange={(e) => setCustomDomainInput(e.target.value)}
-                    placeholder="contoh: piodev.mution.tech atau mydomain.com"
-                    className="font-mono text-sm"
-                  />
-                  <Button onClick={handleSaveDomain} disabled={updateProject.isPending}>
-                    {updateProject.isPending ? "Menyimpan..." : "Simpan Domain"}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Gunakan domain kustom sendiri atau buat subdomain berakhiran <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">.mution.tech</code>.
-                </p>
-              </div>
-
-              <div className="rounded-lg bg-muted/40 p-4 border border-border/50 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold flex items-center gap-2">
-                    ⚡ Subdomain Gratis mution.tech
-                  </h4>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Langsung aktif dan bisa digunakan <strong>tanpa perlu setting DNS apapun</strong>. Cukup klik preset di bawah ini:
-                </p>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCustomDomainInput(`${slugifyDomain(project.name)}.mution.tech`)}
-                  >
-                    Gunakan {slugifyDomain(project.name)}.mution.tech
-                  </Button>
-                </div>
-              </div>
 
               <div className="rounded-lg border border-border/50 p-4 space-y-3 bg-card">
-                <h4 className="text-sm font-semibold">Custom Domains</h4>
+                <h4 className="text-sm font-semibold">Subdomain Mution.tech</h4>
                 <p className="text-xs text-muted-foreground">
-                  Tambahkan domain kustom ke aplikasi Mution kamu, lalu arahkan DNS ke <strong>DNS Target</strong> yang diberikan.
+                  Subdomain gratis yang langsung aktif tanpa perlu mengatur DNS.
                 </p>
-                <div className="overflow-x-auto border border-border/50 rounded-md">
+                <div className="flex flex-col sm:flex-row gap-2 max-w-md">
+                  <div className="flex-1 flex items-center bg-muted/50 border border-input rounded-md overflow-hidden">
+                    <span className="text-xs text-muted-foreground pl-3 pr-1 py-2 font-mono select-none">https://</span>
+                    <input 
+                      type="text" 
+                      className="flex-1 bg-transparent border-none outline-none text-sm font-mono focus:ring-0 px-1 py-2 w-full"
+                      value={subdomainInput}
+                      onChange={(e) => setSubdomainInput(e.target.value)}
+                      placeholder={slugifyDomain(project.name)}
+                    />
+                    <span className="text-xs text-muted-foreground pr-3 pl-1 py-2 font-mono select-none">.mution.tech</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="default"
+                    onClick={handleSaveSubdomain}
+                    disabled={updateProject.isPending}
+                  >
+                    Simpan
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border/50 bg-card overflow-hidden">
+                <div className="p-4 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h4 className="text-sm font-semibold">Custom Domains</h4>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Tambahkan domain kustom (contoh: perusahaan.com) lalu arahkan DNS ke Target berikut.
+                    </p>
+                  </div>
+                  <Dialog open={isAddDomainOpen} onOpenChange={setIsAddDomainOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="shrink-0">
+                        <Plus className="h-4 w-4 mr-1" /> Add Domain
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add Custom Domain</DialogTitle>
+                        <DialogDescription>
+                          Masukkan nama domain yang ingin kamu hubungkan ke proyek ini.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label>Domain Name</Label>
+                          <Input 
+                            placeholder="app.perusahaan.com" 
+                            value={newCustomDomain}
+                            onChange={(e) => setNewCustomDomain(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddDomainOpen(false)}>Batal</Button>
+                        <Button onClick={handleAddCustomDomain} disabled={updateProject.isPending}>Tambahkan</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader className="bg-muted/50">
+                    <TableHeader className="bg-muted/30">
                       <TableRow>
                         <TableHead>Domain Name</TableHead>
                         <TableHead>DNS Target</TableHead>
+                        <TableHead className="w-[80px]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell className="font-mono text-xs">{project.domain || <span className="text-muted-foreground italic">Belum ada domain</span>}</TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {project.domain && !project.domain.endsWith(".mution.tech") ? (
-                            <div className="flex items-center gap-2">
-                              target-{project.id}.mution.tech
+                      {customDomains.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center py-6 text-sm text-muted-foreground italic">
+                            Belum ada custom domain.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        customDomains.map((d) => (
+                          <TableRow key={d}>
+                            <TableCell className="font-mono text-xs">{d}</TableCell>
+                            <TableCell className="font-mono text-xs">
+                              <div className="flex items-center gap-2">
+                                target-{project.id}.mution.tech
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(`target-${project.id}.mution.tech`);
+                                    toast({ title: "DNS Target disalin!" });
+                                  }}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(`target-${project.id}.mution.tech`);
-                                  toast({ title: "DNS Target disalin!" });
-                                }}
+                                className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                                onClick={() => handleRemoveDomain(d)}
                               >
-                                <Copy className="h-3 w-3" />
+                                <Trash2 className="h-4 w-4" />
                               </Button>
-                            </div>
-                          ) : project.domain && project.domain.endsWith(".mution.tech") ? (
-                            <span className="text-emerald-500 font-medium text-xs">Otomatis Terhubung (Tanpa DNS)</span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                   </Table>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Untuk <strong>subdomain</strong> (misal: <code>app.domain.com</code>), buat record tipe <strong>CNAME</strong> ke DNS Target.
-                  <br />
-                  Untuk <strong>root domain</strong> (misal: <code>domain.com</code>), buat record tipe <strong>ALIAS / ANAME</strong> ke DNS Target.
-                </p>
+                {customDomains.length > 0 && (
+                  <div className="p-4 border-t border-border/50 bg-muted/10">
+                    <p className="text-xs text-muted-foreground">
+                      Untuk <strong>subdomain</strong> (misal: <code>app.domain.com</code>), buat record tipe <strong>CNAME</strong> ke DNS Target.
+                      <br />
+                      Untuk <strong>root domain</strong> (misal: <code>domain.com</code>), buat record tipe <strong>ALIAS / ANAME</strong> ke DNS Target.
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
