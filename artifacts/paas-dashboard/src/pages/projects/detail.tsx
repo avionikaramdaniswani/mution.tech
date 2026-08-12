@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "wouter";
 import { 
   useGetProject, getGetProjectQueryKey,
@@ -34,6 +34,13 @@ const ACTIVE_DEPLOYMENT_STATUSES = new Set<string>(["queued", "building", "deplo
 
 function isDeploymentActive(deployment: Deployment | null | undefined): boolean {
   return ACTIVE_DEPLOYMENT_STATUSES.has(deployment?.status ?? "");
+}
+
+function slugifyDomain(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "app";
 }
 
 export default function ProjectDetail() {
@@ -83,6 +90,41 @@ export default function ProjectDetail() {
   const restartProject = useRestartProject();
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
+  const [customDomainInput, setCustomDomainInput] = useState("");
+
+  useEffect(() => {
+    if (project?.domain) {
+      setCustomDomainInput(project.domain);
+    }
+  }, [project?.domain]);
+
+  const handleSaveDomain = () => {
+    let clean = customDomainInput.trim().toLowerCase();
+    clean = clean.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    if (!clean) {
+      toast({ title: "Masukkan nama domain terlebih dahulu", variant: "destructive" });
+      return;
+    }
+    updateProject.mutate(
+      { id: projectId, data: { domain: clean } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+          toast({
+            title: "Domain berhasil disimpan",
+            description: "Klik Deploy ulang atau Restart agar rute domain baru aktif di server.",
+          });
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Gagal menyimpan domain",
+            description: err?.data?.error || err?.message || "Terjadi kesalahan saat memperbarui domain",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
   const [baseDirectoryInput, setBaseDirectoryInput] = useState<string | null>(null);
   const [buildCommandInput, setBuildCommandInput] = useState<string | null>(null);
   const [startCommandInput, setStartCommandInput] = useState<string | null>(null);
@@ -231,6 +273,7 @@ export default function ProjectDetail() {
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="bg-muted">
           <TabsTrigger value="overview">Ringkasan</TabsTrigger>
+          <TabsTrigger value="domain">Domain</TabsTrigger>
           <TabsTrigger value="deployments">Deployment</TabsTrigger>
           <TabsTrigger value="environment">Variabel Env</TabsTrigger>
         </TabsList>
@@ -378,6 +421,98 @@ export default function ProjectDetail() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="domain" className="mt-6 space-y-6">
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5 text-primary" />
+                Pengaturan Domain & Subdomain
+              </CardTitle>
+              <CardDescription>
+                Hubungkan domain sendiri atau gunakan subdomain mution.tech secara gratis dengan SSL otomatis.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="domain-input">Nama Domain / Subdomain</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="domain-input"
+                    value={customDomainInput}
+                    onChange={(e) => setCustomDomainInput(e.target.value)}
+                    placeholder="contoh: mution-tech.app.mution.tech atau mydomain.com"
+                    className="font-mono text-sm"
+                  />
+                  <Button onClick={handleSaveDomain} disabled={updateProject.isPending}>
+                    {updateProject.isPending ? "Menyimpan..." : "Simpan Domain"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Gunakan domain kustom sendiri atau buat subdomain berakhiran <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">.app.mution.tech</code>.
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-muted/40 p-4 border border-border/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    ⚡ Preset Cepat Subdomain Mution
+                  </h4>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCustomDomainInput(`${slugifyDomain(project.name)}.app.mution.tech`)}
+                  >
+                    Gunakan {slugifyDomain(project.name)}.app.mution.tech
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border/50 p-4 space-y-3 bg-card">
+                <h4 className="text-sm font-semibold">Panduan Setting DNS (Cloudflare / Provider Domain)</h4>
+                <p className="text-xs text-muted-foreground">
+                  Jika menggunakan domain sendiri atau subdomain mution.tech, tambahkan A Record berikut di DNS Manager kamu:
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tipe</TableHead>
+                      <TableHead>Name / Host</TableHead>
+                      <TableHead>IP Target (Server B)</TableHead>
+                      <TableHead>Proxy Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="font-mono text-xs">A</TableCell>
+                      <TableCell className="font-mono text-xs">* (atau *.app)</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        <div className="flex items-center gap-2">
+                          168.110.215.158
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => {
+                              navigator.clipboard.writeText("168.110.215.158");
+                              toast({ title: "IP Server disalin!" });
+                            }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs font-medium text-amber-500">DNS Only (Awan Abu-abu)</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="deployments" className="mt-6">

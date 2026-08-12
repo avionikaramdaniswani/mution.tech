@@ -11,6 +11,7 @@ import {
   restartProjectWithCoolify,
   stopProjectWithCoolify,
   syncProjectEnvToCoolify,
+  updateCoolifyApplicationSettings,
 } from "../lib/coolify";
 
 const router = Router();
@@ -201,6 +202,14 @@ router.patch("/projects/:id", async (req, res): Promise<void> => {
   if (!project) {
     res.status(404).json({ error: "Project not found" });
     return;
+  }
+
+  if (isCoolifyConfigured()) {
+    try {
+      await updateCoolifyApplicationSettings(project);
+    } catch {
+      // non-fatal sync error
+    }
   }
 
   res.json(mapProject(project));

@@ -472,24 +472,26 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
   return coolifyRequest<CoolifyApplication>("POST", "/applications/public", commonPayload);
 }
 
-async function updateCoolifyApplicationSettings(project: Project, applicationUuid: string, buildPack: BuildPack): Promise<void> {
+export async function updateCoolifyApplicationSettings(project: Project, applicationUuid?: string, buildPack?: BuildPack): Promise<void> {
+  const resource = await findCoolifyResource(project.id);
+  if (!resource?.coolifyApplicationUuid) return;
+  const appUuid = applicationUuid || resource.coolifyApplicationUuid;
   const runtime = project.runtime as Runtime;
-  const settings = buildPack === "nixpacks" ? runtimeDeploymentSettings(runtime) : {};
+  const bp = buildPack || (await resolveBuildPack(project, runtime));
+  const settings = bp === "nixpacks" ? runtimeDeploymentSettings(runtime) : {};
   const baseDirectory = normalizeBaseDirectory(project.baseDirectory);
   const port = await resolveProjectPort(project);
 
   const domain = normalizeDomain(project.domain);
   const isCustomDomain = !!(domain && !domain.includes("sslip.io"));
 
-  await coolifyRequest("PATCH", `/applications/${applicationUuid}`, {
-    // Retrofits existing applications (created before this project added a
-    // Dockerfile, or before this feature existed) onto the right build pack
-    // on the next deploy, instead of only applying it to brand-new apps.
-    build_pack: buildPack,
+  await coolifyRequest("PATCH", `/applications/${appUuid}`, {
+    build_pack: bp,
     ...settings,
     ports_exposes: port,
     base_directory: baseDirectory ?? "/",
     is_force_https_enabled: isCustomDomain,
+    ...(domain ? { domains: domain } : {}),
   });
 }
 
