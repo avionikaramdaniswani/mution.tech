@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "wouter";
 import { 
   useGetProject, getGetProjectQueryKey,
@@ -53,6 +53,10 @@ export default function ProjectDetail() {
   const [, setLocation] = useLocation();
   const [logDeployment, setLogDeployment] = useState<Deployment | null>(null);
 
+  const latestDeployLogRef = useRef<HTMLPreElement>(null);
+  const runtimeLogRef = useRef<HTMLPreElement>(null);
+  const modalLogRef = useRef<HTMLPreElement>(null);
+
   const { data: project, isLoading: isLoadingProject } = useGetProject(projectId, { 
     query: {
       enabled: !!projectId,
@@ -88,6 +92,24 @@ export default function ProjectDetail() {
   const selectedLogDeployment = logDeployment
     ? projectDeployments.find((deployment) => deployment.id === logDeployment.id) ?? logDeployment
     : null;
+
+  useEffect(() => {
+    if (latestDeployLogRef.current) {
+      latestDeployLogRef.current.scrollTop = latestDeployLogRef.current.scrollHeight;
+    }
+  }, [latestDeployment?.buildLog]);
+
+  useEffect(() => {
+    if (runtimeLogRef.current) {
+      runtimeLogRef.current.scrollTop = runtimeLogRef.current.scrollHeight;
+    }
+  }, [runtimeLogsData?.logs]);
+
+  useEffect(() => {
+    if (modalLogRef.current) {
+      modalLogRef.current.scrollTop = modalLogRef.current.scrollHeight;
+    }
+  }, [selectedLogDeployment?.buildLog]);
 
   const { data: envVars, isLoading: isLoadingEnv } = useGetProjectEnv(projectId, {
     query: { enabled: !!projectId, queryKey: getGetProjectEnvQueryKey(projectId) }
@@ -675,7 +697,7 @@ export default function ProjectDetail() {
                     </Button>
                   )}
                 </div>
-                <pre className="max-h-[380px] min-h-[160px] overflow-auto p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap rounded-md bg-muted/30 border border-border">
+                <pre ref={latestDeployLogRef} className="max-h-[380px] min-h-[160px] overflow-auto p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap rounded-md bg-muted/30 border border-border">
                   {latestDeployment?.buildLog || "Log deployment akan muncul di sini setelah project dibuat dan deploy otomatis dimulai."}
                 </pre>
               </div>
@@ -789,7 +811,7 @@ export default function ProjectDetail() {
                   <p className="text-xs text-muted-foreground mt-1">Runtime logs hanya tersedia ketika aplikasi aktif (berstatus running).</p>
                 </div>
               ) : (
-                <pre className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap">
+                <pre ref={runtimeLogRef} className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap">
                   {isFetchingRuntimeLogs && !runtimeLogsData ? (
                     "Mengambil logs..."
                   ) : runtimeLogsData?.logs ? (
@@ -816,7 +838,7 @@ export default function ProjectDetail() {
               {selectedLogDeployment?.commitMessage || selectedLogDeployment?.commitHash || "Deploy manual"}
             </DialogDescription>
           </DialogHeader>
-          <pre className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap">
+          <pre ref={modalLogRef} className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap">
             {selectedLogDeployment?.buildLog || "Belum ada log untuk deployment ini."}
           </pre>
         </DialogContent>
