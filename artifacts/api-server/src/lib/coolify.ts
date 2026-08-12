@@ -473,7 +473,10 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
 }
 
 export async function updateCoolifyApplicationSettings(project: Project, applicationUuid?: string, buildPack?: BuildPack): Promise<void> {
-  const resource = await findCoolifyResource(project.id);
+  const [resource] = await db
+    .select()
+    .from(coolifyResourcesTable)
+    .where(eq(coolifyResourcesTable.projectId, project.id));
   if (!resource?.coolifyApplicationUuid) return;
   const appUuid = applicationUuid || resource.coolifyApplicationUuid;
   const runtime = project.runtime as Runtime;
