@@ -487,41 +487,67 @@ export default function ProjectDetail() {
               <div className="rounded-lg border border-border/50 p-4 space-y-3 bg-card">
                 <h4 className="text-sm font-semibold">Panduan Menghubungkan Domain Sendiri (Custom Domain)</h4>
                 <p className="text-xs text-muted-foreground">
-                  Jika kamu menggunakan domain sendiri (contoh: <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">perusahaan.com</code> atau <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">app.mydomain.id</code>), tambahkan Record A berikut di DNS Manager kamu:
+                  Tambahkan record berikut di pengaturan DNS domain kamu (pilih salah satu sesuai jenis domain yang digunakan):
                 </p>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tipe</TableHead>
-                      <TableHead>Name / Host</TableHead>
-                      <TableHead>Point To / Target IP</TableHead>
-                      <TableHead>Proxy Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell className="font-mono text-xs">A</TableCell>
-                      <TableCell className="font-mono text-xs">@ (atau nama subdomain)</TableCell>
-                      <TableCell className="font-mono text-xs">
-                        <div className="flex items-center gap-2">
-                          168.110.215.158
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => {
-                              navigator.clipboard.writeText("168.110.215.158");
-                              toast({ title: "IP Server disalin!" });
-                            }}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs font-medium text-amber-500">DNS Only / OFF</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[180px]">Jenis Domain</TableHead>
+                        <TableHead>Tipe</TableHead>
+                        <TableHead>Name / Host</TableHead>
+                        <TableHead>Target / Value</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="font-medium text-xs">Subdomain<br/><span className="text-muted-foreground font-normal">(contoh: app.domain.com)</span></TableCell>
+                        <TableCell className="font-mono text-xs">CNAME</TableCell>
+                        <TableCell className="font-mono text-xs">app</TableCell>
+                        <TableCell className="font-mono text-xs">
+                          <div className="flex items-center gap-2">
+                            cname.mution.tech
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => {
+                                navigator.clipboard.writeText("cname.mution.tech");
+                                toast({ title: "CNAME disalin!" });
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium text-xs">Root Domain<br/><span className="text-muted-foreground font-normal">(contoh: domain.com)</span></TableCell>
+                        <TableCell className="font-mono text-xs">A</TableCell>
+                        <TableCell className="font-mono text-xs">@</TableCell>
+                        <TableCell className="font-mono text-xs">
+                          <div className="flex items-center gap-2">
+                            168.110.215.158
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => {
+                                navigator.clipboard.writeText("168.110.215.158");
+                                toast({ title: "IP Address disalin!" });
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  <span className="font-semibold text-amber-500">Penting:</span> Jika menggunakan Cloudflare, pastikan status Proxy dimatikan (<strong className="text-foreground">DNS Only / Awan Abu-abu</strong>).
+                </p>
               </div>
             </CardContent>
           </Card>
