@@ -9,6 +9,9 @@ import router from "./routes";
 import v1Router from "./routes/v1-proxy";
 import { logger } from "./lib/logger";
 import { corsOptions, csrfOriginGuard, globalApiRateLimit, securityHeaders } from "./lib/security";
+import { ensureCoolifyTables } from "./lib/coolify-schema";
+
+void ensureCoolifyTables();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDist = path.resolve(__dirname, "../../paas-dashboard/dist/public");

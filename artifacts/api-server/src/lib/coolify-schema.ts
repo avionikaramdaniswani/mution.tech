@@ -32,6 +32,10 @@ export function ensureCoolifyTables(): Promise<void> {
     `);
 
     await pool.query(`
+      ALTER TABLE projects ADD COLUMN IF NOT EXISTS build_command text;
+      ALTER TABLE projects ADD COLUMN IF NOT EXISTS start_command text;
+    `);
+    await pool.query(`
       CREATE INDEX IF NOT EXISTS coolify_resources_project_id_idx
       ON coolify_resources(project_id)
     `);
