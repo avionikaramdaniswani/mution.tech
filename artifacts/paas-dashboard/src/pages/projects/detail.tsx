@@ -75,7 +75,7 @@ export default function ProjectDetail() {
     }
   });
   
-  const { data: runtimeLogsData, isLoading: isLoadingRuntimeLogs, refetch: refetchRuntimeLogs, isRefetching: isRefetchingRuntimeLogs } = useGetProjectRuntimeLogs(projectId, {
+  const { data: runtimeLogsData, isFetching: isFetchingRuntimeLogs, refetch: refetchRuntimeLogs } = useGetProjectRuntimeLogs(projectId, {
     query: {
       enabled: !!projectId && project?.status === 'running',
       queryKey: getGetProjectRuntimeLogsQueryKey(projectId),
@@ -775,9 +775,9 @@ export default function ProjectDetail() {
                 variant="outline" 
                 size="sm" 
                 onClick={() => refetchRuntimeLogs()}
-                disabled={isRefetchingRuntimeLogs || isLoadingRuntimeLogs || project?.status !== 'running'}
+                disabled={isFetchingRuntimeLogs || project?.status !== 'running'}
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${(isRefetchingRuntimeLogs || isLoadingRuntimeLogs) ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 mr-2 ${isFetchingRuntimeLogs ? 'animate-spin' : ''}`} />
                 Refresh Logs
               </Button>
             </CardHeader>
@@ -789,23 +789,15 @@ export default function ProjectDetail() {
                   <p className="text-xs text-muted-foreground mt-1">Runtime logs hanya tersedia ketika aplikasi aktif (berstatus running).</p>
                 </div>
               ) : (
-                <div className="bg-[#0D1117] text-[#C9D1D9] font-mono text-[13px] rounded-md overflow-hidden border border-[#30363D]">
-                  <div className="flex items-center px-4 py-2 border-b border-[#30363D] bg-[#161B22] gap-2">
-                    <Terminal className="h-4 w-4 text-emerald-500" />
-                    <span className="text-xs font-semibold tracking-wider text-muted-foreground">SERVER LOGS</span>
-                  </div>
-                  <div className="p-4 overflow-x-auto min-h-[300px] max-h-[500px] overflow-y-auto whitespace-pre">
-                    {isLoadingRuntimeLogs ? (
-                      <div className="flex items-center gap-2 text-muted-foreground animate-pulse">
-                        <Terminal className="h-4 w-4" /> Mengambil logs...
-                      </div>
-                    ) : runtimeLogsData?.logs ? (
-                      runtimeLogsData.logs
-                    ) : (
-                      <div className="text-muted-foreground italic">Belum ada log yang tersedia.</div>
-                    )}
-                  </div>
-                </div>
+                <pre className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap">
+                  {isFetchingRuntimeLogs && !runtimeLogsData ? (
+                    "Mengambil logs..."
+                  ) : runtimeLogsData?.logs ? (
+                    runtimeLogsData.logs
+                  ) : (
+                    "Belum ada log yang tersedia."
+                  )}
+                </pre>
               )}
             </CardContent>
           </Card>
