@@ -448,7 +448,7 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
     // (and some Coolify versions reject unknown fields for this build pack).
     ...(buildPack === "nixpacks" ? runtimeDeploymentSettings(runtime) : {}),
     is_auto_deploy_enabled: true,
-    is_force_https_enabled: true,
+    is_force_https_enabled: !!(domain && !domain.includes("sslip.io")),
     autogenerate_domain: !domain,
     instant_deploy: false,
   };
@@ -478,6 +478,9 @@ async function updateCoolifyApplicationSettings(project: Project, applicationUui
   const baseDirectory = normalizeBaseDirectory(project.baseDirectory);
   const port = await resolveProjectPort(project);
 
+  const domain = normalizeDomain(project.domain);
+  const isCustomDomain = !!(domain && !domain.includes("sslip.io"));
+
   await coolifyRequest("PATCH", `/applications/${applicationUuid}`, {
     // Retrofits existing applications (created before this project added a
     // Dockerfile, or before this feature existed) onto the right build pack
@@ -486,6 +489,7 @@ async function updateCoolifyApplicationSettings(project: Project, applicationUui
     ...settings,
     ports_exposes: port,
     base_directory: baseDirectory ?? "/",
+    is_force_https_enabled: isCustomDomain,
   });
 }
 
