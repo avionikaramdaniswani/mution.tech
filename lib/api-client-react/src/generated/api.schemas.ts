@@ -499,6 +499,10 @@ export interface AdminUsage {
   daily: AdminUsageDaily[];
 }
 
+export type GetProjectRuntimeLogs200 = {
+  logs?: string | null;
+};
+
 export type AdminGetUsageParams = {
 /**
  * Rentang waktu ke belakang dalam hari (1–365). Default 30.

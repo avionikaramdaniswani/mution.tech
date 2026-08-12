@@ -6,6 +6,7 @@ import {
   useGetProjectEnv, getGetProjectEnvQueryKey, useSetProjectEnv, useDeleteProjectEnv,
   useListDeployments, getListDeploymentsQueryKey, useTriggerDeployment, useRollbackDeployment,
   getListProjectsQueryKey, useUpdateProject,
+  useGetProjectRuntimeLogs, getGetProjectRuntimeLogsQueryKey,
 } from "@workspace/api-client-react";
 import type { Deployment } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,7 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash, Plus, Trash2, Info } from "lucide-react";
+import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash, Plus, Trash2, Info, Terminal } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -74,6 +75,13 @@ export default function ProjectDetail() {
     }
   });
   
+  const { data: runtimeLogsData, isLoading: isLoadingRuntimeLogs, refetch: refetchRuntimeLogs, isRefetching: isRefetchingRuntimeLogs } = useGetProjectRuntimeLogs(projectId, {
+    query: {
+      enabled: !!projectId && project?.status === 'running',
+      queryKey: getGetProjectRuntimeLogsQueryKey(projectId),
+    }
+  });
+
   const projectDeployments = deployments?.filter(d => d.projectId === projectId) || [];
   const latestDeployment = projectDeployments[0] ?? null;
   const hasActiveDeployment = isDeploymentActive(latestDeployment) || ACTIVE_PROJECT_STATUSES.has(project?.status ?? "");
@@ -332,6 +340,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="overview">Ringkasan</TabsTrigger>
           <TabsTrigger value="domain">Domain</TabsTrigger>
           <TabsTrigger value="deployments">Deployment</TabsTrigger>
+          <TabsTrigger value="runtime-logs">Runtime Logs</TabsTrigger>
           <TabsTrigger value="environment">Variabel Env</TabsTrigger>
         </TabsList>
 
@@ -748,6 +757,55 @@ export default function ProjectDetail() {
                     ))}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="runtime-logs" className="mt-6 space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-4">
+              <div>
+                <CardTitle>Runtime Logs</CardTitle>
+                <CardDescription>
+                  Log real-time aplikasi kamu yang sedang berjalan (console.log, error, dsb).
+                </CardDescription>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => refetchRuntimeLogs()}
+                disabled={isRefetchingRuntimeLogs || isLoadingRuntimeLogs || project?.status !== 'running'}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${(isRefetchingRuntimeLogs || isLoadingRuntimeLogs) ? 'animate-spin' : ''}`} />
+                Refresh Logs
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {project?.status !== 'running' ? (
+                <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-md bg-muted/20">
+                  <Terminal className="h-8 w-8 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground font-medium">Aplikasi Sedang Tidak Berjalan</p>
+                  <p className="text-xs text-muted-foreground mt-1">Runtime logs hanya tersedia ketika aplikasi aktif (berstatus running).</p>
+                </div>
+              ) : (
+                <div className="bg-[#0D1117] text-[#C9D1D9] font-mono text-[13px] rounded-md overflow-hidden border border-[#30363D]">
+                  <div className="flex items-center px-4 py-2 border-b border-[#30363D] bg-[#161B22] gap-2">
+                    <Terminal className="h-4 w-4 text-emerald-500" />
+                    <span className="text-xs font-semibold tracking-wider text-muted-foreground">SERVER LOGS</span>
+                  </div>
+                  <div className="p-4 overflow-x-auto min-h-[300px] max-h-[500px] overflow-y-auto whitespace-pre">
+                    {isLoadingRuntimeLogs ? (
+                      <div className="flex items-center gap-2 text-muted-foreground animate-pulse">
+                        <Terminal className="h-4 w-4" /> Mengambil logs...
+                      </div>
+                    ) : runtimeLogsData?.logs ? (
+                      runtimeLogsData.logs
+                    ) : (
+                      <div className="text-muted-foreground italic">Belum ada log yang tersedia.</div>
+                    )}
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

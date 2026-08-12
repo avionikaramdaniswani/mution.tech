@@ -12,6 +12,7 @@ import {
   stopProjectWithCoolify,
   syncProjectEnvToCoolify,
   updateCoolifyApplicationSettings,
+  getProjectRuntimeLogsWithCoolify,
 } from "../lib/coolify";
 
 const router = Router();
@@ -182,6 +183,36 @@ router.get("/projects/:id", async (req, res): Promise<void> => {
 
   const status = await resolveProjectStatus(project);
   res.json(mapProject(project, status));
+});
+
+// Get project runtime logs
+router.get("/projects/:id/runtime-logs", async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, user.id)));
+
+  if (!project) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  if (!isCoolifyConfigured()) {
+    res.status(503).json({ error: "Coolify is not configured" });
+    return;
+  }
+
+  try {
+    const logs = await getProjectRuntimeLogsWithCoolify(project.id);
+    res.json({ logs });
+  } catch (err) {
+    console.error("Error fetching runtime logs:", err);
+    res.status(500).json({ error: "Failed to fetch runtime logs" });
+  }
 });
 
 // Update project

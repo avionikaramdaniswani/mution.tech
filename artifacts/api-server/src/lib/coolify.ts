@@ -799,6 +799,19 @@ export async function syncDeploymentFromCoolify(deploymentId: number): Promise<{
   };
 }
 
+export async function getProjectRuntimeLogsWithCoolify(projectId: number): Promise<string | null> {
+  const resource = await getProjectResource(projectId);
+  if (!resource?.coolifyApplicationUuid) return null;
+  
+  try {
+    const rawLogs = await coolifyRequest<string>("GET", `/applications/${resource.coolifyApplicationUuid}/logs`);
+    return formatCleanBuildLog(rawLogs);
+  } catch (err) {
+    if (err instanceof CoolifyError && err.statusCode === 404) return null;
+    throw err;
+  }
+}
+
 export async function stopProjectWithCoolify(projectId: number): Promise<boolean> {
   const resource = await getProjectResource(projectId);
   if (!resource?.coolifyApplicationUuid) return false;

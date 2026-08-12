@@ -192,6 +192,35 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /projects/{id}/runtime-logs:
+    get:
+      operationId: getProjectRuntimeLogs
+      tags: [projects]
+      summary: Get project runtime logs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project runtime logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: string
+                    nullable: true
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
     patch:
       operationId: updateProject
       tags: [projects]
