@@ -30,9 +30,12 @@ const OptionalRepoUrl = z.preprocess(
     }
   }).optional(),
 );
+const domainRegex = /^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/;
 const OptionalDomain = z.preprocess(
   (value) => value === "" ? undefined : value,
-  z.string().trim().toLowerCase().max(253).regex(/^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/).optional(),
+  z.string().trim().toLowerCase().max(1024).refine((val) => {
+    return val.split(',').every(d => domainRegex.test(d.trim()));
+  }, "Format domain tidak valid").optional(),
 );
 const ProjectName = z.string().trim().min(2).max(60).regex(/^[a-z0-9-]+$/);
 function isSafeRepoPath(value: string): boolean {
