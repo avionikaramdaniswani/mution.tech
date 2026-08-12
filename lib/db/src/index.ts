@@ -24,6 +24,9 @@ export function getPool(): pg.Pool {
       connectionString: dbUrl,
       ssl: process.env.SUPABASE_DATABASE_URL ? { rejectUnauthorized: false } : undefined,
     });
+    _pool.on("error", (err) => {
+      console.error("Unexpected database pool connection error:", err.message);
+    });
   }
   return _pool;
 }
