@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { ProjectStatusBadge } from "./index";
 import { useLocation } from "wouter";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash, Plus, Trash2, Info } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -121,7 +122,10 @@ export default function ProjectDetail() {
     updateProject.mutate({ id: projectId, data: { domain: newDomains } }, {
        onSuccess: () => {
          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-         toast({ title: "Subdomain Mution berhasil diperbarui!" });
+         toast({ 
+           title: "Subdomain berhasil diperbarui!", 
+           description: "PASTIKAN UNTUK DEPLOY ULANG agar rute trafik Traefik diterapkan ke domain ini." 
+         });
        },
        onError: (err: any) => {
          const rawErr = err?.data?.error || err?.message;
@@ -147,7 +151,10 @@ export default function ProjectDetail() {
     updateProject.mutate({ id: projectId, data: { domain: newDomains } }, {
        onSuccess: () => {
          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-         toast({ title: "Custom domain berhasil ditambahkan!" });
+         toast({ 
+           title: "Custom domain berhasil ditambahkan!",
+           description: "PASTIKAN UNTUK DEPLOY ULANG agar rute trafik Traefik diterapkan ke domain ini."
+         });
          setIsAddDomainOpen(false);
          setNewCustomDomain("");
        },
@@ -163,7 +170,10 @@ export default function ProjectDetail() {
     updateProject.mutate({ id: projectId, data: { domain: newDomains } }, {
        onSuccess: () => {
          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
-         toast({ title: "Domain berhasil dihapus!" });
+         toast({ 
+           title: "Domain berhasil dihapus!",
+           description: "PASTIKAN UNTUK DEPLOY ULANG agar rute lama segera dicabut."
+         });
        },
        onError: (err: any) => {
          const rawErr = err?.data?.error || err?.message;
@@ -482,6 +492,13 @@ export default function ProjectDetail() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <Alert className="bg-amber-500/10 text-amber-500 border-amber-500/20">
+                <Info className="h-4 w-4 stroke-amber-500" />
+                <AlertTitle>Penting: Wajib Deploy Ulang</AlertTitle>
+                <AlertDescription>
+                  Setiap kamu menambah, mengubah, atau menghapus domain di bawah ini, <strong>kamu wajib menekan tombol "Deploy Ulang"</strong>. (Tombol Restart tidak akan menerapkan konfigurasi rute).
+                </AlertDescription>
+              </Alert>
 
               <div className="rounded-lg border border-border/50 p-4 space-y-3 bg-card">
                 <h4 className="text-sm font-semibold">Subdomain Mution.tech</h4>
