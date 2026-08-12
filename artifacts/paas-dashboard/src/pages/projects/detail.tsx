@@ -24,7 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash } from "lucide-react";
+import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -532,6 +532,7 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number; envV
   const [bulkText, setBulkText] = useState("");
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [isBulkSaving, setIsBulkSaving] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number } | null>(null);
 
   const setEnv = useSetProjectEnv();
   const delEnv = useDeleteProjectEnv();
@@ -626,9 +627,12 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number; envV
     if (result.length === 0) { setBulkError("Tidak ada nilai yang diisi. Tulis value untuk key yang ingin disimpan."); return; }
 
     setIsBulkSaving(true);
+    setBulkProgress({ current: 0, total: result.length });
     let saved = 0;
     let failed = 0;
-    for (const { key, value } of result) {
+    for (let i = 0; i < result.length; i++) {
+      const { key, value } = result[i];
+      setBulkProgress({ current: i + 1, total: result.length });
       try {
         await setEnv.mutateAsync({ id: projectId, data: { key, value } });
         saved++;
@@ -637,6 +641,7 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number; envV
       }
     }
     setIsBulkSaving(false);
+    setBulkProgress(null);
     queryClient.invalidateQueries({ queryKey: getGetProjectEnvQueryKey(projectId) });
     setBulkMode(null);
     toast({
@@ -828,7 +833,14 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number; envV
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setBulkMode(null)} disabled={isBulkSaving}>Batal</Button>
             <Button onClick={handleBulkSave} disabled={isBulkSaving}>
-              {isBulkSaving ? "Menyimpan..." : "Simpan"}
+              {isBulkSaving ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {bulkProgress ? `Menyimpan (${bulkProgress.current}/${bulkProgress.total})...` : "Menyimpan..."}
+                </span>
+              ) : (
+                "Simpan"
+              )}
             </Button>
           </div>
         </DialogContent>
