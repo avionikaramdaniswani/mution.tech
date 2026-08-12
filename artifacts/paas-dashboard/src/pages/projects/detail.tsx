@@ -105,9 +105,9 @@ export default function ProjectDetail() {
       toast({ title: "Masukkan nama domain terlebih dahulu", variant: "destructive" });
       return;
     }
-    // Jika pengguna hanya mengetik 1 kata tanpa titik (contoh: "piodev"), otomatis tambahkan ".app.mution.tech"
+    // Jika pengguna hanya mengetik 1 kata tanpa titik (contoh: "piodev"), otomatis tambahkan ".mution.tech"
     if (!clean.includes(".")) {
-      clean = `${clean}.app.mution.tech`;
+      clean = `${clean}.mution.tech`;
       setCustomDomainInput(clean);
     }
     updateProject.mutate(
@@ -123,7 +123,7 @@ export default function ProjectDetail() {
         onError: (err: any) => {
           const rawErr = err?.data?.error || err?.message;
           const msg = typeof rawErr === "string" && (rawErr.includes("invalid_string") || rawErr.includes("regex"))
-            ? "Format domain tidak valid. Tulis domain lengkap (contoh: piodev.app.mution.tech atau mydomain.com)"
+            ? "Format domain tidak valid. Tulis domain lengkap (contoh: piodev.mution.tech atau mydomain.com)"
             : rawErr || "Terjadi kesalahan saat memperbarui domain";
           toast({
             title: "Gagal menyimpan domain",
@@ -451,7 +451,7 @@ export default function ProjectDetail() {
                     id="domain-input"
                     value={customDomainInput}
                     onChange={(e) => setCustomDomainInput(e.target.value)}
-                    placeholder="contoh: mution-tech.app.mution.tech atau mydomain.com"
+                    placeholder="contoh: piodev.mution.tech atau mydomain.com"
                     className="font-mono text-sm"
                   />
                   <Button onClick={handleSaveDomain} disabled={updateProject.isPending}>
@@ -459,7 +459,7 @@ export default function ProjectDetail() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Gunakan domain kustom sendiri atau buat subdomain berakhiran <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">.app.mution.tech</code>.
+                  Gunakan domain kustom sendiri atau buat subdomain berakhiran <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">.mution.tech</code>.
                 </p>
               </div>
 
@@ -474,9 +474,9 @@ export default function ProjectDetail() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setCustomDomainInput(`${slugifyDomain(project.name)}.app.mution.tech`)}
+                    onClick={() => setCustomDomainInput(`${slugifyDomain(project.name)}.mution.tech`)}
                   >
-                    Gunakan {slugifyDomain(project.name)}.app.mution.tech
+                    Gunakan {slugifyDomain(project.name)}.mution.tech
                   </Button>
                 </div>
               </div>
