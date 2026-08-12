@@ -24,6 +24,8 @@ export const projectsTable = pgTable("projects", {
   status: projectStatusEnum("status").notNull().default("idle"),
   domain: text("domain"),
   baseDirectory: text("base_directory"),
+  buildCommand: text("build_command"),
+  startCommand: text("start_command"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastDeployedAt: timestamp("last_deployed_at"),
 });

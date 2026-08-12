@@ -45,12 +45,18 @@ const OptionalBaseDirectory = z.preprocess(
   (value) => value === "" ? null : value,
   z.union([BaseDirectoryString, z.null()]).optional(),
 );
+const OptionalCommand = z.preprocess(
+  (value) => value === "" ? null : value,
+  z.union([z.string().trim().max(1024), z.null()]).optional(),
+);
 const CreateProjectBody = z.object({
   name: ProjectName,
   repoUrl: OptionalRepoUrl,
   runtime: RuntimeSchema,
   domain: OptionalDomain,
   baseDirectory: OptionalBaseDirectory,
+  buildCommand: OptionalCommand,
+  startCommand: OptionalCommand,
 });
 const UpdateProjectBody = z.object({
   name: ProjectName.optional(),
@@ -58,6 +64,8 @@ const UpdateProjectBody = z.object({
   runtime: RuntimeSchema.optional(),
   domain: OptionalDomain,
   baseDirectory: OptionalBaseDirectory,
+  buildCommand: OptionalCommand,
+  startCommand: OptionalCommand,
 }).refine((value) => Object.keys(value).length > 0, "Tidak ada perubahan");
 const SetProjectEnvBody = z.object({
   key: z.string().trim().min(1).max(128).regex(/^[A-Za-z_][A-Za-z0-9_]*$/),

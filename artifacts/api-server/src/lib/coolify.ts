@@ -4,6 +4,7 @@ import {
   coolifyResourcesTable,
   db,
   envVarsTable,
+  projectsTable,
   usersTable,
   type Project,
 } from "@workspace/db";
@@ -322,7 +323,12 @@ function runtimeDeploymentSettings(runtime: Runtime): Record<string, unknown> {
   return {};
 }
 
-function buildApplicationEnv(runtime: Runtime, buildPack: BuildPack, rows: Array<{ key: string; value: string }>): Array<{ key: string; value: string }> {
+function buildApplicationEnv(
+  runtime: Runtime,
+  buildPack: BuildPack,
+  rows: Array<{ key: string; value: string }>,
+  project?: typeof projectsTable.$inferSelect
+): Array<{ key: string; value: string }> {
   const env = rows.map((row) => ({ key: row.key, value: row.value }));
   if ((runtime === "nodejs" || runtime === "python") && !env.some((row) => row.key === "PORT")) {
     env.push({ key: "PORT", value: runtimePort(runtime) });
@@ -331,17 +337,12 @@ function buildApplicationEnv(runtime: Runtime, buildPack: BuildPack, rows: Array
     if (!env.some((row) => row.key === "NIXPACKS_INSTALL_CMD")) {
       env.push({ key: "NIXPACKS_INSTALL_CMD", value: getNodeInstallCommand() });
     }
-    if (!env.some((row) => row.key === "NIXPACKS_BUILD_CMD")) {
-      env.push({
-        key: "NIXPACKS_BUILD_CMD",
-        value: "pnpm run build",
-      });
+    const pAny = project as any;
+    if (pAny?.buildCommand && !env.some((row) => row.key === "NIXPACKS_BUILD_CMD")) {
+      env.push({ key: "NIXPACKS_BUILD_CMD", value: pAny.buildCommand });
     }
-    if (!env.some((row) => row.key === "NIXPACKS_START_CMD")) {
-      env.push({
-        key: "NIXPACKS_START_CMD",
-        value: "node backend/dist/index.mjs",
-      });
+    if (pAny?.startCommand && !env.some((row) => row.key === "NIXPACKS_START_CMD")) {
+      env.push({ key: "NIXPACKS_START_CMD", value: pAny.startCommand });
     }
   }
   return env;
@@ -506,12 +507,17 @@ async function updateCoolifyApplicationSettings(project: Project, applicationUui
 }
 
 async function syncApplicationEnv(applicationUuid: string, runtime: Runtime, buildPack: BuildPack, projectId: number): Promise<void> {
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(eq(projectsTable.id, projectId));
+
   const rows = await db
     .select({ key: envVarsTable.key, value: envVarsTable.value })
     .from(envVarsTable)
     .where(eq(envVarsTable.projectId, projectId));
 
-  const envs = buildApplicationEnv(runtime, buildPack, rows);
+  const envs = buildApplicationEnv(runtime, buildPack, rows, project);
   if (envs.length === 0) return;
 
   await coolifyRequest("PATCH", `/applications/${applicationUuid}/envs/bulk`, {

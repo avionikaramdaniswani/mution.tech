@@ -84,21 +84,23 @@ export default function ProjectDetail() {
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
   const [baseDirectoryInput, setBaseDirectoryInput] = useState<string | null>(null);
+  const [buildCommandInput, setBuildCommandInput] = useState<string | null>(null);
+  const [startCommandInput, setStartCommandInput] = useState<string | null>(null);
 
-  const handleSaveBaseDirectory = () => {
-    if (baseDirectoryInput === null) return;
+  const handleSaveProjectSettings = () => {
+    const payload: any = {};
+    if (baseDirectoryInput !== null) payload.baseDirectory = baseDirectoryInput;
+    if (buildCommandInput !== null) payload.buildCommand = buildCommandInput;
+    if (startCommandInput !== null) payload.startCommand = startCommandInput;
+
+    if (Object.keys(payload).length === 0) return;
+
     updateProject.mutate(
-      { id: projectId, data: { baseDirectory: baseDirectoryInput } },
+      { id: projectId, data: payload },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
           setBaseDirectoryInput(null);
-          toast({ title: "Root directory disimpan", description: "Deploy ulang untuk menerapkan perubahan." });
-        },
-        onError: (error: any) => {
-          toast({
-            title: "Gagal menyimpan",
-            description: error?.data?.error || error?.message,
             variant: "destructive",
           });
         },
@@ -282,25 +284,42 @@ export default function ProjectDetail() {
                 </div>
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">Root Directory</div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="/apps/api (kosongkan jika bukan monorepo)"
-                      value={baseDirectoryInput ?? project.baseDirectory ?? ""}
-                      onChange={(e) => setBaseDirectoryInput(e.target.value)}
-                      className="font-mono text-sm"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={baseDirectoryInput === null || updateProject.isPending}
-                      onClick={handleSaveBaseDirectory}
-                    >
-                      Simpan
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Untuk monorepo: build & typecheck hanya berjalan dari folder ini, jadi error di package lain tidak menggagalkan deploy.
-                  </p>
+                  <Input
+                    placeholder="/ (kosongkan jika bukan monorepo)"
+                    value={baseDirectoryInput ?? project.baseDirectory ?? ""}
+                    onChange={(e) => setBaseDirectoryInput(e.target.value)}
+                    className="font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Build Command (Opsional)</div>
+                  <Input
+                    placeholder="e.g. pnpm run build (kosongkan untuk otomatis)"
+                    value={buildCommandInput ?? (project as any).buildCommand ?? ""}
+                    onChange={(e) => setBuildCommandInput(e.target.value)}
+                    className="font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Start Command (Opsional)</div>
+                  <Input
+                    placeholder="e.g. node backend/dist/index.mjs (kosongkan untuk otomatis)"
+                    value={startCommandInput ?? (project as any).startCommand ?? ""}
+                    onChange={(e) => setStartCommandInput(e.target.value)}
+                    className="font-mono text-sm"
+                  />
+                </div>
+                <div className="flex justify-end pt-1">
+                  <Button
+                    size="sm"
+                    disabled={
+                      (baseDirectoryInput === null && buildCommandInput === null && startCommandInput === null) ||
+                      updateProject.isPending
+                    }
+                    onClick={handleSaveProjectSettings}
+                  >
+                    Simpan Pengaturan
+                  </Button>
                 </div>
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">Dibuat</div>
