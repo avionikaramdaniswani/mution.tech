@@ -384,7 +384,7 @@ export default function ProjectDetail() {
                     </Button>
                   )}
                 </div>
-                <pre className="max-h-[360px] min-h-[160px] overflow-auto p-4 text-xs leading-relaxed whitespace-pre-wrap">
+                <pre className="max-h-[380px] min-h-[160px] overflow-auto p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap rounded-md bg-muted/30 border border-border">
                   {latestDeployment?.buildLog || "Log deployment akan muncul di sini setelah project dibuat dan deploy otomatis dimulai."}
                 </pre>
               </div>
@@ -484,7 +484,7 @@ export default function ProjectDetail() {
               {selectedLogDeployment?.commitMessage || selectedLogDeployment?.commitHash || "Deploy manual"}
             </DialogDescription>
           </DialogHeader>
-          <pre className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
+          <pre className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap">
             {selectedLogDeployment?.buildLog || "Belum ada log untuk deployment ini."}
           </pre>
         </DialogContent>

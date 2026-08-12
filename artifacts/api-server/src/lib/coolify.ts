@@ -684,6 +684,86 @@ function appendFailureDiagnosis(logs: string, status: DeploymentStatus): string 
   ].join("\n");
 }
 
+export function formatCleanBuildLog(rawLogs: string): string {
+  if (!rawLogs || !rawLogs.trim()) return "";
+
+  const lines: string[] = [];
+
+  const formatTimePrefix = (str: string, time?: string): string => {
+    if (time) {
+      try {
+        const d = new Date(time);
+        if (!isNaN(d.getTime())) {
+          const t = d.toTimeString().split(" ")[0];
+          return `[${t}] ${str}`;
+        }
+      } catch {}
+    }
+    return str;
+  };
+
+  const tryAddOutput = (text: unknown, time?: string) => {
+    if (typeof text !== "string" || !text) return;
+
+    // Filter out huge Nixpacks JSON config dumps
+    if (text.includes('"nixpkgsArchive"') || text.includes('"nixOverlays"')) {
+      lines.push(formatTimePrefix("Generating Nixpacks build configuration...", time));
+      return;
+    }
+
+    // Clean escaped quotes/newlines if stringified
+    let cleaned = text
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, "\\")
+      .replace(/\\n/g, "\n");
+
+    for (const subLine of cleaned.split("\n")) {
+      const trimmed = subLine.trim();
+      if (!trimmed) continue;
+      if (trimmed.startsWith('{"command":') && trimmed.includes('"output":""')) continue;
+      lines.push(formatTimePrefix(trimmed, time));
+    }
+  };
+
+  const inputStr = rawLogs.trim();
+
+  // Try parsing as single JSON array (Coolify log format)
+  if (inputStr.startsWith("[") && inputStr.endsWith("]")) {
+    try {
+      const arr = JSON.parse(inputStr);
+      if (Array.isArray(arr)) {
+        for (const item of arr) {
+          if (item && typeof item === "object") {
+            tryAddOutput(item.output || item.message, item.timestamp);
+          } else if (typeof item === "string") {
+            tryAddOutput(item);
+          }
+        }
+        if (lines.length > 0) return sanitizeDeploymentProviderText(lines.join("\n"));
+      }
+    } catch {}
+  }
+
+  // Fallback: parse JSON lines or plain lines
+  for (const line of inputStr.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      try {
+        const obj = JSON.parse(trimmed);
+        if (obj && typeof obj === "object") {
+          tryAddOutput(obj.output || obj.message, obj.timestamp);
+          continue;
+        }
+      } catch {}
+    }
+    tryAddOutput(trimmed);
+  }
+
+  return sanitizeDeploymentProviderText(lines.join("\n"));
+}
+
 export async function syncDeploymentFromCoolify(deploymentId: number): Promise<{
   status: DeploymentStatus;
   logs: string | null;
@@ -700,7 +780,7 @@ export async function syncDeploymentFromCoolify(deploymentId: number): Promise<{
 
   const details = await coolifyRequest<CoolifyDeploymentDetails>("GET", `/deployments/${mapping.coolifyDeploymentUuid}`);
   const status = mapCoolifyDeploymentStatus(details.status);
-  const rawLogs = details.logs ? sanitizeDeploymentProviderText(details.logs) : null;
+  const rawLogs = details.logs ? formatCleanBuildLog(details.logs) : null;
   return {
     status,
     logs: rawLogs ? appendFailureDiagnosis(rawLogs, status) : null,
