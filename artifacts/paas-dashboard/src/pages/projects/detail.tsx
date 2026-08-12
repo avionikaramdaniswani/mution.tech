@@ -165,9 +165,16 @@ export default function ProjectDetail() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-          toast({ title: "Proyek dihapus" });
-          setLocation("/projects");
-        }
+          toast({ title: "Proyek berhasil dihapus" });
+          window.location.href = "/projects";
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Gagal menghapus proyek",
+            description: err?.message || "Terjadi kesalahan saat menghapus proyek",
+            variant: "destructive",
+          });
+        },
       }
     );
   };
