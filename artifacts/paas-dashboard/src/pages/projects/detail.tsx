@@ -466,10 +466,13 @@ export default function ProjectDetail() {
               <div className="rounded-lg bg-muted/40 p-4 border border-border/50 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
-                    ⚡ Preset Cepat Subdomain Mution
+                    ⚡ Subdomain Gratis mution.tech
                   </h4>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <p className="text-xs text-muted-foreground">
+                  Langsung aktif dan bisa digunakan <strong>tanpa perlu setting DNS apapun</strong>. Cukup klik preset di bawah ini:
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
                   <Button
                     type="button"
                     variant="outline"
@@ -482,23 +485,23 @@ export default function ProjectDetail() {
               </div>
 
               <div className="rounded-lg border border-border/50 p-4 space-y-3 bg-card">
-                <h4 className="text-sm font-semibold">Panduan Setting DNS (Cloudflare / Provider Domain)</h4>
+                <h4 className="text-sm font-semibold">Panduan Menghubungkan Domain Sendiri (Custom Domain)</h4>
                 <p className="text-xs text-muted-foreground">
-                  Jika menggunakan domain sendiri atau subdomain mution.tech, tambahkan A Record berikut di DNS Manager kamu:
+                  Jika kamu menggunakan domain sendiri (contoh: <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">perusahaan.com</code> atau <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">app.mydomain.id</code>), tambahkan Record A berikut di DNS Manager kamu:
                 </p>
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tipe</TableHead>
                       <TableHead>Name / Host</TableHead>
-                      <TableHead>IP Target (Server B)</TableHead>
+                      <TableHead>Point To / Target IP</TableHead>
                       <TableHead>Proxy Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     <TableRow>
                       <TableCell className="font-mono text-xs">A</TableCell>
-                      <TableCell className="font-mono text-xs">* (atau *.app)</TableCell>
+                      <TableCell className="font-mono text-xs">@ (atau nama subdomain)</TableCell>
                       <TableCell className="font-mono text-xs">
                         <div className="flex items-center gap-2">
                           168.110.215.158
@@ -515,7 +518,7 @@ export default function ProjectDetail() {
                           </Button>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs font-medium text-amber-500">DNS Only (Awan Abu-abu)</TableCell>
+                      <TableCell className="text-xs font-medium text-amber-500">DNS Only / OFF</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
