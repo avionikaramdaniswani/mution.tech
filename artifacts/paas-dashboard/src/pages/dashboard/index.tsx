@@ -4,7 +4,7 @@ import {
   useStopProject,
   useRestartProject,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -70,8 +70,16 @@ function ProjectCard({ project }: { project: Project }) {
   const isRunning = project.status === "running";
   const isBusy    = stop.isPending || restart.isPending;
 
-  const cpu = isRunning ? seededRandom(project.id * 3, 5, 72) : 0;
-  const ram = isRunning ? seededRandom(project.id * 7, 20, 85) : 0;
+  const { data: metrics } = useQuery({
+    queryKey: ["/api/projects", project.id, "metrics"],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${project.id}/metrics`);
+      if (!res.ok) return { cpu: 0, ram: 0 };
+      return res.json();
+    },
+    enabled: isRunning,
+    refetchInterval: 5000,
+  });
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
@@ -116,10 +124,10 @@ function ProjectCard({ project }: { project: Project }) {
           )}
         </div>
 
-        {isRunning && (
+        {isRunning && metrics && (
           <div className="space-y-2">
-            <ResourceBar label="CPU" value={cpu} color="bg-[#14b8a6]" />
-            <ResourceBar label="RAM" value={ram} color="bg-[#f97316]" />
+            <ResourceBar label="CPU" value={metrics.cpu || 0} color="bg-[#14b8a6]" />
+            <ResourceBar label="RAM" value={metrics.ram || 0} color="bg-[#f97316]" />
           </div>
         )}
 

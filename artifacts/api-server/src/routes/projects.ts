@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, projectsTable, deploymentsTable, envVarsTable } from "@workspace/db";
+import { db, projectsTable, deploymentsTable, envVarsTable, coolifyResourcesTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth } from "../lib/auth";
@@ -112,7 +112,7 @@ function mapProject(p: typeof projectsTable.$inferSelect, effectiveStatus?: stri
     status: effectiveStatus ?? p.status,
     ramTier: p.ramTier,
     domain: p.domain ?? null,
-    totalSpent: p.totalSpent,
+
     baseDirectory: p.baseDirectory ?? null,
     createdAt: p.createdAt.toISOString(),
     lastDeployedAt: p.lastDeployedAt?.toISOString() ?? null,
@@ -494,6 +494,75 @@ router.delete("/projects/:id/env/:envId", async (req, res): Promise<void> => {
   }
 
   res.json({ success: true });
+});
+
+router.get("/:id/metrics", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.id);
+    const userId = (req as any).user!.id;
+    const [project] = await db
+      .select()
+      .from(projectsTable)
+      .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)));
+    if (!project) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    const [resource] = await db
+      .select()
+      .from(coolifyResourcesTable)
+      .where(eq(coolifyResourcesTable.projectId, projectId));
+    
+    if (!resource?.coolifyApplicationUuid) {
+      res.json({ cpu: 0, ram: 0 });
+      return;
+    }
+    
+    const cadvisorUrl = process.env.CADVISOR_URL || "http://168.110.215.158:9091";
+    const cadvisorRes = await fetch(`${cadvisorUrl}/api/v1.3/subcontainers`);
+    if (!cadvisorRes.ok) {
+       res.json({ cpu: 0, ram: 0 });
+       return;
+    }
+    const containers = (await cadvisorRes.json()) as any[];
+    
+    const appContainer = containers.find((c: any) => c.name && c.name.includes(resource.coolifyApplicationUuid));
+    if (!appContainer || !appContainer.stats || appContainer.stats.length === 0) {
+      res.json({ cpu: 0, ram: 0 });
+      return;
+    }
+    
+    const stats = appContainer.stats;
+    const latest = stats[stats.length - 1];
+    const first = stats[0];
+    
+    let cpuPercent = 0;
+    if (stats.length > 1) {
+      const timeDelta = new Date(latest.timestamp).getTime() - new Date(first.timestamp).getTime();
+      const cpuDelta = latest.cpu.usage.total - first.cpu.usage.total;
+      if (timeDelta > 0) {
+        cpuPercent = (cpuDelta / (timeDelta * 1000000)) * 100;
+      }
+    }
+    
+    const ram = latest.memory.usage;
+    let ramPercent = 0;
+    if (appContainer.spec?.memory?.limit && appContainer.spec.memory.limit < 1e15) {
+      ramPercent = (ram / appContainer.spec.memory.limit) * 100;
+    } else {
+      // Fallback: Assume 1GB limit for now if unbounded by container runtime
+      ramPercent = (ram / (1024 * 1024 * 1024)) * 100;
+    }
+    
+    res.json({
+      cpu: cpuPercent > 0 ? Math.min(Math.round(cpuPercent), 100) : 0,
+      ram: ramPercent > 0 ? Math.min(Math.round(ramPercent), 100) : 0
+    });
+  } catch (err) {
+    console.error("Failed to fetch metrics from cAdvisor:", err);
+    res.json({ cpu: 0, ram: 0 });
+  }
 });
 
 export default router;

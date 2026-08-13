@@ -33,9 +33,6 @@ export function startBillingCron() {
             const tier = TIER_PRICING[p.ramTier];
             if (tier) {
                 totalCost += tier.perMinute;
-                await db.update(projectsTable)
-                  .set({ totalSpent: (p.totalSpent || 0) + tier.perMinute })
-                  .where(eq(projectsTable.id, p.id));
             }
         }
 
