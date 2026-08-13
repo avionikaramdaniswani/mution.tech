@@ -53,19 +53,52 @@ const hostingRates: Record<string, { ram: string, perMinute: number, fit: string
   "8gb": { ram: "8 GB", perMinute: 7.2, fit: "Beban berat" },
 };
 
-function ResourceBar({ label, value, color }: { label: string; value: number; color: string }) {
+function RealtimeChart({ data }: { data: any[] }) {
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs text-[#526173]">
-        <span>{label}</span>
-        <span className="font-semibold text-[#172033]">{value}%</span>
-      </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#eef8ff]">
-        <div
-          className={`h-full rounded-full transition-all ${color}`}
-          style={{ width: `${value}%` }}
-        />
-      </div>
+    <div className="h-[300px] w-full mt-4">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" opacity={0.2} vertical={false} />
+          <XAxis 
+            dataKey="time" 
+            stroke="#888888" 
+            fontSize={12} 
+            tickLine={false}
+            axisLine={false} 
+          />
+          <YAxis 
+            stroke="#888888" 
+            fontSize={12} 
+            tickLine={false} 
+            axisLine={false}
+            tickFormatter={(value) => `${value}%`}
+            domain={[0, 100]}
+          />
+          <Tooltip 
+            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+            itemStyle={{ fontSize: '13px' }}
+            labelStyle={{ color: '#888', marginBottom: '4px' }}
+          />
+          <Line 
+            type="monotone" 
+            dataKey="cpu" 
+            name="CPU Usage" 
+            stroke="#14b8a6" 
+            strokeWidth={3} 
+            dot={false}
+            activeDot={{ r: 6 }} 
+          />
+          <Line 
+            type="monotone" 
+            dataKey="ram" 
+            name="RAM Usage" 
+            stroke="#f97316" 
+            strokeWidth={3}
+            dot={false} 
+            activeDot={{ r: 6 }} 
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -110,7 +143,9 @@ export default function ProjectDetail() {
   const [liveModalBuildLog, setLiveModalBuildLog] = useState<string | null>(null);
   
   // SSE state for usage metrics
-  const [metrics, setMetrics] = useState({ cpu: 0, ram: 0 });
+  const [metricsHistory, setMetricsHistory] = useState<{ time: string, cpu: number, ram: number }[]>(
+    Array(20).fill({ time: '', cpu: 0, ram: 0 })
+  );
 
   const projectDeployments = deployments?.filter(d => d.projectId === projectId) || [];
   const latestDeployment = projectDeployments[0] ?? null;
@@ -126,7 +161,16 @@ export default function ProjectDetail() {
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        setMetrics(data);
+        const now = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setMetricsHistory(prev => {
+          // If first meaningful data comes in, we can start pruning the empty fill
+          const isFilling = prev[0].time === '';
+          const updated = [...prev, { time: now, cpu: data.cpu, ram: data.ram }];
+          if (updated.length > 20) {
+            return isFilling ? updated.filter(item => item.time !== '').slice(-20) : updated.slice(updated.length - 20);
+          }
+          return updated;
+        });
       } catch (err) {}
     };
     return () => es.close();
@@ -595,7 +639,7 @@ export default function ProjectDetail() {
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Yakin ingin menghapusx</AlertDialogTitle>
+                      <AlertDialogTitle>Yakin ingin menghapus?</AlertDialogTitle>
                       <AlertDialogDescription>
                         Tindakan ini tidak bisa dibatalkan. Semua data proyek <span className="font-semibold text-foreground">{project.name}</span> akan dihapus permanen.
                       </AlertDialogDescription>
@@ -626,9 +670,18 @@ export default function ProjectDetail() {
                   <p className="text-xs text-muted-foreground mt-1">Metrik usage hanya tersedia ketika aplikasi aktif.</p>
                 </div>
               ) : (
-                <div className="space-y-8 max-w-2xl py-4">
-                  <ResourceBar label="CPU Usage" value={metrics.cpu || 0} color="bg-[#14b8a6]" />
-                  <ResourceBar label="Memory (RAM) Usage" value={metrics.ram || 0} color="bg-[#f97316]" />
+                <div className="w-full pb-4">
+                  <RealtimeChart data={metricsHistory} />
+                  <div className="flex justify-center gap-8 mt-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-[#14b8a6]"></div>
+                      <span className="text-sm font-medium">CPU Usage: {metricsHistory[metricsHistory.length - 1]?.cpu.toFixed(1) || 0}%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-[#f97316]"></div>
+                      <span className="text-sm font-medium">RAM Usage: {metricsHistory[metricsHistory.length - 1]?.ram.toFixed(1) || 0}%</span>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>

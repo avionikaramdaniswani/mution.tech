@@ -116,6 +116,7 @@ function mapProject(p: typeof projectsTable.$inferSelect, effectiveStatus?: stri
     baseDirectory: p.baseDirectory ?? null,
     createdAt: p.createdAt.toISOString(),
     lastDeployedAt: p.lastDeployedAt?.toISOString() ?? null,
+    totalSpent: p.totalSpent ?? 0,
   };
 }
 
