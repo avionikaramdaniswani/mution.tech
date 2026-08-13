@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "total_spent" real DEFAULT 0 NOT NULL;

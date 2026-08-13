@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, pgEnum, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -45,10 +45,11 @@ export const projectsTable = pgTable("projects", {
   baseDirectory: text("base_directory"),
   buildCommand: text("build_command"),
   startCommand: text("start_command"),
+  totalSpent: real("total_spent").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastDeployedAt: timestamp("last_deployed_at"),
 });
 
-export const insertProjectSchema = createInsertSchema(projectsTable).omit({ id: true, createdAt: true });
+export const insertProjectSchema = createInsertSchema(projectsTable).omit({ id: true, createdAt: true, totalSpent: true });
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projectsTable.$inferSelect;
