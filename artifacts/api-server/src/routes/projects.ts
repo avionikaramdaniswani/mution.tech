@@ -622,8 +622,8 @@ router.get("/:id/metrics", async (req, res) => {
         }
         
         const result = {
-          cpu: cpuPercent > 0 ? Math.min(Math.round(cpuPercent), 100) : 0,
-          ram: ramPercent > 0 ? Math.min(Math.round(ramPercent), 100) : 0
+          cpu: cpuPercent > 0 ? Math.min(Number(cpuPercent.toFixed(1)), 100) : 0.0,
+          ram: ramPercent > 0 ? Math.min(Number(ramPercent.toFixed(1)), 100) : 0.0
         };
         
         res.write(`data: ${JSON.stringify(result)}\n\n`);
