@@ -307,6 +307,68 @@ router.get("/projects/:id/deployments/:deploymentId", async (req, res): Promise<
   res.json(mapDeployment(refreshed));
 });
 
+router.get("/projects/:id/deployments/:deploymentId/stream", async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const id = parseRouteId(req.params.id);
+  const deploymentId = parseRouteId(req.params.deploymentId);
+  if (id === null || deploymentId === null) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, user.id)));
+
+  if (!project) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const [deployment] = await db
+    .select()
+    .from(deploymentsTable)
+    .where(and(eq(deploymentsTable.id, deploymentId), eq(deploymentsTable.projectId, id)));
+
+  if (!deployment) {
+    res.status(404).json({ error: "Deployment not found" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  // If the deployment is already finished, just send it once and close
+  const isFinished = ["success", "failed", "cancelled"].includes(deployment.status);
+
+  const fetchDeploymentStatus = async () => {
+    try {
+      // refreshDeploymentStatus queries Coolify for latest logs
+      const refreshed = await refreshDeploymentStatus(deployment);
+      res.write(`data: ${JSON.stringify({ buildLog: refreshed.buildLog, status: refreshed.status })}\n\n`);
+      
+      if (["success", "failed", "cancelled"].includes(refreshed.status)) {
+        res.end(); // Auto-close when done
+      }
+    } catch (err) {
+      console.error("Error fetching deployment stream:", err);
+      res.write(`data: ${JSON.stringify({ buildLog: "Failed to fetch log", status: "error" })}\n\n`);
+    }
+  };
+
+  await fetchDeploymentStatus();
+  
+  if (!isFinished) {
+    const interval = setInterval(fetchDeploymentStatus, 2000);
+    req.on("close", () => {
+      clearInterval(interval);
+      res.end();
+    });
+  } else {
+    res.end();
+  }
+});
+
 // Rollback
 router.post("/projects/:id/deployments/:deploymentId/rollback", async (req, res): Promise<void> => {
   const user = (req as any).user;

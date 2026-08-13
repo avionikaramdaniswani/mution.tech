@@ -221,6 +221,51 @@ router.get("/projects/:id/runtime-logs", async (req, res): Promise<void> => {
   }
 });
 
+router.get("/projects/:id/runtime-logs/stream", async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const id = parseRouteId(req.params.id);
+  if (id === null) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, id), eq(projectsTable.userId, user.id)));
+
+  if (!project) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  if (!isCoolifyConfigured()) {
+    res.write(`data: ${JSON.stringify({ logs: "Coolify is not configured" })}\n\n`);
+    res.end();
+    return;
+  }
+
+  const fetchLogs = async () => {
+    try {
+      const logs = await getProjectRuntimeLogsWithCoolify(project.id);
+      res.write(`data: ${JSON.stringify({ logs })}\n\n`);
+    } catch (err) {
+      console.error("Error fetching runtime logs for stream:", err);
+      res.write(`data: ${JSON.stringify({ logs: "Failed to fetch runtime logs" })}\n\n`);
+    }
+  };
+
+  await fetchLogs();
+  const interval = setInterval(fetchLogs, 2000);
+
+  req.on("close", () => {
+    clearInterval(interval);
+    res.end();
+  });
+});
+
 // Update project
 router.patch("/projects/:id", async (req, res): Promise<void> => {
   const user = (req as any).user;

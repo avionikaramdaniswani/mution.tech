@@ -6,7 +6,6 @@ import {
   useGetProjectEnv, getGetProjectEnvQueryKey, useSetProjectEnv, useDeleteProjectEnv,
   useListDeployments, getListDeploymentsQueryKey, useTriggerDeployment, useRollbackDeployment,
   getListProjectsQueryKey, useUpdateProject,
-  useGetProjectRuntimeLogs, getGetProjectRuntimeLogsQueryKey,
 } from "@workspace/api-client-react";
 import type { Deployment } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -54,6 +53,23 @@ const hostingRates: Record<string, { ram: string, perMinute: number, fit: string
   "8gb": { ram: "8 GB", perMinute: 7.2, fit: "Beban berat" },
 };
 
+function ResourceBar({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs text-[#526173]">
+        <span>{label}</span>
+        <span className="font-semibold text-[#172033]">{value}%</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#eef8ff]">
+        <div
+          className={`h-full rounded-full transition-all ${color}`}
+          style={{ width: `${value}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectDetail() {
   const params = useParams();
   const projectId = parseInt(params.id || "0", 10);
@@ -88,12 +104,13 @@ export default function ProjectDetail() {
     }
   });
   
-  const { data: runtimeLogsData, isFetching: isFetchingRuntimeLogs, refetch: refetchRuntimeLogs } = useGetProjectRuntimeLogs(projectId, {
-    query: {
-      enabled: !!projectId && project?.status === 'running',
-      queryKey: getGetProjectRuntimeLogsQueryKey(projectId),
-    }
-  });
+  // SSE states for live logs
+  const [liveRuntimeLog, setLiveRuntimeLog] = useState<string | null>(null);
+  const [liveBuildLog, setLiveBuildLog] = useState<string | null>(null);
+  const [liveModalBuildLog, setLiveModalBuildLog] = useState<string | null>(null);
+  
+  // SSE state for usage metrics
+  const [metrics, setMetrics] = useState({ cpu: 0, ram: 0 });
 
   const projectDeployments = deployments?.filter(d => d.projectId === projectId) || [];
   const latestDeployment = projectDeployments[0] ?? null;
@@ -102,23 +119,77 @@ export default function ProjectDetail() {
     ? projectDeployments.find((deployment) => deployment.id === logDeployment.id) ?? logDeployment
     : null;
 
+  // Usage Metrics SSE
+  useEffect(() => {
+    if (!projectId || project?.status !== "running") return;
+    const es = new EventSource(`/api/projects/${projectId}/metrics`);
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setMetrics(data);
+      } catch (err) {}
+    };
+    return () => es.close();
+  }, [projectId, project?.status]);
+
+  // Runtime Logs SSE
+  useEffect(() => {
+    if (!projectId || project?.status !== "running") return;
+    const es = new EventSource(`/api/projects/${projectId}/runtime-logs/stream`);
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.logs) setLiveRuntimeLog(data.logs);
+      } catch (err) {}
+    };
+    return () => es.close();
+  }, [projectId, project?.status]);
+
+  // Latest Build Log SSE
+  useEffect(() => {
+    if (!projectId || !latestDeployment?.id) return;
+    if (["success", "failed", "cancelled"].includes(latestDeployment.status)) return;
+    const es = new EventSource(`/api/projects/${projectId}/deployments/${latestDeployment.id}/stream`);
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.buildLog) setLiveBuildLog(data.buildLog);
+      } catch (err) {}
+    };
+    return () => es.close();
+  }, [projectId, latestDeployment?.id, latestDeployment?.status]);
+
+  // Modal Build Log SSE
+  useEffect(() => {
+    if (!projectId || !selectedLogDeployment?.id) return;
+    if (["success", "failed", "cancelled"].includes(selectedLogDeployment.status)) return;
+    const es = new EventSource(`/api/projects/${projectId}/deployments/${selectedLogDeployment.id}/stream`);
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.buildLog) setLiveModalBuildLog(data.buildLog);
+      } catch (err) {}
+    };
+    return () => es.close();
+  }, [projectId, selectedLogDeployment?.id, selectedLogDeployment?.status]);
+
   useEffect(() => {
     if (latestDeployLogRef.current) {
       latestDeployLogRef.current.scrollTop = latestDeployLogRef.current.scrollHeight;
     }
-  }, [latestDeployment?.buildLog]);
+  }, [latestDeployment?.buildLog, liveBuildLog]);
 
   useEffect(() => {
     if (runtimeLogRef.current) {
       runtimeLogRef.current.scrollTop = runtimeLogRef.current.scrollHeight;
     }
-  }, [runtimeLogsData?.logs]);
+  }, [liveRuntimeLog]);
 
   useEffect(() => {
     if (modalLogRef.current) {
       modalLogRef.current.scrollTop = modalLogRef.current.scrollHeight;
     }
-  }, [selectedLogDeployment?.buildLog]);
+  }, [selectedLogDeployment?.buildLog, liveModalBuildLog]);
 
   const { data: envVars, isLoading: isLoadingEnv } = useGetProjectEnv(projectId, {
     query: { enabled: !!projectId, queryKey: getGetProjectEnvQueryKey(projectId) }
@@ -375,6 +446,7 @@ export default function ProjectDetail() {
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="bg-muted w-full justify-start overflow-x-auto overflow-y-hidden">
           <TabsTrigger value="overview" className="shrink-0">Ringkasan</TabsTrigger>
+          <TabsTrigger value="usage" className="shrink-0">Usage</TabsTrigger>
           <TabsTrigger value="domain" className="shrink-0">Domain</TabsTrigger>
           <TabsTrigger value="deployments" className="shrink-0">Deployment</TabsTrigger>
           <TabsTrigger value="runtime-logs" className="shrink-0">Runtime Logs</TabsTrigger>
@@ -539,6 +611,28 @@ export default function ProjectDetail() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="usage" className="mt-6 space-y-6">
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle>Usage Metrics</CardTitle>
+              <CardDescription>Pemakaian resource server oleh aplikasimu secara real-time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {project?.status !== 'running' ? (
+                <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-md bg-muted/20">
+                  <p className="text-muted-foreground font-medium">Aplikasi Sedang Tidak Berjalan</p>
+                  <p className="text-xs text-muted-foreground mt-1">Metrik usage hanya tersedia ketika aplikasi aktif.</p>
+                </div>
+              ) : (
+                <div className="space-y-8 max-w-2xl py-4">
+                  <ResourceBar label="CPU Usage" value={metrics.cpu || 0} color="bg-[#14b8a6]" />
+                  <ResourceBar label="Memory (RAM) Usage" value={metrics.ram || 0} color="bg-[#f97316]" />
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="domain" className="mt-6 space-y-6">
@@ -729,7 +823,7 @@ export default function ProjectDetail() {
                 </div>
                 <div className="relative group">
                   <pre ref={latestDeployLogRef} className="max-h-[380px] min-h-[160px] overflow-auto p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap rounded-md bg-muted/30 border border-border">
-                    {latestDeployment?.buildLog || "Log deployment akan muncul di sini setelah project dibuat dan deploy otomatis dimulai."}
+                    {liveBuildLog || latestDeployment?.buildLog || "Log deployment akan muncul di sini setelah project dibuat dan deploy otomatis dimulai."}
                   </pre>
                   <Button
                     size="icon"
@@ -834,22 +928,18 @@ export default function ProjectDetail() {
 
         <TabsContent value="runtime-logs" className="mt-6 space-y-6">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-4">
-              <div>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
                 <CardTitle>Runtime Logs</CardTitle>
-                <CardDescription>
-                  Log real-time aplikasi kamu yang sedang berjalan (console.log, error, dsb).
-                </CardDescription>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled
+                >
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Live Stream Active
+                </Button>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => refetchRuntimeLogs()}
-                disabled={isFetchingRuntimeLogs || project?.status !== 'running'}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isFetchingRuntimeLogs ? 'animate-spin' : ''}`} />
-                Refresh Logs
-              </Button>
             </CardHeader>
             <CardContent>
               {project?.status !== 'running' ? (
@@ -861,12 +951,10 @@ export default function ProjectDetail() {
               ) : (
                 <div className="relative group">
                   <pre ref={runtimeLogRef} className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 pb-12 text-xs font-mono leading-relaxed whitespace-pre-wrap">
-                    {isFetchingRuntimeLogs && !runtimeLogsData ? (
-                      "Mengambil logs..."
-                    ) : runtimeLogsData?.logs ? (
-                      runtimeLogsData.logs
+                    {liveRuntimeLog ? (
+                      liveRuntimeLog
                     ) : (
-                      "Belum ada log yang tersedia."
+                      "Mengambil logs / belum ada log yang tersedia."
                     )}
                   </pre>
                   <Button
@@ -902,7 +990,7 @@ export default function ProjectDetail() {
             </DialogDescription>
           </DialogHeader>
           <pre ref={modalLogRef} className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap">
-            {selectedLogDeployment?.buildLog || "Belum ada log untuk deployment ini."}
+            {liveModalBuildLog || selectedLogDeployment?.buildLog || "Belum ada log untuk deployment ini."}
           </pre>
         </DialogContent>
       </Dialog>
