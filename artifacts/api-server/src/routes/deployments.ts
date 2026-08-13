@@ -77,13 +77,20 @@ async function refreshDeploymentStatus(d: typeof deploymentsTable.$inferSelect):
     const synced = await syncDeploymentFromCoolify(d.id);
     if (!synced) return d;
 
+    const now = new Date();
     const shouldSetDeployedAt = ["running", "failed", "stopped"].includes(synced.status) && !d.deployedAt;
+    const deployedAtDate = shouldSetDeployedAt ? now : d.deployedAt;
+    const durationMs = shouldSetDeployedAt && d.createdAt
+      ? now.getTime() - d.createdAt.getTime()
+      : d.durationMs;
+
     const [updated] = await db
       .update(deploymentsTable)
       .set({
         status: synced.status,
         buildLog: synced.logs ?? d.buildLog,
-        deployedAt: shouldSetDeployedAt ? new Date() : d.deployedAt,
+        deployedAt: deployedAtDate,
+        durationMs,
       })
       .where(eq(deploymentsTable.id, d.id))
       .returning();

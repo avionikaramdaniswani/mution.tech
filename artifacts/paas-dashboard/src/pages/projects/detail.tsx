@@ -770,7 +770,11 @@ export default function ProjectDetail() {
                           {formatDistanceToNow(new Date(deployment.createdAt), { addSuffix: true, locale: id })}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
-                          {deployment.durationMs ? `${(deployment.durationMs / 1000).toFixed(1)}s` : '-'}
+                          {deployment.durationMs 
+                            ? `${(deployment.durationMs / 1000).toFixed(1)}s` 
+                            : deployment.deployedAt 
+                              ? `${((new Date(deployment.deployedAt).getTime() - new Date(deployment.createdAt).getTime()) / 1000).toFixed(1)}s`
+                              : '-'}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
