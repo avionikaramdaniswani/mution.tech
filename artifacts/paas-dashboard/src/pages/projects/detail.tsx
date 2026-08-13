@@ -157,7 +157,7 @@ export default function ProjectDetail() {
 
   // Usage Metrics SSE
   useEffect(() => {
-    if (!projectId || project?.status !== "running") return;
+    if (!projectId || project?.status === "stopped") return;
     const es = new EventSource(`/api/projects/${projectId}/metrics`);
     es.onmessage = (event) => {
       try {
@@ -179,7 +179,7 @@ export default function ProjectDetail() {
 
   // Runtime Logs SSE
   useEffect(() => {
-    if (!projectId || project?.status !== "running") return;
+    if (!projectId || project?.status === "stopped") return;
     const es = new EventSource(`/api/projects/${projectId}/runtime-logs/stream`);
     es.onmessage = (e) => {
       try {

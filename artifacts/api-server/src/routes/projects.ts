@@ -583,9 +583,10 @@ router.get("/:id/metrics", async (req, res) => {
         }
         
         const containers = (await cadvisorRes.json()) as any[];
+        const uuid = resource.coolifyApplicationUuid!;
         const appContainer = containers.find((c: any) => 
-          (c.name && c.name.includes(resource.coolifyApplicationUuid)) || 
-          (c.aliases && c.aliases.some((alias: string) => alias.includes(resource.coolifyApplicationUuid)))
+          (c.name && c.name.includes(uuid)) || 
+          (c.aliases && c.aliases.some((alias: string) => alias.includes(uuid)))
         );
         
         if (!appContainer || !appContainer.stats || appContainer.stats.length === 0) {
