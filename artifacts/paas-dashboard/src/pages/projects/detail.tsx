@@ -26,7 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash, Plus, Trash2, Info, Terminal } from "lucide-react";
+import { ArrowLeft, BookOpen, Code2, Copy, ExternalLink, Eye, EyeOff, FileText, Globe, Loader2, MoreHorizontal, Power, RefreshCw, RotateCcw, Trash, Plus, Trash2, Info, Terminal, ArrowDownToLine } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -724,9 +724,23 @@ export default function ProjectDetail() {
                     </Button>
                   )}
                 </div>
-                <pre ref={latestDeployLogRef} className="max-h-[380px] min-h-[160px] overflow-auto p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap rounded-md bg-muted/30 border border-border">
-                  {latestDeployment?.buildLog || "Log deployment akan muncul di sini setelah project dibuat dan deploy otomatis dimulai."}
-                </pre>
+                <div className="relative group">
+                  <pre ref={latestDeployLogRef} className="max-h-[380px] min-h-[160px] overflow-auto p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap rounded-md bg-muted/30 border border-border">
+                    {latestDeployment?.buildLog || "Log deployment akan muncul di sini setelah project dibuat dan deploy otomatis dimulai."}
+                  </pre>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="absolute bottom-4 right-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full h-8 w-8 shadow-md z-10"
+                    onClick={() => {
+                      if (latestDeployLogRef.current) {
+                        latestDeployLogRef.current.scrollTo({ top: latestDeployLogRef.current.scrollHeight, behavior: 'smooth' });
+                      }
+                    }}
+                  >
+                    <ArrowDownToLine className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               {isLoadingDeployments ? (
@@ -842,15 +856,29 @@ export default function ProjectDetail() {
                   <p className="text-xs text-muted-foreground mt-1">Runtime logs hanya tersedia ketika aplikasi aktif (berstatus running).</p>
                 </div>
               ) : (
-                <pre ref={runtimeLogRef} className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap">
-                  {isFetchingRuntimeLogs && !runtimeLogsData ? (
-                    "Mengambil logs..."
-                  ) : runtimeLogsData?.logs ? (
-                    runtimeLogsData.logs
-                  ) : (
-                    "Belum ada log yang tersedia."
-                  )}
-                </pre>
+                <div className="relative group">
+                  <pre ref={runtimeLogRef} className="max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/40 p-4 pb-12 text-xs font-mono leading-relaxed whitespace-pre-wrap">
+                    {isFetchingRuntimeLogs && !runtimeLogsData ? (
+                      "Mengambil logs..."
+                    ) : runtimeLogsData?.logs ? (
+                      runtimeLogsData.logs
+                    ) : (
+                      "Belum ada log yang tersedia."
+                    )}
+                  </pre>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="absolute bottom-4 right-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full h-8 w-8 shadow-md z-10"
+                    onClick={() => {
+                      if (runtimeLogRef.current) {
+                        runtimeLogRef.current.scrollTo({ top: runtimeLogRef.current.scrollHeight, behavior: 'smooth' });
+                      }
+                    }}
+                  >
+                    <ArrowDownToLine className="h-4 w-4" />
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
