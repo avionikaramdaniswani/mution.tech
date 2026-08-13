@@ -57,8 +57,18 @@ const formSchema = z.object({
     .min(2, { message: "Nama proyek minimal 2 karakter." })
     .regex(/^[a-z0-9-]+$/, { message: "Hanya huruf kecil, angka, dan tanda hubung." }),
   runtime: z.enum(["nodejs", "python", "php", "static"]),
+  ramTier: z.enum(["256mb", "512mb", "1gb", "2gb", "4gb", "8gb"]),
   baseDirectory: z.string().trim().max(255).optional(),
 });
+
+const hostingRates = [
+  { value: "256mb", ram: "256 MB", perMinute: 0.25, fit: "Prototype ringan" },
+  { value: "512mb", ram: "512 MB", perMinute: 0.49, fit: "API kecil" },
+  { value: "1gb", ram: "1 GB", perMinute: 0.9, fit: "Web app aktif" },
+  { value: "2gb", ram: "2 GB", perMinute: 1.8, fit: "Backend produksi" },
+  { value: "4gb", ram: "4 GB", perMinute: 3.6, fit: "Worker dan API ramai" },
+  { value: "8gb", ram: "8 GB", perMinute: 7.2, fit: "Beban berat" },
+] as const;
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await csrfFetch(path, { credentials: "include", ...init });
@@ -104,7 +114,7 @@ export default function NewProject() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "", runtime: "nodejs", baseDirectory: "" },
+    defaultValues: { name: "", runtime: "nodejs", ramTier: "256mb", baseDirectory: "" },
   });
 
   useEffect(() => {
@@ -492,6 +502,37 @@ export default function NewProject() {
                   )}
                 />
               )}
+
+              <FormField
+                control={form.control}
+                name="ramTier"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kapasitas Server (RAM Tier)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih tier server" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {hostingRates.map((rate) => (
+                          <SelectItem key={rate.value} value={rate.value}>
+                            <div className="flex justify-between items-center w-full min-w-[200px]">
+                              <span>{rate.ram} - {rate.fit}</span>
+                              <span className="text-muted-foreground ml-4">Rp {rate.perMinute}/mnt</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Biaya akan dipotong dari saldo setiap menit saat proyek berstatus aktif.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="flex justify-end gap-3 pt-2 border-t border-border/50">
                 <Link href="/projects">

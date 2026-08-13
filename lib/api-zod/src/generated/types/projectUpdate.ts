@@ -5,6 +5,7 @@
  * PaaS Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { ProjectUpdateRamTier } from './projectUpdateRamTier';
 import type { ProjectUpdateRuntime } from './projectUpdateRuntime';
 
 export interface ProjectUpdate {
@@ -17,6 +18,7 @@ export interface ProjectUpdate {
   /** @maxLength 2048 */
   repoUrl?: string;
   runtime?: ProjectUpdateRuntime;
+  ramTier?: ProjectUpdateRamTier;
   /**
      * @maxLength 253
      * @pattern ^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$

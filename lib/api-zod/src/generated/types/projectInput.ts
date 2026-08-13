@@ -5,6 +5,7 @@
  * PaaS Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { ProjectInputRamTier } from './projectInputRamTier';
 import type { ProjectInputRuntime } from './projectInputRuntime';
 
 export interface ProjectInput {
@@ -17,6 +18,7 @@ export interface ProjectInput {
   /** @maxLength 2048 */
   repoUrl?: string;
   runtime: ProjectInputRuntime;
+  ramTier: ProjectInputRamTier;
   /**
      * @maxLength 253
      * @pattern ^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$

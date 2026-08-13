@@ -14,6 +14,7 @@ export interface ProjectWithOwner {
   repoUrl?: string | null;
   runtime: string;
   status: string;
+  ramTier: string;
   /** @nullable */
   domain?: string | null;
   createdAt: string;

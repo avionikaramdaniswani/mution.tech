@@ -432,6 +432,16 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
   const port = await resolveProjectPort(project);
   const baseDirectory = normalizeBaseDirectory(project.baseDirectory);
   const buildPack = await resolveBuildPack(project, runtime);
+  const limitsMap: Record<string, { memory: string; cpus: string }> = {
+    "256mb": { memory: "256m", cpus: "0.5" },
+    "512mb": { memory: "512m", cpus: "1" },
+    "1gb": { memory: "1024m", cpus: "1" },
+    "2gb": { memory: "2048m", cpus: "2" },
+    "4gb": { memory: "4096m", cpus: "2" },
+    "8gb": { memory: "8192m", cpus: "4" },
+  };
+  const limits = limitsMap[project.ramTier as string] || limitsMap["256mb"];
+
   const commonPayload: Record<string, unknown> = {
     project_uuid: resource.coolifyProjectUuid,
     server_uuid: resource.coolifyServerUuid,
@@ -442,6 +452,8 @@ async function createCoolifyApplication(project: Project, resource: typeof cooli
     git_branch: process.env.COOLIFY_DEFAULT_GIT_BRANCH?.trim() || "main",
     build_pack: buildPack,
     ports_exposes: port,
+    limits_memory: limits.memory,
+    limits_cpus: limits.cpus,
     ...(baseDirectory ? { base_directory: baseDirectory } : {}),
     // A project's own Dockerfile already defines install/build/start steps —
     // forcing Nixpacks-specific settings on top of it would be meaningless

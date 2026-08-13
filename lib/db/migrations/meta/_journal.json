@@ -43,6 +43,13 @@
       "when": 1784400000000,
       "tag": "0005_otp_verifications",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786602618449,
+      "tag": "0006_adorable_ben_urich",
+      "breakpoints": true
     }
   ]
 }

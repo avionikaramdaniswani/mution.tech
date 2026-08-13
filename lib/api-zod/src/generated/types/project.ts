@@ -5,6 +5,7 @@
  * PaaS Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { ProjectRamTier } from './projectRamTier';
 import type { ProjectRuntime } from './projectRuntime';
 import type { ProjectStatus } from './projectStatus';
 
@@ -16,6 +17,7 @@ export interface Project {
   repoUrl?: string | null;
   runtime: ProjectRuntime;
   status: ProjectStatus;
+  ramTier: ProjectRamTier;
   /** @nullable */
   domain?: string | null;
   /** @nullable */

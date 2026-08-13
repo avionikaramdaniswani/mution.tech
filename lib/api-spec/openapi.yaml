@@ -1003,7 +1003,7 @@ components:
     # Project schemas
     Project:
       type: object
-      required: [id, userId, name, runtime, status, createdAt]
+      required: [id, userId, name, runtime, status, ramTier, createdAt]
       properties:
         id:
           type: integer
@@ -1019,6 +1019,9 @@ components:
         status:
           type: string
           enum: [idle, running, stopped, building, deploying, failed]
+        ramTier:
+          type: string
+          enum: ["256mb", "512mb", "1gb", "2gb", "4gb", "8gb"]
         domain:
           type: ["string", "null"]
         baseDirectory:
@@ -1030,7 +1033,7 @@ components:
 
     ProjectInput:
       type: object
-      required: [name, runtime]
+      required: [name, runtime, ramTier]
       properties:
         name:
           type: string
@@ -1044,6 +1047,9 @@ components:
         runtime:
           type: string
           enum: [nodejs, python, php, static]
+        ramTier:
+          type: string
+          enum: ["256mb", "512mb", "1gb", "2gb", "4gb", "8gb"]
         domain:
           type: string
           maxLength: 253
@@ -1068,6 +1074,9 @@ components:
         runtime:
           type: string
           enum: [nodejs, python, php, static]
+        ramTier:
+          type: string
+          enum: ["256mb", "512mb", "1gb", "2gb", "4gb", "8gb"]
         domain:
           type: string
           maxLength: 253
@@ -1079,7 +1088,7 @@ components:
 
     ProjectWithOwner:
       type: object
-      required: [id, userId, name, runtime, status, createdAt, ownerEmail, ownerName]
+      required: [id, userId, name, runtime, status, ramTier, createdAt, ownerEmail, ownerName]
       properties:
         id:
           type: integer
@@ -1092,6 +1101,8 @@ components:
         runtime:
           type: string
         status:
+          type: string
+        ramTier:
           type: string
         domain:
           type: ["string", "null"]

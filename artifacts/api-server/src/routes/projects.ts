@@ -54,10 +54,12 @@ const OptionalCommand = z.preprocess(
   (value) => value === "" ? null : value,
   z.union([z.string().trim().max(1024), z.null()]).optional(),
 );
+const RamTierSchema = z.enum(["256mb", "512mb", "1gb", "2gb", "4gb", "8gb"]);
 const CreateProjectBody = z.object({
   name: ProjectName,
   repoUrl: OptionalRepoUrl,
   runtime: RuntimeSchema,
+  ramTier: RamTierSchema,
   domain: OptionalDomain,
   baseDirectory: OptionalBaseDirectory,
   buildCommand: OptionalCommand,
@@ -67,6 +69,7 @@ const UpdateProjectBody = z.object({
   name: ProjectName.optional(),
   repoUrl: OptionalRepoUrl,
   runtime: RuntimeSchema.optional(),
+  ramTier: RamTierSchema.optional(),
   domain: OptionalDomain,
   baseDirectory: OptionalBaseDirectory,
   buildCommand: OptionalCommand,
@@ -107,6 +110,7 @@ function mapProject(p: typeof projectsTable.$inferSelect, effectiveStatus?: stri
     repoUrl: p.repoUrl ?? null,
     runtime: p.runtime,
     status: effectiveStatus ?? p.status,
+    ramTier: p.ramTier,
     domain: p.domain ?? null,
     baseDirectory: p.baseDirectory ?? null,
     createdAt: p.createdAt.toISOString(),
@@ -143,7 +147,7 @@ router.post("/projects", async (req, res): Promise<void> => {
     return;
   }
 
-  const { name, repoUrl, runtime, domain, baseDirectory } = parsed.data;
+  const { name, repoUrl, runtime, ramTier, domain, baseDirectory } = parsed.data;
   const [project] = await db
     .insert(projectsTable)
     .values({
@@ -151,6 +155,7 @@ router.post("/projects", async (req, res): Promise<void> => {
       name,
       repoUrl: repoUrl ?? null,
       runtime,
+      ramTier,
       domain: domain ?? null,
       baseDirectory: baseDirectory ?? null,
       status: "idle",

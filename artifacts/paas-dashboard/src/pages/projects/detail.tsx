@@ -45,6 +45,15 @@ function slugifyDomain(value: string): string {
     .replace(/^-+|-+$/g, "") || "app";
 }
 
+const hostingRates: Record<string, { ram: string, perMinute: number, fit: string }> = {
+  "256mb": { ram: "256 MB", perMinute: 0.25, fit: "Prototype ringan" },
+  "512mb": { ram: "512 MB", perMinute: 0.49, fit: "API kecil" },
+  "1gb": { ram: "1 GB", perMinute: 0.9, fit: "Web app aktif" },
+  "2gb": { ram: "2 GB", perMinute: 1.8, fit: "Backend produksi" },
+  "4gb": { ram: "4 GB", perMinute: 3.6, fit: "Worker dan API ramai" },
+  "8gb": { ram: "8 GB", perMinute: 7.2, fit: "Beban berat" },
+};
+
 export default function ProjectDetail() {
   const params = useParams();
   const projectId = parseInt(params.id || "0", 10);
@@ -426,6 +435,21 @@ export default function ProjectDetail() {
                   ) : (
                     <span className="text-sm text-muted-foreground">Belum ada repository yang terhubung</span>
                   )}
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Kapasitas Server</div>
+                  <div className="text-sm font-medium">
+                    {project.ramTier && hostingRates[project.ramTier as string] ? (
+                      <>
+                        {hostingRates[project.ramTier as string].ram} 
+                        <span className="text-muted-foreground font-normal ml-2">
+                          (Rp {hostingRates[project.ramTier as string].perMinute}/mnt)
+                        </span>
+                      </>
+                    ) : (
+                      "Default (256 MB)"
+                    )}
+                  </div>
                 </div>
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">Root Directory</div>

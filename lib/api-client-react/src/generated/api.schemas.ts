@@ -95,6 +95,18 @@ export const ProjectStatus = {
   failed: 'failed',
 } as const;
 
+export type ProjectRamTier = typeof ProjectRamTier[keyof typeof ProjectRamTier];
+
+
+export const ProjectRamTier = {
+  '256mb': '256mb',
+  '512mb': '512mb',
+  '1gb': '1gb',
+  '2gb': '2gb',
+  '4gb': '4gb',
+  '8gb': '8gb',
+} as const;
+
 export interface Project {
   id: number;
   userId: number;
@@ -103,6 +115,7 @@ export interface Project {
   repoUrl?: string | null;
   runtime: ProjectRuntime;
   status: ProjectStatus;
+  ramTier: ProjectRamTier;
   /** @nullable */
   domain?: string | null;
   /** @nullable */
@@ -122,6 +135,18 @@ export const ProjectInputRuntime = {
   static: 'static',
 } as const;
 
+export type ProjectInputRamTier = typeof ProjectInputRamTier[keyof typeof ProjectInputRamTier];
+
+
+export const ProjectInputRamTier = {
+  '256mb': '256mb',
+  '512mb': '512mb',
+  '1gb': '1gb',
+  '2gb': '2gb',
+  '4gb': '4gb',
+  '8gb': '8gb',
+} as const;
+
 export interface ProjectInput {
   /**
      * @minLength 2
@@ -132,6 +157,7 @@ export interface ProjectInput {
   /** @maxLength 2048 */
   repoUrl?: string;
   runtime: ProjectInputRuntime;
+  ramTier: ProjectInputRamTier;
   /**
      * @maxLength 253
      * @pattern ^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$
@@ -154,6 +180,18 @@ export const ProjectUpdateRuntime = {
   static: 'static',
 } as const;
 
+export type ProjectUpdateRamTier = typeof ProjectUpdateRamTier[keyof typeof ProjectUpdateRamTier];
+
+
+export const ProjectUpdateRamTier = {
+  '256mb': '256mb',
+  '512mb': '512mb',
+  '1gb': '1gb',
+  '2gb': '2gb',
+  '4gb': '4gb',
+  '8gb': '8gb',
+} as const;
+
 export interface ProjectUpdate {
   /**
      * @minLength 2
@@ -164,6 +202,7 @@ export interface ProjectUpdate {
   /** @maxLength 2048 */
   repoUrl?: string;
   runtime?: ProjectUpdateRuntime;
+  ramTier?: ProjectUpdateRamTier;
   /**
      * @maxLength 253
      * @pattern ^(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$
@@ -185,6 +224,7 @@ export interface ProjectWithOwner {
   repoUrl?: string | null;
   runtime: string;
   status: string;
+  ramTier: string;
   /** @nullable */
   domain?: string | null;
   createdAt: string;
