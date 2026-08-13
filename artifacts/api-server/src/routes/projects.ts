@@ -574,6 +574,9 @@ router.get("/:id/metrics", async (req, res) => {
     
     const dockerApiUrl = process.env.CADVISOR_URL || "http://168.110.215.158:9091";
 
+    let previousCpu = 0;
+    let previousSystem = 0;
+
     const fetchMetrics = async () => {
       try {
         // Step 1: Find the container by name/uuid
@@ -603,14 +606,23 @@ router.get("/:id/metrics", async (req, res) => {
         
         const stats = await statsRes.json() as any;
         
-        // Step 3: Calculate CPU %
+        // Step 3: Calculate CPU % using interval delta
         let cpuPercent = 0;
-        const cpuDelta = stats.cpu_stats?.cpu_usage?.total_usage - stats.precpu_stats?.cpu_usage?.total_usage;
-        const systemDelta = stats.cpu_stats?.system_cpu_usage - stats.precpu_stats?.system_cpu_usage;
+        const currentCpu = stats.cpu_stats?.cpu_usage?.total_usage || 0;
+        const currentSystem = stats.cpu_stats?.system_cpu_usage || 0;
         
-        if (cpuDelta > 0 && systemDelta > 0) {
-          cpuPercent = (cpuDelta / systemDelta) * (stats.cpu_stats.online_cpus || 1) * 100.0;
+        if (previousCpu > 0 && previousSystem > 0) {
+          const cpuDelta = currentCpu - previousCpu;
+          const systemDelta = currentSystem - previousSystem;
+          
+          if (cpuDelta > 0 && systemDelta > 0) {
+            cpuPercent = (cpuDelta / systemDelta) * (stats.cpu_stats.online_cpus || 1) * 100.0;
+          }
         }
+        
+        // Save current stats for the next interval calculation
+        previousCpu = currentCpu;
+        previousSystem = currentSystem;
         
         // Step 4: Calculate RAM %
         let ramPercent = 0;
