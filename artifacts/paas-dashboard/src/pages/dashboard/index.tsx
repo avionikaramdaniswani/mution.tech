@@ -4,7 +4,8 @@ import {
   useStopProject,
   useRestartProject,
 } from "@workspace/api-client-react";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -70,16 +71,31 @@ function ProjectCard({ project }: { project: Project }) {
   const isRunning = project.status === "running";
   const isBusy    = stop.isPending || restart.isPending;
 
-  const { data: metrics } = useQuery({
-    queryKey: ["/api/projects", project.id, "metrics"],
-    queryFn: async () => {
-      const res = await fetch(`/api/projects/${project.id}/metrics`);
-      if (!res.ok) return { cpu: 0, ram: 0 };
-      return res.json();
-    },
-    enabled: isRunning,
-    refetchInterval: 5000,
-  });
+  const [metrics, setMetrics] = useState({ cpu: 0, ram: 0 });
+
+  useEffect(() => {
+    if (!isRunning) return;
+
+    const eventSource = new EventSource(`/api/projects/${project.id}/metrics`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setMetrics(data);
+      } catch (err) {
+        console.error("Failed to parse SSE data", err);
+      }
+    };
+
+    eventSource.onerror = () => {
+      // close connection on error and stop trying to reconnect
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [isRunning, project.id]);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["/api/projects"] });

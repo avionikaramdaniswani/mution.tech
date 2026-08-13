@@ -504,6 +504,7 @@ router.get("/:id/metrics", async (req, res) => {
       .select()
       .from(projectsTable)
       .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)));
+    
     if (!project) {
       res.status(404).json({ error: "Not found" });
       return;
@@ -514,54 +515,83 @@ router.get("/:id/metrics", async (req, res) => {
       .from(coolifyResourcesTable)
       .where(eq(coolifyResourcesTable.projectId, projectId));
     
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
     if (!resource?.coolifyApplicationUuid) {
-      res.json({ cpu: 0, ram: 0 });
+      res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
+      res.end();
       return;
     }
     
     const cadvisorUrl = process.env.CADVISOR_URL || "http://168.110.215.158:9091";
-    const cadvisorRes = await fetch(`${cadvisorUrl}/api/v1.3/subcontainers`);
-    if (!cadvisorRes.ok) {
-       res.json({ cpu: 0, ram: 0 });
-       return;
-    }
-    const containers = (await cadvisorRes.json()) as any[];
-    
-    const appContainer = containers.find((c: any) => c.name && c.name.includes(resource.coolifyApplicationUuid));
-    if (!appContainer || !appContainer.stats || appContainer.stats.length === 0) {
-      res.json({ cpu: 0, ram: 0 });
-      return;
-    }
-    
-    const stats = appContainer.stats;
-    const latest = stats[stats.length - 1];
-    const first = stats[0];
-    
-    let cpuPercent = 0;
-    if (stats.length > 1) {
-      const timeDelta = new Date(latest.timestamp).getTime() - new Date(first.timestamp).getTime();
-      const cpuDelta = latest.cpu.usage.total - first.cpu.usage.total;
-      if (timeDelta > 0) {
-        cpuPercent = (cpuDelta / (timeDelta * 1000000)) * 100;
+
+    const fetchMetrics = async () => {
+      try {
+        const cadvisorRes = await fetch(`${cadvisorUrl}/api/v1.3/subcontainers`);
+        if (!cadvisorRes.ok) {
+          res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
+          return;
+        }
+        
+        const containers = (await cadvisorRes.json()) as any[];
+        const appContainer = containers.find((c: any) => c.name && c.name.includes(resource.coolifyApplicationUuid));
+        
+        if (!appContainer || !appContainer.stats || appContainer.stats.length === 0) {
+          res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
+          return;
+        }
+        
+        const stats = appContainer.stats;
+        const latest = stats[stats.length - 1];
+        const first = stats[0];
+        
+        let cpuPercent = 0;
+        if (stats.length > 1) {
+          const timeDelta = new Date(latest.timestamp).getTime() - new Date(first.timestamp).getTime();
+          const cpuDelta = latest.cpu.usage.total - first.cpu.usage.total;
+          if (timeDelta > 0) {
+            cpuPercent = (cpuDelta / (timeDelta * 1000000)) * 100;
+          }
+        }
+        
+        const ram = latest.memory.usage;
+        let ramPercent = 0;
+        if (appContainer.spec?.memory?.limit && appContainer.spec.memory.limit < 1e15) {
+          ramPercent = (ram / appContainer.spec.memory.limit) * 100;
+        } else {
+          ramPercent = (ram / (1024 * 1024 * 1024)) * 100;
+        }
+        
+        const result = {
+          cpu: cpuPercent > 0 ? Math.min(Math.round(cpuPercent), 100) : 0,
+          ram: ramPercent > 0 ? Math.min(Math.round(ramPercent), 100) : 0
+        };
+        
+        res.write(`data: ${JSON.stringify(result)}\n\n`);
+      } catch (err) {
+        console.error("Failed to fetch metrics from cAdvisor:", err);
+        res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
       }
-    }
-    
-    const ram = latest.memory.usage;
-    let ramPercent = 0;
-    if (appContainer.spec?.memory?.limit && appContainer.spec.memory.limit < 1e15) {
-      ramPercent = (ram / appContainer.spec.memory.limit) * 100;
-    } else {
-      // Fallback: Assume 1GB limit for now if unbounded by container runtime
-      ramPercent = (ram / (1024 * 1024 * 1024)) * 100;
-    }
-    
-    res.json({
-      cpu: cpuPercent > 0 ? Math.min(Math.round(cpuPercent), 100) : 0,
-      ram: ramPercent > 0 ? Math.min(Math.round(ramPercent), 100) : 0
+    };
+
+    await fetchMetrics();
+    const interval = setInterval(fetchMetrics, 2000);
+
+    req.on("close", () => {
+      clearInterval(interval);
+      res.end();
     });
+
   } catch (err) {
-    console.error("Failed to fetch metrics from cAdvisor:", err);
-    res.json({ cpu: 0, ram: 0 });
+    console.error("SSE Error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal Server Error" });
+    } else {
+      res.end();
+    }
   }
 });
 
