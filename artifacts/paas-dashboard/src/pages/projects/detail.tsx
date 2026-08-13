@@ -985,7 +985,10 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number; envV
         const idx = trimmed.indexOf("=");
         if (idx < 0) return `Baris tidak valid: "${trimmed}" — format harus KEY=value`;
         const key = trimmed.slice(0, idx).trim();
-        const value = trimmed.slice(idx + 1);
+        let value = trimmed.slice(idx + 1).trim();
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
         if (!key || !value) continue;
         pairs.push({ key, value });
       }
