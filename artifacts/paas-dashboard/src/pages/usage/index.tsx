@@ -49,7 +49,7 @@ export default function UsagePage() {
     return total + (tier.perMinute * 43200);
   }, 0);
 
-  const totalSpentAllTime = projects?.reduce((total, p) => total + (p.totalSpent || 0), 0) || 0;
+  const totalSpentAllTime = projects?.reduce((total, p: any) => total + (p.totalSpent || 0), 0) || 0;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
