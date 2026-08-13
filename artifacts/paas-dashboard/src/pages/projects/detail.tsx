@@ -329,32 +329,35 @@ export default function ProjectDetail() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex items-center gap-4">
-        <Link href="/projects">
-          <Button variant="outline" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-            <ProjectStatusBadge status={project.status} />
-          </div>
-          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-            <span className="font-mono bg-muted px-2 py-0.5 rounded text-xs">{project.runtime}</span>
-            {project.domain && (
-              <a href={`https://${project.domain}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
-                <Globe className="h-3 w-3" />
-                {project.domain}
-              </a>
-            )}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start sm:items-center gap-4">
+          <Link href="/projects">
+            <Button variant="outline" size="icon" className="shrink-0 mt-1 sm:mt-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">{project.name}</h1>
+              <ProjectStatusBadge status={project.status} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1 text-sm text-muted-foreground">
+              <span className="font-mono bg-muted px-2 py-0.5 rounded text-xs">{project.runtime}</span>
+              {project.domain && (
+                <a href={`https://${project.domain}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline break-all">
+                  <Globe className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{project.domain}</span>
+                </a>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button 
             variant="outline" 
             onClick={handleStop}
             disabled={project.status === 'stopped' || stopProject.isPending}
+            className="flex-1 sm:flex-none"
           >
             <Power className="h-4 w-4 mr-2" /> Hentikan
           </Button>
@@ -362,6 +365,7 @@ export default function ProjectDetail() {
             variant="outline" 
             onClick={handleRestart}
             disabled={restartProject.isPending}
+            className="flex-1 sm:flex-none"
           >
             <RotateCcw className="h-4 w-4 mr-2" /> Restart
           </Button>
@@ -369,13 +373,12 @@ export default function ProjectDetail() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="bg-muted">
-          <TabsTrigger value="overview">Ringkasan</TabsTrigger>
-          <TabsTrigger value="domain">Domain</TabsTrigger>
-          <TabsTrigger value="deployments">Deployment</TabsTrigger>
-          <TabsTrigger value="runtime-logs">Runtime Logs</TabsTrigger>
-
-          <TabsTrigger value="environment">Variabel Env</TabsTrigger>
+        <TabsList className="bg-muted w-full justify-start overflow-x-auto overflow-y-hidden">
+          <TabsTrigger value="overview" className="shrink-0">Ringkasan</TabsTrigger>
+          <TabsTrigger value="domain" className="shrink-0">Domain</TabsTrigger>
+          <TabsTrigger value="deployments" className="shrink-0">Deployment</TabsTrigger>
+          <TabsTrigger value="runtime-logs" className="shrink-0">Runtime Logs</TabsTrigger>
+          <TabsTrigger value="environment" className="shrink-0">Variabel Env</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6 space-y-6">
@@ -731,7 +734,7 @@ export default function ProjectDetail() {
                   <Button
                     size="icon"
                     variant="secondary"
-                    className="absolute bottom-4 right-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full h-8 w-8 shadow-md z-10"
+                    className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity rounded-full h-8 w-8 shadow-md z-10"
                     onClick={() => {
                       if (latestDeployLogRef.current) {
                         latestDeployLogRef.current.scrollTo({ top: latestDeployLogRef.current.scrollHeight, behavior: 'smooth' });
@@ -869,7 +872,7 @@ export default function ProjectDetail() {
                   <Button
                     size="icon"
                     variant="secondary"
-                    className="absolute bottom-4 right-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full h-8 w-8 shadow-md z-10"
+                    className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity rounded-full h-8 w-8 shadow-md z-10"
                     onClick={() => {
                       if (runtimeLogRef.current) {
                         runtimeLogRef.current.scrollTo({ top: runtimeLogRef.current.scrollHeight, behavior: 'smooth' });
@@ -1068,7 +1071,7 @@ function EnvVarsTab({ projectId, envVars, isLoading }: { projectId: number; envV
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-end gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
             <div className="space-y-1.5 flex-1">
               <Label>Nama</Label>
               <Input
