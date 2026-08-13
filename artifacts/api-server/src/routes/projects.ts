@@ -112,6 +112,7 @@ function mapProject(p: typeof projectsTable.$inferSelect, effectiveStatus?: stri
     status: effectiveStatus ?? p.status,
     ramTier: p.ramTier,
     domain: p.domain ?? null,
+    totalSpent: p.totalSpent,
     baseDirectory: p.baseDirectory ?? null,
     createdAt: p.createdAt.toISOString(),
     lastDeployedAt: p.lastDeployedAt?.toISOString() ?? null,
