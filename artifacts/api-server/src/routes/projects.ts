@@ -572,47 +572,53 @@ router.get("/:id/metrics", async (req, res) => {
       return;
     }
     
-    const cadvisorUrl = process.env.CADVISOR_URL || "http://168.110.215.158:9091";
+    const dockerApiUrl = process.env.CADVISOR_URL || "http://168.110.215.158:9091";
 
     const fetchMetrics = async () => {
       try {
-        const cadvisorRes = await fetch(`${cadvisorUrl}/api/v1.3/subcontainers`);
-        if (!cadvisorRes.ok) {
+        // Step 1: Find the container by name/uuid
+        const containersRes = await fetch(`${dockerApiUrl}/containers/json`);
+        if (!containersRes.ok) {
           res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
           return;
         }
         
-        const containers = (await cadvisorRes.json()) as any[];
+        const containers = (await containersRes.json()) as any[];
         const uuid = resource.coolifyApplicationUuid!;
         const appContainer = containers.find((c: any) => 
-          (c.name && c.name.includes(uuid)) || 
-          (c.aliases && c.aliases.some((alias: string) => alias.includes(uuid)))
+          c.Names && c.Names.some((name: string) => name.includes(uuid))
         );
         
-        if (!appContainer || !appContainer.stats || appContainer.stats.length === 0) {
+        if (!appContainer) {
           res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
           return;
         }
         
-        const stats = appContainer.stats;
-        const latest = stats[stats.length - 1];
-        const first = stats[0];
-        
-        let cpuPercent = 0;
-        if (stats.length > 1) {
-          const timeDelta = new Date(latest.timestamp).getTime() - new Date(first.timestamp).getTime();
-          const cpuDelta = latest.cpu.usage.total - first.cpu.usage.total;
-          if (timeDelta > 0) {
-            cpuPercent = (cpuDelta / (timeDelta * 1000000)) * 100;
-          }
+        // Step 2: Fetch stats for this container
+        const statsRes = await fetch(`${dockerApiUrl}/containers/${appContainer.Id}/stats?stream=false`);
+        if (!statsRes.ok) {
+          res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
+          return;
         }
         
-        const ram = latest.memory.usage;
+        const stats = await statsRes.json() as any;
+        
+        // Step 3: Calculate CPU %
+        let cpuPercent = 0;
+        const cpuDelta = stats.cpu_stats?.cpu_usage?.total_usage - stats.precpu_stats?.cpu_usage?.total_usage;
+        const systemDelta = stats.cpu_stats?.system_cpu_usage - stats.precpu_stats?.system_cpu_usage;
+        
+        if (cpuDelta > 0 && systemDelta > 0) {
+          cpuPercent = (cpuDelta / systemDelta) * (stats.cpu_stats.online_cpus || 1) * 100.0;
+        }
+        
+        // Step 4: Calculate RAM %
         let ramPercent = 0;
-        if (appContainer.spec?.memory?.limit && appContainer.spec.memory.limit < 1e15) {
-          ramPercent = (ram / appContainer.spec.memory.limit) * 100;
-        } else {
-          ramPercent = (ram / (1024 * 1024 * 1024)) * 100;
+        const ramUsage = stats.memory_stats?.usage - (stats.memory_stats?.stats?.cache || 0);
+        const ramLimit = stats.memory_stats?.limit;
+        
+        if (ramLimit && ramLimit > 0) {
+          ramPercent = (ramUsage / ramLimit) * 100.0;
         }
         
         const result = {
@@ -622,7 +628,7 @@ router.get("/:id/metrics", async (req, res) => {
         
         res.write(`data: ${JSON.stringify(result)}\n\n`);
       } catch (err) {
-        console.error("Failed to fetch metrics from cAdvisor:", err);
+        console.error("Failed to fetch metrics from Docker API:", err);
         res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
       }
     };
