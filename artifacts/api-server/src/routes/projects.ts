@@ -572,38 +572,39 @@ router.get("/:id/metrics", async (req, res) => {
       return;
     }
     
-    const dockerApiUrl = process.env.CADVISOR_URL || "http://168.110.215.158:9091";
+    const dockerApiUrl = process.env.DOCKER_API_URL?.trim();
+
+    if (!dockerApiUrl) {
+      console.error("Project metrics unavailable: DOCKER_API_URL is not configured");
+      res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0, unavailable: true })}\n\n`);
+      res.end();
+      return;
+    }
 
     let previousCpu = 0;
     let previousSystem = 0;
 
     const fetchMetrics = async () => {
       try {
-        // Step 1: Find the container by name/uuid
+        const uuid = resource.coolifyApplicationUuid!;
         const containersRes = await fetch(`${dockerApiUrl}/containers/json`);
         if (!containersRes.ok) {
-          res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
-          return;
+          throw new Error(`Docker API returned ${containersRes.status} while listing containers`);
         }
-        
+
         const containers = (await containersRes.json()) as any[];
-        const uuid = resource.coolifyApplicationUuid!;
-        const appContainer = containers.find((c: any) => 
-          c.Names && c.Names.some((name: string) => name.includes(uuid))
+        const appContainer = containers.find((container: any) =>
+          container.Names?.some((name: string) => name.includes(uuid))
         );
-        
         if (!appContainer) {
-          res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
-          return;
+          throw new Error(`Container for application ${uuid} was not found`);
         }
-        
-        // Step 2: Fetch stats for this container
+
         const statsRes = await fetch(`${dockerApiUrl}/containers/${appContainer.Id}/stats?stream=false`);
         if (!statsRes.ok) {
-          res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
-          return;
+          throw new Error(`Docker API returned ${statsRes.status} while fetching stats`);
         }
-        
+
         const stats = await statsRes.json() as any;
         
         // Step 3: Calculate CPU % using interval delta
@@ -626,7 +627,7 @@ router.get("/:id/metrics", async (req, res) => {
         
         // Step 4: Calculate RAM %
         let ramPercent = 0;
-        const ramUsage = stats.memory_stats?.usage - (stats.memory_stats?.stats?.cache || 0);
+        const ramUsage = (stats.memory_stats?.usage || 0) - (stats.memory_stats?.stats?.cache || 0);
         const ramLimit = stats.memory_stats?.limit;
         
         if (ramLimit && ramLimit > 0) {
