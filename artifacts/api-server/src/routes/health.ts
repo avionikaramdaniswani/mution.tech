@@ -1,4 +1,7 @@
 import { Router, type IRouter } from "express";
+import { db } from "../db/index.js";
+import { coolifyResourcesTable } from "../db/schema.js";
+import { eq } from "drizzle-orm";
 import { HealthCheckResponse } from "@workspace/api-zod";
 import { getUpstreamHealth } from "./v1-proxy";
 
@@ -20,9 +23,6 @@ router.get("/healthz", async (_req, res) => {
 router.get("/test-metrics", async (_req, res) => {
   const dockerApiUrl = process.env.CADVISOR_URL || "http://168.110.215.158:9091";
   try {
-    const { db } = await import("../db/index.js");
-    const { coolifyResourcesTable } = await import("../db/schema.js");
-    const { eq } = await import("drizzle-orm");
     const [resource] = await db.select().from(coolifyResourcesTable).where(eq(coolifyResourcesTable.projectId, 17));
     
     const containersRes = await fetch(`${dockerApiUrl}/containers/json`);
