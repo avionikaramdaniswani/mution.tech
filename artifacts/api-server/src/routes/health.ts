@@ -11,6 +11,7 @@ router.get("/healthz", async (_req, res) => {
   try {
     const res = await fetch(`${dockerApiUrl}/containers/json`);
     dockerOk = res.ok;
+    dockerError = `CADVISOR_URL=${process.env.CADVISOR_URL || 'NONE'}`;
   } catch (err: any) {
     dockerError = err.message;
   }
