@@ -9,7 +9,7 @@ router.get("/healthz", async (_req, res) => {
   let dockerOk = false;
   let dockerError = "";
   try {
-    const res = await fetch(`${dockerApiUrl}/containers/json`, { timeout: 2000 });
+    const res = await fetch(`${dockerApiUrl}/containers/json`);
     dockerOk = res.ok;
   } catch (err: any) {
     dockerError = err.message;
