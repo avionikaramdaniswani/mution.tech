@@ -75,25 +75,30 @@ function ProjectCard({ project }: { project: Project }) {
 
   useEffect(() => {
     if (!isRunning) return;
+    let cancelled = false;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
 
-    const eventSource = new EventSource(`/api/projects/${project.id}/metrics`);
-
-    eventSource.onmessage = (event) => {
+    const loadMetrics = async () => {
       try {
-        const data = JSON.parse(event.data);
-        setMetrics(data);
+        const response = await fetch(`/api/projects/${project.id}/metrics/current`, {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => null);
+        if (response.ok && !data?.unavailable && !cancelled) {
+          setMetrics({ cpu: Number(data.cpu) || 0, ram: Number(data.ram) || 0 });
+        }
       } catch (err) {
-        console.error("Failed to parse SSE data", err);
+        console.error("Failed to load project metrics", err);
+      } finally {
+        if (!cancelled) timeout = setTimeout(loadMetrics, 5_000);
       }
     };
 
-    eventSource.onerror = () => {
-      // close connection on error and stop trying to reconnect
-      eventSource.close();
-    };
-
+    void loadMetrics();
     return () => {
-      eventSource.close();
+      cancelled = true;
+      if (timeout) clearTimeout(timeout);
     };
   }, [isRunning, project.id]);
 

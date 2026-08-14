@@ -115,6 +115,97 @@ function calculateCpuPercent(stats: any): number {
   if (cpuDelta <= 0 || systemDelta <= 0) return 0;
   return Math.max(0, (cpuDelta / systemDelta) * onlineCpus * 100);
 }
+
+type ProjectMetrics = {
+  cpu: number;
+  ram: number;
+  ramUsageBytes: number;
+  ramLimitBytes: number;
+};
+
+class ProjectMetricsError extends Error {
+  constructor(public readonly code: string, message: string) {
+    super(message);
+  }
+}
+
+async function collectProjectMetrics(
+  project: typeof projectsTable.$inferSelect,
+  resource: typeof coolifyResourcesTable.$inferSelect,
+): Promise<ProjectMetrics> {
+  if (!resource.coolifyApplicationUuid) {
+    throw new ProjectMetricsError("resource_missing", "Project belum memiliki resource aplikasi Coolify.");
+  }
+
+  const dockerApiUrl = process.env.DOCKER_API_URL?.trim();
+  if (!dockerApiUrl) {
+    throw new ProjectMetricsError("docker_not_configured", "DOCKER_API_URL belum dikonfigurasi pada backend.");
+  }
+
+  let containersRes: Response;
+  try {
+    containersRes = await fetch(`${dockerApiUrl}/containers/json`, {
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    throw new ProjectMetricsError(
+      "docker_unreachable",
+      `Docker API tidak dapat dihubungi: ${error instanceof Error ? error.message : "unknown error"}`,
+    );
+  }
+  if (!containersRes.ok) {
+    throw new ProjectMetricsError("containers_failed", `Docker API containers returned HTTP ${containersRes.status}.`);
+  }
+
+  const containers = (await containersRes.json()) as DockerContainer[];
+  const appContainer = findProjectContainer(
+    containers,
+    resource.coolifyApplicationUuid,
+    resource.coolifyApplicationName,
+  );
+  if (!appContainer?.Id) {
+    throw new ProjectMetricsError(
+      "container_not_found",
+      `Container untuk aplikasi ${resource.coolifyApplicationUuid} tidak ditemukan.`,
+    );
+  }
+
+  let statsRes: Response;
+  try {
+    statsRes = await fetch(`${dockerApiUrl}/containers/${appContainer.Id}/stats?stream=false`, {
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (error) {
+    throw new ProjectMetricsError(
+      "stats_unreachable",
+      `Docker stats tidak dapat diambil: ${error instanceof Error ? error.message : "unknown error"}`,
+    );
+  }
+  if (!statsRes.ok) {
+    throw new ProjectMetricsError("stats_failed", `Docker stats returned HTTP ${statsRes.status}.`);
+  }
+
+  const stats = await statsRes.json() as any;
+  const dockerCpuPercent = calculateCpuPercent(stats);
+  const cpuLimit = CPU_TIER_LIMITS[project.ramTier as string] || 1;
+  const cpuPercent = Math.min(100, dockerCpuPercent / cpuLimit);
+
+  const memoryUsage = Number(stats.memory_stats?.usage ?? 0);
+  const inactiveFile = Number(stats.memory_stats?.stats?.inactive_file ?? 0);
+  const cache = Number(stats.memory_stats?.stats?.cache ?? 0);
+  const ramUsage = Math.max(0, memoryUsage - (inactiveFile || cache));
+  const configuredRamLimit = RAM_TIER_BYTES[project.ramTier as string];
+  const dockerRamLimit = Number(stats.memory_stats?.limit ?? 0);
+  const ramLimit = configuredRamLimit || dockerRamLimit;
+  const ramPercent = ramLimit > 0 ? Math.max(0, (ramUsage / ramLimit) * 100) : 0;
+
+  return {
+    cpu: Number(cpuPercent.toFixed(2)),
+    ram: Number(ramPercent.toFixed(2)),
+    ramUsageBytes: ramUsage,
+    ramLimitBytes: ramLimit,
+  };
+}
 const CreateProjectBody = z.object({
   name: ProjectName,
   repoUrl: OptionalRepoUrl,
@@ -602,6 +693,43 @@ router.delete("/projects/:id/env/:envId", async (req, res): Promise<void> => {
   res.json({ success: true });
 });
 
+router.get("/:id/metrics/current", async (req, res): Promise<void> => {
+  const projectId = parseRouteId(req.params.id);
+  const userId = (req as any).user!.id;
+  if (projectId === null) {
+    res.status(400).json({ error: "Invalid project id" });
+    return;
+  }
+
+  const [project] = await db
+    .select()
+    .from(projectsTable)
+    .where(and(eq(projectsTable.id, projectId), eq(projectsTable.userId, userId)));
+  if (!project) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const [resource] = await db
+    .select()
+    .from(coolifyResourcesTable)
+    .where(eq(coolifyResourcesTable.projectId, projectId));
+  if (!resource) {
+    res.status(503).json({ unavailable: true, code: "resource_missing", error: "Resource aplikasi belum tersedia." });
+    return;
+  }
+
+  try {
+    res.setHeader("Cache-Control", "no-store");
+    res.json(await collectProjectMetrics(project, resource));
+  } catch (error) {
+    const code = error instanceof ProjectMetricsError ? error.code : "metrics_failed";
+    const message = error instanceof Error ? error.message : "Unknown metrics error";
+    console.error(`Failed to collect metrics for project ${projectId} [${code}]:`, error);
+    res.status(503).json({ unavailable: true, code, error: message });
+  }
+});
+
 router.get("/:id/metrics", async (req, res) => {
   try {
     const projectId = parseInt(req.params.id);
@@ -626,16 +754,7 @@ router.get("/:id/metrics", async (req, res) => {
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
-    if (!resource?.coolifyApplicationUuid) {
-      res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0, unavailable: true })}\n\n`);
-      res.end();
-      return;
-    }
-    
-    const dockerApiUrl = process.env.DOCKER_API_URL?.trim();
-
-    if (!dockerApiUrl) {
-      console.error("Project metrics unavailable: DOCKER_API_URL is not configured");
+    if (!resource) {
       res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0, unavailable: true })}\n\n`);
       res.end();
       return;
@@ -643,55 +762,7 @@ router.get("/:id/metrics", async (req, res) => {
 
     const fetchMetrics = async () => {
       try {
-        const uuid = resource.coolifyApplicationUuid!;
-        const containersRes = await fetch(`${dockerApiUrl}/containers/json`, {
-          signal: AbortSignal.timeout(10_000),
-        });
-        if (!containersRes.ok) {
-          throw new Error(`Docker API returned ${containersRes.status} while listing containers`);
-        }
-
-        const containers = (await containersRes.json()) as DockerContainer[];
-        const appContainer = findProjectContainer(containers, uuid, resource.coolifyApplicationName);
-        if (!appContainer?.Id) {
-          const runningApplications = containers
-            .flatMap((container) => container.Names ?? [])
-            .filter((name) => !name.includes("coolify") && !name.includes("docker-proxy"));
-          throw new Error(
-            `Container for application ${uuid} (${resource.coolifyApplicationName ?? "unnamed"}) was not found. ` +
-            `Running application containers: ${runningApplications.join(", ") || "none"}`,
-          );
-        }
-
-        const statsRes = await fetch(`${dockerApiUrl}/containers/${appContainer.Id}/stats?stream=false`, {
-          signal: AbortSignal.timeout(30_000),
-        });
-        if (!statsRes.ok) {
-          throw new Error(`Docker API returned ${statsRes.status} while fetching stats`);
-        }
-
-        const stats = await statsRes.json() as any;
-        
-        const dockerCpuPercent = calculateCpuPercent(stats);
-        const cpuLimit = CPU_TIER_LIMITS[project.ramTier as string] || 1;
-        const cpuPercent = Math.min(100, dockerCpuPercent / cpuLimit);
-        
-        const memoryUsage = Number(stats.memory_stats?.usage ?? 0);
-        const inactiveFile = Number(stats.memory_stats?.stats?.inactive_file ?? 0);
-        const cache = Number(stats.memory_stats?.stats?.cache ?? 0);
-        const ramUsage = Math.max(0, memoryUsage - (inactiveFile || cache));
-        const configuredRamLimit = RAM_TIER_BYTES[project.ramTier as string];
-        const dockerRamLimit = Number(stats.memory_stats?.limit ?? 0);
-        const ramLimit = configuredRamLimit || dockerRamLimit;
-        const ramPercent = ramLimit > 0 ? Math.max(0, (ramUsage / ramLimit) * 100) : 0;
-        
-        const result = {
-          cpu: Number(cpuPercent.toFixed(2)),
-          ram: Number(ramPercent.toFixed(2)),
-          ramUsageBytes: ramUsage,
-          ramLimitBytes: ramLimit,
-        };
-        
+        const result = await collectProjectMetrics(project, resource);
         res.write(`data: ${JSON.stringify(result)}\n\n`);
       } catch (err) {
         console.error("Failed to fetch metrics from Docker API:", err);
@@ -707,7 +778,7 @@ router.get("/:id/metrics", async (req, res) => {
     };
     void pollMetrics();
 
-    req.on("close", () => {
+    res.on("close", () => {
       closed = true;
       if (timeout) clearTimeout(timeout);
     });

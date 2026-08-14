@@ -172,15 +172,21 @@ export default function ProjectDetail() {
   // Usage Metrics SSE
   useEffect(() => {
     if (!projectId) return;
+    let cancelled = false;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     setMetricsStatus("connecting");
-    const es = new EventSource(`/api/projects/${projectId}/metrics`);
-    es.onmessage = (event) => {
+
+    const loadMetrics = async () => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.unavailable) {
-          setMetricsStatus("unavailable");
-          return;
+        const response = await fetch(`/api/projects/${projectId}/metrics/current`, {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => null);
+        if (!response.ok || data?.unavailable) {
+          throw new Error(data?.error || `Metrics returned HTTP ${response.status}`);
         }
+        if (cancelled) return;
         setMetricsStatus("live");
         const now = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const metric: ResourceMetric = {
@@ -199,12 +205,21 @@ export default function ProjectDetail() {
           }
           return updated;
         });
-      } catch (err) {}
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to load project metrics", err);
+          setMetricsStatus("unavailable");
+        }
+      } finally {
+        if (!cancelled) timeout = setTimeout(loadMetrics, 3_000);
+      }
     };
-    es.onerror = () => {
-      setMetricsStatus("unavailable");
+
+    void loadMetrics();
+    return () => {
+      cancelled = true;
+      if (timeout) clearTimeout(timeout);
     };
-    return () => es.close();
   }, [projectId]);
 
   // Runtime Logs SSE
