@@ -693,7 +693,7 @@ router.delete("/projects/:id/env/:envId", async (req, res): Promise<void> => {
   res.json({ success: true });
 });
 
-router.get("/:id/metrics/current", async (req, res): Promise<void> => {
+router.get("/projects/:id/metrics/current", async (req, res): Promise<void> => {
   const projectId = parseRouteId(req.params.id);
   const userId = (req as any).user!.id;
   if (projectId === null) {
@@ -730,7 +730,7 @@ router.get("/:id/metrics/current", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/:id/metrics", async (req, res) => {
+router.get("/projects/:id/metrics", async (req, res) => {
   try {
     const projectId = parseInt(req.params.id);
     const userId = (req as any).user!.id;
