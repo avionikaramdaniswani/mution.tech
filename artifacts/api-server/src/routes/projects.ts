@@ -55,6 +55,66 @@ const OptionalCommand = z.preprocess(
   z.union([z.string().trim().max(1024), z.null()]).optional(),
 );
 const RamTierSchema = z.enum(["256mb", "512mb", "1gb", "2gb", "4gb", "8gb"]);
+const RAM_TIER_BYTES: Record<string, number> = {
+  "256mb": 256 * 1024 * 1024,
+  "512mb": 512 * 1024 * 1024,
+  "1gb": 1024 * 1024 * 1024,
+  "2gb": 2 * 1024 * 1024 * 1024,
+  "4gb": 4 * 1024 * 1024 * 1024,
+  "8gb": 8 * 1024 * 1024 * 1024,
+};
+const CPU_TIER_LIMITS: Record<string, number> = {
+  "256mb": 0.5,
+  "512mb": 1,
+  "1gb": 1,
+  "2gb": 2,
+  "4gb": 2,
+  "8gb": 4,
+};
+
+type DockerContainer = {
+  Id?: string;
+  Names?: string[];
+  Labels?: Record<string, string>;
+};
+
+function findProjectContainer(
+  containers: DockerContainer[],
+  applicationUuid: string,
+  applicationName?: string | null,
+): DockerContainer | undefined {
+  const identifiers = [applicationUuid, applicationName]
+    .filter((value): value is string => !!value?.trim())
+    .map((value) => value.trim());
+
+  return containers.find((container) => {
+    const names = container.Names ?? [];
+    const labels = container.Labels ?? {};
+    const labelCandidates = [
+      labels["coolify.name"],
+      labels["com.docker.compose.project"],
+      labels["com.docker.compose.service"],
+    ].filter((value): value is string => !!value);
+
+    return identifiers.some((identifier) =>
+      names.some((name) => name === `/${identifier}` || name.startsWith(`/${identifier}-`)) ||
+      labelCandidates.some((label) => label === identifier || label.startsWith(`${identifier}-`)),
+    );
+  });
+}
+
+function calculateCpuPercent(stats: any): number {
+  const currentCpu = Number(stats.cpu_stats?.cpu_usage?.total_usage ?? 0);
+  const previousCpu = Number(stats.precpu_stats?.cpu_usage?.total_usage ?? 0);
+  const currentSystem = Number(stats.cpu_stats?.system_cpu_usage ?? 0);
+  const previousSystem = Number(stats.precpu_stats?.system_cpu_usage ?? 0);
+  const cpuDelta = currentCpu - previousCpu;
+  const systemDelta = currentSystem - previousSystem;
+  const onlineCpus = Number(stats.cpu_stats?.online_cpus ?? stats.precpu_stats?.online_cpus ?? 1);
+
+  if (cpuDelta <= 0 || systemDelta <= 0) return 0;
+  return Math.max(0, (cpuDelta / systemDelta) * onlineCpus * 100);
+}
 const CreateProjectBody = z.object({
   name: ProjectName,
   repoUrl: OptionalRepoUrl,
@@ -567,7 +627,7 @@ router.get("/:id/metrics", async (req, res) => {
     res.flushHeaders();
 
     if (!resource?.coolifyApplicationUuid) {
-      res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
+      res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0, unavailable: true })}\n\n`);
       res.end();
       return;
     }
@@ -581,78 +641,75 @@ router.get("/:id/metrics", async (req, res) => {
       return;
     }
 
-    let previousCpu = 0;
-    let previousSystem = 0;
-
     const fetchMetrics = async () => {
       try {
         const uuid = resource.coolifyApplicationUuid!;
-        const containersRes = await fetch(`${dockerApiUrl}/containers/json`);
+        const containersRes = await fetch(`${dockerApiUrl}/containers/json`, {
+          signal: AbortSignal.timeout(10_000),
+        });
         if (!containersRes.ok) {
           throw new Error(`Docker API returned ${containersRes.status} while listing containers`);
         }
 
-        const containers = (await containersRes.json()) as any[];
-        const appContainer = containers.find((container: any) =>
-          container.Names?.some((name: string) => name.includes(uuid))
-        );
-        if (!appContainer) {
-          throw new Error(`Container for application ${uuid} was not found`);
+        const containers = (await containersRes.json()) as DockerContainer[];
+        const appContainer = findProjectContainer(containers, uuid, resource.coolifyApplicationName);
+        if (!appContainer?.Id) {
+          const runningApplications = containers
+            .flatMap((container) => container.Names ?? [])
+            .filter((name) => !name.includes("coolify") && !name.includes("docker-proxy"));
+          throw new Error(
+            `Container for application ${uuid} (${resource.coolifyApplicationName ?? "unnamed"}) was not found. ` +
+            `Running application containers: ${runningApplications.join(", ") || "none"}`,
+          );
         }
 
-        const statsRes = await fetch(`${dockerApiUrl}/containers/${appContainer.Id}/stats?stream=false`);
+        const statsRes = await fetch(`${dockerApiUrl}/containers/${appContainer.Id}/stats?stream=false`, {
+          signal: AbortSignal.timeout(30_000),
+        });
         if (!statsRes.ok) {
           throw new Error(`Docker API returned ${statsRes.status} while fetching stats`);
         }
 
         const stats = await statsRes.json() as any;
         
-        // Step 3: Calculate CPU % using interval delta
-        let cpuPercent = 0;
-        const currentCpu = stats.cpu_stats?.cpu_usage?.total_usage || 0;
-        const currentSystem = stats.cpu_stats?.system_cpu_usage || 0;
+        const dockerCpuPercent = calculateCpuPercent(stats);
+        const cpuLimit = CPU_TIER_LIMITS[project.ramTier as string] || 1;
+        const cpuPercent = Math.min(100, dockerCpuPercent / cpuLimit);
         
-        if (previousCpu > 0 && previousSystem > 0) {
-          const cpuDelta = currentCpu - previousCpu;
-          const systemDelta = currentSystem - previousSystem;
-          
-          if (cpuDelta > 0 && systemDelta > 0) {
-            cpuPercent = (cpuDelta / systemDelta) * (stats.cpu_stats.online_cpus || 1) * 100.0;
-          }
-        }
-        
-        // Save current stats for the next interval calculation
-        previousCpu = currentCpu;
-        previousSystem = currentSystem;
-        
-        // Step 4: Calculate RAM %
-        let ramPercent = 0;
-        const ramUsage = (stats.memory_stats?.usage || 0) - (stats.memory_stats?.stats?.cache || 0);
-        const ramLimit = stats.memory_stats?.limit;
-        
-        if (ramLimit && ramLimit > 0) {
-          ramPercent = (ramUsage / ramLimit) * 100.0;
-        }
+        const memoryUsage = Number(stats.memory_stats?.usage ?? 0);
+        const inactiveFile = Number(stats.memory_stats?.stats?.inactive_file ?? 0);
+        const cache = Number(stats.memory_stats?.stats?.cache ?? 0);
+        const ramUsage = Math.max(0, memoryUsage - (inactiveFile || cache));
+        const configuredRamLimit = RAM_TIER_BYTES[project.ramTier as string];
+        const dockerRamLimit = Number(stats.memory_stats?.limit ?? 0);
+        const ramLimit = configuredRamLimit || dockerRamLimit;
+        const ramPercent = ramLimit > 0 ? Math.max(0, (ramUsage / ramLimit) * 100) : 0;
         
         const result = {
-          cpu: cpuPercent,
-          ram: ramPercent,
-          debug: { ramUsage, ramLimit }
+          cpu: Number(cpuPercent.toFixed(2)),
+          ram: Number(ramPercent.toFixed(2)),
+          ramUsageBytes: ramUsage,
+          ramLimitBytes: ramLimit,
         };
         
         res.write(`data: ${JSON.stringify(result)}\n\n`);
       } catch (err) {
         console.error("Failed to fetch metrics from Docker API:", err);
-        res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0 })}\n\n`);
+        res.write(`data: ${JSON.stringify({ cpu: 0, ram: 0, unavailable: true })}\n\n`);
       }
     };
 
-    await fetchMetrics();
-    const interval = setInterval(fetchMetrics, 2000);
+    let timeout: NodeJS.Timeout | undefined;
+    let closed = false;
+    const pollMetrics = async () => {
+      await fetchMetrics();
+      if (!closed) timeout = setTimeout(pollMetrics, 2_000);
+    };
+    void pollMetrics();
 
     req.on("close", () => {
-      clearInterval(interval);
-      res.end();
+      closed = true;
+      if (timeout) clearTimeout(timeout);
     });
 
   } catch (err) {

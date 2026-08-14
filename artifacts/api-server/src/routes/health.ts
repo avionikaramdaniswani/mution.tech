@@ -5,17 +5,21 @@ import { getUpstreamHealth } from "./v1-proxy";
 const router: IRouter = Router();
 
 router.get("/healthz", async (_req, res) => {
-  const dockerApiUrl = process.env.CADVISOR_URL || "http://168.110.215.158:9091";
+  const dockerApiUrl = process.env.DOCKER_API_URL?.trim();
   let dockerOk = false;
   let dockerError = "";
-  try {
-    const res = await fetch(`${dockerApiUrl}/containers/json`);
-    dockerOk = res.ok;
-    dockerError = `CADVISOR_URL=${process.env.CADVISOR_URL || 'NONE'}`;
-  } catch (err: any) {
-    dockerError = err.message;
+  if (!dockerApiUrl) {
+    dockerError = "DOCKER_API_URL is not configured";
+  } else {
+    try {
+      const dockerRes = await fetch(`${dockerApiUrl}/_ping`, { signal: AbortSignal.timeout(5_000) });
+      dockerOk = dockerRes.ok;
+      if (!dockerRes.ok) dockerError = `Docker API returned HTTP ${dockerRes.status}`;
+    } catch (err: any) {
+      dockerError = err.message;
+    }
   }
-  res.json({ status: "ok", dockerApiUrl, dockerOk, dockerError, version: "3" });
+  res.json({ status: "ok", dockerConfigured: !!dockerApiUrl, dockerOk, dockerError, version: "4" });
 });
 
 router.get("/status", async (_req, res) => {

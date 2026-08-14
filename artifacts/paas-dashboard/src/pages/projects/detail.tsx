@@ -104,6 +104,19 @@ function RealtimeChart({ data }: { data: any[] }) {
   );
 }
 
+type ResourceMetric = {
+  time: string;
+  cpu: number;
+  ram: number;
+  ramUsageBytes?: number;
+  ramLimitBytes?: number;
+};
+
+function formatMemory(bytes?: number): string {
+  if (!bytes || bytes <= 0) return "0 MB";
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function ProjectDetail() {
   const params = useParams();
   const projectId = parseInt(params.id || "0", 10);
@@ -144,9 +157,10 @@ export default function ProjectDetail() {
   const [liveModalBuildLog, setLiveModalBuildLog] = useState<string | null>(null);
   
   // SSE state for usage metrics
-  const [metricsHistory, setMetricsHistory] = useState<{ time: string, cpu: number, ram: number }[]>(
+  const [metricsHistory, setMetricsHistory] = useState<ResourceMetric[]>(
     Array(20).fill({ time: '', cpu: 0, ram: 0 })
   );
+  const [metricsUnavailable, setMetricsUnavailable] = useState(false);
 
   const projectDeployments = deployments?.filter(d => d.projectId === projectId) || [];
   const latestDeployment = projectDeployments[0] ?? null;
@@ -157,16 +171,28 @@ export default function ProjectDetail() {
 
   // Usage Metrics SSE
   useEffect(() => {
-    if (!projectId || project?.status === "stopped") return;
+    if (!projectId) return;
     const es = new EventSource(`/api/projects/${projectId}/metrics`);
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        if (data.unavailable) {
+          setMetricsUnavailable(true);
+          return;
+        }
+        setMetricsUnavailable(false);
         const now = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const metric: ResourceMetric = {
+          time: now,
+          cpu: Number(data.cpu) || 0,
+          ram: Number(data.ram) || 0,
+          ramUsageBytes: Number(data.ramUsageBytes) || 0,
+          ramLimitBytes: Number(data.ramLimitBytes) || 0,
+        };
         setMetricsHistory(prev => {
           // If first meaningful data comes in, we can start pruning the empty fill
           const isFilling = prev[0].time === '';
-          const updated = [...prev, { time: now, cpu: data.cpu, ram: data.ram }];
+          const updated = [...prev, metric];
           if (updated.length > 20) {
             return isFilling ? updated.filter(item => item.time !== '').slice(-20) : updated.slice(updated.length - 20);
           }
@@ -175,7 +201,7 @@ export default function ProjectDetail() {
       } catch (err) {}
     };
     return () => es.close();
-  }, [projectId, project?.status]);
+  }, [projectId]);
 
   // Runtime Logs SSE
   useEffect(() => {
@@ -665,14 +691,19 @@ export default function ProjectDetail() {
               <CardDescription>Pemakaian resource server oleh aplikasimu secara real-time</CardDescription>
             </CardHeader>
             <CardContent>
-              {project?.status !== 'running' ? (
+              {project?.status !== 'running' && !metricsHistory.some((metric) => metric.time) ? (
                 <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-md bg-muted/20">
                   <p className="text-muted-foreground font-medium">Aplikasi Sedang Tidak Berjalan</p>
                   <p className="text-xs text-muted-foreground mt-1">Metrik usage hanya tersedia ketika aplikasi aktif.</p>
                 </div>
               ) : (
                 <div className="w-full pb-4">
-                  <RealtimeChart data={metricsHistory} />
+                  {metricsUnavailable ? (
+                    <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-md bg-muted/20">
+                      <p className="text-muted-foreground font-medium">Metrik belum tersedia</p>
+                      <p className="text-xs text-muted-foreground mt-1">Server metrics belum terhubung ke Docker Engine.</p>
+                    </div>
+                  ) : <><RealtimeChart data={metricsHistory} />
                   <div className="flex justify-center gap-8 mt-2">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-[#14b8a6]"></div>
@@ -680,9 +711,12 @@ export default function ProjectDetail() {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-[#f97316]"></div>
-                      <span className="text-sm font-medium">RAM Usage: {metricsHistory[metricsHistory.length - 1]?.ram.toFixed(1) || 0}%</span>
+                      <span className="text-sm font-medium">
+                        RAM Usage: {metricsHistory[metricsHistory.length - 1]?.ram.toFixed(1) || 0}%
+                        {' '}({formatMemory(metricsHistory[metricsHistory.length - 1]?.ramUsageBytes)} / {formatMemory(metricsHistory[metricsHistory.length - 1]?.ramLimitBytes)})
+                      </span>
                     </div>
-                  </div>
+                  </div></>}
                 </div>
               )}
             </CardContent>
