@@ -160,7 +160,7 @@ export default function ProjectDetail() {
   const [metricsHistory, setMetricsHistory] = useState<ResourceMetric[]>(
     Array(20).fill({ time: '', cpu: 0, ram: 0 })
   );
-  const [metricsUnavailable, setMetricsUnavailable] = useState(false);
+  const [metricsStatus, setMetricsStatus] = useState<"connecting" | "live" | "unavailable">("connecting");
 
   const projectDeployments = deployments?.filter(d => d.projectId === projectId) || [];
   const latestDeployment = projectDeployments[0] ?? null;
@@ -172,15 +172,16 @@ export default function ProjectDetail() {
   // Usage Metrics SSE
   useEffect(() => {
     if (!projectId) return;
+    setMetricsStatus("connecting");
     const es = new EventSource(`/api/projects/${projectId}/metrics`);
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         if (data.unavailable) {
-          setMetricsUnavailable(true);
+          setMetricsStatus("unavailable");
           return;
         }
-        setMetricsUnavailable(false);
+        setMetricsStatus("live");
         const now = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const metric: ResourceMetric = {
           time: now,
@@ -199,6 +200,9 @@ export default function ProjectDetail() {
           return updated;
         });
       } catch (err) {}
+    };
+    es.onerror = () => {
+      setMetricsStatus("unavailable");
     };
     return () => es.close();
   }, [projectId]);
@@ -698,10 +702,15 @@ export default function ProjectDetail() {
                 </div>
               ) : (
                 <div className="w-full pb-4">
-                  {metricsUnavailable ? (
+                  {metricsStatus === "connecting" ? (
+                    <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-md bg-muted/20">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground mt-3">Menghubungkan metrik project...</p>
+                    </div>
+                  ) : metricsStatus === "unavailable" ? (
                     <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-md bg-muted/20">
                       <p className="text-muted-foreground font-medium">Metrik belum tersedia</p>
-                      <p className="text-xs text-muted-foreground mt-1">Server metrics belum terhubung ke Docker Engine.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Backend belum terhubung ke Docker API proxy.</p>
                     </div>
                   ) : <><RealtimeChart data={metricsHistory} />
                   <div className="flex justify-center gap-8 mt-2">
