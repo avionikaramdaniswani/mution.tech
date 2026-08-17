@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable } from "@workspace/db";
+import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable, aiProviderModelsTable } from "@workspace/db";
 import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
 import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminUpsertProviderModel, adminDeleteProviderModel, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride } from "./v1-proxy";
-import { MODEL_CATALOG } from "@workspace/model-catalog";
+import { getModelById, getModelPricing } from "@workspace/model-catalog";
 
 const router = Router();
 
@@ -569,18 +569,30 @@ router.post("/admin/providers/:id/reset-cooldown", (req, res) => {
 
 router.get("/admin/model-pricing", async (_req, res) => {
   try {
-    const overrides = await adminGetModelPricingOverrides();
+    const [overrides, providerModels] = await Promise.all([
+      adminGetModelPricingOverrides(),
+      db.select().from(aiProviderModelsTable),
+    ]);
     const overrideMap = new Map(overrides.map((o) => [o.modelId, o]));
+    const modelsById = new Map<string, { label: string; providers: Set<string> }>();
+    for (const model of providerModels) {
+      const existing = modelsById.get(model.modelId) ?? { label: model.displayName, providers: new Set<string>() };
+      existing.providers.add(model.providerId);
+      modelsById.set(model.modelId, existing);
+    }
 
-    const result = MODEL_CATALOG.map((m) => {
-      const ov = overrideMap.get(m.id);
+    const result = Array.from(modelsById.entries()).map(([modelId, configured]) => {
+      const catalog = getModelById(modelId);
+      const pricing = getModelPricing(modelId);
+      const ov = overrideMap.get(modelId);
       return {
-        modelId: m.id,
-        label: m.label,
-        provider: m.provider,
-        basePricingInput: m.pricing.input,
-        basePricingOutput: m.pricing.output,
-        context: m.context,
+        modelId,
+        label: catalog?.label ?? configured.label,
+        provider: Array.from(configured.providers).sort().join(", "),
+        basePricingInput: pricing.input,
+        basePricingOutput: pricing.output,
+        context: catalog?.context ?? "-",
+        catalogMatched: Boolean(catalog),
         override: ov
           ? {
               mode: ov.mode,
@@ -591,7 +603,7 @@ router.get("/admin/model-pricing", async (_req, res) => {
             }
           : null,
       };
-    });
+    }).sort((a, b) => a.label.localeCompare(b.label));
 
     res.json(result);
   } catch (error) {

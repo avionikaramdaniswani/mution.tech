@@ -41,6 +41,7 @@ interface ModelPricingEntry {
   basePricingInput: number;
   basePricingOutput: number;
   context: string;
+  catalogMatched: boolean;
   override: ModelOverride | null;
 }
 
@@ -333,7 +334,7 @@ export default function AdminModels() {
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[#c9d8e7] bg-white/80 p-12 text-center">
           <Tag className="h-10 w-10 text-muted-foreground/30" />
           <p className="text-sm text-muted-foreground">
-            {search ? "Tidak ada model yang cocok." : "Tidak ada model di katalog."}
+            {search ? "Tidak ada model yang cocok." : "Belum ada model yang ditambahkan pada AI Provider."}
           </p>
         </div>
       ) : (
@@ -356,7 +357,10 @@ export default function AdminModels() {
                   className={`transition-colors hover:bg-[#f8fbff] ${hasOverride(m) ? "bg-orange-50/40" : ""}`}
                 >
                   <td className="px-5 py-3.5">
-                    <div className="font-medium text-[#172033]">{m.label}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-[#172033]">{m.label}</span>
+                      {!m.catalogMatched && <Badge variant="outline" className="border-amber-300 bg-amber-50 text-[10px] text-amber-700">Harga fallback</Badge>}
+                    </div>
                     <div className="mt-0.5 font-mono text-[10px] text-[#526173]/60">{m.modelId}</div>
                   </td>
                   <td className="hidden px-4 py-3.5 sm:table-cell">
@@ -420,7 +424,7 @@ export default function AdminModels() {
         className="rounded-lg px-4 py-3 text-xs text-[#526173]"
         style={{ border: "1px solid rgba(234,179,8,0.15)", background: "rgba(234,179,8,0.04)" }}
       >
-        <span className="font-semibold text-amber-700">Catatan:</span> Override harga berlaku real-time (cache 10 detik).
+        <span className="font-semibold text-amber-700">Catatan:</span> Hanya Model ID publik yang sudah ditambahkan pada AI Provider yang tampil di sini. Override harga berlaku real-time (cache 10 detik).
         Mode &quot;Gratis&quot; mengurangi kredit menjadi 0 tapi tetap dicatat di usage log untuk transparansi.
         Diskon dan harga custom langsung memotong saldo user saat request selesai.
       </div>
