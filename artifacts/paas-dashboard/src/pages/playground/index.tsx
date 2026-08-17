@@ -27,6 +27,8 @@ export default function PlaygroundPage() {
     setLoading(true); setResult(null);
     try {
       const r = await csrfFetch("/api/playground/chat", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ keyId: Number(keyId), model, system, prompt, temperature: Number(temperature), maxTokens: Number(maxTokens) }) });
+      const contentType = r.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) throw new Error("Server Playground belum siap. Muat ulang halaman lalu coba kembali.");
       const data = await r.json(); if (!r.ok) throw new Error(data.error?.message ?? data.error ?? "Request gagal"); setResult(data);
     } catch (error) { toast({ title: "Playground gagal", description: error instanceof Error ? error.message : "Coba lagi", variant: "destructive" }); }
     finally { setLoading(false); }
