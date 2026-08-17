@@ -71,6 +71,13 @@
       "when": 1787000100000,
       "tag": "0009_provider_model_crud",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787000200000,
+      "tag": "0010_model_brand_provider",
+      "breakpoints": true
     }
   ]
 }

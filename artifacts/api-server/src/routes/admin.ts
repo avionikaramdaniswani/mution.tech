@@ -11,6 +11,17 @@ const router = Router();
 
 router.use(requireAdmin);
 
+function inferModelBrand(modelId: string, displayName: string): string {
+  const value = `${modelId} ${displayName}`.toLowerCase();
+  if (value.includes("claude")) return "Anthropic";
+  if (value.includes("gpt")) return "OpenAI";
+  if (value.includes("deepseek")) return "DeepSeek";
+  if (value.includes("kimi") || value.includes("moonshot")) return "Moonshot AI";
+  if (value.includes("minimax")) return "MiniMax";
+  if (value.includes("glm")) return "Zhipu AI";
+  return "Other";
+}
+
 // ─── Server-Sent Events stream untuk admin ────────────────────────────────────
 router.get("/admin/events", (req, res): void => {
   const admin = (req as any).user;
@@ -538,19 +549,19 @@ router.patch("/admin/providers/:id/toggle", async (req, res): Promise<void> => {
 
 router.post("/admin/providers/:id/models", async (req, res): Promise<void> => {
   const providerId = decodeURIComponent(req.params.id);
-  const { modelId, displayName, upstreamModelId, enabled = true } = req.body ?? {};
+  const { modelId, displayName, brandProvider, upstreamModelId, enabled = true } = req.body ?? {};
   if (![modelId, displayName, upstreamModelId].every((v) => typeof v === "string" && v.trim()) || typeof enabled !== "boolean") { res.status(400).json({ error: "Data model tidak valid" }); return; }
   try {
-    await adminUpsertProviderModel(providerId, modelId.trim(), { displayName: displayName.trim(), upstreamModelId: upstreamModelId.trim(), enabled });
+    await adminUpsertProviderModel(providerId, modelId.trim(), { displayName: displayName.trim(), brandProvider: typeof brandProvider === "string" && brandProvider.trim() ? brandProvider.trim() : inferModelBrand(modelId, displayName), upstreamModelId: upstreamModelId.trim(), enabled });
     res.status(201).json({ ok: true });
   } catch (error) { console.error("Failed to create provider model:", error); res.status(500).json({ error: "Gagal menambahkan model" }); }
 });
 
 router.put("/admin/providers/:id/models/:modelId", async (req, res): Promise<void> => {
   const providerId = decodeURIComponent(req.params.id); const oldModelId = decodeURIComponent(req.params.modelId);
-  const { modelId, displayName, upstreamModelId, enabled } = req.body ?? {};
+  const { modelId, displayName, brandProvider, upstreamModelId, enabled } = req.body ?? {};
   if (![modelId, displayName, upstreamModelId].every((v) => typeof v === "string" && v.trim()) || typeof enabled !== "boolean") { res.status(400).json({ error: "Data model tidak valid" }); return; }
-  try { await adminUpsertProviderModel(providerId, modelId.trim(), { displayName: displayName.trim(), upstreamModelId: upstreamModelId.trim(), enabled }, oldModelId); res.json({ ok: true }); }
+  try { await adminUpsertProviderModel(providerId, modelId.trim(), { displayName: displayName.trim(), brandProvider: typeof brandProvider === "string" && brandProvider.trim() ? brandProvider.trim() : inferModelBrand(modelId, displayName), upstreamModelId: upstreamModelId.trim(), enabled }, oldModelId); res.json({ ok: true }); }
   catch (error) { console.error("Failed to update provider model:", error); res.status(500).json({ error: "Gagal mengubah model" }); }
 });
 

@@ -172,7 +172,7 @@ const _cooldowns = new Map<string, number>();
 
 // Admin toggle state is persisted in DB and cached briefly for request routing.
 const _disabledProviders = new Set<string>();
-type ProviderModelConfig = { modelId: string; displayName: string; upstreamModelId: string; enabled: boolean };
+type ProviderModelConfig = { modelId: string; displayName: string; brandProvider: string; upstreamModelId: string; enabled: boolean };
 const _providerModels = new Map<string, Map<string, ProviderModelConfig>>();
 let _providerSettingsLoadedAt = 0;
 let _providerSettingsRefresh: Promise<void> | null = null;
@@ -227,7 +227,7 @@ async function refreshProviderSettings(force = false): Promise<void> {
     _providerModels.clear();
     for (const row of modelRows) {
       const models = _providerModels.get(row.providerId) ?? new Map<string, ProviderModelConfig>();
-      models.set(row.modelId, { modelId: row.modelId, displayName: row.displayName, upstreamModelId: row.upstreamModelId, enabled: row.enabled });
+      models.set(row.modelId, { modelId: row.modelId, displayName: row.displayName, brandProvider: row.brandProvider, upstreamModelId: row.upstreamModelId, enabled: row.enabled });
       _providerModels.set(row.providerId, models);
     }
     _providerSettingsLoadedAt = Date.now();
@@ -284,7 +284,7 @@ export async function adminGetProviderStatuses() {
   }));
 }
 
-export async function adminUpsertProviderModel(providerId: string, modelId: string, payload: { displayName: string; upstreamModelId: string; enabled: boolean }, oldModelId?: string) {
+export async function adminUpsertProviderModel(providerId: string, modelId: string, payload: { displayName: string; brandProvider: string; upstreamModelId: string; enabled: boolean }, oldModelId?: string) {
   const now = new Date();
   if (oldModelId && oldModelId !== modelId) await db.delete(aiProviderModelsTable).where(and(eq(aiProviderModelsTable.providerId, providerId), eq(aiProviderModelsTable.modelId, oldModelId)));
   await db.insert(aiProviderModelsTable).values({ providerId, modelId, ...payload, updatedAt: now }).onConflictDoUpdate({
@@ -557,13 +557,13 @@ function filterProvidersForModel(providers: Provider[], model: string): Provider
 
 export async function getConfiguredPublicModelCatalog() {
   await refreshProviderSettingsForProxy();
-  const configured = new Map<string, { displayName: string; providers: Set<string> }>();
+  const configured = new Map<string, { displayName: string; brands: Set<string> }>();
   for (const [providerId, models] of _providerModels) {
     if (_disabledProviders.has(providerId)) continue;
     for (const model of models.values()) {
       if (!model.enabled) continue;
-      const entry = configured.get(model.modelId) ?? { displayName: model.displayName, providers: new Set<string>() };
-      entry.providers.add(providerId);
+      const entry = configured.get(model.modelId) ?? { displayName: model.displayName, brands: new Set<string>() };
+      entry.brands.add(model.brandProvider);
       configured.set(model.modelId, entry);
     }
   }
@@ -586,8 +586,8 @@ export async function getConfiguredPublicModelCatalog() {
     return {
       id: modelId,
       label: catalog?.label ?? entry.displayName,
-      provider: catalog?.provider ?? Array.from(entry.providers).sort().join(", "),
-      providerIds: Array.from(entry.providers).sort(),
+      provider: catalog?.provider ?? Array.from(entry.brands).sort().join(", "),
+      providerIds: Array.from(entry.brands).sort(),
       pricing,
       basePricing,
       pricingMode: override?.mode ?? "default",

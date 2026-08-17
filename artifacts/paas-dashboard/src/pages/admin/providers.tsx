@@ -11,10 +11,10 @@ import { CheckCircle2, ChevronDown, ChevronRight, Clock, Cpu, Pencil, Plus, Sear
 import { useToast } from "@/hooks/use-toast";
 import { csrfFetch } from "@/lib/csrf";
 
-interface ProviderModel { modelId: string; displayName: string; upstreamModelId: string; enabled: boolean }
+interface ProviderModel { modelId: string; displayName: string; brandProvider: string; upstreamModelId: string; enabled: boolean }
 interface ProviderStatus { id: string; openaiBase: string; type: "conduit" | "generic"; enabled: boolean; inCooldown: boolean; cooldownExpiresAt: string | null; models: ProviderModel[] }
 type ModelForm = ProviderModel & { originalModelId?: string };
-const emptyForm: ModelForm = { modelId: "", displayName: "", upstreamModelId: "", enabled: true };
+const emptyForm: ModelForm = { modelId: "", displayName: "", brandProvider: "Other", upstreamModelId: "", enabled: true };
 
 async function fetchProviders(): Promise<ProviderStatus[]> { const res = await fetch("/api/admin/providers", { credentials: "include" }); if (!res.ok) throw new Error(); return res.json(); }
 async function request(url: string, method: string, body?: unknown) { const res = await csrfFetch(url, { method, credentials: "include", headers: body ? { "Content-Type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined }); if (!res.ok) throw new Error(); }
@@ -35,13 +35,13 @@ export default function AdminProviders() {
     if (!editor) return; const { providerId, form } = editor;
     if (!form.modelId.trim() || !form.displayName.trim() || !form.upstreamModelId.trim()) { toast({ title: "Semua kolom model wajib diisi", variant: "destructive" }); return; }
     const editing = Boolean(form.originalModelId);
-    mutate.mutate({ url: editing ? `/api/admin/providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(form.originalModelId!)}` : `/api/admin/providers/${encodeURIComponent(providerId)}/models`, method: editing ? "PUT" : "POST", body: { modelId: form.modelId, displayName: form.displayName, upstreamModelId: form.upstreamModelId, enabled: form.enabled } });
+    mutate.mutate({ url: editing ? `/api/admin/providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(form.originalModelId!)}` : `/api/admin/providers/${encodeURIComponent(providerId)}/models`, method: editing ? "PUT" : "POST", body: { modelId: form.modelId, displayName: form.displayName, brandProvider: form.brandProvider === "Other" ? "" : form.brandProvider, upstreamModelId: form.upstreamModelId, enabled: form.enabled } });
   };
 
   return <div className="mx-auto max-w-7xl space-y-6">
     <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Admin Mution</p><h1 className="mt-2 flex items-center gap-2 text-3xl font-extrabold text-[#172033]"><Cpu className="h-6 w-6 text-primary" /> AI Providers</h1><p className="mt-1 text-sm text-[#526173]">Kelola provider dan mapping model upstream secara independen.</p></div>
     {isLoading ? <div className="space-y-3">{[1, 2].map(i => <Skeleton key={i} className="h-24 w-full" />)}</div> : !providers?.length ? <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">Tidak ada provider terkonfigurasi.</div> : <div className="space-y-3">{providers.map(p => {
-      const open = expanded === p.id; const q = search.toLowerCase(); const models = p.models.filter(m => !q || [m.modelId, m.displayName, m.upstreamModelId].some(v => v.toLowerCase().includes(q)));
+      const open = expanded === p.id; const q = search.toLowerCase(); const models = p.models.filter(m => !q || [m.modelId, m.displayName, m.brandProvider, m.upstreamModelId].some(v => v.toLowerCase().includes(q)));
       return <div key={p.id} className={`rounded-lg border border-[#dbe8f3] bg-white shadow-sm ${p.enabled ? "" : "opacity-60"}`}>
         <div className="flex items-center justify-between gap-4 p-5"><button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => setExpanded(open ? null : p.id)}>{open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}<div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-sm font-semibold">{p.id}</span><Badge variant="outline">{p.type}</Badge><StatusBadge provider={p} /></div><p className="mt-1 truncate text-xs text-muted-foreground">{p.openaiBase} · {p.models.filter(m => m.enabled).length}/{p.models.length} model aktif</p></div></button><Switch checked={p.enabled} disabled={mutate.isPending} onCheckedChange={enabled => mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(p.id)}/toggle`, method: "PATCH", body: { enabled } })} /></div>
         {open && <div className="border-t bg-[#f8fbfd] p-4"><div className="mb-3 flex flex-col justify-between gap-3 sm:flex-row"><div className="relative max-w-md flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari model atau upstream ID..." className="pl-9" /></div><Button onClick={() => setEditor({ providerId: p.id, form: { ...emptyForm } })}><Plus className="mr-2 h-4 w-4" /> Tambah model</Button></div>
