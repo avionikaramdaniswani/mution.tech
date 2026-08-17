@@ -11,6 +11,7 @@ export * from "./api_usage";
 export * from "./api_requests";
 export * from "./changelogs";
 export * from "./ai_provider_settings";
+export * from "./ai_provider_models";
 export * from "./coolify_resources";
 export * from "./model_pricing_overrides";
 export * from "./credit_packages";

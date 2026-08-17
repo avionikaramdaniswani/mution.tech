@@ -1,5 +1,5 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
-import { db, apiKeysTable, usersTable, creditTransactionsTable, apiUsageTable, aiProviderSettingsTable, apiRequestsTable, modelPricingOverridesTable } from "@workspace/db";
+import { db, apiKeysTable, usersTable, creditTransactionsTable, apiUsageTable, aiProviderSettingsTable, aiProviderModelsTable, apiRequestsTable, modelPricingOverridesTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { logger } from "../lib/logger";
@@ -172,6 +172,7 @@ const _cooldowns = new Map<string, number>();
 
 // Admin toggle state is persisted in DB and cached briefly for request routing.
 const _disabledProviders = new Set<string>();
+const _disabledProviderModels = new Set<string>();
 let _providerSettingsLoadedAt = 0;
 let _providerSettingsRefresh: Promise<void> | null = null;
 const PROVIDER_SETTINGS_REFRESH_MS = 5_000;
@@ -221,6 +222,9 @@ async function refreshProviderSettings(force = false): Promise<void> {
     for (const row of rows) {
       if (!row.enabled) _disabledProviders.add(row.id);
     }
+    const modelRows = await db.select().from(aiProviderModelsTable);
+    _disabledProviderModels.clear();
+    for (const row of modelRows) if (!row.enabled) _disabledProviderModels.add(`${row.providerId}:${row.modelId}`);
     _providerSettingsLoadedAt = Date.now();
   })().finally(() => {
     _providerSettingsRefresh = null;
@@ -271,7 +275,18 @@ export async function adminGetProviderStatuses() {
     cooldownExpiresAt: (_cooldowns.get(p.id) ?? 0) > now
       ? new Date(_cooldowns.get(p.id)!).toISOString()
       : null,
+    models: MODEL_CATALOG.map((m) => ({ modelId: m.id, label: m.label, provider: m.provider, enabled: !_disabledProviderModels.has(`${p.id}:${m.id}`) })),
   }));
+}
+
+export async function adminSetProviderModelEnabled(providerId: string, modelId: string, enabled: boolean) {
+  const now = new Date();
+  await db.insert(aiProviderModelsTable).values({ providerId, modelId, enabled, updatedAt: now }).onConflictDoUpdate({
+    target: [aiProviderModelsTable.providerId, aiProviderModelsTable.modelId],
+    set: { enabled, updatedAt: now },
+  });
+  const key = `${providerId}:${modelId}`;
+  if (enabled) _disabledProviderModels.delete(key); else _disabledProviderModels.add(key);
 }
 
 // ─── Admin: Model Pricing Overrides ──────────────────────────────────────────
@@ -517,6 +532,7 @@ const MODEL_PROVIDER_AFFINITY: Record<string, string> = {
  * available (so the request still gets a chance rather than silently failing).
  */
 function filterProvidersForModel(providers: Provider[], model: string): Provider[] {
+  providers = providers.filter((p) => !_disabledProviderModels.has(`${p.id}:${model}`));
   const targetId = MODEL_PROVIDER_AFFINITY[model];
   if (!targetId) return providers;
   const matched = providers.filter((p) => p.id === targetId && !_disabledProviders.has(p.id));
@@ -896,6 +912,10 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
   const isStream = req.body?.stream === true;
   providers = filterProvidersForModel(providers, originalModel);
   updateApiRequestLog(res, { model: originalModel });
+  if (providers.length === 0) {
+    res.status(503).json({ type: "error", error: { type: "model_unavailable", message: `Model ${originalModel} is disabled on all providers` } });
+    return;
+  }
 
   if (key.allowedModels && key.allowedModels.length > 0 && !key.allowedModels.includes(originalModel)) {
     updateApiRequestLog(res, { errorType: "forbidden" });
@@ -1232,6 +1252,10 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
   const originalModel = req.method !== "GET" ? req.body?.model ?? "unknown" : "unknown";
   if (req.method !== "GET") providers = filterProvidersForModel(providers, originalModel);
   updateApiRequestLog(res, { model: originalModel });
+  if (req.method !== "GET" && providers.length === 0) {
+    res.status(503).json({ error: { message: `Model ${originalModel} is disabled on all providers`, type: "model_unavailable" } });
+    return;
+  }
   let reservation: CreditReservation | null = null;
   let reservationClosed = true;
 
@@ -1784,6 +1808,10 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
   const isStream = chatBody.stream === true;
   providers = filterProvidersForModel(providers, originalModel);
   updateApiRequestLog(res, { model: originalModel });
+  if (providers.length === 0) {
+    res.status(503).json({ error: { message: `Model ${originalModel} is disabled on all providers`, type: "model_unavailable" } });
+    return;
+  }
 
   if (key.allowedModels && key.allowedModels.length > 0 && !key.allowedModels.includes(originalModel)) {
     updateApiRequestLog(res, { errorType: "forbidden" });

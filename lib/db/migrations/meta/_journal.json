@@ -57,6 +57,13 @@
       "when": 1786612344155,
       "tag": "0007_empty_rictor",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787000000000,
+      "tag": "0008_ai_provider_models",
+      "breakpoints": true
     }
   ]
 }

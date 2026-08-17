@@ -4,7 +4,7 @@ import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
-import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride } from "./v1-proxy";
+import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminSetProviderModelEnabled, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride } from "./v1-proxy";
 import { MODEL_CATALOG } from "@workspace/model-catalog";
 
 const router = Router();
@@ -534,6 +534,16 @@ router.patch("/admin/providers/:id/toggle", async (req, res): Promise<void> => {
     console.error("Failed to update provider status:", error);
     res.status(500).json({ error: "Gagal mengubah status provider" });
   }
+});
+
+router.patch("/admin/providers/:id/models/:modelId/toggle", async (req, res): Promise<void> => {
+  const providerId = decodeURIComponent(req.params.id);
+  const modelId = decodeURIComponent(req.params.modelId);
+  if (typeof req.body?.enabled !== "boolean") { res.status(400).json({ error: "enabled must be boolean" }); return; }
+  try {
+    await adminSetProviderModelEnabled(providerId, modelId, req.body.enabled);
+    res.json({ ok: true, providerId, modelId, enabled: req.body.enabled });
+  } catch (error) { console.error("Failed to update provider model status:", error); res.status(500).json({ error: "Gagal mengubah status model" }); }
 });
 
 router.post("/admin/providers/:id/reset-cooldown", (req, res) => {
