@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
@@ -19,9 +19,15 @@ import { PublicNavbar } from "@/components/public-navbar";
 import { PageFooter } from "@/components/page-footer";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MODEL_CATALOG, groupModelsByProvider, type ModelCatalogEntry } from "@workspace/model-catalog";
-
-type EffectiveCatalogEntry = ModelCatalogEntry & {
+type EffectiveCatalogEntry = {
+  id: string;
+  label: string;
+  provider: string;
+  pricing: { input: number; output: number };
+  context: string;
+  note?: string | null;
+  description: string;
+  aliases?: string[];
   basePricing: { input: number; output: number };
   pricingMode: string;
 };
@@ -65,7 +71,7 @@ const billingPrinciples = [
   },
 ] as const;
 
-const DEFAULT_MODEL = MODEL_CATALOG.find((model) => model.id === "claude-opus-4-8") ?? MODEL_CATALOG[0]!;
+const EMPTY_MODEL: EffectiveCatalogEntry = { id: "", label: "Belum ada model", provider: "-", pricing: { input: 0, output: 0 }, basePricing: { input: 0, output: 0 }, pricingMode: "default", context: "-", description: "Belum ada model aktif yang dikonfigurasi." };
 const AI_PRICING_TOKEN_UNIT = 1_000_000;
 const TOKEN_SLIDER_UNIT = 1_000;
 
@@ -232,18 +238,16 @@ function getProviderIcon(provider: string, baseClassName = "h-5 w-5") {
 
 export default function HargaPage() {
   // Fetch catalog dengan harga efektif dari server (setelah admin override diterapkan)
-  const { data: fetchedCatalog } = useQuery({
+  const { data: catalog = [] } = useQuery<EffectiveCatalogEntry[]>({
     queryKey: ["catalog"],
     queryFn: fetchCatalog,
     staleTime: 30_000,
   });
-  const catalog = fetchedCatalog ?? MODEL_CATALOG;
-
-  const grouped = useMemo(() => groupModelsByProvider(catalog as readonly ModelCatalogEntry[]), [catalog]);
+  const grouped = useMemo(() => catalog.reduce<Record<string, EffectiveCatalogEntry[]>>((groups, model) => { (groups[model.provider] ??= []).push(model); return groups; }, {}), [catalog]);
   const [selectedRam, setSelectedRam] = useState("1 GB");
   const [hoursPerDay, setHoursPerDay] = useState(8);
   const [daysPerMonth, setDaysPerMonth] = useState(20);
-  const [selectedModelId, setSelectedModelId] = useState(DEFAULT_MODEL.id);
+  const [selectedModelId, setSelectedModelId] = useState("");
   const [inputKTokens, setInputKTokens] = useState(120);
   const [outputKTokens, setOutputKTokens] = useState(40);
   const [aiPricingDisplayUnit, setAiPricingDisplayUnit] = useState<AiPricingDisplayUnit>("1k");
@@ -253,10 +257,8 @@ export default function HargaPage() {
     [selectedRam],
   );
 
-  const selectedModel = useMemo(
-    () => (catalog.find((model) => model.id === selectedModelId) ?? DEFAULT_MODEL) as EffectiveCatalogEntry,
-    [selectedModelId],
-  );
+  useEffect(() => { if (catalog.length > 0 && !catalog.some(model => model.id === selectedModelId)) setSelectedModelId(catalog[0].id); }, [catalog, selectedModelId]);
+  const selectedModel = useMemo(() => catalog.find((model) => model.id === selectedModelId) ?? catalog[0] ?? EMPTY_MODEL, [catalog, selectedModelId]);
 
   const hostingEstimate = getHostingEstimate(selectedHosting.perMinute, hoursPerDay, daysPerMonth);
   const aiEstimate = getAiEstimate(inputKTokens, outputKTokens, selectedModel.pricing);

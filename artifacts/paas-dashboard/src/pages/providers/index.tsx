@@ -9,12 +9,19 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { MODEL_CATALOG, groupModelsByProvider, type ModelCatalogEntry } from "@workspace/model-catalog";
 import { Tag } from "lucide-react";
 
 // --- Data -----------------------------------------------------------------------
 
-type Model = ModelCatalogEntry & {
+type Model = {
+  id: string;
+  label: string;
+  provider: string;
+  pricing: { input: number; output: number };
+  context: string;
+  note?: string | null;
+  description: string;
+  aliases?: string[];
   basePricing?: { input: number; output: number };
   pricingMode?: string;
 };
@@ -73,12 +80,11 @@ export default function ProvidersPage() {
   const { toast } = useToast();
   const [detailsModel, setDetailsModel] = useState<Model | null>(null);
 
-  const { data: fetchedCatalog } = useQuery<Model[]>({
+  const { data: catalog = [], isLoading: catalogLoading } = useQuery<Model[]>({
     queryKey: ["catalog"],
     queryFn: fetchCatalog,
     staleTime: 30_000,
   });
-  const catalog: Model[] = fetchedCatalog ?? (MODEL_CATALOG as Model[]);
 
   const { data: health } = useQuery<UpstreamHealth>({
     queryKey: ["provider-health"],
@@ -103,7 +109,10 @@ export default function ProvidersPage() {
   }
 
   // group models by provider — gunakan catalog efektif dari API
-  const grouped = groupModelsByProvider(catalog as readonly ModelCatalogEntry[]);
+  const grouped = catalog.reduce<Record<string, Model[]>>((groups, model) => {
+    (groups[model.provider] ??= []).push(model);
+    return groups;
+  }, {});
 
   return (
     <div className="max-w-6xl mx-auto space-y-10">
@@ -117,6 +126,7 @@ export default function ProvidersPage() {
 
       {/* Grouped Models */}
       <div className="space-y-12">
+        {!catalogLoading && catalog.length === 0 && <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">Belum ada model aktif yang dikonfigurasi oleh admin.</div>}
         {Object.entries(grouped).map(([provider, providerModels]) => (
           <div key={provider} className="space-y-5">
             <div className="flex items-center gap-3">

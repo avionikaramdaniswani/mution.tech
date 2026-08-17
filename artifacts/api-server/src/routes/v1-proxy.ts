@@ -555,6 +555,50 @@ function filterProvidersForModel(providers: Provider[], model: string): Provider
   return providers;
 }
 
+export async function getConfiguredPublicModelCatalog() {
+  await refreshProviderSettingsForProxy();
+  const configured = new Map<string, { displayName: string; providers: Set<string> }>();
+  for (const [providerId, models] of _providerModels) {
+    if (_disabledProviders.has(providerId)) continue;
+    for (const model of models.values()) {
+      if (!model.enabled) continue;
+      const entry = configured.get(model.modelId) ?? { displayName: model.displayName, providers: new Set<string>() };
+      entry.providers.add(providerId);
+      configured.set(model.modelId, entry);
+    }
+  }
+
+  return Array.from(configured.entries()).map(([modelId, entry]) => {
+    const catalog = MODEL_CATALOG.find((model) => model.id === modelId || model.aliases?.includes(modelId));
+    const basePricing = getCatalogModelPricing(modelId);
+    const override = _modelPricingOverrides.get(modelId);
+    let pricing = basePricing;
+    if (override?.mode === "free") pricing = { input: 0, output: 0 };
+    else if (override?.mode === "discount_percent" && override.discountPercent != null) {
+      const factor = 1 - Math.min(100, Math.max(0, override.discountPercent)) / 100;
+      pricing = { input: basePricing.input * factor, output: basePricing.output * factor };
+    } else if (override?.mode === "fixed_price") {
+      pricing = {
+        input: override.inputPriceOverride != null ? parseFloat(override.inputPriceOverride) : basePricing.input,
+        output: override.outputPriceOverride != null ? parseFloat(override.outputPriceOverride) : basePricing.output,
+      };
+    }
+    return {
+      id: modelId,
+      label: catalog?.label ?? entry.displayName,
+      provider: catalog?.provider ?? Array.from(entry.providers).sort().join(", "),
+      providerIds: Array.from(entry.providers).sort(),
+      pricing,
+      basePricing,
+      pricingMode: override?.mode ?? "default",
+      context: catalog?.context ?? "-",
+      note: catalog?.note ?? null,
+      description: catalog?.description ?? `Model ${entry.displayName} tersedia melalui Mution AI Gateway.`,
+      aliases: catalog?.aliases ?? [],
+    };
+  }).sort((a, b) => a.label.localeCompare(b.label));
+}
+
 function upstreamModelFor(provider: Provider, publicModelId: string): string {
   return _providerModels.get(provider.id)?.get(publicModelId)?.upstreamModelId ?? publicModelId;
 }
@@ -1200,31 +1244,15 @@ async function listModels(req: Request, res: Response): Promise<void> {
   const row = await authenticate(req, res);
   if (!row) return;
 
-  // Pastikan cache harga ter-refresh sebelum merespons
-  await refreshModelPricingOverrides();
+  const catalog = await getConfiguredPublicModelCatalog();
 
   const allowed = row.key.allowedModels && row.key.allowedModels.length > 0
     ? new Set(row.key.allowedModels)
     : null;
 
-  const models = MODEL_CATALOG
+  const models = catalog
     .filter((model) => !allowed || allowed.has(model.id))
     .map((model) => {
-      const override = _modelPricingOverrides.get(model.id);
-      let effectivePricing = model.pricing;
-
-      if (override?.mode === "free") {
-        effectivePricing = { input: 0, output: 0 };
-      } else if (override?.mode === "discount_percent" && override.discountPercent != null) {
-        const factor = 1 - Math.min(100, Math.max(0, override.discountPercent)) / 100;
-        effectivePricing = { input: model.pricing.input * factor, output: model.pricing.output * factor };
-      } else if (override?.mode === "fixed_price") {
-        effectivePricing = {
-          input: override.inputPriceOverride != null ? parseFloat(override.inputPriceOverride) : model.pricing.input,
-          output: override.outputPriceOverride != null ? parseFloat(override.outputPriceOverride) : model.pricing.output,
-        };
-      }
-
       return {
         id: model.id,
         object: "model",
@@ -1233,8 +1261,8 @@ async function listModels(req: Request, res: Response): Promise<void> {
         mution: {
           label: model.label,
           provider: model.provider,
-          pricing: effectivePricing,
-          basePricing: model.pricing,
+          pricing: model.pricing,
+          basePricing: model.basePricing,
           context: model.context,
           note: model.note ?? null,
           description: model.description,
