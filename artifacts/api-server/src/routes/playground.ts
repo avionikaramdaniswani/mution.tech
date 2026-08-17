@@ -23,6 +23,16 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
 
   const port = Number(process.env.PORT ?? 3000);
   const startedAt = Date.now();
+  res.status(200);
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+  res.write(": connected\n\n");
+  const heartbeat = setInterval(() => res.write(": heartbeat\n\n"), 10_000);
+  const send = (event: "result" | "error", data: unknown) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
   try {
     const upstream = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
       method: "POST",
@@ -37,14 +47,14 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
       signal: AbortSignal.timeout(120_000),
     });
     const data: any = await upstream.json().catch(() => ({ error: { message: "Respons provider tidak valid" } }));
-    if (!upstream.ok) { res.status(upstream.status).json(data); return; }
+    if (!upstream.ok) { send("error", data); return; }
 
     const inputTokens = Number(data.usage?.prompt_tokens ?? 0);
     const outputTokens = Number(data.usage?.completion_tokens ?? 0);
     const catalog = await getConfiguredPublicModelCatalog();
     const pricing = catalog.find((entry) => entry.id === model)?.pricing;
     const credits = pricing ? Math.max(1, Math.ceil((inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000)) : null;
-    res.json({
+    send("result", {
       content: data.choices?.[0]?.message?.content ?? "",
       model,
       finishReason: data.choices?.[0]?.finish_reason ?? null,
@@ -52,7 +62,10 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
       latencyMs: Date.now() - startedAt,
     });
   } catch (error) {
-    res.status(502).json({ error: "Playground gagal menghubungi AI proxy" });
+    send("error", { error: "Playground gagal menghubungi AI proxy" });
+  } finally {
+    clearInterval(heartbeat);
+    res.end();
   }
 });
 

@@ -28,8 +28,22 @@ export default function PlaygroundPage() {
     try {
       const r = await csrfFetch("/api/playground/chat", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ keyId: Number(keyId), model, system, prompt, temperature: Number(temperature), maxTokens: Number(maxTokens) }) });
       const contentType = r.headers.get("content-type") ?? "";
-      if (!contentType.includes("application/json")) throw new Error("Server Playground belum siap. Muat ulang halaman lalu coba kembali.");
-      const data = await r.json(); if (!r.ok) throw new Error(data.error?.message ?? data.error ?? "Request gagal"); setResult(data);
+      if (!r.ok || !contentType.includes("text/event-stream") || !r.body) throw new Error(`Playground tidak tersedia (${r.status}).`);
+      const reader = r.body.getReader(); const decoder = new TextDecoder(); let buffer = ""; let completed = false;
+      while (!completed) {
+        const { done, value } = await reader.read(); if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split("\n\n"); buffer = blocks.pop() ?? "";
+        for (const block of blocks) {
+          if (block.startsWith(":")) continue;
+          const event = block.split("\n").find(line => line.startsWith("event: "))?.slice(7);
+          const raw = block.split("\n").find(line => line.startsWith("data: "))?.slice(6);
+          if (!raw) continue; const data = JSON.parse(raw);
+          if (event === "error") throw new Error(data.error?.message ?? data.error ?? "Request AI gagal");
+          if (event === "result") { setResult(data); completed = true; break; }
+        }
+      }
+      if (!completed) throw new Error("Koneksi Playground terputus sebelum respons selesai.");
     } catch (error) { toast({ title: "Playground gagal", description: error instanceof Error ? error.message : "Coba lagi", variant: "destructive" }); }
     finally { setLoading(false); }
   };
