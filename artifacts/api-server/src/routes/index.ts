@@ -17,6 +17,7 @@ import catalogRouter from "./catalog";
 import packagesRouter from "./packages";
 import referralRouter from "./referral";
 import webhooksRouter from "./webhooks";
+import playgroundRouter from "./playground";
 
 const router: IRouter = Router();
 
@@ -40,6 +41,7 @@ router.use(statsRouter);
 router.use(activityRouter);
 router.use(eventsRouter);
 router.use(apiUsageRouter);
+router.use(playgroundRouter);
 router.use(changelogsRouter);
 router.use(integrationsRouter);
 router.use(adminRouter);      // last: has global requireAdmin middleware

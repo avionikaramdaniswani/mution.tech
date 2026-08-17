@@ -35,6 +35,7 @@ import PrivacyPolicyPage from "@/pages/privacy-policy";
 import TentangKamiPage from "@/pages/tentang-kami";
 import ReferralPage from "@/pages/referral";
 import UsagePage from "@/pages/usage";
+import PlaygroundPage from "@/pages/playground";
 
 import AdminOverview from "@/pages/admin/overview";
 import AdminUsers from "@/pages/admin/users";
@@ -109,6 +110,7 @@ function Router() {
         <Route path="/docs" component={() => <ProtectedRoute component={DocsPage} />} />
         <Route path="/api-usage" component={() => <ProtectedRoute component={ApiUsagePage} />} />
         <Route path="/providers" component={() => <ProtectedRoute component={ProvidersPage} />} />
+        <Route path="/playground" component={() => <ProtectedRoute component={PlaygroundPage} />} />
         <Route path="/referral" component={() => <ProtectedRoute component={ReferralPage} />} />
         <Route path="/usage" component={() => <ProtectedRoute component={UsagePage} />} />
         <Route path="/github-callback" component={GitHubCallback} />

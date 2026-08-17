@@ -513,46 +513,12 @@ function getProviders(): Provider[] {
  *
  * To add more: just extend this map.
  */
-const MODEL_PROVIDER_AFFINITY: Record<string, string> = {
-  // OpenAI via XSTX
-  "gpt-5.5": "xstx",
-  "gpt-5.5-turbo": "xstx",
-  "gpt-5.5-pro": "xstx",
-  "gpt-5.6-luna": "xstx",
-  "gpt-5.6-sol": "xstx",
-  "gpt-5.6-terra": "xstx",
-  // MiniMax & Kimi via Dahl
-  "MiniMaxAI/MiniMax-M2.7": "dahl",
-  "moonshotai/Kimi-K2.6": "dahl",
-  // Semua Claude via XSTX
-  "claude-haiku-4-5": "xstx",
-  "claude-sonnet-4-5": "xstx",
-  "claude-sonnet-4-6": "xstx",
-  "claude-sonnet-5": "xstx",
-  "claude-opus-4-5": "xstx",
-  "claude-opus-4-6": "xstx",
-  "claude-opus-4-7": "xstx",
-  "claude-opus-4-8": "xstx",
-  "claude-fable-5": "xstx",
-};
-
-/**
- * If the requested model has a provider affinity, filter providers to only
- * those that match. Falls back to the full list if no matching provider is
- * available (so the request still gets a chance rather than silently failing).
- */
+/** Only providers explicitly configured with this enabled public model may serve it. */
 function filterProvidersForModel(providers: Provider[], model: string): Provider[] {
-  providers = providers.filter((p) => {
+  return providers.filter((p) => {
     const configured = _providerModels.get(p.id);
-    if (!configured || configured.size === 0) return true;
-    return configured.get(model)?.enabled === true;
+    return configured?.get(model)?.enabled === true;
   });
-  const targetId = MODEL_PROVIDER_AFFINITY[model];
-  if (!targetId) return providers;
-  const matched = providers.filter((p) => p.id === targetId && !_disabledProviders.has(p.id));
-  if (matched.length > 0) return matched;
-  logger.warn({ model, targetId }, "Model affinity provider not available — falling back to all providers");
-  return providers;
 }
 
 export async function getConfiguredPublicModelCatalog() {
@@ -601,6 +567,15 @@ export async function getConfiguredPublicModelCatalog() {
 
 function upstreamModelFor(provider: Provider, publicModelId: string): string {
   return _providerModels.get(provider.id)?.get(publicModelId)?.upstreamModelId ?? publicModelId;
+}
+
+function orderProvidersForAttempts(providers: Provider[]): Provider[] {
+  const now = Date.now();
+  return [...providers].sort((a, b) => {
+    const aCooling = (_cooldowns.get(a.id) ?? 0) >= now ? 1 : 0;
+    const bCooling = (_cooldowns.get(b.id) ?? 0) >= now ? 1 : 0;
+    return aCooling - bCooling;
+  });
 }
 
 /** Pick the best available provider (skips disabled + cooldown avoidance). */
@@ -973,6 +948,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
   const originalModel = req.body?.model ?? "unknown";
   const isStream = req.body?.stream === true;
   providers = filterProvidersForModel(providers, originalModel);
+  providers = orderProvidersForAttempts(providers);
   updateApiRequestLog(res, { model: originalModel });
   if (providers.length === 0) {
     res.status(503).json({ type: "error", error: { type: "model_unavailable", message: `Model ${originalModel} is disabled on all providers` } });
@@ -1007,7 +983,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
   try {
   // Try providers with fallback on non-streaming failures
   for (let attempt = 0; attempt < providers.length; attempt++) {
-    const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
+    const provider = providers[attempt];
     const providerBody = { ...req.body, model: upstreamModelFor(provider, originalModel) };
     updateApiRequestLog(res, { providerId: provider.id });
 
@@ -1298,6 +1274,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
 
   const originalModel = req.method !== "GET" ? req.body?.model ?? "unknown" : "unknown";
   if (req.method !== "GET") providers = filterProvidersForModel(providers, originalModel);
+  if (req.method !== "GET") providers = orderProvidersForAttempts(providers);
   updateApiRequestLog(res, { model: originalModel });
   if (req.method !== "GET" && providers.length === 0) {
     res.status(503).json({ error: { message: `Model ${originalModel} is disabled on all providers`, type: "model_unavailable" } });
@@ -1335,7 +1312,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
 
   try {
   for (let attempt = 0; attempt < providers.length; attempt++) {
-    const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
+    const provider = providers[attempt];
     const providerBody = req.method !== "GET" ? { ...req.body, model: upstreamModelFor(provider, originalModel) } : req.body;
     updateApiRequestLog(res, { providerId: provider.id });
 
@@ -1855,6 +1832,7 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
   const originalModel = chatBody.model ?? "unknown";
   const isStream = chatBody.stream === true;
   providers = filterProvidersForModel(providers, originalModel);
+  providers = orderProvidersForAttempts(providers);
   updateApiRequestLog(res, { model: originalModel });
   if (providers.length === 0) {
     res.status(503).json({ error: { message: `Model ${originalModel} is disabled on all providers`, type: "model_unavailable" } });
@@ -1885,7 +1863,7 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
 
   try {
   for (let attempt = 0; attempt < providers.length; attempt++) {
-    const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
+    const provider = providers[attempt];
     const providerBody = { ...chatBody, model: upstreamModelFor(provider, originalModel) };
     updateApiRequestLog(res, { providerId: provider.id });
     logger.info({ provider: provider.id }, "Proxying Responses API → /chat/completions");

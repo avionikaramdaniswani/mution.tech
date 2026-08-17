@@ -28,6 +28,7 @@ import {
   Wallet,
   CreditCard,
   Gift,
+  FlaskConical,
 } from "lucide-react";
 import { TopNavbar, isNavActive, formatCredits, creditColor, type TopNavLink } from "./shared";
 import { useRealtimeEvents } from "@/hooks/use-realtime";
@@ -52,6 +53,7 @@ const navGroups = [
     items: [
       { title: "API Keys",     url: "/api-keys",   icon: KeyRound },
       { title: "AI Models",    url: "/providers",  icon: Brain },
+      { title: "Playground",   url: "/playground", icon: FlaskConical },
       { title: "API Usage",    url: "/api-usage",  icon: LineChart },
       { title: "Documentation",url: "/docs",       icon: BookOpen },
     ],
