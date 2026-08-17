@@ -4,7 +4,7 @@ import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
-import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminSetProviderModelEnabled, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride } from "./v1-proxy";
+import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminUpsertProviderModel, adminDeleteProviderModel, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride } from "./v1-proxy";
 import { MODEL_CATALOG } from "@workspace/model-catalog";
 
 const router = Router();
@@ -536,14 +536,27 @@ router.patch("/admin/providers/:id/toggle", async (req, res): Promise<void> => {
   }
 });
 
-router.patch("/admin/providers/:id/models/:modelId/toggle", async (req, res): Promise<void> => {
+router.post("/admin/providers/:id/models", async (req, res): Promise<void> => {
   const providerId = decodeURIComponent(req.params.id);
-  const modelId = decodeURIComponent(req.params.modelId);
-  if (typeof req.body?.enabled !== "boolean") { res.status(400).json({ error: "enabled must be boolean" }); return; }
+  const { modelId, displayName, upstreamModelId, enabled = true } = req.body ?? {};
+  if (![modelId, displayName, upstreamModelId].every((v) => typeof v === "string" && v.trim()) || typeof enabled !== "boolean") { res.status(400).json({ error: "Data model tidak valid" }); return; }
   try {
-    await adminSetProviderModelEnabled(providerId, modelId, req.body.enabled);
-    res.json({ ok: true, providerId, modelId, enabled: req.body.enabled });
-  } catch (error) { console.error("Failed to update provider model status:", error); res.status(500).json({ error: "Gagal mengubah status model" }); }
+    await adminUpsertProviderModel(providerId, modelId.trim(), { displayName: displayName.trim(), upstreamModelId: upstreamModelId.trim(), enabled });
+    res.status(201).json({ ok: true });
+  } catch (error) { console.error("Failed to create provider model:", error); res.status(500).json({ error: "Gagal menambahkan model" }); }
+});
+
+router.put("/admin/providers/:id/models/:modelId", async (req, res): Promise<void> => {
+  const providerId = decodeURIComponent(req.params.id); const oldModelId = decodeURIComponent(req.params.modelId);
+  const { modelId, displayName, upstreamModelId, enabled } = req.body ?? {};
+  if (![modelId, displayName, upstreamModelId].every((v) => typeof v === "string" && v.trim()) || typeof enabled !== "boolean") { res.status(400).json({ error: "Data model tidak valid" }); return; }
+  try { await adminUpsertProviderModel(providerId, modelId.trim(), { displayName: displayName.trim(), upstreamModelId: upstreamModelId.trim(), enabled }, oldModelId); res.json({ ok: true }); }
+  catch (error) { console.error("Failed to update provider model:", error); res.status(500).json({ error: "Gagal mengubah model" }); }
+});
+
+router.delete("/admin/providers/:id/models/:modelId", async (req, res): Promise<void> => {
+  try { await adminDeleteProviderModel(decodeURIComponent(req.params.id), decodeURIComponent(req.params.modelId)); res.json({ ok: true }); }
+  catch (error) { console.error("Failed to delete provider model:", error); res.status(500).json({ error: "Gagal menghapus model" }); }
 });
 
 router.post("/admin/providers/:id/reset-cooldown", (req, res) => {

@@ -172,7 +172,8 @@ const _cooldowns = new Map<string, number>();
 
 // Admin toggle state is persisted in DB and cached briefly for request routing.
 const _disabledProviders = new Set<string>();
-const _disabledProviderModels = new Set<string>();
+type ProviderModelConfig = { modelId: string; displayName: string; upstreamModelId: string; enabled: boolean };
+const _providerModels = new Map<string, Map<string, ProviderModelConfig>>();
 let _providerSettingsLoadedAt = 0;
 let _providerSettingsRefresh: Promise<void> | null = null;
 const PROVIDER_SETTINGS_REFRESH_MS = 5_000;
@@ -223,8 +224,12 @@ async function refreshProviderSettings(force = false): Promise<void> {
       if (!row.enabled) _disabledProviders.add(row.id);
     }
     const modelRows = await db.select().from(aiProviderModelsTable);
-    _disabledProviderModels.clear();
-    for (const row of modelRows) if (!row.enabled) _disabledProviderModels.add(`${row.providerId}:${row.modelId}`);
+    _providerModels.clear();
+    for (const row of modelRows) {
+      const models = _providerModels.get(row.providerId) ?? new Map<string, ProviderModelConfig>();
+      models.set(row.modelId, { modelId: row.modelId, displayName: row.displayName, upstreamModelId: row.upstreamModelId, enabled: row.enabled });
+      _providerModels.set(row.providerId, models);
+    }
     _providerSettingsLoadedAt = Date.now();
   })().finally(() => {
     _providerSettingsRefresh = null;
@@ -275,18 +280,23 @@ export async function adminGetProviderStatuses() {
     cooldownExpiresAt: (_cooldowns.get(p.id) ?? 0) > now
       ? new Date(_cooldowns.get(p.id)!).toISOString()
       : null,
-    models: MODEL_CATALOG.map((m) => ({ modelId: m.id, label: m.label, provider: m.provider, enabled: !_disabledProviderModels.has(`${p.id}:${m.id}`) })),
+    models: Array.from(_providerModels.get(p.id)?.values() ?? []),
   }));
 }
 
-export async function adminSetProviderModelEnabled(providerId: string, modelId: string, enabled: boolean) {
+export async function adminUpsertProviderModel(providerId: string, modelId: string, payload: { displayName: string; upstreamModelId: string; enabled: boolean }, oldModelId?: string) {
   const now = new Date();
-  await db.insert(aiProviderModelsTable).values({ providerId, modelId, enabled, updatedAt: now }).onConflictDoUpdate({
+  if (oldModelId && oldModelId !== modelId) await db.delete(aiProviderModelsTable).where(and(eq(aiProviderModelsTable.providerId, providerId), eq(aiProviderModelsTable.modelId, oldModelId)));
+  await db.insert(aiProviderModelsTable).values({ providerId, modelId, ...payload, updatedAt: now }).onConflictDoUpdate({
     target: [aiProviderModelsTable.providerId, aiProviderModelsTable.modelId],
-    set: { enabled, updatedAt: now },
+    set: { ...payload, updatedAt: now },
   });
-  const key = `${providerId}:${modelId}`;
-  if (enabled) _disabledProviderModels.delete(key); else _disabledProviderModels.add(key);
+  await refreshProviderSettings(true);
+}
+
+export async function adminDeleteProviderModel(providerId: string, modelId: string) {
+  await db.delete(aiProviderModelsTable).where(and(eq(aiProviderModelsTable.providerId, providerId), eq(aiProviderModelsTable.modelId, modelId)));
+  await refreshProviderSettings(true);
 }
 
 // ─── Admin: Model Pricing Overrides ──────────────────────────────────────────
@@ -532,13 +542,21 @@ const MODEL_PROVIDER_AFFINITY: Record<string, string> = {
  * available (so the request still gets a chance rather than silently failing).
  */
 function filterProvidersForModel(providers: Provider[], model: string): Provider[] {
-  providers = providers.filter((p) => !_disabledProviderModels.has(`${p.id}:${model}`));
+  providers = providers.filter((p) => {
+    const configured = _providerModels.get(p.id);
+    if (!configured || configured.size === 0) return true;
+    return configured.get(model)?.enabled === true;
+  });
   const targetId = MODEL_PROVIDER_AFFINITY[model];
   if (!targetId) return providers;
   const matched = providers.filter((p) => p.id === targetId && !_disabledProviders.has(p.id));
   if (matched.length > 0) return matched;
   logger.warn({ model, targetId }, "Model affinity provider not available — falling back to all providers");
   return providers;
+}
+
+function upstreamModelFor(provider: Provider, publicModelId: string): string {
+  return _providerModels.get(provider.id)?.get(publicModelId)?.upstreamModelId ?? publicModelId;
 }
 
 /** Pick the best available provider (skips disabled + cooldown avoidance). */
@@ -946,6 +964,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
   // Try providers with fallback on non-streaming failures
   for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
+    const providerBody = { ...req.body, model: upstreamModelFor(provider, originalModel) };
     updateApiRequestLog(res, { providerId: provider.id });
 
     logger.info({ provider: provider.id, type: provider.type, model: originalModel }, "Proxying /messages");
@@ -961,7 +980,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
             "anthropic-version": (req.headers["anthropic-version"] as string) ?? "2023-06-01",
             ...(req.headers["anthropic-beta"] ? { "anthropic-beta": req.headers["anthropic-beta"] as string } : {}),
           },
-          body: JSON.stringify(req.body),
+          body: JSON.stringify(providerBody),
         });
 
         if (!upstream.ok && !isStream) {
@@ -1037,7 +1056,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
 
       } else {
         // ── Generic: convert Anthropic → OpenAI format ──────────────────────
-        const openAIBody = anthropicToOpenAIBody(req.body);
+        const openAIBody = anthropicToOpenAIBody(providerBody);
 
         const upstream = await fetch(`${provider.openaiBase}/chat/completions`, {
           method: "POST",
@@ -1289,6 +1308,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
   try {
   for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
+    const providerBody = req.method !== "GET" ? { ...req.body, model: upstreamModelFor(provider, originalModel) } : req.body;
     updateApiRequestLog(res, { providerId: provider.id });
 
     logger.info({ provider: provider.id, path }, "Proxying OpenAI call");
@@ -1300,7 +1320,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
           "Content-Type": "application/json",
           "Authorization": `Bearer ${provider.apiKey}`,
         },
-        body: req.method !== "GET" ? JSON.stringify(req.body) : undefined,
+        body: req.method !== "GET" ? JSON.stringify(providerBody) : undefined,
       });
 
       const contentType = upstream.headers.get("content-type") ?? "";
@@ -1838,6 +1858,7 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
   try {
   for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = attempt === 0 ? pickProvider(providers) : (pickNextProvider(providers, pickProvider(providers)) ?? pickProvider(providers));
+    const providerBody = { ...chatBody, model: upstreamModelFor(provider, originalModel) };
     updateApiRequestLog(res, { providerId: provider.id });
     logger.info({ provider: provider.id }, "Proxying Responses API → /chat/completions");
 
@@ -1845,7 +1866,7 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
       const upstream = await fetch(`${provider.openaiBase}/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${provider.apiKey}` },
-        body: JSON.stringify(chatBody),
+        body: JSON.stringify(providerBody),
       });
 
       const contentType = upstream.headers.get("content-type") ?? "";
