@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
+import googleAuthRouter from "./google-auth";
 import projectsRouter from "./projects";
 import deploymentsRouter from "./deployments";
 import statsRouter from "./stats";
@@ -29,6 +30,7 @@ router.use(webhooksRouter);  // /webhooks/github — public, webhook push event 
 
 // Auth routes
 router.use(authRouter);
+router.use(googleAuthRouter);
 router.use(githubRouter);
 
 // Authenticated routes

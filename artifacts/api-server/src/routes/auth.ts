@@ -252,6 +252,11 @@ router.post("/auth/login", AuthLimiter, async (req, res): Promise<void> => {
     return;
   }
 
+  if (!user.passwordHash) {
+    res.status(401).json({ error: "Akun ini terdaftar melalui Google. Silakan login dengan tombol \"Continue with Google\"." });
+    return;
+  }
+
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     res.status(401).json({ error: "Invalid email or password" });
@@ -289,6 +294,11 @@ router.post("/auth/password", requireAuth, PasswordLimiter, async (req, res): Pr
   const user = (req as any).user as typeof usersTable.$inferSelect;
   const currentSessionId = req.cookies?.[SESSION_COOKIE] as string | undefined;
   const { currentPassword, newPassword } = parsed.data;
+
+  if (!user.passwordHash) {
+    res.status(401).json({ error: "Akun ini terdaftar melalui Google. Tidak dapat mengubah password." });
+    return;
+  }
 
   const valid = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!valid) {
