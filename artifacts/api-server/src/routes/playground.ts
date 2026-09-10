@@ -46,8 +46,36 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
       }),
       signal: AbortSignal.timeout(120_000),
     });
-    const data: any = await upstream.json().catch(() => ({ error: { message: "Respons provider tidak valid" } }));
-    if (!upstream.ok) { send("error", data); return; }
+
+    const upstreamContentType = upstream.headers.get("content-type") ?? "";
+    let data: any;
+
+    if (upstreamContentType.includes("text/event-stream")) {
+      // Upstream provider ignored stream:false and returned SSE — accumulate delta chunks
+      const raw = await upstream.text();
+      let content = "";
+      let finishReason: string | null = null;
+      let usage: any = null;
+
+      for (const line of raw.split("\n")) {
+        if (!line.startsWith("data: ") || line.includes("[DONE]")) continue;
+        try {
+          const chunk = JSON.parse(line.slice(6));
+          const delta = chunk.choices?.[0]?.delta;
+          if (delta?.content) content += delta.content;
+          if (chunk.choices?.[0]?.finish_reason) finishReason = chunk.choices[0].finish_reason;
+          if (chunk.usage) usage = chunk.usage;
+        } catch { /* skip malformed chunk */ }
+      }
+
+      data = {
+        choices: [{ message: { content }, finish_reason: finishReason }],
+        usage: usage ?? { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+      };
+    } else {
+      data = await upstream.json().catch(() => ({ error: { message: "Respons provider tidak valid" } }));
+      if (!upstream.ok) { send("error", data); return; }
+    }
 
     const inputTokens = Number(data.usage?.prompt_tokens ?? 0);
     const outputTokens = Number(data.usage?.completion_tokens ?? 0);
