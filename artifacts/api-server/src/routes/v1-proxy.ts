@@ -53,6 +53,12 @@ function classifyErrorType(statusCode: number): string | null {
   return "http_error";
 }
 
+/** One-line snippet of a non-JSON upstream body, surfaced in the 502 message so callers can see what the provider actually returned. */
+function upstreamBodySnippet(text: string, max = 200): string {
+  const snippet = text.replace(/\s+/g, " ").trim().slice(0, max);
+  return snippet ? `: ${snippet}` : "";
+}
+
 async function writeApiRequestLog(state: ApiRequestLogState, statusCode: number): Promise<void> {
   const errorType = state.errorType ?? classifyErrorType(statusCode);
 
@@ -264,9 +270,30 @@ async function setProviderEnabled(id: string, enabled: boolean): Promise<void> {
   _providerSettingsLoadedAt = Date.now();
 }
 
+async function cleanUpOrphanedProviders(): Promise<void> {
+  let envProviders: Provider[] = [];
+  try { envProviders = getProviders(); } catch { }
+  
+  const envIds = envProviders.map(p => p.id);
+  
+  const settings = await db.select({ id: aiProviderSettingsTable.id }).from(aiProviderSettingsTable);
+  const models = await db.select({ providerId: aiProviderModelsTable.providerId }).from(aiProviderModelsTable);
+  
+  const dbIds = new Set([...settings.map(s => s.id), ...models.map(m => m.providerId)]);
+  
+  for (const dbId of dbIds) {
+    if (!envIds.includes(dbId)) {
+      logger.info({ providerId: dbId }, "Cleaning up orphaned provider from DB");
+      await db.delete(aiProviderSettingsTable).where(eq(aiProviderSettingsTable.id, dbId));
+      await db.delete(aiProviderModelsTable).where(eq(aiProviderModelsTable.providerId, dbId));
+    }
+  }
+}
+
 export async function adminEnableProvider(id: string) { await setProviderEnabled(id, true); }
 export async function adminDisableProvider(id: string) { await setProviderEnabled(id, false); }
 export async function adminGetProviderStatuses() {
+  await cleanUpOrphanedProviders();
   await refreshProviderSettings(true);
   let providers: Provider[];
   try { providers = getProviders(); } catch { return []; }
@@ -521,11 +548,22 @@ function filterProvidersForModel(providers: Provider[], model: string): Provider
   });
 }
 
+export function adminGetActiveProviderIds(): string[] {
+  try {
+    return getProviders().map((p) => p.id);
+  } catch {
+    return [];
+  }
+}
+
 export async function getConfiguredPublicModelCatalog() {
   await refreshProviderSettingsForProxy();
+  const activeProviderIds = new Set(adminGetActiveProviderIds());
   const configured = new Map<string, { displayName: string; brands: Set<string> }>();
   for (const [providerId, models] of _providerModels) {
     if (_disabledProviders.has(providerId)) continue;
+    if (!activeProviderIds.has(providerId)) continue;
+
     for (const model of models.values()) {
       if (!model.enabled) continue;
       const entry = configured.get(model.modelId) ?? { displayName: model.displayName, brands: new Set<string>() };
@@ -1173,7 +1211,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
             const text = await upstream.text();
             logger.error({ provider: provider.id, status: upstream.status, body: text.slice(0, 500) }, "Provider returned non-JSON");
             updateApiRequestLog(res, { errorType: "upstream_non_json" });
-            res.status(502).json({ type: "error", error: { type: "api_error", message: `Upstream error (${upstream.status})` } });
+            res.status(502).json({ type: "error", error: { type: "api_error", message: `Upstream error (${upstream.status})${upstreamBodySnippet(text)}` } });
             return;
           }
           const data = await upstream.json() as any;
@@ -1407,7 +1445,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
           if (attempt < providers.length - 1) continue;
         }
         updateApiRequestLog(res, { errorType: "upstream_non_json" });
-        res.status(502).json({ error: { message: `Upstream error (${upstream.status})`, type: "server_error" } });
+        res.status(502).json({ error: { message: `Upstream error (${upstream.status})${upstreamBodySnippet(text)}`, type: "server_error" } });
         return;
       }
     } catch (err) {
@@ -1920,7 +1958,7 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
           if (attempt < providers.length - 1) continue;
         }
         updateApiRequestLog(res, { errorType: "upstream_non_json" });
-        res.status(502).json({ error: { message: `Upstream error (${upstream.status})`, type: "server_error" } });
+        res.status(502).json({ error: { message: `Upstream error (${upstream.status})${upstreamBodySnippet(text)}`, type: "server_error" } });
         return;
       }
     } catch (err) {

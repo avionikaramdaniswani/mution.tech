@@ -4,7 +4,7 @@ import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
-import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminUpsertProviderModel, adminDeleteProviderModel, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride } from "./v1-proxy";
+import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminUpsertProviderModel, adminDeleteProviderModel, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
 import { getModelById, getModelPricing } from "@workspace/model-catalog";
 
 const router = Router();
@@ -580,6 +580,7 @@ router.post("/admin/providers/:id/reset-cooldown", (req, res) => {
 
 router.get("/admin/model-pricing", async (_req, res) => {
   try {
+    const activeProviderIds = new Set(adminGetActiveProviderIds());
     const [overrides, providerModels] = await Promise.all([
       adminGetModelPricingOverrides(),
       db.select().from(aiProviderModelsTable),
@@ -587,6 +588,7 @@ router.get("/admin/model-pricing", async (_req, res) => {
     const overrideMap = new Map(overrides.map((o) => [o.modelId, o]));
     const modelsById = new Map<string, { label: string; providers: Set<string> }>();
     for (const model of providerModels) {
+      if (!activeProviderIds.has(model.providerId)) continue;
       const existing = modelsById.get(model.modelId) ?? { label: model.displayName, providers: new Set<string>() };
       existing.providers.add(model.providerId);
       modelsById.set(model.modelId, existing);

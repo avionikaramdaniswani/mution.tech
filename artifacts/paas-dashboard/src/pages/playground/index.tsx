@@ -28,7 +28,11 @@ export default function PlaygroundPage() {
     try {
       const r = await csrfFetch("/api/playground/chat", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ keyId: Number(keyId), model, system, prompt, temperature: Number(temperature), maxTokens: Number(maxTokens) }) });
       const contentType = r.headers.get("content-type") ?? "";
-      if (!r.ok || !contentType.includes("text/event-stream") || !r.body) throw new Error(`Playground tidak tersedia (${r.status}).`);
+      if (!r.ok || !contentType.includes("text/event-stream") || !r.body) {
+        let detail = "";
+        try { const body = await r.json(); detail = typeof body?.error === "string" ? body.error : typeof body?.error?.message === "string" ? body.error.message : ""; } catch { /* body bukan JSON */ }
+        throw new Error(detail || `Playground tidak tersedia (${r.status}).`);
+      }
       const reader = r.body.getReader(); const decoder = new TextDecoder(); let buffer = ""; let completed = false;
       while (!completed) {
         const { done, value } = await reader.read(); if (done) break;
