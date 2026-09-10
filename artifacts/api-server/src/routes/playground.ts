@@ -38,7 +38,8 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${fullKey}` },
       body: JSON.stringify({
-        model: model.trim(), temperature, max_tokens: maxTokens, stream: false,
+        model: model.trim(), temperature, max_tokens: maxTokens,
+        stream: true, stream_options: { include_usage: true },
         messages: [
           ...(typeof system === "string" && system.trim() ? [{ role: "system", content: system.trim() }] : []),
           { role: "user", content: prompt.trim() },
@@ -47,17 +48,34 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
       signal: AbortSignal.timeout(120_000),
     });
 
-    const upstreamContentType = upstream.headers.get("content-type") ?? "";
-    let data: any;
+    if (!upstream.ok) {
+      const errBody = await upstream.text().catch(() => "");
+      let errMsg = `Proxy error (${upstream.status})`;
+      try { const j = JSON.parse(errBody); errMsg = j.error?.message ?? j.error ?? errMsg; } catch {}
+      console.error("[Playground] Proxy returned non-OK:", upstream.status, errBody.slice(0, 500));
+      send("error", { error: { message: errMsg } });
+      return;
+    }
 
-    if (upstreamContentType.includes("text/event-stream")) {
-      // Upstream provider ignored stream:false and returned SSE — accumulate delta chunks
-      const raw = await upstream.text();
-      let content = "";
-      let finishReason: string | null = null;
-      let usage: any = null;
+    // Read SSE stream and accumulate content + usage
+    const reader = upstream.body?.getReader();
+    if (!reader) { send("error", { error: { message: "Tidak ada body dari proxy" } }); return; }
 
-      for (const line of raw.split("\n")) {
+    const decoder = new TextDecoder();
+    let sseBuf = "";
+    let content = "";
+    let finishReason: string | null = null;
+    let usage: any = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      sseBuf += decoder.decode(value, { stream: true });
+
+      const lines = sseBuf.split("\n");
+      sseBuf = lines.pop() ?? "";
+
+      for (const line of lines) {
         if (!line.startsWith("data: ") || line.includes("[DONE]")) continue;
         try {
           const chunk = JSON.parse(line.slice(6));
@@ -67,26 +85,22 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
           if (chunk.usage) usage = chunk.usage;
         } catch { /* skip malformed chunk */ }
       }
-
-      data = {
-        choices: [{ message: { content }, finish_reason: finishReason }],
-        usage: usage ?? { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-      };
-    } else {
-      data = await upstream.json().catch(() => ({ error: { message: "Respons provider tidak valid" } }));
-      if (!upstream.ok) { send("error", data); return; }
     }
 
-    const inputTokens = Number(data.usage?.prompt_tokens ?? 0);
-    const outputTokens = Number(data.usage?.completion_tokens ?? 0);
+    if (!content && !usage) {
+      console.error("[Playground] Stream ended with no content and no usage. Buffer remnant:", sseBuf.slice(0, 300));
+    }
+
+    const inputTokens = Number(usage?.prompt_tokens ?? 0);
+    const outputTokens = Number(usage?.completion_tokens ?? 0);
     const catalog = await getConfiguredPublicModelCatalog();
     const pricing = catalog.find((entry) => entry.id === model)?.pricing;
     const credits = pricing ? Math.max(1, Math.ceil((inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000)) : null;
     send("result", {
-      content: data.choices?.[0]?.message?.content ?? "",
+      content,
       model,
-      finishReason: data.choices?.[0]?.finish_reason ?? null,
-      usage: { inputTokens, outputTokens, totalTokens: Number(data.usage?.total_tokens ?? inputTokens + outputTokens), credits },
+      finishReason,
+      usage: { inputTokens, outputTokens, totalTokens: Number(usage?.total_tokens ?? inputTokens + outputTokens), credits },
       latencyMs: Date.now() - startedAt,
     });
   } catch (error) {
