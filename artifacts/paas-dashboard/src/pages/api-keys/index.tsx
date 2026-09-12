@@ -235,6 +235,7 @@ export default function ApiKeysPage() {
   const [showFullKey, setShowFullKey] = useState(false);
   const [revealedKeys, setRevealedKeys] = useState<Record<number, string>>({});
   const [pendingRevealId, setPendingRevealId] = useState<number | null>(null);
+  const [pendingCopyId, setPendingCopyId] = useState<number | null>(null);
 
   const openCreateDialog = () => {
     setNewKeyName("");
@@ -254,16 +255,20 @@ export default function ApiKeysPage() {
     setEditAllowedModels(key.allowedModels || []);
   };
 
+  const requestFullKey = async (key: ApiKey) => {
+    const data = await apiFetch(`/api-keys/${key.id}/reveal`);
+    if (!data.fullKey) throw new Error("Full API key tidak tersedia");
+    return data.fullKey as string;
+  };
+
   const fetchFullKey = async (key: ApiKey) => {
     if (revealedKeys[key.id]) return revealedKeys[key.id];
 
     setPendingRevealId(key.id);
     try {
-      const data = await apiFetch(`/api-keys/${key.id}/reveal`);
-      if (!data.fullKey) throw new Error("Full API key tidak tersedia");
-
-      setRevealedKeys((current) => ({ ...current, [key.id]: data.fullKey }));
-      return data.fullKey as string;
+      const fullKey = await requestFullKey(key);
+      setRevealedKeys((current) => ({ ...current, [key.id]: fullKey }));
+      return fullKey;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Gagal menampilkan API key");
       return null;
@@ -286,11 +291,18 @@ export default function ApiKeysPage() {
   };
 
   const copyApiKey = async (key: ApiKey) => {
-    const fullKey = revealedKeys[key.id] ?? (await fetchFullKey(key));
-    if (!fullKey) return;
-    const ok = writeToClipboard(fullKey);
-    if (ok) toast.success("API key disalin");
-    else toast.error("Gagal menyalin API key");
+    setPendingCopyId(key.id);
+    try {
+      // Ambil full key tanpa menyimpannya ke revealedKeys, supaya menyalin
+      // tidak ikut menampilkan key di layar.
+      const fullKey = revealedKeys[key.id] ?? (await requestFullKey(key));
+      if (writeToClipboard(fullKey)) toast.success("API key disalin");
+      else toast.error("Gagal menyalin API key");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal menyalin API key");
+    } finally {
+      setPendingCopyId((current) => (current === key.id ? null : current));
+    }
   };
 
   const { data: keys = [], isLoading } = useQuery<ApiKey[]>({
@@ -406,9 +418,9 @@ export default function ApiKeysPage() {
                       className="h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors disabled:pointer-events-none disabled:opacity-60"
                       title="Salin API Key"
                       aria-label="Salin API key"
-                      disabled={pendingRevealId === key.id}
+                      disabled={pendingCopyId === key.id}
                     >
-                      {pendingRevealId === key.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+                      {pendingCopyId === key.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
