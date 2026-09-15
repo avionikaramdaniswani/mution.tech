@@ -4,7 +4,7 @@ import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
-import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminFetchRemoteModels, adminTestProviderModel, adminUpsertProviderModel, adminDeleteProviderModel, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
+import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminFetchRemoteModels, adminTestProviderModel, adminTestRawModel, adminUpsertProviderModel, adminDeleteProviderModel, adminPruneProviderModels, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
 import { getModelById, getModelPricing } from "@workspace/model-catalog";
 
 const router = Router();
@@ -627,9 +627,40 @@ router.post("/admin/providers/:id/models/:modelId/test", async (req, res): Promi
   }
 });
 
+router.post("/admin/providers/:id/test-raw", async (req, res): Promise<void> => {
+  const providerId = decodeURIComponent(req.params.id);
+  const { upstreamModelId } = req.body ?? {};
+  if (!upstreamModelId || typeof upstreamModelId !== "string") {
+    res.status(400).json({ ok: false, error: "upstreamModelId tidak valid" });
+    return;
+  }
+  try {
+    const result = await adminTestRawModel(providerId, upstreamModelId.trim());
+    res.json(result);
+  } catch (error: any) {
+    console.error(`Failed to test raw model ${upstreamModelId} for provider ${providerId}:`, error);
+    res.status(500).json({ ok: false, error: error?.message || "Gagal menguji model" });
+  }
+});
 router.delete("/admin/providers/:id/models/:modelId", async (req, res): Promise<void> => {
   try { await adminDeleteProviderModel(decodeURIComponent(req.params.id), decodeURIComponent(req.params.modelId)); res.json({ ok: true }); }
   catch (error) { console.error("Failed to delete provider model:", error); res.status(500).json({ error: "Gagal menghapus model" }); }
+});
+
+router.delete("/admin/providers/:id/models-prune", async (req, res): Promise<void> => {
+  const providerId = decodeURIComponent(req.params.id);
+  const { keepModelIds } = req.body ?? {};
+  if (!Array.isArray(keepModelIds)) {
+    res.status(400).json({ ok: false, error: "keepModelIds harus berupa array string" });
+    return;
+  }
+  try {
+    await adminPruneProviderModels(providerId, keepModelIds);
+    res.json({ ok: true });
+  } catch (error: any) {
+    console.error(`Failed to prune models for provider ${providerId}:`, error);
+    res.status(500).json({ ok: false, error: error?.message || "Gagal melakukan prune model" });
+  }
 });
 
 router.post("/admin/providers/:id/reset-cooldown", (req, res) => {

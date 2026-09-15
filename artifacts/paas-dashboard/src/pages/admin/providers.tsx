@@ -40,8 +40,9 @@ export default function AdminProviders() {
   const [expanded, setExpanded] = useState<string | null>(null); const [search, setSearch] = useState("");
   const [modelEditor, setModelEditor] = useState<{ providerId: string; form: ModelForm } | null>(null);
   const [providerEditor, setProviderEditor] = useState<{ form: ProviderForm; editing: boolean } | null>(null);
-  const [importEditor, setImportEditor] = useState<{ providerId: string; loading: boolean; models: { id: string, selected: boolean }[] } | null>(null);
+  const [importEditor, setImportEditor] = useState<{ providerId: string; loading: boolean; fullSync: boolean; models: { id: string, selected: boolean }[] } | null>(null);
   const [testingModel, setTestingModel] = useState<{ providerId: string; modelId: string } | null>(null);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number; success: number } | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
 
   const { data: providers, isLoading } = useQuery({ queryKey: ["admin", "providers"], queryFn: fetchProviders, refetchInterval: 10000 });
@@ -78,12 +79,12 @@ export default function AdminProviders() {
   };
 
   const fetchRemoteModels = async (providerId: string) => {
-    setImportEditor({ providerId, loading: true, models: [] });
+    setImportEditor({ providerId, loading: true, fullSync: false, models: [] });
     try {
       const res = await csrfFetch(`/api/admin/providers/${encodeURIComponent(providerId)}/models/sync`, { credentials: "include" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal menghubungi server");
-      setImportEditor({ providerId, loading: false, models: data.models.map((m: any) => ({ ...m, selected: true })) });
+      setImportEditor({ providerId, loading: false, fullSync: false, models: data.models.map((m: any) => ({ ...m, selected: true })) });
     } catch (err: any) {
       setImportEditor(null);
       toast({ title: "Gagal import model", description: err.message, variant: "destructive" });
@@ -94,21 +95,72 @@ export default function AdminProviders() {
     if (!importEditor) return;
     const selectedModels = importEditor.models.filter(m => m.selected);
     if (!selectedModels.length) return;
+    
+    setImportProgress({ current: 0, total: selectedModels.length, success: 0 });
+    const successModelIds: string[] = [];
+    
     try {
       setImportEditor(prev => prev ? { ...prev, loading: true } : null);
-      await Promise.all(selectedModels.map(m => request(`/api/admin/providers/${encodeURIComponent(importEditor.providerId)}/models`, "POST", {
-        modelId: m.id,
-        displayName: m.id,
-        upstreamModelId: m.id,
-        brandProvider: "",
-        enabled: true
-      })));
+      
+      for (let i = 0; i < selectedModels.length; i++) {
+        const m = selectedModels[i];
+        setImportProgress(prev => prev ? { ...prev, current: i + 1 } : null);
+        
+        try {
+          const testRes = await csrfFetch(`/api/admin/providers/${encodeURIComponent(importEditor.providerId)}/test-raw`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ upstreamModelId: m.id })
+          });
+          const testData = await testRes.json();
+          if (!testRes.ok || !testData.ok) {
+            console.warn(`Model ${m.id} test failed:`, testData.error);
+            continue; // Skip this model
+          }
+          
+          await request(`/api/admin/providers/${encodeURIComponent(importEditor.providerId)}/models`, "POST", {
+            modelId: m.id,
+            displayName: m.id,
+            upstreamModelId: m.id,
+            brandProvider: "",
+            enabled: true
+          });
+          
+          successModelIds.push(m.id);
+          setImportProgress(prev => prev ? { ...prev, success: successModelIds.length } : null);
+        } catch (err) {
+          console.warn(`Failed processing model ${m.id}:`, err);
+        }
+      }
+
+      if (importEditor.fullSync) {
+        try {
+          await csrfFetch(`/api/admin/providers/${encodeURIComponent(importEditor.providerId)}/models-prune`, {
+            method: "DELETE",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ keepModelIds: successModelIds })
+          });
+        } catch (err) {
+          console.warn("Failed to prune models:", err);
+        }
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["admin", "providers"] });
       setImportEditor(null);
-      toast({ title: "Berhasil menambahkan model" });
+      setImportProgress(null);
+      
+      if (successModelIds.length > 0) {
+        toast({ title: "Import Selesai", description: `Berhasil menambahkan ${successModelIds.length} dari ${selectedModels.length} model.${importEditor.fullSync ? ' Database telah disinkronisasi penuh.' : ''}`, className: "border-green-500 bg-green-50 text-green-900" });
+      } else {
+        toast({ title: "Import Selesai", description: `Tidak ada model yang lolos pengujian dari ${selectedModels.length} pilihan.${importEditor.fullSync ? ' Model lama telah dibersihkan.' : ''}`, variant: "destructive" });
+      }
+      
     } catch (err: any) {
       toast({ title: "Gagal menyimpan model", description: err.message, variant: "destructive" });
       setImportEditor(prev => prev ? { ...prev, loading: false } : null);
+      setImportProgress(null);
     }
   };
 
@@ -247,7 +299,14 @@ export default function AdminProviders() {
             {importEditor.loading ? (
               <div className="flex flex-col items-center justify-center py-8">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                <p className="mt-4 text-sm text-muted-foreground">Mengambil daftar model...</p>
+                {importProgress ? (
+                  <div className="mt-4 text-center">
+                    <p className="text-sm font-medium text-foreground">Menguji model {importProgress.current} dari {importProgress.total}...</p>
+                    <p className="text-xs text-muted-foreground mt-1">{importProgress.success} model lolos pengujian</p>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm text-muted-foreground">Mengambil daftar model...</p>
+                )}
               </div>
             ) : importEditor.models.length === 0 ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
@@ -265,6 +324,13 @@ export default function AdminProviders() {
                   }}>
                     {importEditor.models.every(m => m.selected) ? "Batal Pilih Semua" : "Pilih Semua"}
                   </Button>
+                </div>
+                <div className="flex items-center gap-3 border-b pb-3 mb-1">
+                  <Switch checked={importEditor.fullSync} onCheckedChange={(checked) => setImportEditor({ ...importEditor, fullSync: checked })} />
+                  <div className="text-sm flex-1 cursor-pointer select-none" onClick={() => setImportEditor({ ...importEditor, fullSync: !importEditor.fullSync })}>
+                    <div className="font-medium">Full Sync (Auto Delete)</div>
+                    <div className="text-xs text-muted-foreground">Hapus permanen model di database yang tidak terpilih atau tidak lolos uji coba.</div>
+                  </div>
                 </div>
                 <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-2">
                   {importEditor.models.map(m => (
@@ -287,7 +353,7 @@ export default function AdminProviders() {
         <DialogFooter>
           <Button variant="outline" onClick={() => setImportEditor(null)}>Batal</Button>
           <Button disabled={!importEditor || importEditor.loading || !importEditor.models.some(m => m.selected)} onClick={saveImportedModels}>
-            Import Model
+            Test & Import
           </Button>
         </DialogFooter>
       </DialogContent>
