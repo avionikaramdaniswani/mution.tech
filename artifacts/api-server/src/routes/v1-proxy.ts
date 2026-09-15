@@ -340,6 +340,35 @@ export async function adminUpdateProvider(id: string, data: { name?: string; bas
   await refreshProviderSettings(true);
 }
 
+export async function adminFetchRemoteModels(id: string) {
+  const row = await db.query.aiProviderSettingsTable.findFirst({ where: eq(aiProviderSettingsTable.id, id) });
+  if (!row) throw new Error("Provider not found");
+  if (!row.baseUrl || !row.apiKeyEncrypted) throw new Error("Provider incomplete (missing URL or API Key)");
+  const apiKey = decryptSecret(row.apiKeyEncrypted);
+  if (!apiKey) throw new Error("Failed to decrypt API key");
+  
+  let fetchUrl = row.baseUrl;
+  if (!fetchUrl.endsWith('/v1')) {
+    fetchUrl += fetchUrl.endsWith('/') ? 'v1' : '/v1';
+  }
+  fetchUrl += "/models";
+
+  const res = await fetch(fetchUrl, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Provider returned ${res.status}: ${errText.slice(0, 100)}`);
+  }
+  const json = (await res.json()) as any;
+  const modelsList = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+  return modelsList.map((m: any) => ({
+    id: m.id,
+    created: m.created
+  }));
+}
+
+
 export async function adminDeleteProvider(id: string) {
   await db.delete(aiProviderModelsTable).where(eq(aiProviderModelsTable.providerId, id));
   await db.delete(aiProviderSettingsTable).where(eq(aiProviderSettingsTable.id, id));

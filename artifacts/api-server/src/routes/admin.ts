@@ -4,7 +4,7 @@ import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
-import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminUpsertProviderModel, adminDeleteProviderModel, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
+import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminFetchRemoteModels, adminUpsertProviderModel, adminDeleteProviderModel, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
 import { getModelById, getModelPricing } from "@workspace/model-catalog";
 
 const router = Router();
@@ -583,6 +583,17 @@ router.patch("/admin/providers/:id/toggle", async (req, res): Promise<void> => {
   } catch (error) {
     console.error("Failed to update provider status:", error);
     res.status(500).json({ error: "Gagal mengubah status provider" });
+  }
+});
+
+router.get("/admin/providers/:id/models/sync", async (req, res): Promise<void> => {
+  const id = decodeURIComponent(req.params.id);
+  try {
+    const models = await adminFetchRemoteModels(id);
+    res.json({ models });
+  } catch (error: any) {
+    console.error(`Failed to sync models for provider ${id}:`, error);
+    res.status(500).json({ error: error?.message || "Gagal mengambil daftar model dari provider" });
   }
 });
 

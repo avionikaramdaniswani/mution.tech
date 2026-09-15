@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle2, ChevronDown, ChevronRight, Clock, Cpu, Eye, EyeOff, Pencil, Plus, Search, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, Clock, Cpu, Download, Eye, EyeOff, Pencil, Plus, Search, Trash2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { csrfFetch } from "@/lib/csrf";
 
@@ -40,6 +40,7 @@ export default function AdminProviders() {
   const [expanded, setExpanded] = useState<string | null>(null); const [search, setSearch] = useState("");
   const [modelEditor, setModelEditor] = useState<{ providerId: string; form: ModelForm } | null>(null);
   const [providerEditor, setProviderEditor] = useState<{ form: ProviderForm; editing: boolean } | null>(null);
+  const [importEditor, setImportEditor] = useState<{ providerId: string; loading: boolean; models: { id: string, selected: boolean }[] } | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
 
   const { data: providers, isLoading } = useQuery({ queryKey: ["admin", "providers"], queryFn: fetchProviders, refetchInterval: 10000 });
@@ -74,6 +75,42 @@ export default function AdminProviders() {
       mutate.mutate({ url: "/api/admin/providers", method: "POST", body: { id: form.id.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "_"), name: form.name.trim(), baseUrl: form.baseUrl.trim(), apiKey: form.apiKey.trim(), type: form.type, priority: form.priority } });
     }
   };
+
+  const fetchRemoteModels = async (providerId: string) => {
+    setImportEditor({ providerId, loading: true, models: [] });
+    try {
+      const res = await csrfFetch(`/api/admin/providers/${encodeURIComponent(providerId)}/models/sync`, { credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal menghubungi server");
+      setImportEditor({ providerId, loading: false, models: data.models.map((m: any) => ({ ...m, selected: true })) });
+    } catch (err: any) {
+      setImportEditor(null);
+      toast({ title: "Gagal import model", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const saveImportedModels = async () => {
+    if (!importEditor) return;
+    const selectedModels = importEditor.models.filter(m => m.selected);
+    if (!selectedModels.length) return;
+    try {
+      setImportEditor(prev => prev ? { ...prev, loading: true } : null);
+      await Promise.all(selectedModels.map(m => request(`/api/admin/providers/${encodeURIComponent(importEditor.providerId)}/models`, "POST", {
+        modelId: m.id,
+        displayName: m.id,
+        upstreamModelId: m.id,
+        brandProvider: "",
+        enabled: true
+      })));
+      queryClient.invalidateQueries({ queryKey: ["admin", "providers"] });
+      setImportEditor(null);
+      toast({ title: "Berhasil menambahkan model" });
+    } catch (err: any) {
+      toast({ title: "Gagal menyimpan model", description: err.message, variant: "destructive" });
+      setImportEditor(prev => prev ? { ...prev, loading: false } : null);
+    }
+  };
+
 
   return <div className="mx-auto max-w-7xl space-y-6">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -114,7 +151,7 @@ export default function AdminProviders() {
             <Switch checked={p.enabled} disabled={mutate.isPending} onCheckedChange={enabled => mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(p.id)}/toggle`, method: "PATCH", body: { enabled } })} />
           </div>
         </div>
-        {open && <div className="border-t bg-[#f8fbfd] p-4"><div className="mb-3 flex flex-col justify-between gap-3 sm:flex-row"><div className="relative max-w-md flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari model atau upstream ID..." className="pl-9" /></div><Button onClick={() => setModelEditor({ providerId: p.id, form: { ...emptyModelForm } })}><Plus className="mr-2 h-4 w-4" /> Tambah model</Button></div>
+        {open && <div className="border-t bg-[#f8fbfd] p-4"><div className="mb-3 flex flex-col justify-between gap-3 sm:flex-row"><div className="relative max-w-md flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari model atau upstream ID..." className="pl-9" /></div><div className="flex gap-2"><Button variant="outline" onClick={() => fetchRemoteModels(p.id)} disabled={importEditor?.loading && importEditor.providerId === p.id}><Download className="mr-2 h-4 w-4" /> Import dari /models</Button><Button onClick={() => setModelEditor({ providerId: p.id, form: { ...emptyModelForm } })}><Plus className="mr-2 h-4 w-4" /> Tambah model</Button></div></div>
           <div className="overflow-x-auto rounded-md border bg-white"><div className="min-w-[720px]"><div className="grid grid-cols-[1fr_1fr_1fr_110px] gap-4 border-b bg-muted/40 px-4 py-2 text-xs font-semibold text-muted-foreground"><span>Nama</span><span>Model ID publik</span><span>Upstream Model ID</span><span className="text-right">Aksi</span></div>{models.map(m => <div key={m.modelId} className="grid grid-cols-[1fr_1fr_1fr_110px] items-center gap-4 border-b px-4 py-3 last:border-0"><span className="truncate text-sm font-medium">{m.displayName}</span><code className="truncate text-xs">{m.modelId}</code><code className="truncate text-xs text-muted-foreground">{m.upstreamModelId}</code><div className="flex items-center justify-end gap-2"><Switch checked={m.enabled} disabled={!p.enabled || mutate.isPending} onCheckedChange={enabled => mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(p.id)}/models/${encodeURIComponent(m.modelId)}`, method: "PUT", body: { ...m, enabled } })} /><Button size="icon" variant="ghost" onClick={() => setModelEditor({ providerId: p.id, form: { ...m, originalModelId: m.modelId } })}><Pencil className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="text-red-600" onClick={() => { if (window.confirm(`Hapus model ${m.displayName} dari provider ${p.id}?`)) mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(p.id)}/models/${encodeURIComponent(m.modelId)}`, method: "DELETE" }); }}><Trash2 className="h-4 w-4" /></Button></div></div>)}{!models.length && <p className="p-8 text-center text-sm text-muted-foreground">Belum ada model. Tambahkan model yang benar-benar tersedia pada provider ini.</p>}</div></div>
         </div>}
       </div>;
@@ -177,6 +214,63 @@ export default function AdminProviders() {
         <DialogFooter>
           <Button variant="outline" onClick={() => { setProviderEditor(null); setShowApiKey(false); }}>Batal</Button>
           <Button disabled={mutate.isPending} onClick={saveProvider}>{providerEditor?.editing ? "Simpan Perubahan" : "Tambah Provider"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    {/* Import Editor Dialog */}
+    <Dialog open={Boolean(importEditor)} onOpenChange={open => { if (!open) setImportEditor(null); }}>
+      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Import Model dari Provider</DialogTitle>
+          <DialogDescription>Pilih model yang ingin diimpor dari provider <strong>{importEditor?.providerId}</strong>.</DialogDescription>
+        </DialogHeader>
+        {importEditor && (
+          <div className="py-2">
+            {importEditor.loading ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                <p className="mt-4 text-sm text-muted-foreground">Mengambil daftar model...</p>
+              </div>
+            ) : importEditor.models.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                Tidak ada model ditemukan di endpoint ini.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <div className="text-sm font-medium">
+                    {importEditor.models.filter(m => m.selected).length} dari {importEditor.models.length} model terpilih
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => {
+                    const allSelected = importEditor.models.every(m => m.selected);
+                    setImportEditor({ ...importEditor, models: importEditor.models.map(m => ({ ...m, selected: !allSelected })) });
+                  }}>
+                    {importEditor.models.every(m => m.selected) ? "Batal Pilih Semua" : "Pilih Semua"}
+                  </Button>
+                </div>
+                <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-2">
+                  {importEditor.models.map(m => (
+                    <div key={m.id} className="flex items-center gap-3 rounded-md border p-3 hover:bg-muted/50 cursor-pointer transition-colors" onClick={() => {
+                      setImportEditor({ ...importEditor, models: importEditor.models.map(model => model.id === m.id ? { ...model, selected: !model.selected } : model) });
+                    }}>
+                      <div className={`flex h-5 w-5 items-center justify-center rounded border ${m.selected ? 'bg-primary border-primary text-primary-foreground' : 'border-input bg-background'}`}>
+                        {m.selected && <CheckCircle2 className="h-3.5 w-3.5" />}
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <div className="truncate text-sm font-medium">{m.id}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setImportEditor(null)}>Batal</Button>
+          <Button disabled={!importEditor || importEditor.loading || !importEditor.models.some(m => m.selected)} onClick={saveImportedModels}>
+            Import Model
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
