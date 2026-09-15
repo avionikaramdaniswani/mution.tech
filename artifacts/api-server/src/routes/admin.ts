@@ -4,7 +4,7 @@ import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
-import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminFetchRemoteModels, adminUpsertProviderModel, adminDeleteProviderModel, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
+import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminFetchRemoteModels, adminTestProviderModel, adminUpsertProviderModel, adminDeleteProviderModel, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
 import { getModelById, getModelPricing } from "@workspace/model-catalog";
 
 const router = Router();
@@ -613,6 +613,18 @@ router.put("/admin/providers/:id/models/:modelId", async (req, res): Promise<voi
   if (![modelId, displayName, upstreamModelId].every((v) => typeof v === "string" && v.trim()) || typeof enabled !== "boolean") { res.status(400).json({ error: "Data model tidak valid" }); return; }
   try { await adminUpsertProviderModel(providerId, modelId.trim(), { displayName: displayName.trim(), brandProvider: typeof brandProvider === "string" && brandProvider.trim() ? brandProvider.trim() : inferModelBrand(modelId, displayName), upstreamModelId: upstreamModelId.trim(), enabled }, oldModelId); res.json({ ok: true }); }
   catch (error) { console.error("Failed to update provider model:", error); res.status(500).json({ error: "Gagal mengubah model" }); }
+});
+
+router.post("/admin/providers/:id/models/:modelId/test", async (req, res): Promise<void> => {
+  const providerId = decodeURIComponent(req.params.id);
+  const modelId = decodeURIComponent(req.params.modelId);
+  try {
+    const result = await adminTestProviderModel(providerId, modelId);
+    res.json(result);
+  } catch (error: any) {
+    console.error(`Failed to test model ${modelId} for provider ${providerId}:`, error);
+    res.status(500).json({ ok: false, error: error?.message || "Gagal menguji model" });
+  }
 });
 
 router.delete("/admin/providers/:id/models/:modelId", async (req, res): Promise<void> => {

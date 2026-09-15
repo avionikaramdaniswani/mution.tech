@@ -367,6 +367,49 @@ export async function adminFetchRemoteModels(id: string) {
     created: m.created
   }));
 }
+export async function adminTestProviderModel(providerId: string, modelId: string) {
+  const provider = await db.query.aiProviderSettingsTable.findFirst({ where: eq(aiProviderSettingsTable.id, providerId) });
+  if (!provider) throw new Error("Provider not found");
+  if (!provider.baseUrl || !provider.apiKeyEncrypted) throw new Error("Provider incomplete (missing URL or API Key)");
+  
+  const model = await db.query.aiProviderModelsTable.findFirst({
+    where: and(eq(aiProviderModelsTable.providerId, providerId), eq(aiProviderModelsTable.modelId, modelId))
+  });
+  if (!model) throw new Error("Model not found on this provider");
+
+  const apiKey = decryptSecret(provider.apiKeyEncrypted);
+  if (!apiKey) throw new Error("Failed to decrypt API key");
+  
+  let fetchUrl = provider.baseUrl;
+  if (!fetchUrl.endsWith('/v1')) fetchUrl += fetchUrl.endsWith('/') ? 'v1' : '/v1';
+  fetchUrl += "/chat/completions";
+
+  const res = await fetch(fetchUrl, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: model.upstreamModelId,
+      messages: [{ role: "user", content: "hi" }],
+      max_tokens: 1
+    })
+  });
+  
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    try {
+      const errJson = JSON.parse(errText);
+      return { ok: false, error: errJson.error?.message || errJson.message || `HTTP ${res.status}: ${errText.slice(0, 100)}` };
+    } catch (e) {
+      return { ok: false, error: `HTTP ${res.status}: ${errText.slice(0, 100)}` };
+    }
+  }
+  
+  const data = await res.json();
+  return { ok: true, data };
+}
 
 
 export async function adminDeleteProvider(id: string) {

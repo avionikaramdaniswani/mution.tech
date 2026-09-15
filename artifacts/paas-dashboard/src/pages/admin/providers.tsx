@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle2, ChevronDown, ChevronRight, Clock, Cpu, Download, Eye, EyeOff, Pencil, Plus, Search, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, Clock, Cpu, Download, Eye, EyeOff, Loader2, Pencil, Plus, Search, Trash2, XCircle, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { csrfFetch } from "@/lib/csrf";
 
@@ -41,6 +41,7 @@ export default function AdminProviders() {
   const [modelEditor, setModelEditor] = useState<{ providerId: string; form: ModelForm } | null>(null);
   const [providerEditor, setProviderEditor] = useState<{ form: ProviderForm; editing: boolean } | null>(null);
   const [importEditor, setImportEditor] = useState<{ providerId: string; loading: boolean; models: { id: string, selected: boolean }[] } | null>(null);
+  const [testingModel, setTestingModel] = useState<{ providerId: string; modelId: string } | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
 
   const { data: providers, isLoading } = useQuery({ queryKey: ["admin", "providers"], queryFn: fetchProviders, refetchInterval: 10000 });
@@ -111,6 +112,23 @@ export default function AdminProviders() {
     }
   };
 
+  const testModel = async (providerId: string, modelId: string) => {
+    setTestingModel({ providerId, modelId });
+    try {
+      const res = await csrfFetch(`/api/admin/providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(modelId)}/test`, {
+        method: "POST",
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Gagal menguji model");
+      toast({ title: "Test Berhasil", description: `Model merespons dengan baik.`, className: "border-green-500 bg-green-50 text-green-900" });
+    } catch (err: any) {
+      toast({ title: "Test Gagal", description: err.message, variant: "destructive" });
+    } finally {
+      setTestingModel(null);
+    }
+  };
+
 
   return <div className="mx-auto max-w-7xl space-y-6">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -152,7 +170,7 @@ export default function AdminProviders() {
           </div>
         </div>
         {open && <div className="border-t bg-[#f8fbfd] p-4"><div className="mb-3 flex flex-col justify-between gap-3 sm:flex-row"><div className="relative max-w-md flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari model atau upstream ID..." className="pl-9" /></div><div className="flex gap-2"><Button variant="outline" onClick={() => fetchRemoteModels(p.id)} disabled={importEditor?.loading && importEditor.providerId === p.id}><Download className="mr-2 h-4 w-4" /> Import dari /models</Button><Button onClick={() => setModelEditor({ providerId: p.id, form: { ...emptyModelForm } })}><Plus className="mr-2 h-4 w-4" /> Tambah model</Button></div></div>
-          <div className="overflow-x-auto rounded-md border bg-white"><div className="min-w-[720px]"><div className="grid grid-cols-[1fr_1fr_1fr_110px] gap-4 border-b bg-muted/40 px-4 py-2 text-xs font-semibold text-muted-foreground"><span>Nama</span><span>Model ID publik</span><span>Upstream Model ID</span><span className="text-right">Aksi</span></div>{models.map(m => <div key={m.modelId} className="grid grid-cols-[1fr_1fr_1fr_110px] items-center gap-4 border-b px-4 py-3 last:border-0"><span className="truncate text-sm font-medium">{m.displayName}</span><code className="truncate text-xs">{m.modelId}</code><code className="truncate text-xs text-muted-foreground">{m.upstreamModelId}</code><div className="flex items-center justify-end gap-2"><Switch checked={m.enabled} disabled={!p.enabled || mutate.isPending} onCheckedChange={enabled => mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(p.id)}/models/${encodeURIComponent(m.modelId)}`, method: "PUT", body: { ...m, enabled } })} /><Button size="icon" variant="ghost" onClick={() => setModelEditor({ providerId: p.id, form: { ...m, originalModelId: m.modelId } })}><Pencil className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="text-red-600" onClick={() => { if (window.confirm(`Hapus model ${m.displayName} dari provider ${p.id}?`)) mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(p.id)}/models/${encodeURIComponent(m.modelId)}`, method: "DELETE" }); }}><Trash2 className="h-4 w-4" /></Button></div></div>)}{!models.length && <p className="p-8 text-center text-sm text-muted-foreground">Belum ada model. Tambahkan model yang benar-benar tersedia pada provider ini.</p>}</div></div>
+          <div className="overflow-x-auto rounded-md border bg-white"><div className="min-w-[720px]"><div className="grid grid-cols-[1fr_1fr_1fr_150px] gap-4 border-b bg-muted/40 px-4 py-2 text-xs font-semibold text-muted-foreground"><span>Nama</span><span>Model ID publik</span><span>Upstream Model ID</span><span className="text-right">Aksi</span></div>{models.map(m => <div key={m.modelId} className="grid grid-cols-[1fr_1fr_1fr_150px] items-center gap-4 border-b px-4 py-3 last:border-0"><span className="truncate text-sm font-medium">{m.displayName}</span><code className="truncate text-xs">{m.modelId}</code><code className="truncate text-xs text-muted-foreground">{m.upstreamModelId}</code><div className="flex items-center justify-end gap-2"><Button size="icon" variant="ghost" title="Test model" onClick={() => testModel(p.id, m.modelId)} disabled={testingModel?.providerId === p.id && testingModel?.modelId === m.modelId}>{testingModel?.providerId === p.id && testingModel?.modelId === m.modelId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 text-amber-500" />}</Button><Switch checked={m.enabled} disabled={!p.enabled || mutate.isPending} onCheckedChange={enabled => mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(p.id)}/models/${encodeURIComponent(m.modelId)}`, method: "PUT", body: { ...m, enabled } })} /><Button size="icon" variant="ghost" onClick={() => setModelEditor({ providerId: p.id, form: { ...m, originalModelId: m.modelId } })}><Pencil className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="text-red-600" onClick={() => { if (window.confirm(`Hapus model ${m.displayName} dari provider ${p.id}?`)) mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(p.id)}/models/${encodeURIComponent(m.modelId)}`, method: "DELETE" }); }}><Trash2 className="h-4 w-4" /></Button></div></div>)}{!models.length && <p className="p-8 text-center text-sm text-muted-foreground">Belum ada model. Tambahkan model yang benar-benar tersedia pada provider ini.</p>}</div></div>
         </div>}
       </div>;
     })}</div>}
