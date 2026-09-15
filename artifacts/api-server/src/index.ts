@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startBillingCron } from "./cron/billing";
+import { seedProvidersFromEnv } from "./routes/v1-proxy";
 
 const rawPort = process.env["PORT"];
 
@@ -24,4 +25,9 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
   startBillingCron();
+
+  // One-time migration: seed providers from env vars into DB
+  seedProvidersFromEnv().catch((e) =>
+    logger.error({ err: e }, "Failed to seed providers from env"),
+  );
 });

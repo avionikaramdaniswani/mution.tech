@@ -4,7 +4,7 @@ import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
-import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminUpsertProviderModel, adminDeleteProviderModel, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
+import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminUpsertProviderModel, adminDeleteProviderModel, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
 import { getModelById, getModelPricing } from "@workspace/model-catalog";
 
 const router = Router();
@@ -527,6 +527,45 @@ router.get("/admin/providers", async (_req, res): Promise<void> => {
   } catch (error) {
     console.error("Failed to fetch provider statuses:", error);
     res.status(500).json({ error: "Gagal mengambil data provider" });
+  }
+});
+
+router.post("/admin/providers", async (req, res): Promise<void> => {
+  const { id, name, baseUrl, apiKey, type, priority } = req.body ?? {};
+  if (!id?.trim() || !name?.trim() || !baseUrl?.trim() || !apiKey?.trim()) {
+    res.status(400).json({ error: "ID, nama, base URL, dan API key wajib diisi" });
+    return;
+  }
+  try {
+    await adminCreateProvider({ id: id.trim().toLowerCase(), name: name.trim(), baseUrl: baseUrl.trim(), apiKey: apiKey.trim(), type: type || "generic", priority: typeof priority === "number" ? priority : 0 });
+    res.status(201).json({ ok: true });
+  } catch (error: any) {
+    if (error?.code === "23505") { res.status(409).json({ error: `Provider dengan ID '${id.trim()}' sudah ada` }); return; }
+    console.error("Failed to create provider:", error);
+    res.status(500).json({ error: "Gagal menambahkan provider" });
+  }
+});
+
+router.put("/admin/providers/:id", async (req, res): Promise<void> => {
+  const id = decodeURIComponent(req.params.id);
+  const { name, baseUrl, apiKey, type, priority } = req.body ?? {};
+  try {
+    await adminUpdateProvider(id, { name, baseUrl, apiKey, type, priority });
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("Failed to update provider:", error);
+    res.status(500).json({ error: "Gagal mengubah provider" });
+  }
+});
+
+router.delete("/admin/providers/:id", async (req, res): Promise<void> => {
+  const id = decodeURIComponent(req.params.id);
+  try {
+    await adminDeleteProvider(id);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("Failed to delete provider:", error);
+    res.status(500).json({ error: "Gagal menghapus provider" });
   }
 });
 

@@ -1,6 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
 import { db, apiKeysTable, usersTable, creditTransactionsTable, apiUsageTable, aiProviderSettingsTable, aiProviderModelsTable, apiRequestsTable, modelPricingOverridesTable } from "@workspace/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql, ne } from "drizzle-orm";
+import { encryptSecret, decryptSecret } from "../lib/secret-box";
 import crypto from "crypto";
 import { logger } from "../lib/logger";
 import { broadcastToUser, broadcastAdmin } from "../lib/events";
@@ -224,11 +225,25 @@ async function refreshProviderSettings(force = false): Promise<void> {
   if (!force && now - _providerSettingsLoadedAt < PROVIDER_SETTINGS_REFRESH_MS) return;
 
   _providerSettingsRefresh ??= (async () => {
-    const rows = await db.select().from(aiProviderSettingsTable);
+    const rows = await db.select().from(aiProviderSettingsTable).orderBy(asc(aiProviderSettingsTable.priority));
     _disabledProviders.clear();
+    // Rebuild provider cache from DB rows that have baseUrl + apiKey configured
+    const newProviders: Provider[] = [];
     for (const row of rows) {
       if (!row.enabled) _disabledProviders.add(row.id);
+      if (row.baseUrl && row.apiKeyEncrypted) {
+        const apiKey = decryptSecret(row.apiKeyEncrypted);
+        if (apiKey) {
+          newProviders.push({
+            id: row.id,
+            openaiBase: buildOpenaiBase(row.baseUrl),
+            apiKey,
+            type: (row.type as Provider["type"]) || "generic",
+          });
+        }
+      }
     }
+    _cachedProviders = newProviders;
     const modelRows = await db.select().from(aiProviderModelsTable);
     _providerModels.clear();
     for (const row of modelRows) {
@@ -270,45 +285,65 @@ async function setProviderEnabled(id: string, enabled: boolean): Promise<void> {
   _providerSettingsLoadedAt = Date.now();
 }
 
-async function cleanUpOrphanedProviders(): Promise<void> {
-  let envProviders: Provider[] = [];
-  try { envProviders = getProviders(); } catch { }
-  
-  const envIds = envProviders.map(p => p.id);
-  
-  const settings = await db.select({ id: aiProviderSettingsTable.id }).from(aiProviderSettingsTable);
-  const models = await db.select({ providerId: aiProviderModelsTable.providerId }).from(aiProviderModelsTable);
-  
-  const dbIds = new Set([...settings.map(s => s.id), ...models.map(m => m.providerId)]);
-  
-  for (const dbId of dbIds) {
-    if (!envIds.includes(dbId)) {
-      logger.info({ providerId: dbId }, "Cleaning up orphaned provider from DB");
-      await db.delete(aiProviderSettingsTable).where(eq(aiProviderSettingsTable.id, dbId));
-      await db.delete(aiProviderModelsTable).where(eq(aiProviderModelsTable.providerId, dbId));
-    }
-  }
-}
-
 export async function adminEnableProvider(id: string) { await setProviderEnabled(id, true); }
 export async function adminDisableProvider(id: string) { await setProviderEnabled(id, false); }
 export async function adminGetProviderStatuses() {
-  await cleanUpOrphanedProviders();
   await refreshProviderSettings(true);
-  let providers: Provider[];
-  try { providers = getProviders(); } catch { return []; }
+  const providers = getProviders();
+  const rows = await db.select().from(aiProviderSettingsTable).orderBy(asc(aiProviderSettingsTable.priority));
+  const rowMap = new Map(rows.map(r => [r.id, r]));
   const now = Date.now();
-  return providers.map((p) => ({
-    id: p.id,
-    openaiBase: p.openaiBase,
-    type: p.type,
-    enabled: !_disabledProviders.has(p.id),
-    inCooldown: (_cooldowns.get(p.id) ?? 0) > now,
-    cooldownExpiresAt: (_cooldowns.get(p.id) ?? 0) > now
-      ? new Date(_cooldowns.get(p.id)!).toISOString()
-      : null,
-    models: Array.from(_providerModels.get(p.id)?.values() ?? []),
-  }));
+  return providers.map((p) => {
+    const row = rowMap.get(p.id);
+    return {
+      id: p.id,
+      name: row?.name || p.id,
+      openaiBase: p.openaiBase,
+      type: p.type,
+      priority: row?.priority ?? 0,
+      enabled: !_disabledProviders.has(p.id),
+      inCooldown: (_cooldowns.get(p.id) ?? 0) > now,
+      cooldownExpiresAt: (_cooldowns.get(p.id) ?? 0) > now
+        ? new Date(_cooldowns.get(p.id)!).toISOString()
+        : null,
+      models: Array.from(_providerModels.get(p.id)?.values() ?? []),
+    };
+  });
+}
+
+// ─── Admin: Provider CRUD ────────────────────────────────────────────────────
+export async function adminCreateProvider(data: { id: string; name: string; baseUrl: string; apiKey: string; type?: string; priority?: number }) {
+  const now = new Date();
+  await db.insert(aiProviderSettingsTable).values({
+    id: data.id,
+    name: data.name,
+    baseUrl: data.baseUrl,
+    apiKeyEncrypted: encryptSecret(data.apiKey),
+    type: data.type || "generic",
+    priority: data.priority ?? 0,
+    enabled: true,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await refreshProviderSettings(true);
+}
+
+export async function adminUpdateProvider(id: string, data: { name?: string; baseUrl?: string; apiKey?: string; type?: string; priority?: number }) {
+  const now = new Date();
+  const updates: Record<string, unknown> = { updatedAt: now };
+  if (data.name !== undefined) updates.name = data.name;
+  if (data.baseUrl !== undefined) updates.baseUrl = data.baseUrl;
+  if (data.apiKey !== undefined && data.apiKey.trim()) updates.apiKeyEncrypted = encryptSecret(data.apiKey);
+  if (data.type !== undefined) updates.type = data.type;
+  if (data.priority !== undefined) updates.priority = data.priority;
+  await db.update(aiProviderSettingsTable).set(updates).where(eq(aiProviderSettingsTable.id, id));
+  await refreshProviderSettings(true);
+}
+
+export async function adminDeleteProvider(id: string) {
+  await db.delete(aiProviderModelsTable).where(eq(aiProviderModelsTable.providerId, id));
+  await db.delete(aiProviderSettingsTable).where(eq(aiProviderSettingsTable.id, id));
+  await refreshProviderSettings(true);
 }
 
 export async function adminUpsertProviderModel(providerId: string, modelId: string, payload: { displayName: string; brandProvider: string; upstreamModelId: string; enabled: boolean }, oldModelId?: string) {
@@ -487,50 +522,76 @@ function detectType(url: string): Provider["type"] {
   return "generic";
 }
 
+// ─── Provider cache (loaded from DB) ──────────────────────────────────────────
+let _cachedProviders: Provider[] = [];
+
 /**
- * Load all providers.
- *
- * Scans environment for named provider pairs — both must be set:
- *   <PREFIX>_API_KEY  — API key
- *   <PREFIX>_BASE_URL — base URL (no hardcoded defaults)
- *
- * Example secrets:
- *   CONDUIT_API_KEY  + CONDUIT_BASE_URL
- *   IYH_API_KEY      + IYH_BASE_URL
- *
- * Skips any prefix that doesn't have both _API_KEY and _BASE_URL set.
+ * Return the cached list of providers (loaded from DB by refreshProviderSettings).
+ * This is a synchronous getter — data is refreshed periodically in the background.
  */
 function getProviders(): Provider[] {
-  const providers: Provider[] = [];
+  return _cachedProviders;
+}
 
-  // Scan for <PREFIX>_API_KEY, require matching <PREFIX>_BASE_URL
+/**
+ * One-time migration: seed providers from environment variables into the database.
+ * Only runs if no providers exist in the DB yet (first startup after migration).
+ */
+export async function seedProvidersFromEnv(): Promise<void> {
+  const existing = await db.select({ id: aiProviderSettingsTable.id }).from(aiProviderSettingsTable)
+    .where(ne(aiProviderSettingsTable.baseUrl, ""));
+  if (existing.length > 0) {
+    logger.info({ count: existing.length }, "Providers already exist in DB, skipping env seed");
+    return;
+  }
+
+  const skipPrefixes = ["SESSION", "DATABASE", "SUPABASE", "AGENTROUTER", "TRIPAY", "GITHUB"];
+  let seeded = 0;
+  const now = new Date();
+
   for (const [envKey, envVal] of Object.entries(process.env)) {
     if (!envKey.endsWith("_API_KEY") || !envVal?.trim()) continue;
     const prefix = envKey.slice(0, -"_API_KEY".length);
-    // Skip unrelated env vars dan provider yang dinonaktifkan
-    if (["SESSION", "DATABASE", "SUPABASE", "AGENTROUTER", "IYH", "CONDUIT"].some((s) => prefix.includes(s))) continue;
+    if (skipPrefixes.some((s) => prefix.includes(s))) continue;
 
     const rawUrl = (process.env[`${prefix}_BASE_URL`] ?? "").trim();
-    if (!rawUrl) {
-      logger.warn({ prefix }, `${prefix}_API_KEY found but ${prefix}_BASE_URL not set — skipping`);
-      continue;
+    if (!rawUrl) continue;
+
+    const id = prefix.toLowerCase();
+    try {
+      await db.insert(aiProviderSettingsTable).values({
+        id,
+        name: prefix,
+        baseUrl: rawUrl,
+        apiKeyEncrypted: encryptSecret(envVal.trim()),
+        type: detectType(rawUrl),
+        priority: seeded,
+        enabled: true,
+        createdAt: now,
+        updatedAt: now,
+      }).onConflictDoUpdate({
+        target: aiProviderSettingsTable.id,
+        set: {
+          name: prefix,
+          baseUrl: rawUrl,
+          apiKeyEncrypted: encryptSecret(envVal.trim()),
+          type: detectType(rawUrl),
+          updatedAt: now,
+        },
+      });
+      seeded++;
+      logger.info({ id, baseUrl: rawUrl }, "Seeded provider from env");
+    } catch (err) {
+      logger.error({ err, id }, "Failed to seed provider from env");
     }
-
-    providers.push({
-      id: prefix.toLowerCase(),
-      openaiBase: buildOpenaiBase(rawUrl),
-      apiKey: envVal.trim(),
-      type: detectType(rawUrl),
-    });
   }
 
-  if (providers.length === 0) {
-    throw new Error(
-      "No providers configured. Each provider needs both <PREFIX>_API_KEY and <PREFIX>_BASE_URL set in Secrets."
-    );
+  if (seeded > 0) {
+    logger.info({ count: seeded }, "Provider seed from env completed");
+    await refreshProviderSettings(true);
+  } else {
+    logger.warn("No providers found in env to seed");
   }
-
-  return providers;
 }
 
 /**
