@@ -347,14 +347,16 @@ export async function adminFetchRemoteModels(id: string) {
   const apiKey = decryptSecret(row.apiKeyEncrypted);
   if (!apiKey) throw new Error("Failed to decrypt API key");
   
-  let fetchUrl = row.baseUrl;
-  if (!fetchUrl.endsWith('/v1')) {
-    fetchUrl += fetchUrl.endsWith('/') ? 'v1' : '/v1';
+  // Normalize base URL: remove trailing slashes, ensure /v1 suffix
+  let fetchUrl = row.baseUrl.replace(/\/+$/, "");
+  if (!fetchUrl.endsWith('/v1') && !fetchUrl.match(/\/v\d/)) {
+    fetchUrl += '/v1';
   }
   fetchUrl += "/models";
 
   const res = await fetch(fetchUrl, {
     headers: { Authorization: `Bearer ${apiKey}` },
+    signal: AbortSignal.timeout(15000) // 15 second timeout
   });
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
@@ -380,8 +382,11 @@ export async function adminTestProviderModel(providerId: string, modelId: string
   const apiKey = decryptSecret(provider.apiKeyEncrypted);
   if (!apiKey) throw new Error("Failed to decrypt API key");
   
-  let fetchUrl = provider.baseUrl;
-  if (!fetchUrl.endsWith('/v1')) fetchUrl += fetchUrl.endsWith('/') ? 'v1' : '/v1';
+  // Normalize base URL: remove trailing slashes, ensure /v1 suffix
+  let fetchUrl = provider.baseUrl.replace(/\/+$/, "");
+  if (!fetchUrl.endsWith('/v1') && !fetchUrl.match(/\/v\d/)) {
+    fetchUrl += '/v1';
+  }
   fetchUrl += "/chat/completions";
 
   const res = await fetch(fetchUrl, {
@@ -394,7 +399,8 @@ export async function adminTestProviderModel(providerId: string, modelId: string
       model: model.upstreamModelId,
       messages: [{ role: "user", content: "hi" }],
       max_tokens: 1
-    })
+    }),
+    signal: AbortSignal.timeout(30000) // 30 second timeout
   });
   
   if (!res.ok) {
@@ -411,7 +417,8 @@ export async function adminTestProviderModel(providerId: string, modelId: string
   return { ok: true, data };
 }
 
-export async function adminTestRawModel(providerId: string, upstreamModelId: string) {
+export async function adminTestRawModel(providerId: string, upstreamModelId: string, retryCount = 0): Promise<{ ok: boolean; error?: string; data?: any }> {
+  const MAX_RETRIES = 2;
   const provider = await db.query.aiProviderSettingsTable.findFirst({ where: eq(aiProviderSettingsTable.id, providerId) });
   if (!provider) throw new Error("Provider not found");
   if (!provider.baseUrl || !provider.apiKeyEncrypted) throw new Error("Provider incomplete (missing URL or API Key)");
@@ -419,35 +426,77 @@ export async function adminTestRawModel(providerId: string, upstreamModelId: str
   const apiKey = decryptSecret(provider.apiKeyEncrypted);
   if (!apiKey) throw new Error("Failed to decrypt API key");
   
-  let fetchUrl = provider.baseUrl;
-  if (!fetchUrl.endsWith('/v1')) fetchUrl += fetchUrl.endsWith('/') ? 'v1' : '/v1';
+  // Normalize base URL: remove trailing slashes, ensure /v1 suffix
+  let fetchUrl = provider.baseUrl.replace(/\/+$/, "");
+  if (!fetchUrl.endsWith('/v1') && !fetchUrl.match(/\/v\d/)) {
+    fetchUrl += '/v1';
+  }
   fetchUrl += "/chat/completions";
 
-  const res = await fetch(fetchUrl, {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: upstreamModelId,
-      messages: [{ role: "user", content: "hi" }],
-      max_tokens: 1
-    })
-  });
+  let res: globalThis.Response;
+  try {
+    res = await fetch(fetchUrl, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: upstreamModelId,
+        messages: [{ role: "user", content: "hi" }],
+        max_tokens: 1
+      }),
+      signal: AbortSignal.timeout(30000) // 30 second timeout
+    });
+  } catch (fetchErr: any) {
+    // Network error — retry
+    if (retryCount < MAX_RETRIES) {
+      await new Promise(r => setTimeout(r, 3000 * (retryCount + 1)));
+      return adminTestRawModel(providerId, upstreamModelId, retryCount + 1);
+    }
+    return { ok: false, error: `Network error: ${fetchErr.message}` };
+  }
+  
+  // Rate limit (429) or server overload (502/503/504) — retry
+  if ((res.status === 429 || res.status >= 500) && retryCount < MAX_RETRIES) {
+    const waitMs = res.status === 429 ? 5000 * (retryCount + 1) : 3000 * (retryCount + 1);
+    await new Promise(r => setTimeout(r, waitMs));
+    return adminTestRawModel(providerId, upstreamModelId, retryCount + 1);
+  }
   
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
     try {
       const errJson = JSON.parse(errText);
-      return { ok: false, error: errJson.error?.message || errJson.message || `HTTP ${res.status}: ${errText.slice(0, 100)}` };
+      return { ok: false, error: errJson.error?.message || errJson.message || `HTTP ${res.status}: ${errText.slice(0, 200)}` };
     } catch (e) {
-      return { ok: false, error: `HTTP ${res.status}: ${errText.slice(0, 100)}` };
+      return { ok: false, error: `HTTP ${res.status}: ${errText.slice(0, 200)}` };
     }
   }
   
-  const data = await res.json();
-  return { ok: true, data };
+  // Response is 200, but check for "false positive" — provider returns 200 with error inside body
+  const text = await res.text().catch(() => "");
+  try {
+    const data = JSON.parse(text);
+    // Check common error patterns in response body even when HTTP status is 200
+    if (data.error) {
+      const errMsg = typeof data.error === "string" ? data.error : data.error?.message || JSON.stringify(data.error);
+      // Rate limit in body — retry
+      if (retryCount < MAX_RETRIES && /rate.?limit|concurren|too many|quota|limit|throttl/i.test(errMsg)) {
+        await new Promise(r => setTimeout(r, 5000 * (retryCount + 1)));
+        return adminTestRawModel(providerId, upstreamModelId, retryCount + 1);
+      }
+      return { ok: false, error: errMsg };
+    }
+    // Must have choices array or at least some valid structure
+    if (data.choices || data.id || data.object) {
+      return { ok: true, data };
+    }
+    // Unknown response format but no error field — treat as ok
+    return { ok: true, data };
+  } catch (e) {
+    return { ok: false, error: `Invalid JSON response: ${text.slice(0, 200)}` };
+  }
 }
 
 

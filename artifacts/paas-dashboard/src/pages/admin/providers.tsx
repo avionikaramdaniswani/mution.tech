@@ -98,13 +98,17 @@ export default function AdminProviders() {
     
     setImportProgress({ current: 0, total: selectedModels.length, success: 0 });
     const successModelIds: string[] = [];
+    let skippedCount = 0;
     
     try {
       setImportEditor(prev => prev ? { ...prev, loading: true } : null);
       
       for (let i = 0; i < selectedModels.length; i++) {
         const m = selectedModels[i];
-        setImportProgress(prev => prev ? { ...prev, current: i + 1 } : null);
+        setImportProgress({ current: i + 1, total: selectedModels.length, success: successModelIds.length });
+        
+        // Delay 1.5s between each test to avoid rate limiting
+        if (i > 0) await new Promise(r => setTimeout(r, 1500));
         
         try {
           const testRes = await csrfFetch(`/api/admin/providers/${encodeURIComponent(importEditor.providerId)}/test-raw`, {
@@ -116,7 +120,8 @@ export default function AdminProviders() {
           const testData = await testRes.json();
           if (!testRes.ok || !testData.ok) {
             console.warn(`Model ${m.id} test failed:`, testData.error);
-            continue; // Skip this model
+            skippedCount++;
+            continue;
           }
           
           await request(`/api/admin/providers/${encodeURIComponent(importEditor.providerId)}/models`, "POST", {
@@ -128,9 +133,9 @@ export default function AdminProviders() {
           });
           
           successModelIds.push(m.id);
-          setImportProgress(prev => prev ? { ...prev, success: successModelIds.length } : null);
         } catch (err) {
           console.warn(`Failed processing model ${m.id}:`, err);
+          skippedCount++;
         }
       }
 
@@ -302,7 +307,8 @@ export default function AdminProviders() {
                 {importProgress ? (
                   <div className="mt-4 text-center">
                     <p className="text-sm font-medium text-foreground">Menguji model {importProgress.current} dari {importProgress.total}...</p>
-                    <p className="text-xs text-muted-foreground mt-1">{importProgress.success} model lolos pengujian</p>
+                    <p className="text-xs text-muted-foreground mt-1">✅ {importProgress.success} lolos  •  ❌ {importProgress.current - importProgress.success - (importProgress.current < importProgress.total ? 1 : 0)} gagal</p>
+                    <p className="text-xs text-muted-foreground mt-2 italic">Otomatis retry jika kena rate limit...</p>
                   </div>
                 ) : (
                   <p className="mt-4 text-sm text-muted-foreground">Mengambil daftar model...</p>
