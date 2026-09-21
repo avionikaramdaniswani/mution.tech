@@ -58,7 +58,25 @@ function CopyBtn({ text }: { text: string }) {
     <button
       onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
       className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-md border border-[#e2e8f0] bg-white text-[#64748b] shadow-sm transition-all hover:bg-[#f8fafc] hover:text-[#0f172a]"
-      aria-label="Copy code"
+      title="Salin kode"
+    >
+      {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
+function InlineCopy({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }}
+      className="ml-2 inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+      title="Salin"
     >
       {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
@@ -153,7 +171,18 @@ export default function DocsPage() {
     enabled: !!user,
   });
 
+  const { data: fetchedCatalog } = useQuery({
+    queryKey: ["catalog"],
+    queryFn: async () => {
+      const res = await csrfFetch("/api/catalog");
+      if (!res.ok) throw new Error("Failed to fetch catalog");
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+  
   const displayKey = fullApiKey || "mk_live_YOUR_KEY_HERE";
+  const catalogToUse = fetchedCatalog || MODEL_CATALOG;
 
   return (
     <div className="flex gap-6 max-w-6xl mx-auto">
@@ -189,17 +218,17 @@ export default function DocsPage() {
                   <div className="rounded-lg border border-border bg-card p-4 cursor-pointer hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-2 font-semibold mb-1 text-foreground">
                       <Key className="h-4 w-4" />
-                      <span>1. Generate API Key</span>
+                      <span>1. Dapatkan API Key</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Buat key di halaman API Keys</p>
+                    <p className="text-xs text-muted-foreground">Buat key baru atau salin key milikmu</p>
                   </div>
                 </Link>
                 <div className="rounded-lg border border-border bg-card p-4">
                   <div className="flex items-center gap-2 font-semibold mb-1 text-foreground">
                     <Code className="h-4 w-4" />
-                    <span>2. Gunakan di kode</span>
+                    <span>2. Integrasi ke Aplikasimu</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Ikuti contoh di bagian SDK</p>
+                  <p className="text-xs text-muted-foreground">Salin contoh snippet kode di bawah</p>
                 </div>
               </div>
 
@@ -229,7 +258,12 @@ export default function DocsPage() {
                       [`${base}/v1/embeddings`, "Embedding API"],
                     ].map(([ep, compat]) => (
                       <tr key={ep} className="border-b border-border last:border-0">
-                        <td className="px-4 py-2.5 font-mono text-xs text-foreground/90">{ep}</td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-foreground/90">
+                          <div className="flex items-center">
+                            {ep}
+                            <InlineCopy text={ep} />
+                          </div>
+                        </td>
                         <td className="px-4 py-2.5 text-muted-foreground">{compat}</td>
                       </tr>
                     ))}
@@ -256,11 +290,13 @@ export default function DocsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {MODEL_CATALOG.map((model) => (
+                    {catalogToUse.map((model: any) => (
                       <tr key={model.id} className="border-b border-border last:border-0">
                         <td className="px-4 py-2.5 font-mono text-xs text-foreground/90">
-                          <span>{model.id}</span>
-                          {model.id === defaultModel && (
+                          <div className="flex items-center">
+                            <span>{model.id}</span>
+                            <InlineCopy text={model.id} />
+                            {model.id === defaultModel && (
                             <span className="ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "#dbeafe", color: "#1d4ed8" }}>
                               default
                             </span>
@@ -270,6 +306,7 @@ export default function DocsPage() {
                               {model.note}
                             </span>
                           )}
+                          </div>
                         </td>
                         <td className="px-4 py-2.5 text-muted-foreground">{model.provider}</td>
                         <td className="px-4 py-2.5 text-muted-foreground">{model.description}</td>
