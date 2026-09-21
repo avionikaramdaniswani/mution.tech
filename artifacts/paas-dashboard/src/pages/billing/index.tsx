@@ -386,7 +386,7 @@ function TopupSection() {
             {packages.length > 0 && (
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Paket Pilihan</p>
-                <div className="flex sm:grid sm:grid-cols-3 gap-3 overflow-x-auto pb-4 sm:pb-0 snap-x hide-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0">
+                <div className="flex sm:grid sm:grid-cols-3 gap-3 overflow-x-auto pt-3 pb-4 sm:pb-1 snap-x hide-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0">
                   {packages.map((pkg, i) => {
                     const active = !isCustom && selectedPackage?.id === pkg.id;
                     const isPopular = i === 1; // Highlight middle package
@@ -408,7 +408,7 @@ function TopupSection() {
                         )}
                       >
                         {isPopular && !active && (
-                          <div className="absolute -top-2.5 bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                          <div className="absolute -top-3 bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10">
                             POPULER
                           </div>
                         )}

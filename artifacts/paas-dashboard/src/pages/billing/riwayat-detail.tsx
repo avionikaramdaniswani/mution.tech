@@ -225,7 +225,7 @@ export default function RiwayatDetailPage() {
   const isInactive = order.status === "expired" || order.status === "failed" || order.status === "cancelled";
 
   return (
-    <div className="max-w-xl mx-auto space-y-6 pb-12 pt-4">
+    <div className="max-w-3xl mx-auto space-y-6 pb-12 pt-4">
       
       {/* Header Terpisah */}
       <div className="flex items-center justify-between">

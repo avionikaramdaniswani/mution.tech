@@ -74,9 +74,10 @@ const navGroups = [
 
 const topNavLinks: TopNavLink[] = [
   { label: "Home",      href: "/" },
-  { label: "Dashboard", href: "/dashboard" },
   { label: "Pricing",   href: "/harga" },
+  { label: "Docs",      href: "/docs" },
   { label: "Changelog", href: "/changelog" },
+  { label: "Support",   href: "/support" },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {

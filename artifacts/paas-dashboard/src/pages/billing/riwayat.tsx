@@ -112,7 +112,7 @@ export default function RiwayatOrderPage() {
   const visibleTabs = TABS.filter(t => t.key === "all" || (counts[t.key] ?? 0) > 0);
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto pb-12 pt-4">
+    <div className="space-y-6 max-w-4xl mx-auto pb-12 pt-4">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>

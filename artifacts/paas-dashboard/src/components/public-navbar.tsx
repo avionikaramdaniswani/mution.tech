@@ -6,8 +6,9 @@ import { ArrowRight, Menu, X } from "lucide-react";
 
 const navLinks = [
   { label: "Pricing", href: "/harga" },
-  { label: "FAQ", href: "/faq" },
-  { label: "About", href: "/tentang-kami" },
+  { label: "Docs", href: "/docs" },
+  { label: "Changelog", href: "/changelog" },
+  { label: "Support", href: "/support" },
 ];
 
 export function PublicNavbar() {
