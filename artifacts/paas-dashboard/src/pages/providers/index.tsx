@@ -43,7 +43,7 @@ function getProviderIcon(provider: string, baseClassName?: string) {
   if (provider === "Zhipu AI") return <img src="/logo-zhipu.jpg" alt="Zhipu AI" className={cls} style={{ objectFit: "contain" }} />;
   if (provider === "MiniMax") return <img src="/logo-minimax.png" alt="MiniMax" className={cls} style={{ objectFit: "contain" }} />;
   if (provider === "Moonshot AI") return <img src="/logo-moonshot.png" alt="Moonshot AI" className={cls} style={{ objectFit: "contain" }} />;
-  if (provider === "Google") return <img src="/gemini.jpg" alt="Google" className={cls} style={{ objectFit: "contain" }} />;
+  if (provider === "Google") return <img src="/gemini.jpg" alt="Google" className={`${cls} mix-blend-multiply scale-125`} style={{ objectFit: "contain" }} />;
   return <Brain className={`${cls} text-[#64748b]`} />;
 }
 
