@@ -85,6 +85,13 @@
       "when": 1789976463761,
       "tag": "0011_add_duitku_reference",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789977590681,
+      "tag": "0012_add_duitku_paycode",
+      "breakpoints": true
     }
   ]
 }

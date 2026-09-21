@@ -29,6 +29,7 @@ interface OrderDetail {
   amountReceived: number | null;
   creditsAmount: number;
   payCode: string | number | null;
+  qrString: string | null;
   payUrl: string | null;
   checkoutUrl: string | null;
   status: OrderStatus;
@@ -390,24 +391,61 @@ export default function RiwayatDetailPage() {
       {/* Metode Pembayaran */}
       {(order.paymentName || order.paymentMethod) && (
         <Section title="Metode Pembayaran">
-          <div className="px-4 py-3 flex items-center justify-between gap-3" style={{ borderBottom: "none" }}>
-            <div>
-              <p className="text-sm font-medium text-white">{order.paymentName ?? order.paymentMethod}</p>
-              {order.paymentMethod && order.paymentName && (
-                <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>{order.paymentMethod}</p>
+          <div className="px-4 py-4 flex flex-col gap-4" style={{ borderBottom: "none" }}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-white">{order.paymentName ?? order.paymentMethod ?? "Duitku Payment"}</p>
+                {order.paymentMethod && order.paymentName && (
+                  <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>{order.paymentMethod}</p>
+                )}
+              </div>
+              {isPending && order.checkoutUrl && !order.payCode && !order.qrString && (
+                <a
+                  href={order.checkoutUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ background: "#F97316", color: "white" }}
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Lanjut ke Pembayaran
+                </a>
               )}
             </div>
-            {isPending && order.checkoutUrl && (
-              <a
-                href={order.checkoutUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                style={{ background: "#F97316", color: "white" }}
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Bayar Sekarang
-              </a>
+
+            {/* Jika VA */}
+            {isPending && order.payCode && (
+              <div className="p-3 rounded-lg flex items-center justify-between" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div>
+                  <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Nomor Virtual Account</p>
+                  <p className="text-lg font-mono font-bold tracking-wider text-white">{order.payCode}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(String(order.payCode));
+                    setCopyId(1);
+                    setTimeout(() => setCopyId(null), 2000);
+                  }}
+                  className="p-2 rounded-md transition-colors"
+                  style={{ background: "rgba(255,255,255,0.05)" }}
+                >
+                  {copyId === 1 ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4 text-white" />}
+                </button>
+              </div>
+            )}
+
+            {/* Jika QRIS */}
+            {isPending && order.qrString && (
+              <div className="p-4 rounded-lg flex flex-col items-center justify-center gap-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <p className="text-sm font-medium text-white">Scan QR Code ini untuk membayar</p>
+                <div className="p-2 bg-white rounded-lg">
+                  <img 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(order.qrString)}`} 
+                    alt="QR Code Pembayaran" 
+                    className="w-48 h-48"
+                  />
+                </div>
+              </div>
             )}
           </div>
         </Section>

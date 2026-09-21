@@ -308,7 +308,7 @@ function TopupSection() {
         setError(data.error ?? "Gagal membuat transaksi");
         return;
       }
-      window.location.href = data.paymentUrl;
+      window.location.search = `?orderId=${data.orderId}`;
     } catch {
       setError("Gagal terhubung ke server");
     } finally {

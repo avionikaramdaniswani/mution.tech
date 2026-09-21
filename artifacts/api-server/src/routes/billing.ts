@@ -243,7 +243,8 @@ router.get("/billing/orders/:id", requireAuth, async (req, res): Promise<void> =
     totalFee: null,
     amountReceived: null,
     creditsAmount: order.creditsAmount,
-    payCode: null,
+    payCode: order.payCode ?? null,
+    qrString: order.qrString ?? null,
     payUrl: null,
     checkoutUrl: order.paymentUrl ?? null,
     status,
@@ -387,7 +388,8 @@ router.get("/billing/orders", requireAuth, async (req, res): Promise<void> => {
       totalFee: null,
       amountReceived: null,
       creditsAmount: o.creditsAmount,
-      payCode: null,
+      payCode: o.payCode ?? null,
+      qrString: o.qrString ?? null,
       payUrl: null,
       checkoutUrl: o.paymentUrl ?? null,
       status: o.status,
@@ -492,9 +494,11 @@ router.post("/billing/duitku/create", requireAuth, async (req, res): Promise<voi
 
     const paymentUrl = duitkuRes.paymentUrl;
     const duitkuReference = duitkuRes.reference;
+    const payCode = duitkuRes.vaNumber ?? null;
+    const qrString = duitkuRes.qrString ?? null;
     await db
       .update(paymentOrdersTable)
-      .set({ paymentUrl, duitkuReference })
+      .set({ paymentUrl, duitkuReference, payCode, qrString })
       .where(eq(paymentOrdersTable.id, order.id));
 
     res.json({
