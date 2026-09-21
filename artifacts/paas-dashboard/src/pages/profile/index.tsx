@@ -3,20 +3,19 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Mail, ShieldCheck, KeyRound } from "lucide-react";
+import { User, Mail, ShieldCheck, KeyRound, Loader2, CheckCircle2 } from "lucide-react";
 import { apiFetch } from "@/lib/api-fetch";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
-function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value?: string }) {
+function InfoRow({ icon: Icon, label, value, isLast = false }: { icon: any; label: string; value?: string, isLast?: boolean }) {
   return (
-    <div className="flex items-start gap-4 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-      <div
-        className="mt-0.5 h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-      >
-        <Icon className="h-4 w-4 text-muted-foreground" />
+    <div className={`flex items-start gap-4 py-4 ${!isLast ? 'border-b border-border/50' : ''}`}>
+      <div className="mt-0.5 h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary">
+        <Icon className="h-4 w-4" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+        <p className="text-xs text-muted-foreground mb-0.5 font-medium">{label}</p>
         <p className="text-sm font-medium text-foreground truncate">{value ?? "-"}</p>
       </div>
     </div>
@@ -73,116 +72,116 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">Profil</h1>
-        <p className="text-sm text-muted-foreground mt-1">Informasi akun dan pengaturan keamanan.</p>
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Profil Akun</h1>
+        <p className="text-muted-foreground mt-2">Kelola informasi personal dan pengaturan keamanan akun Anda.</p>
       </div>
 
-      {/* Card: info akun */}
-      <div
-        className="rounded-2xl overflow-hidden mb-6"
-        style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-      >
-        {/* Avatar header */}
-        <div
-          className="px-6 pt-8 pb-6 flex items-center gap-5"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}
-        >
-          <div
-            className="h-16 w-16 rounded-2xl flex items-center justify-center text-2xl font-bold flex-shrink-0"
-            style={{
-              background: "rgba(249,115,22,0.15)",
-              border: "1px solid rgba(249,115,22,0.25)",
-              color: "rgb(249,115,22)",
-            }}
-          >
-            {initials}
-          </div>
-          <div>
-            <p className="text-lg font-semibold">{user?.name}</p>
-            <p className="text-sm text-muted-foreground">{user?.email}</p>
-            <span
-              className="inline-flex mt-1.5 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
-              style={
-                user?.role === "admin"
-                  ? { background: "rgba(239,68,68,0.12)", color: "rgb(239,68,68)", border: "1px solid rgba(239,68,68,0.2)" }
-                  : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)" }
-              }
-            >
-              {user?.role === "admin" ? "Admin" : "User"}
-            </span>
-          </div>
+      <div className="grid gap-8 md:grid-cols-[1fr_1fr] items-start">
+        <div className="space-y-8">
+          <Card className="border-border/50 shadow-sm overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50 pointer-events-none" />
+            <CardContent className="p-0 relative">
+              <div className="px-6 pt-8 pb-6 flex items-center gap-5 border-b border-border/50 bg-muted/20">
+                <div className="h-16 w-16 rounded-2xl flex items-center justify-center text-xl font-bold bg-primary/10 text-primary border border-primary/20 shadow-sm">
+                  {initials}
+                </div>
+                <div>
+                  <p className="text-xl font-semibold">{user?.name}</p>
+                  <p className="text-sm text-muted-foreground mb-2">{user?.email}</p>
+                  <Badge variant={user?.role === "admin" ? "destructive" : "secondary"} className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5">
+                    {user?.role === "admin" ? "Administrator" : "User"}
+                  </Badge>
+                </div>
+              </div>
+              <div className="px-6 py-2">
+                <InfoRow icon={User} label="Nama Lengkap" value={user?.name} />
+                <InfoRow icon={Mail} label="Alamat Email" value={user?.email} />
+                <InfoRow icon={ShieldCheck} label="Tipe Akun" value={user?.role === "admin" ? "Administrator" : "Regular User"} isLast={true} />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Info rows */}
-        <div className="px-6">
-          <InfoRow icon={User}        label="Nama"  value={user?.name} />
-          <InfoRow icon={Mail}        label="Email" value={user?.email} />
-          <InfoRow icon={ShieldCheck} label="Role"  value={user?.role === "admin" ? "Administrator" : "Regular User"} />
+        <div className="space-y-8">
+          <Card className="border-border/50 shadow-sm transition-all duration-300 hover:shadow-md hover:border-primary/20">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-orange-500/10 text-orange-500 flex-shrink-0">
+                  <KeyRound className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Keamanan Akun</CardTitle>
+                  <CardDescription>Perbarui password Anda secara berkala.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="current-pw" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Password Saat Ini</Label>
+                  <Input
+                    id="current-pw"
+                    type="password"
+                    placeholder="••••••••"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="bg-muted/50 border-border/50 focus:bg-background transition-colors"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-pw" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Password Baru</Label>
+                  <Input
+                    id="new-pw"
+                    type="password"
+                    placeholder="Minimal 6 karakter"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="bg-muted/50 border-border/50 focus:bg-background transition-colors"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-pw" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Konfirmasi Password Baru</Label>
+                  <Input
+                    id="confirm-pw"
+                    type="password"
+                    placeholder="Ketik ulang password baru"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="bg-muted/50 border-border/50 focus:bg-background transition-colors"
+                  />
+                </div>
+
+                {pwError && (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium animate-in fade-in zoom-in-95">
+                    {pwError}
+                  </div>
+                )}
+                {pwSuccess && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-sm font-medium animate-in fade-in zoom-in-95">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Password berhasil diperbarui!
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <Button type="submit" className="w-full relative overflow-hidden group" disabled={isChangingPassword}>
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary-foreground/0 via-primary-foreground/10 to-primary-foreground/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                    {isChangingPassword ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Menyimpan...
+                      </span>
+                    ) : (
+                      "Simpan Password Baru"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
-      </div>
-
-      {/* Card: ganti password */}
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-      >
-        <div
-          className="px-6 py-4 flex items-center gap-3"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}
-        >
-          <KeyRound className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-semibold">Ganti Password</p>
-        </div>
-
-        <form onSubmit={handleChangePassword} className="px-6 py-6 space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="current-pw" className="text-xs text-muted-foreground">Password saat ini</Label>
-            <Input
-              id="current-pw"
-              type="password"
-              placeholder="********"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="new-pw" className="text-xs text-muted-foreground">Password baru</Label>
-              <Input
-                id="new-pw"
-                type="password"
-                placeholder="Min. 6 karakter"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="confirm-pw" className="text-xs text-muted-foreground">Konfirmasi password</Label>
-              <Input
-                id="confirm-pw"
-                type="password"
-                placeholder="Ulangi password baru"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {pwError && (
-            <p className="text-xs text-destructive">{pwError}</p>
-          )}
-          {pwSuccess && (
-            <p className="text-xs text-emerald-500">Password berhasil diperbarui.</p>
-          )}
-
-          <div className="flex justify-end pt-1">
-            <Button type="submit" size="sm" disabled={isChangingPassword}>
-              {isChangingPassword ? "Menyimpan..." : "Simpan Password"}
-            </Button>
-          </div>
-        </form>
       </div>
     </div>
   );
