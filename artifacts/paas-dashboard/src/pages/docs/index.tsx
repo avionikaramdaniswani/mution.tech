@@ -3,6 +3,8 @@ import { Copy, Check, Key, Code, Terminal, BookOpen, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "wouter";
 import { DEFAULT_MODEL_ID, MODEL_CATALOG } from "@workspace/model-catalog";
+import { useQuery } from "@tanstack/react-query";
+import { csrfFetch } from "@/lib/csrf";
 
 type OsTab = "linux" | "powershell" | "cmd";
 type ActiveTab = "quickstart" | "openai" | "openai-node" | "claude-code" | "codex" | "curl";
@@ -133,6 +135,25 @@ export default function DocsPage() {
   const base = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : "https://mution.tech";
   const [activeTab, setActiveTab] = useState<ActiveTab>("quickstart");
   const defaultModel = DEFAULT_MODEL_ID;
+
+  const { data: fullApiKey } = useQuery({
+    queryKey: ["docs-api-key"],
+    queryFn: async () => {
+      const res = await csrfFetch("/api/api-keys", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      const keys = await res.json();
+      const activeKey = keys.find((k: any) => k.isActive);
+      if (!activeKey) return "mk_live_YOUR_KEY_HERE";
+      
+      const revealRes = await csrfFetch(`/api/api-keys/${activeKey.id}/reveal`, { credentials: "include" });
+      if (!revealRes.ok) return activeKey.keyPrefix + "...";
+      const revealData = await revealRes.json();
+      return revealData.fullKey || activeKey.keyPrefix + "...";
+    },
+    enabled: !!user,
+  });
+
+  const displayKey = fullApiKey || "mk_live_YOUR_KEY_HERE";
 
   return (
     <div className="flex gap-6 max-w-6xl mx-auto">
@@ -273,7 +294,7 @@ export default function DocsPage() {
               <CodeBlock lang="python" code={`from openai import OpenAI
 
 client = OpenAI(
-    api_key="mk_live_YOUR_KEY_HERE",
+    api_key="${displayKey}",
     base_url="${base}/v1"
 )
 
@@ -292,7 +313,7 @@ print(response.choices[0].message.content)`} />
               <CodeBlock lang="python" code={`from openai import OpenAI
 
 client = OpenAI(
-    api_key="mk_live_YOUR_KEY_HERE",
+    api_key="${displayKey}",
     base_url="${base}/v1"
 )
 
@@ -317,7 +338,7 @@ with client.chat.completions.stream(
               <CodeBlock lang="typescript" code={`import OpenAI from "openai";
 
 const client = new OpenAI({
-  apiKey: "mk_live_YOUR_KEY_HERE",
+  apiKey: "${displayKey}",
   baseURL: "${base}/v1",
 });
 
@@ -359,11 +380,11 @@ console.log(response.choices[0].message.content);`} />
               <p className="text-foreground/70 text-sm mb-3">Isi dengan API key Mution kamu:</p>
               <OsTabs
                 linux={`export ANTHROPIC_BASE_URL="${base}"
-export ANTHROPIC_AUTH_TOKEN="mk_live_YOUR_KEY_HERE"
-export ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"`}
+export ANTHROPIC_AUTH_TOKEN="${displayKey}"
+export ANTHROPIC_API_KEY="${displayKey}"`}
                 powershell={`$env:ANTHROPIC_BASE_URL = "${base}"
-$env:ANTHROPIC_AUTH_TOKEN = "mk_live_YOUR_KEY_HERE"
-$env:ANTHROPIC_API_KEY = "mk_live_YOUR_KEY_HERE"`}
+$env:ANTHROPIC_AUTH_TOKEN = "${displayKey}"
+$env:ANTHROPIC_API_KEY = "${displayKey}"`}
                 cmd={`set ANTHROPIC_BASE_URL=${base}
 set ANTHROPIC_AUTH_TOKEN=mk_live_YOUR_KEY_HERE
 set ANTHROPIC_API_KEY=mk_live_YOUR_KEY_HERE`}
@@ -374,19 +395,19 @@ set ANTHROPIC_API_KEY=mk_live_YOUR_KEY_HERE`}
               </p>
               <OsTabs
                 linux={`echo 'export ANTHROPIC_BASE_URL="${base}"' >> ~/.zshrc
-echo 'export ANTHROPIC_AUTH_TOKEN="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc
-echo 'export ANTHROPIC_API_KEY="mk_live_YOUR_KEY_HERE"' >> ~/.zshrc
+echo 'export ANTHROPIC_AUTH_TOKEN="${displayKey}"' >> ~/.zshrc
+echo 'export ANTHROPIC_API_KEY="${displayKey}"' >> ~/.zshrc
 source ~/.zshrc
 
 # Untuk bash ganti ~/.zshrc dengan ~/.bashrc`}
                 powershell={`[System.Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL", "${base}", "User")
-[System.Environment]::SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "mk_live_YOUR_KEY_HERE", "User")
-[System.Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "mk_live_YOUR_KEY_HERE", "User")
+[System.Environment]::SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "${displayKey}", "User")
+[System.Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "${displayKey}", "User")
 
 # Restart PowerShell setelah ini`}
                 cmd={`setx ANTHROPIC_BASE_URL "${base}"
-setx ANTHROPIC_AUTH_TOKEN "mk_live_YOUR_KEY_HERE"
-setx ANTHROPIC_API_KEY "mk_live_YOUR_KEY_HERE"
+setx ANTHROPIC_AUTH_TOKEN "${displayKey}"
+setx ANTHROPIC_API_KEY "${displayKey}"
 
 REM Buka CMD baru setelah ini`}
               />
@@ -403,7 +424,7 @@ REM Buka CMD baru setelah ini`}
               <CodeBlock lang="python" code={`import anthropic
 
 client = anthropic.Anthropic(
-    api_key="mk_live_YOUR_KEY_HERE",
+    api_key="${displayKey}",
     base_url="${base}",
 )
 
@@ -423,7 +444,7 @@ print(message.content[0].text)`} />
               <CodeBlock lang="typescript" code={`import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic({
-  apiKey: "mk_live_YOUR_KEY_HERE",
+  apiKey: "${displayKey}",
   baseURL: "${base}",
 });
 
@@ -443,7 +464,7 @@ console.log(message.content[0].type === "text" ? message.content[0].text : "");`
               <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-foreground/70 mb-4 flex items-start gap-2">
                 <span className="mt-0.5">💡</span>
                 <span>
-                  Codex CLI dikonfigurasi lewat file <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">config.toml</code> dan <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">auth.json</code> di direktori <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">.codex</code> — bukan env var.
+                  Codex CLI dikonfigurasi lewat file <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">config.toml</code> di direktori <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">.codex</code> — sangat mudah!
                 </span>
               </div>
 
@@ -478,6 +499,7 @@ windows_wsl_setup_acknowledged = true
 [model_providers.OpenAI]
 name = "OpenAI"
 base_url = "${base}"
+api_key = "${displayKey}"
 wire_api = "responses"
 requires_openai_auth = true
 
@@ -494,20 +516,7 @@ goals = true`}
                 </span>
               </div>
 
-              <H3>4. Tambahkan auth.json</H3>
-              <p className="text-foreground/60 text-xs mb-1">
-                macOS / Linux: <code className="font-mono">~/.codex/auth.json</code> &nbsp;·&nbsp; Windows: <code className="font-mono">%USERPROFILE%\.codex\auth.json</code>
-              </p>
-              <CodeBlock
-                lang="json"
-                filename="auth.json"
-                code={`{
-  "OPENAI_API_KEY": "mk_live_YOUR_KEY_HERE"
-}`}
-              />
-              <p className="text-xs text-foreground/50 -mt-2">Ganti <code className="font-mono">mk_live_YOUR_KEY_HERE</code> dengan API key kamu dari halaman <span className="underline underline-offset-2 cursor-pointer" onClick={() => window.location.href = "/api-keys"}>API Keys</span>.</p>
-
-              <H3>5. Jalankan Codex</H3>
+              <H3>4. Jalankan Codex</H3>
               <CodeBlock lang="bash" code={`codex\n# Atau langsung dengan prompt:\ncodex "Buat REST API dengan Express dan TypeScript"`} />
             </div>
           )}
