@@ -3,6 +3,12 @@ import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Menu, X, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navLinks = [
   { label: "Pricing", href: "/harga" },
@@ -54,19 +60,31 @@ export function PublicNavbar() {
               {link.label}
             </Link>
           ))}
-          <div className="relative group">
-            <button className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-[#526173] transition-colors hover:bg-[#eef8ff] hover:text-[#172033]">
-              Company
-              <ChevronDown className="h-4 w-4 transition-transform group-hover:rotate-180" />
-            </button>
-            <div className="absolute top-full right-0 mt-2 w-48 rounded-2xl bg-white border border-[#dbe8f3] p-2 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-              <Link href="/tentang-kami" className="block rounded-xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">About Us</Link>
-              <Link href="/faq" className="block rounded-xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">FAQ</Link>
-              <Link href="/privacy-policy" className="block rounded-xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">Privacy Policy</Link>
-              <Link href="/terms-and-conditions" className="block rounded-xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">Terms & Conditions</Link>
-              <Link href="/refund-policy" className="block rounded-xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">Refund Policy</Link>
-            </div>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-[#526173] transition-colors hover:bg-[#eef8ff] hover:text-[#172033] outline-none">
+                Company
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-48 rounded-2xl p-2 bg-white border-[#dbe8f3] shadow-lg" align="start">
+              <DropdownMenuItem asChild className="rounded-xl cursor-pointer hover:bg-[#eef8ff] hover:text-[#172033]">
+                <Link href="/tentang-kami">About Us</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="rounded-xl cursor-pointer hover:bg-[#eef8ff] hover:text-[#172033]">
+                <Link href="/faq">FAQ</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="rounded-xl cursor-pointer hover:bg-[#eef8ff] hover:text-[#172033]">
+                <Link href="/privacy-policy">Privacy Policy</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="rounded-xl cursor-pointer hover:bg-[#eef8ff] hover:text-[#172033]">
+                <Link href="/terms-and-conditions">Terms & Conditions</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="rounded-xl cursor-pointer hover:bg-[#eef8ff] hover:text-[#172033]">
+                <Link href="/refund-policy">Refund Policy</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
