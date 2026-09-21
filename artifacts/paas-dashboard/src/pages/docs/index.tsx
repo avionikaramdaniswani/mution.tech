@@ -16,26 +16,35 @@ function OsTabs({ linux, powershell, cmd }: { linux: string; powershell: string;
   ];
   const code = active === "linux" ? linux : active === "powershell" ? powershell : cmd;
   return (
-    <div className="not-prose rounded-lg my-4 overflow-hidden" style={{ background: "#f6f8fa", border: "1px solid #e1e4e8" }}>
-      <div className="flex" style={{ borderBottom: "1px solid #e1e4e8", background: "#f0f2f4" }}>
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setActive(t.key)}
-            className="px-3 py-2 text-xs font-medium transition-colors"
-            style={{
-              borderRight: "1px solid #e1e4e8",
-              color: active === t.key ? "#24292e" : "#6e7781",
-              background: active === t.key ? "#f6f8fa" : "transparent",
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+    <div className="not-prose relative rounded-xl my-6 overflow-hidden bg-white shadow-sm border border-[#e2e8f0]">
+      <div className="flex bg-[#f8fafc] border-b border-[#e2e8f0] px-3 pt-2">
+        <div className="flex gap-1.5 items-center mr-4">
+          <div className="w-2.5 h-2.5 rounded-full bg-[#ef4444]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[#eab308]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" />
+        </div>
+        <div className="flex gap-1">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActive(t.key)}
+              className={`px-4 py-2 text-xs font-medium rounded-t-lg transition-colors z-10 ${
+                active === t.key
+                  ? "bg-white text-[#0f172a] border border-[#e2e8f0] border-b-white shadow-[0_-2px_4px_rgba(0,0,0,0.02)]"
+                  : "text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9] border border-transparent"
+              }`}
+              style={{ marginBottom: "-1px" }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="relative">
         <CopyBtn text={code} />
-        <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed" style={{ color: "#24292e", background: "#f6f8fa", margin: 0 }}>{code}</pre>
+        <pre className="overflow-x-auto px-5 py-4 text-[13px] font-mono leading-relaxed text-[#334155] m-0 bg-white">
+          {code}
+        </pre>
       </div>
     </div>
   );
@@ -46,27 +55,33 @@ function CopyBtn({ text }: { text: string }) {
   return (
     <button
       onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded transition-colors"
-      style={{ border: "1px solid #d0d7de", background: "#ffffff", color: "#57606a" }}
-      onMouseEnter={e => (e.currentTarget.style.background = "#f3f4f6")}
-      onMouseLeave={e => (e.currentTarget.style.background = "#ffffff")}
+      className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-md border border-[#e2e8f0] bg-white text-[#64748b] shadow-sm transition-all hover:bg-[#f8fafc] hover:text-[#0f172a]"
       aria-label="Copy code"
     >
-      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
   );
 }
 
 function CodeBlock({ code, lang = "bash", filename }: { code: string; lang?: string; filename?: string }) {
   return (
-    <div className="not-prose relative rounded-lg my-4 overflow-hidden" style={{ background: "#f6f8fa", border: "1px solid #e1e4e8" }}>
-      <div className="flex items-center justify-between px-4 py-2" style={{ borderBottom: "1px solid #e1e4e8", background: "#f0f2f4" }}>
-        <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: "#6e7781" }}>
-          {filename ? <span style={{ color: "#24292e", textTransform: "none" }}>{filename}</span> : lang}
-        </span>
+    <div className="not-prose relative rounded-xl my-6 overflow-hidden bg-white shadow-sm border border-[#e2e8f0]">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[#f8fafc] border-b border-[#e2e8f0]">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#ef4444]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#eab308]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" />
+          </div>
+          <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#64748b]">
+            {filename || lang}
+          </span>
+        </div>
         <CopyBtn text={code} />
       </div>
-      <pre className="overflow-x-auto px-4 py-4 text-xs font-mono leading-relaxed" style={{ color: "#24292e", background: "#f6f8fa", margin: 0 }}>{code}</pre>
+      <pre className="overflow-x-auto px-5 py-4 text-[13px] font-mono leading-relaxed text-[#334155] m-0 bg-white">
+        {code}
+      </pre>
     </div>
   );
 }
@@ -167,7 +182,16 @@ export default function DocsPage() {
                 </div>
               </div>
 
-              <H3>Base URL & Endpoint</H3>
+              <H3>Base URL</H3>
+              <div className="rounded-lg border border-border bg-card p-4 mb-6">
+                <p className="text-sm text-foreground/70 mb-2">Gunakan URL ini sebagai `baseURL` di semua SDK (OpenAI, Anthropic, dll):</p>
+                <div className="flex items-center justify-between bg-muted/30 px-3 py-2 rounded border border-border">
+                  <code className="font-mono text-sm text-foreground">{base}/v1</code>
+                  <CopyBtn text={`${base}/v1`} />
+                </div>
+              </div>
+
+              <H3>Endpoints</H3>
               <div className="rounded-lg border border-border bg-card overflow-hidden">
                 <table className="w-full text-xs">
                   <thead>
