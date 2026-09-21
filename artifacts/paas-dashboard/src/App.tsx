@@ -12,6 +12,7 @@ import { AdminLayout } from "@/components/layout/admin-layout";
 
 import Landing from "@/pages/landing";
 import AuthPage from "@/pages/auth/auth-page";
+import ForgotPasswordPage from "@/pages/auth/forgot-password";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import NewProject from "@/pages/projects/new";
@@ -95,6 +96,7 @@ function Router() {
       <Switch>
         <Route path="/login" component={() => <AuthPage initialTab="login" />} />
         <Route path="/register" component={() => <AuthPage initialTab="register" />} />
+        <Route path="/forgot-password" component={ForgotPasswordPage} />
 
         {/* User routes */}
         <Route path="/dashboard/billing" component={() => { window.location.replace("/billing" + window.location.search); return null; }} />

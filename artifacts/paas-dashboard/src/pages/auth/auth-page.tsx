@@ -124,6 +124,12 @@ function LoginPanel({ onSwitchTab }: { onSwitchTab: () => void }) {
               </FormItem>
             )} />
 
+            <div className="flex justify-end mt-1">
+              <Link href="/forgot-password" className="text-sm font-medium text-[#f97316] hover:underline">
+                Lupa password?
+              </Link>
+            </div>
+
             {loginMutation.isError && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
                 {/* @ts-ignore */}

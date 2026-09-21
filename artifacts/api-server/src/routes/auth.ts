@@ -144,6 +144,109 @@ router.post("/auth/otp/send", OtpSendLimiter, async (req, res): Promise<void> =>
   res.json({ success: true });
 });
 
+// ─── Forgot Password ──────────────────────────────────────────────────────────
+const ForgotPasswordOtpBody = z.object({
+  email: z.string().trim().email().max(254).transform((v) => v.toLowerCase()),
+});
+
+const ForgotPasswordResetBody = z.object({
+  email: z.string().trim().email().max(254).transform((v) => v.toLowerCase()),
+  otp: z.string().length(6).regex(/^\d{6}$/),
+  newPassword: z.string().min(6).max(128),
+});
+
+router.post("/auth/forgot-password/otp", OtpSendLimiter, async (req, res): Promise<void> => {
+  const parsed = ForgotPasswordOtpBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Format email tidak valid" });
+    return;
+  }
+
+  const { email } = parsed.data;
+
+  // Check if email exists
+  const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email));
+  if (!existing) {
+    // Return success anyway to prevent email enumeration, but we can also return an error if we prefer explicit UX.
+    // The user's system seems to prefer explicit errors based on the login UI.
+    res.status(404).json({ error: "Email tidak ditemukan." });
+    return;
+  }
+
+  const otp = generateOtp();
+  const codeHash = hashOtp(otp);
+  const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+  // Invalidate previous OTPs
+  await db
+    .update(otpVerificationsTable)
+    .set({ usedAt: new Date() })
+    .where(and(eq(otpVerificationsTable.email, email), isNull(otpVerificationsTable.usedAt)));
+
+  await db.insert(otpVerificationsTable).values({ email, codeHash, expiresAt });
+
+  const sent = await sendOtpEmail(email, otp);
+  if (!sent) {
+    res.status(503).json({ error: "Gagal mengirim email. Coba lagi beberapa saat." });
+    return;
+  }
+
+  logger.info({ email }, "Forgot password OTP sent");
+  res.json({ success: true });
+});
+
+router.post("/auth/forgot-password/reset", AuthLimiter, async (req, res): Promise<void> => {
+  const parsed = ForgotPasswordResetBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Data tidak valid. Pastikan semua kolom terisi." });
+    return;
+  }
+
+  const { email, otp, newPassword } = parsed.data;
+  const codeHash = hashOtp(otp);
+  const now = new Date();
+
+  const [otpRecord] = await db
+    .select()
+    .from(otpVerificationsTable)
+    .where(
+      and(
+        eq(otpVerificationsTable.email, email),
+        eq(otpVerificationsTable.codeHash, codeHash),
+        isNull(otpVerificationsTable.usedAt),
+        gt(otpVerificationsTable.expiresAt, now),
+      )
+    )
+    .limit(1);
+
+  if (!otpRecord) {
+    res.status(400).json({ error: "Kode OTP tidak valid atau sudah kedaluwarsa." });
+    return;
+  }
+
+  const [existing] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email));
+  if (!existing) {
+    res.status(404).json({ error: "Akun tidak ditemukan." });
+    return;
+  }
+
+  // Update password
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await db.update(usersTable).set({ password: passwordHash }).where(eq(usersTable.email, email));
+
+  // Mark OTP as used
+  await db
+    .update(otpVerificationsTable)
+    .set({ usedAt: new Date() })
+    .where(eq(otpVerificationsTable.id, otpRecord.id));
+
+  // Invalidate all existing sessions to force re-login everywhere
+  await db.delete(db.session).where(eq(db.session.userId, existing.id));
+
+  logger.info({ email }, "Password reset successful");
+  res.json({ success: true });
+});
+
 // ─── Register (with OTP verification) ────────────────────────────────────────
 router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
