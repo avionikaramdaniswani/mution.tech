@@ -4,6 +4,7 @@ import {
   RefreshCw, Loader2, ChevronRight,
   CheckCircle2, Clock, AlertTriangle, Ban, XCircle, Wallet,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type OrderStatus = "pending" | "paid" | "failed" | "expired" | "cancelled";
 
@@ -23,40 +24,44 @@ interface Order {
 
 const STATUS_CONFIG: Record<OrderStatus, {
   label: string;
-  color: string;
-  dimColor: string;
-  bg: string;
-  border: string;
+  colorClass: string;
+  bgClass: string;
+  borderClass: string;
   icon: React.ReactNode;
 }> = {
-  pending:   {
+  pending: {
     label: "Menunggu",
-    color: "#F97316", dimColor: "rgba(249,115,22,0.6)",
-    bg: "rgba(249,115,22,0.08)", border: "rgba(249,115,22,0.2)",
+    colorClass: "text-orange-600 dark:text-orange-500",
+    bgClass: "bg-orange-100 dark:bg-orange-500/10",
+    borderClass: "border-orange-200 dark:border-orange-500/20",
     icon: <Clock className="h-3 w-3" />,
   },
-  paid:      {
-    label: "Berhasil",
-    color: "#22C55E", dimColor: "rgba(34,197,94,0.6)",
-    bg: "rgba(34,197,94,0.08)", border: "rgba(34,197,94,0.2)",
+  paid: {
+    label: "Lunas",
+    colorClass: "text-emerald-600 dark:text-emerald-500",
+    bgClass: "bg-emerald-100 dark:bg-emerald-500/10",
+    borderClass: "border-emerald-200 dark:border-emerald-500/20",
     icon: <CheckCircle2 className="h-3 w-3" />,
   },
-  failed:    {
+  failed: {
     label: "Gagal",
-    color: "#EF4444", dimColor: "rgba(239,68,68,0.6)",
-    bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.2)",
+    colorClass: "text-red-600 dark:text-red-500",
+    bgClass: "bg-red-100 dark:bg-red-500/10",
+    borderClass: "border-red-200 dark:border-red-500/20",
     icon: <AlertTriangle className="h-3 w-3" />,
   },
-  expired:   {
+  expired: {
     label: "Kadaluarsa",
-    color: "#94A3B8", dimColor: "rgba(148,163,184,0.5)",
-    bg: "rgba(100,116,139,0.07)", border: "rgba(100,116,139,0.18)",
+    colorClass: "text-slate-600 dark:text-slate-400",
+    bgClass: "bg-slate-100 dark:bg-slate-500/10",
+    borderClass: "border-slate-200 dark:border-slate-500/20",
     icon: <XCircle className="h-3 w-3" />,
   },
   cancelled: {
     label: "Dibatalkan",
-    color: "#94A3B8", dimColor: "rgba(148,163,184,0.5)",
-    bg: "rgba(100,116,139,0.07)", border: "rgba(100,116,139,0.18)",
+    colorClass: "text-slate-600 dark:text-slate-400",
+    bgClass: "bg-slate-100 dark:bg-slate-500/10",
+    borderClass: "border-slate-200 dark:border-slate-500/20",
     icon: <Ban className="h-3 w-3" />,
   },
 };
@@ -64,7 +69,7 @@ const STATUS_CONFIG: Record<OrderStatus, {
 const TABS: { key: OrderStatus | "all"; label: string }[] = [
   { key: "all",       label: "Semua" },
   { key: "pending",   label: "Menunggu" },
-  { key: "paid",      label: "Berhasil" },
+  { key: "paid",      label: "Lunas" },
   { key: "cancelled", label: "Dibatalkan" },
   { key: "expired",   label: "Kadaluarsa" },
   { key: "failed",    label: "Gagal" },
@@ -107,37 +112,29 @@ export default function RiwayatOrderPage() {
   const visibleTabs = TABS.filter(t => t.key === "all" || (counts[t.key] ?? 0) > 0);
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto pb-10">
+    <div className="space-y-6 max-w-2xl mx-auto pb-12 pt-4">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: "var(--muted-foreground)" }}>
-            Riwayat Transaksi
-          </h1>
-          <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
+          <h1 className="text-2xl font-bold text-foreground">Riwayat Transaksi</h1>
+          <p className="text-sm mt-1 text-muted-foreground">
             {loading
               ? "Memuat data transaksi..."
-              : `Menampilkan ${orders.length} riwayat transaksi.`}
+              : `Menampilkan ${orders.length} transaksi terakhir.`}
           </p>
         </div>
         <button
           onClick={refresh}
-          className="h-9 w-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-70"
-          style={{
-            background: "hsl(var(--muted))",
-            border: "1px solid hsl(var(--border))",
-          }}
+          className="h-10 w-10 rounded-full flex items-center justify-center bg-muted hover:bg-accent text-muted-foreground transition-all active:scale-95"
+          title="Refresh Riwayat"
         >
-          <RefreshCw
-            className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-            style={{ color: "var(--muted-foreground)" }}
-          />
+          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </button>
       </div>
 
       {/* Tabs */}
       {visibleTabs.length > 1 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
           {visibleTabs.map(tab => {
             const active = activeTab === tab.key;
             const sc = tab.key !== "all" ? STATUS_CONFIG[tab.key as OrderStatus] : null;
@@ -145,19 +142,17 @@ export default function RiwayatOrderPage() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all"
-                style={
-                  active
-                    ? sc
-                      ? { background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color }
-                      : { background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))", color: "var(--muted-foreground)" }
-                    : { background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))", color: "var(--muted-foreground)" }
-                }
+                className={cn(
+                  "flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border",
+                  active 
+                    ? sc ? cn(sc.bgClass, sc.borderClass, sc.colorClass) : "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-muted-foreground border-border hover:bg-muted"
+                )}
               >
                 {active && sc && sc.icon}
                 {tab.label}
                 {(counts[tab.key] ?? 0) > 0 && (
-                  <span className="text-[10px] font-bold px-1 rounded-sm opacity-60">
+                  <span className={cn("text-[10px] font-bold px-1.5 rounded-full", active ? "opacity-90" : "bg-muted text-muted-foreground")}>
                     {counts[tab.key]}
                   </span>
                 )}
@@ -169,27 +164,20 @@ export default function RiwayatOrderPage() {
 
       {/* List */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Loader2 className="h-6 w-6 animate-spin" style={{ color: "var(--muted-foreground)" }} />
-          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Mengambil data transaksi...</p>
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground font-medium">Mengambil riwayat transaksimu...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+        <div className="flex flex-col items-center justify-center py-24 gap-4 border border-dashed rounded-2xl bg-muted/30">
+          <p className="text-sm text-muted-foreground font-medium">
             {activeTab === "all"
-              ? "Belum ada transaksi."
-              : `Tidak ada order ${STATUS_CONFIG[activeTab as OrderStatus]?.label.toLowerCase() ?? ""}.`}
+              ? "Belum ada transaksi sama sekali."
+              : `Tidak ada order yang ${STATUS_CONFIG[activeTab as OrderStatus]?.label.toLowerCase() ?? ""}.`}
           </p>
           {activeTab === "all" && (
             <Link href="/billing">
-              <button
-                className="flex items-center gap-1.5 px-4 py-2 mt-2 rounded-lg text-sm font-medium transition-all"
-                style={{
-                  background: "rgba(249,115,22,0.08)",
-                  border: "1px solid rgba(249,115,22,0.2)",
-                  color: "#F97316",
-                }}
-              >
+              <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
                 <Wallet className="h-4 w-4" />
                 Topup Sekarang
               </button>
@@ -197,54 +185,44 @@ export default function RiwayatOrderPage() {
           )}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {filtered.map(order => {
             const sc = STATUS_CONFIG[order.status];
             return (
               <Link key={order.id} href={`/billing/riwayat/${order.id}`}>
-                <div
-                  className="flex items-center gap-4 px-5 py-4 rounded-xl cursor-pointer transition-opacity hover:opacity-75"
-                  style={{
-                    background: "hsl(var(--muted))",
-                    border: "1px solid hsl(var(--border))",
-                  }}
-                >
-                  {/* Status icon circle */}
-                  <div
-                    className="h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color }}
-                  >
-                    {sc.icon}
+                <div className="group flex flex-col sm:flex-row sm:items-center gap-4 px-5 py-4 rounded-2xl border bg-card hover:border-primary/30 hover:shadow-sm cursor-pointer transition-all active:scale-[0.99]">
+                  
+                  {/* Bagian Kiri: Status Icon & Nominal */}
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className={cn("h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0 border", sc.bgClass, sc.borderClass, sc.colorClass)}>
+                      {sc.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
+                        <span className="text-lg font-bold text-foreground">
+                          {rp(order.amount)}
+                        </span>
+                        <span className={cn("inline-flex self-start sm:self-auto text-[10px] font-bold px-2 py-0.5 rounded-md border", sc.bgClass, sc.borderClass, sc.colorClass)}>
+                          {sc.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate font-medium">
+                        {order.paymentName ?? order.paymentMethod ?? "-"} 
+                        <span className="mx-1.5 opacity-40">·</span> 
+                        <span className="font-mono uppercase">{order.invoiceNumber}</span>
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-base font-semibold" style={{ color: "var(--muted-foreground)" }}>
-                        {rp(order.amount)}
-                      </span>
-                      <span
-                        className="text-[10px] font-medium px-2 py-0.5 rounded-md"
-                        style={{ background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color }}
-                      >
-                        {sc.label}
-                      </span>
+                  {/* Bagian Kanan: Tanggal & Panah */}
+                  <div className="flex items-center justify-between sm:justify-end gap-4 mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-0 border-dashed sm:border-solid">
+                    <div className="text-left sm:text-right">
+                      <p className="text-xs font-medium text-foreground">{fmtDate(order.createdAt)}</p>
+                      <p className="text-[10px] text-muted-foreground">{fmtTime(order.createdAt)}</p>
                     </div>
-                    <p className="text-xs truncate" style={{ color: "var(--muted-foreground)" }}>
-                      {order.paymentName ?? order.paymentMethod ?? "-"}
-                      <span className="mx-1.5 opacity-40">·</span>
-                      <span className="font-mono text-[11px]">{order.invoiceNumber}</span>
-                    </p>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                   </div>
 
-                  {/* Date + chevron */}
-                  <div className="text-right flex-shrink-0 flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{fmtDate(order.createdAt)}</p>
-                      <p className="text-[10px]" style={{ color: "var(--muted-foreground)" }}>{fmtTime(order.createdAt)}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4" style={{ color: "var(--muted-foreground)" }} />
-                  </div>
                 </div>
               </Link>
             );
