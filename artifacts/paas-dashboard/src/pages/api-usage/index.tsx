@@ -245,7 +245,7 @@ export default function ApiUsagePage() {
           <Filter className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">Filter</h2>
         </div>
-        <div className="grid gap-3 md:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Dari</label>
             <Input type="date" value={from} onChange={(e) => updateFilter(setFrom, e.target.value)} />

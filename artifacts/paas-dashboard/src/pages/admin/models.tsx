@@ -338,7 +338,7 @@ export default function AdminModels() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[#dbe8f3] bg-white shadow-[0_12px_34px_rgba(23,32,51,0.04)]">
+        <div className="overflow-x-auto rounded-xl border border-[#dbe8f3] bg-white shadow-[0_12px_34px_rgba(23,32,51,0.04)]">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#dbe8f3] bg-[#f8fbff]">

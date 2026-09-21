@@ -113,7 +113,7 @@ export default function ProvidersPage() {
               <h2 className="text-xl font-bold tracking-tight">{provider}</h2>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
               {providerModels.map((m) => {
                 return (
                   <div
@@ -122,13 +122,13 @@ export default function ProvidersPage() {
                   >
                     {/* Header row */}
                     <div className="flex items-center justify-between mb-5">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full flex items-center justify-center bg-muted/30 border border-border/40">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-9 w-9 shrink-0 rounded-full flex items-center justify-center bg-muted/30 border border-border/40">
                           {getProviderIcon(m.provider, "h-4 w-4 drop-shadow-sm")}
                         </div>
-                        <span className="font-semibold text-[15px] tracking-tight">{m.label}</span>
+                        <span className="font-semibold text-[15px] tracking-tight truncate">{m.label}</span>
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           onClick={(e) => { e.stopPropagation(); setDetailsModel(m); }}
                           className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded-lg border border-border/40 bg-background/50 hover:bg-muted/40 transition-colors"

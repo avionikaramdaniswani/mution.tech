@@ -153,6 +153,11 @@ const publicSeo: Record<string, SeoEntry> = {
       "Pelajari ketentuan refund Mution untuk transaksi, top up kredit, dan layanan berbayar yang digunakan di platform.",
     jsonLd: [organizationJsonLd],
   },
+  "/support": {
+    title: "Pusat Bantuan Mution",
+    description: "Hubungi tim support Mution untuk bantuan teknis, kendala billing, atau pertanyaan lainnya.",
+    jsonLd: [organizationJsonLd],
+  },
 };
 
 const privatePrefixes = [
@@ -169,9 +174,10 @@ const privatePrefixes = [
   "/providers",
   "/referral",
   "/usage",
+  "/playground",
 ];
 
-const authRoutes = ["/login", "/register"];
+const authRoutes = ["/login", "/register", "/forgot-password"];
 
 function normalizePath(path: string) {
   const cleanPath = path.split("?")[0]?.split("#")[0] || "/";

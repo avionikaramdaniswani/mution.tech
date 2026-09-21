@@ -110,15 +110,16 @@ function H3({ children }: { children: React.ReactNode }) {
   return <h3 className="text-base font-semibold text-foreground mt-6 mb-3">{children}</h3>;
 }
 
+const DOCS_SECTIONS: { id: ActiveTab; label: string; icon: any }[] = [
+  { id: "quickstart", label: "Quick Start", icon: Zap },
+  { id: "openai", label: "Python", icon: Code },
+  { id: "openai-node", label: "Node.js", icon: Code },
+  { id: "claude-code", label: "Claude Code", icon: Terminal },
+  { id: "codex", label: "Codex", icon: Terminal },
+  { id: "curl", label: "cURL", icon: Terminal },
+];
+
 function TableOfContents({ activeTab, onTabChange }: { activeTab: ActiveTab; onTabChange: (tab: ActiveTab) => void }) {
-  const sections: { id: ActiveTab; label: string; icon: any }[] = [
-    { id: "quickstart", label: "Quick Start", icon: Zap },
-    { id: "openai", label: "Python", icon: Code },
-    { id: "openai-node", label: "Node.js", icon: Code },
-    { id: "claude-code", label: "Claude Code", icon: Terminal },
-    { id: "codex", label: "Codex", icon: Terminal },
-    { id: "curl", label: "cURL", icon: Terminal },
-  ];
 
   return (
     <nav className="sticky top-20">
@@ -126,7 +127,7 @@ function TableOfContents({ activeTab, onTabChange }: { activeTab: ActiveTab; onT
         <div className="px-2 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
           Menu
         </div>
-        {sections.map((section) => {
+        {DOCS_SECTIONS.map((section) => {
           const isActive = activeTab === section.id;
           return (
             <button
@@ -205,6 +206,29 @@ export default function DocsPage() {
               </p>
             </div>
           )}
+        </div>
+
+        {/* Mobile Nav (Tabs) */}
+        <div className="lg:hidden mb-8 -mx-4 px-4 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="flex gap-2">
+            {DOCS_SECTIONS.map((section) => {
+              const isActive = activeTab === section.id;
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveTab(section.id)}
+                  className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-[13px] font-medium transition-colors ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                  }`}
+                >
+                  <section.icon className="h-3.5 w-3.5 shrink-0" />
+                  {section.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Content Sections */}
