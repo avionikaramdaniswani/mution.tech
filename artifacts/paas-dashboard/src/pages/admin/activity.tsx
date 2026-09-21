@@ -37,11 +37,7 @@ interface AdminActivityLog {
 export default function AdminActivity() {
   const { data: logs, isLoading } = useQuery<AdminActivityLog[]>({
     queryKey: ["admin-activity"],
-    queryFn: async () => {
-      const res = await apiFetch("/api/admin/activity");
-      if (!res.ok) throw new Error("Gagal mengambil log");
-      return res.json();
-    }
+    queryFn: () => apiFetch("/admin/activity")
   });
 
   return (
