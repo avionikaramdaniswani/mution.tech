@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable, aiProviderModelsTable } from "@workspace/db";
+import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable, aiProviderModelsTable, activityLogsTable } from "@workspace/db";
 import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
@@ -133,6 +133,41 @@ router.delete("/admin/users/:id", async (req, res): Promise<void> => {
 
   await logActivity(admin.id, "admin.user.deleted", undefined, { targetEmail: deleted.email });
   res.json({ success: true });
+});
+
+// List all activity logs across the platform
+router.get("/admin/activity", async (req, res): Promise<void> => {
+  const logs = await db
+    .select({
+      id: activityLogsTable.id,
+      userId: activityLogsTable.userId,
+      projectId: activityLogsTable.projectId,
+      action: activityLogsTable.action,
+      metadata: activityLogsTable.metadata,
+      createdAt: activityLogsTable.createdAt,
+      projectName: projectsTable.name,
+      userName: usersTable.name,
+      userEmail: usersTable.email,
+    })
+    .from(activityLogsTable)
+    .leftJoin(projectsTable, eq(activityLogsTable.projectId, projectsTable.id))
+    .leftJoin(usersTable, eq(activityLogsTable.userId, usersTable.id))
+    .orderBy(desc(activityLogsTable.createdAt))
+    .limit(100);
+
+  res.json(
+    logs.map((l) => ({
+      id: l.id,
+      userId: l.userId,
+      userName: l.userName ?? "System",
+      userEmail: l.userEmail ?? "",
+      projectId: l.projectId ?? null,
+      projectName: l.projectName ?? null,
+      action: l.action,
+      metadata: l.metadata ?? null,
+      createdAt: l.createdAt.toISOString(),
+    }))
+  );
 });
 
 // List all projects with owner info

@@ -188,13 +188,13 @@ export default function ReferralPage() {
 
       {/* Stats */}
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-28 animate-pulse rounded-xl border border-[#dbe8f3] bg-white" />
           ))}
         </div>
       ) : isError ? null : (
-        <div className="grid gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatCard icon={Users} label="Total diundang" value={data!.stats.total} color="#f97316" />
           <StatCard icon={Clock3} label="Menunggu topup" value={data!.stats.pending} sub="Belum cair" color="#f59e0b" />
           <StatCard icon={CheckCircle2} label="Reward cair" value={data!.stats.rewarded} sub="Teman sudah topup" color="#10b981" />
