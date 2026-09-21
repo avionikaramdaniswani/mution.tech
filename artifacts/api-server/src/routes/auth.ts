@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, referralsTable, creditTransactionsTable, otpVerificationsTable } from "@workspace/db";
+import { db, usersTable, referralsTable, creditTransactionsTable, otpVerificationsTable, sessionsTable } from "@workspace/db";
 import { eq, and, isNull, gt } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "crypto";
@@ -232,7 +232,7 @@ router.post("/auth/forgot-password/reset", AuthLimiter, async (req, res): Promis
 
   // Update password
   const passwordHash = await bcrypt.hash(newPassword, 12);
-  await db.update(usersTable).set({ password: passwordHash }).where(eq(usersTable.email, email));
+  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.email, email));
 
   // Mark OTP as used
   await db
@@ -241,7 +241,7 @@ router.post("/auth/forgot-password/reset", AuthLimiter, async (req, res): Promis
     .where(eq(otpVerificationsTable.id, otpRecord.id));
 
   // Invalidate all existing sessions to force re-login everywhere
-  await db.delete(db.session).where(eq(db.session.userId, existing.id));
+  await db.delete(sessionsTable).where(eq(sessionsTable.userId, existing.id));
 
   logger.info({ email }, "Password reset successful");
   res.json({ success: true });
