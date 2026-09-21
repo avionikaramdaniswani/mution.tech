@@ -148,7 +148,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         {group.items.map((item) => {
                           const active = isNavActive(location, item.url);
                           return (
-                            <SidebarMenuItem key={item.title}>
+                            <SidebarMenuItem key={item.title} className={item.title === "Documentation" ? "md:hidden" : ""}>
                               <SidebarMenuButton
                                 asChild
                                 isActive={active}

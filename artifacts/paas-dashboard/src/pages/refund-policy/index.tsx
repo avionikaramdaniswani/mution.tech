@@ -161,7 +161,7 @@ const refundSections: {
           </a>{" "}
           atau melalui halaman{" "}
           <Link href="/tentang-kami" className="font-semibold text-[#f97316] hover:underline">
-            Tentang Kami
+            About Us
           </Link>.
         </p>
         <a

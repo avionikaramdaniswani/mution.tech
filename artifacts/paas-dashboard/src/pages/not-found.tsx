@@ -9,7 +9,7 @@ const quickLinks = [
   { label: "Pricing", href: "/harga" },
   { label: "Docs", href: "/docs" },
   { label: "FAQ", href: "/faq" },
-  { label: "Tentang Kami", href: "/tentang-kami" },
+  { label: "About Us", href: "/tentang-kami" },
 ];
 
 export default function NotFound() {

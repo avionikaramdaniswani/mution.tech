@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Menu, X } from "lucide-react";
+import { ArrowRight, Menu, X, ChevronDown } from "lucide-react";
 
 const navLinks = [
   { label: "Pricing", href: "/harga" },
@@ -54,6 +54,19 @@ export function PublicNavbar() {
               {link.label}
             </Link>
           ))}
+          <div className="relative group">
+            <button className="flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-[#526173] transition-colors hover:bg-[#eef8ff] hover:text-[#172033]">
+              Company
+              <ChevronDown className="h-4 w-4 transition-transform group-hover:rotate-180" />
+            </button>
+            <div className="absolute top-full right-0 mt-2 w-48 rounded-2xl bg-white border border-[#dbe8f3] p-2 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              <Link href="/tentang-kami" className="block rounded-xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">About Us</Link>
+              <Link href="/faq" className="block rounded-xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">FAQ</Link>
+              <Link href="/privacy-policy" className="block rounded-xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">Privacy Policy</Link>
+              <Link href="/terms-and-conditions" className="block rounded-xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">Terms & Conditions</Link>
+              <Link href="/refund-policy" className="block rounded-xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">Refund Policy</Link>
+            </div>
+          </div>
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -109,6 +122,13 @@ export function PublicNavbar() {
                 {link.label}
               </Link>
             ))}
+            <div className="my-1 border-t border-[#dbe8f3]" />
+            <div className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[#526173]/60">Company</div>
+            <Link href="/tentang-kami" onClick={() => setMobileOpen(false)} className="rounded-2xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">About Us</Link>
+            <Link href="/faq" onClick={() => setMobileOpen(false)} className="rounded-2xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">FAQ</Link>
+            <Link href="/privacy-policy" onClick={() => setMobileOpen(false)} className="rounded-2xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">Privacy Policy</Link>
+            <Link href="/terms-and-conditions" onClick={() => setMobileOpen(false)} className="rounded-2xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">Terms & Conditions</Link>
+            <Link href="/refund-policy" onClick={() => setMobileOpen(false)} className="rounded-2xl px-3 py-2 text-sm font-medium text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033]">Refund Policy</Link>
             <div className="mt-3 grid grid-cols-2 gap-2 border-t border-[#dbe8f3] pt-3">
               {user ? (
                 <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="col-span-2">

@@ -36,6 +36,7 @@ import TentangKamiPage from "@/pages/tentang-kami";
 import ReferralPage from "@/pages/referral";
 import UsagePage from "@/pages/usage";
 import PlaygroundPage from "@/pages/playground";
+import SupportPage from "@/pages/support";
 
 import AdminOverview from "@/pages/admin/overview";
 import AdminUsers from "@/pages/admin/users";
@@ -123,6 +124,7 @@ function Router() {
         <Route path="/terms-and-conditions" component={TermsPage} />
         <Route path="/privacy-policy" component={PrivacyPolicyPage} />
         <Route path="/tentang-kami" component={TentangKamiPage} />
+        <Route path="/support" component={SupportPage} />
 
         {/* Admin routes - dedicated layout */}
         <Route path="/admin/users" component={() => <AdminRoute component={AdminUsers} />} />

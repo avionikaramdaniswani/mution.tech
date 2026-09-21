@@ -81,7 +81,7 @@ const faqs = [
 
 const footerLinks = [
   { label: "FAQ", href: "/faq" },
-  { label: "Tentang Kami", href: "/tentang-kami" },
+  { label: "About Us", href: "/tentang-kami" },
   { label: "Privacy", href: "/privacy-policy" },
   { label: "Terms", href: "/terms-and-conditions" },
   { label: "Refund", href: "/refund-policy" },
