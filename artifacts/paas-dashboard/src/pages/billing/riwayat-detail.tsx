@@ -147,11 +147,11 @@ function CopyBtn({ value, label }: { value: string; label?: string }) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
-      <div className="px-4 py-2.5" style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>{title}</p>
+    <div className="rounded-xl overflow-hidden" style={{ border: "1px solid hsl(var(--border))" }}>
+      <div className="px-4 py-2.5" style={{ background: "hsl(var(--muted))", borderBottom: "1px solid hsl(var(--border))" }}>
+        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--muted-foreground)" }}>{title}</p>
       </div>
-      <div style={{ background: "rgba(255,255,255,0.015)" }}>
+      <div style={{ background: "hsl(var(--muted))" }}>
         {children}
       </div>
     </div>
@@ -160,9 +160,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Row({ label, value, valueStyle }: { label: string; value: React.ReactNode; valueStyle?: React.CSSProperties }) {
   return (
-    <div className="flex items-start justify-between gap-4 px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-      <span className="text-sm flex-shrink-0" style={{ color: "rgba(255,255,255,0.38)" }}>{label}</span>
-      <span className="text-sm text-right" style={{ color: "rgba(255,255,255,0.75)", ...valueStyle }}>{value}</span>
+    <div className="flex items-start justify-between gap-4 px-4 py-3" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+      <span className="text-sm flex-shrink-0" style={{ color: "var(--muted-foreground)" }}>{label}</span>
+      <span className="text-sm text-right" style={{ color: "var(--muted-foreground)", ...valueStyle }}>{value}</span>
     </div>
   );
 }
@@ -245,8 +245,8 @@ export default function RiwayatDetailPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <Loader2 className="h-5 w-5 animate-spin" style={{ color: "rgba(255,255,255,0.2)" }} />
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>Memuat detail...</p>
+        <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--muted-foreground)" }} />
+        <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Memuat detail...</p>
       </div>
     );
   }
@@ -254,9 +254,9 @@ export default function RiwayatDetailPage() {
   if (notFound || !order) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>Order tidak ditemukan.</p>
+        <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Order tidak ditemukan.</p>
         <Link href="/billing/riwayat">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", cursor: "pointer" }}>
+          <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))", color: "var(--muted-foreground)", cursor: "pointer" }}>
             <ArrowLeft className="h-4 w-4" /> Kembali
           </button>
         </Link>
@@ -276,19 +276,19 @@ export default function RiwayatDetailPage() {
         <Link href="/billing/riwayat">
           <button
             className="h-8 w-8 rounded-lg flex items-center justify-center"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}
           >
-            <ArrowLeft className="h-4 w-4" style={{ color: "rgba(255,255,255,0.4)" }} />
+            <ArrowLeft className="h-4 w-4" style={{ color: "var(--muted-foreground)" }} />
           </button>
         </Link>
-        <h1 className="flex-1 text-base font-bold text-white">Detail Order</h1>
+        <h1 className="flex-1 text-base font-bold text-foreground">Detail Order</h1>
         <button
           onClick={load}
           className="h-8 w-8 rounded-lg flex items-center justify-center transition-opacity hover:opacity-60"
-          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+          style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}
           title="Refresh"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} style={{ color: "rgba(255,255,255,0.35)" }} />
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} style={{ color: "var(--muted-foreground)" }} />
         </button>
       </div>
 
@@ -302,7 +302,7 @@ export default function RiwayatDetailPage() {
           <p className="text-sm font-semibold" style={{ color: sc.color }}>{sc.label}</p>
           <p className="text-xs mt-0.5" style={{ color: sc.dimColor }}>{sc.desc}</p>
           {isPending && order.expiredAt && (
-            <p className="text-xs mt-2" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>
               Berakhir dalam <Countdown expiredAt={order.expiredAt} />
             </p>
           )}
@@ -313,8 +313,8 @@ export default function RiwayatDetailPage() {
           )}
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-xl font-bold text-white">{rp(order.amount)}</p>
-          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.28)" }}>
+          <p className="text-xl font-bold text-foreground">{rp(order.amount)}</p>
+          <p className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
             +{order.creditsAmount.toLocaleString("id-ID")} kredit
           </p>
         </div>
@@ -350,7 +350,7 @@ export default function RiwayatDetailPage() {
             </p>
             <CopyBtn value={String(order.payCode)} />
           </div>
-          <p className="text-xs mt-2" style={{ color: "rgba(255,255,255,0.25)" }}>
+          <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>
             Masukkan kode ini saat melakukan pembayaran via {order.paymentName ?? order.paymentMethod ?? "metode yang dipilih"}.
           </p>
         </div>
@@ -394,9 +394,9 @@ export default function RiwayatDetailPage() {
           <div className="px-4 py-4 flex flex-col gap-4" style={{ borderBottom: "none" }}>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-white">{order.paymentName ?? order.paymentMethod ?? "Duitku Payment"}</p>
+                <p className="text-sm font-medium text-foreground">{order.paymentName ?? order.paymentMethod ?? "Duitku Payment"}</p>
                 {order.paymentMethod && order.paymentName && (
-                  <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>{order.paymentMethod}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>{order.paymentMethod}</p>
                 )}
               </div>
               {isPending && order.checkoutUrl && !order.payCode && !order.qrString && (
@@ -415,10 +415,10 @@ export default function RiwayatDetailPage() {
 
             {/* Jika VA */}
             {isPending && order.payCode && (
-              <div className="p-3 rounded-lg flex items-center justify-between" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="p-3 rounded-lg flex items-center justify-between" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
                 <div>
-                  <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Nomor Virtual Account</p>
-                  <p className="text-lg font-mono font-bold tracking-wider text-white">{order.payCode}</p>
+                  <p className="text-xs mb-1" style={{ color: "var(--muted-foreground)" }}>Nomor Virtual Account</p>
+                  <p className="text-lg font-mono font-bold tracking-wider text-foreground">{order.payCode}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -427,17 +427,17 @@ export default function RiwayatDetailPage() {
                     setTimeout(() => setCopyId(null), 2000);
                   }}
                   className="p-2 rounded-md transition-colors"
-                  style={{ background: "rgba(255,255,255,0.05)" }}
+                  style={{ background: "hsl(var(--muted))" }}
                 >
-                  {copyId === 1 ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4 text-white" />}
+                  {copyId === 1 ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4 text-foreground" />}
                 </button>
               </div>
             )}
 
             {/* Jika QRIS */}
             {isPending && order.qrString && (
-              <div className="p-4 rounded-lg flex flex-col items-center justify-center gap-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <p className="text-sm font-medium text-white">Scan QR Code ini untuk membayar</p>
+              <div className="p-4 rounded-lg flex flex-col items-center justify-center gap-3" style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}>
+                <p className="text-sm font-medium text-foreground">Scan QR Code ini untuk membayar</p>
                 <div className="p-2 bg-white rounded-lg">
                   <img 
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(order.qrString)}`} 
@@ -453,16 +453,16 @@ export default function RiwayatDetailPage() {
 
       {/* Cara Pembayaran - hanya muncul kalau ada instructions */}
       {isPending && order.instructions.length > 0 && (
-        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid hsl(var(--border))" }}>
           {/* Header seksi */}
-          <div className="px-4 py-2.5" style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>Cara Pembayaran</p>
+          <div className="px-4 py-2.5" style={{ background: "hsl(var(--muted))", borderBottom: "1px solid hsl(var(--border))" }}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "var(--muted-foreground)" }}>Cara Pembayaran</p>
           </div>
 
           {/* Tab channel */}
           <div
             className="flex gap-0 overflow-x-auto"
-            style={{ background: "rgba(255,255,255,0.015)", borderBottom: "1px solid rgba(255,255,255,0.06)", scrollbarWidth: "none" }}
+            style={{ background: "hsl(var(--muted))", borderBottom: "1px solid hsl(var(--border))", scrollbarWidth: "none" }}
           >
             {order.instructions.map((instr, i) => (
               <button
@@ -483,7 +483,7 @@ export default function RiwayatDetailPage() {
           </div>
 
           {/* Steps */}
-          <div className="px-4 py-4 space-y-3" style={{ background: "rgba(255,255,255,0.015)" }}>
+          <div className="px-4 py-4 space-y-3" style={{ background: "hsl(var(--muted))" }}>
             {order.instructions[instrTab]?.steps.map((step, i) => (
               <div key={i} className="flex gap-3">
                 <div
@@ -494,7 +494,7 @@ export default function RiwayatDetailPage() {
                 </div>
                 <p
                   className="text-sm leading-relaxed whitespace-pre-line"
-                  style={{ color: "rgba(255,255,255,0.55)" }}
+                  style={{ color: "var(--muted-foreground)" }}
                 >
                   {step}
                 </p>
@@ -515,17 +515,17 @@ export default function RiwayatDetailPage() {
             >
               <div
                 className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+                style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))" }}
               >
-                <ReceiptText className="h-4 w-4" style={{ color: "rgba(255,255,255,0.25)" }} />
+                <ReceiptText className="h-4 w-4" style={{ color: "var(--muted-foreground)" }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-white truncate">{item.name}</p>
-                <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                <p className="text-sm text-foreground truncate">{item.name}</p>
+                <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
                   {item.quantity}x {rp(item.price)}
                 </p>
               </div>
-              <p className="text-sm font-semibold text-white flex-shrink-0">{rp(item.subtotal)}</p>
+              <p className="text-sm font-semibold text-foreground flex-shrink-0">{rp(item.subtotal)}</p>
             </div>
           ))}
         </Section>
@@ -536,9 +536,9 @@ export default function RiwayatDetailPage() {
         <Row label="Nominal Topup" value={rp(order.amount)} />
         <div
           className="flex items-center justify-between gap-4 px-4 py-3.5 mx-0"
-          style={{ background: "rgba(255,255,255,0.03)", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ background: "hsl(var(--muted))", borderTop: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>Kredit Diterima</span>
+          <span className="text-sm font-medium" style={{ color: "var(--muted-foreground)" }}>Kredit Diterima</span>
           <span
             className="text-base font-bold"
             style={{ color: order.status === "paid" ? "#22C55E" : "rgba(255,255,255,0.2)" }}
@@ -568,8 +568,8 @@ export default function RiwayatDetailPage() {
             disabled={syncing}
             className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.1)",
+              background: "hsl(var(--muted))",
+              border: "1px solid hsl(var(--border))",
               color: syncing ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.55)",
               cursor: syncing ? "not-allowed" : "pointer",
             }}
@@ -595,14 +595,14 @@ export default function RiwayatDetailPage() {
               className="rounded-xl px-4 py-3.5 space-y-3"
               style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}
             >
-              <p className="text-sm text-center" style={{ color: "rgba(255,255,255,0.6)" }}>
+              <p className="text-sm text-center" style={{ color: "var(--muted-foreground)" }}>
                 Batalkan order ini? Tindakan ini tidak bisa diurungkan.
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setConfirmCancel(false)}
                   className="flex-1 py-2.5 rounded-lg text-sm font-medium"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)", cursor: "pointer" }}
+                  style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))", color: "var(--muted-foreground)", cursor: "pointer" }}
                 >
                   Kembali
                 </button>
