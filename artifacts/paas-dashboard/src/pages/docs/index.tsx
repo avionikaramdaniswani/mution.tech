@@ -236,8 +236,10 @@ export default function DocsPage() {
               <div className="rounded-lg border border-border bg-card p-4 mb-6">
                 <p className="text-sm text-foreground/70 mb-2">Gunakan URL ini sebagai `baseURL` di semua SDK (OpenAI, Anthropic, dll):</p>
                 <div className="flex items-center justify-between bg-muted/30 px-3 py-2 rounded border border-border">
-                  <code className="font-mono text-sm text-foreground">{base}/v1</code>
-                  <CopyBtn text={`${base}/v1`} />
+                  <div className="flex items-center">
+                    <code className="font-mono text-sm text-foreground">{base}/v1</code>
+                    <InlineCopy text={`${base}/v1`} />
+                  </div>
                 </div>
               </div>
 
@@ -286,7 +288,6 @@ export default function DocsPage() {
                     <tr className="border-b border-border bg-muted/30">
                       <th className="text-left px-4 py-2.5 font-semibold text-foreground">Model ID</th>
                       <th className="text-left px-4 py-2.5 font-semibold text-foreground">Provider</th>
-                      <th className="text-left px-4 py-2.5 font-semibold text-foreground">Keterangan</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -309,7 +310,6 @@ export default function DocsPage() {
                           </div>
                         </td>
                         <td className="px-4 py-2.5 text-muted-foreground">{model.provider}</td>
-                        <td className="px-4 py-2.5 text-muted-foreground">{model.description}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -1,4 +1,4 @@
-export type ModelProvider = "Anthropic" | "OpenAI" | "Zhipu AI" | "MiniMax" | "Moonshot AI";
+export type ModelProvider = "Anthropic" | "OpenAI" | "Zhipu AI" | "MiniMax" | "Moonshot AI" | "Google";
 
 export interface ModelPricing {
   input: number;
@@ -226,6 +226,6 @@ export function groupModelsByProvider(models: readonly ModelCatalogEntry[] = MOD
       acc[model.provider].push(model);
       return acc;
     },
-    { Anthropic: [], OpenAI: [], "Zhipu AI": [], MiniMax: [], "Moonshot AI": [] },
+    { Anthropic: [], OpenAI: [], "Zhipu AI": [], MiniMax: [], "Moonshot AI": [], Google: [] },
   );
 }

@@ -32,6 +32,12 @@ async function fetchCatalog(): Promise<Model[]> {
   return res.json();
 }
 
+async function fetchCatalog(): Promise<Model[]> {
+  const res = await fetch("/api/catalog");
+  if (!res.ok) throw new Error("gagal");
+  return res.json();
+}
+
 function formatPricing(value: number) {
   return value.toLocaleString("id-ID");
 }
@@ -43,12 +49,9 @@ function getProviderIcon(provider: string, baseClassName?: string) {
   if (provider === "Zhipu AI") return <img src="/logo-zhipu.jpg" alt="Zhipu AI" className={cls} style={{ objectFit: "contain" }} />;
   if (provider === "MiniMax") return <img src="/logo-minimax.png" alt="MiniMax" className={cls} style={{ objectFit: "contain" }} />;
   if (provider === "Moonshot AI") return <img src="/logo-moonshot.png" alt="Moonshot AI" className={cls} style={{ objectFit: "contain" }} />;
+  if (provider === "Google") return <img src="/gemini.jpg" alt="Google" className={cls} style={{ objectFit: "contain" }} />;
   return <Brain className={`${cls} text-[#64748b]`} />;
 }
-
-// --- Component ------------------------------------------------------------------
-
-export interface UpstreamHealth {
   status: "Online" | "Degraded" | "Offline";
   latencyMs: number;
   lastChecked: number;

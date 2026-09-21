@@ -19,6 +19,7 @@ function inferModelBrand(modelId: string, displayName: string): string {
   if (value.includes("kimi") || value.includes("moonshot")) return "Moonshot AI";
   if (value.includes("minimax")) return "MiniMax";
   if (value.includes("glm")) return "Zhipu AI";
+  if (value.includes("gemini")) return "Google";
   return "Other";
 }
 
