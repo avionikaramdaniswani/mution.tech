@@ -281,7 +281,7 @@ export default function AdminProviders() {
             </div>
             <div className="space-y-2">
               <Label>Priority</Label>
-              <Input type="number" min={0} value={providerEditor.form.priority} onChange={e => setProviderEditor({ ...providerEditor, form: { ...providerEditor.form, priority: parseInt(e.target.value) || 0 } })} />
+              <Input type="number" min={0} value={providerEditor.form.priority} onChange={e => setProviderEditor({ ...providerEditor, form: { ...providerEditor.form, priority: Number.parseInt(e.target.value) || 0 } })} />
               <p className="text-xs text-muted-foreground">Semakin kecil = prioritas lebih tinggi</p>
             </div>
           </div>

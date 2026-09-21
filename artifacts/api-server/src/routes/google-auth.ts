@@ -27,7 +27,7 @@ function getGoogleClientSecret(): string {
 function getGoogleCallbackUrl(): string {
   if (process.env.GOOGLE_CALLBACK_URL) return process.env.GOOGLE_CALLBACK_URL;
   const appUrl = process.env.PUBLIC_APP_URL || process.env.APP_URL;
-  if (appUrl) return `${appUrl.replace(/\/+$/, "")}/api/auth/google/callback`;
+  if (appUrl) return `${appUrl.replace(/\/$/, "")}/api/auth/google/callback`;
   const domain = process.env.REPLIT_DEV_DOMAIN;
   if (domain) return `https://${domain}/api/auth/google/callback`;
   // Fallback for local dev

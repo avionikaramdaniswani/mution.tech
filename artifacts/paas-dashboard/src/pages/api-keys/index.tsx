@@ -484,7 +484,7 @@ export default function ApiKeysPage() {
               onClick={() => createMutation.mutate({
                 name: newKeyName,
                 expiresAt: newKeyExpiresAt || null,
-                creditLimit: newKeyUnlimitedCredit ? null : (parseInt(newKeyCreditLimit) || null),
+                creditLimit: newKeyUnlimitedCredit ? null : (Number.parseInt(newKeyCreditLimit) || null),
                 allowedModels: newKeyAllowedModels.length > 0 ? newKeyAllowedModels : null,
               })}
               disabled={createMutation.isPending}
@@ -614,7 +614,7 @@ export default function ApiKeysPage() {
                 id: editTarget.id,
                 name: editName,
                 expiresAt: editExpiresAt || null,
-                creditLimit: editUnlimitedCredit ? null : (parseInt(editCreditLimit) || null),
+                creditLimit: editUnlimitedCredit ? null : (Number.parseInt(editCreditLimit) || null),
                 allowedModels: editAllowedModels.length > 0 ? editAllowedModels : null,
               })}
               disabled={renameMutation.isPending}

@@ -743,7 +743,7 @@ router.get("/projects/:id/metrics/current", async (req, res): Promise<void> => {
 
 router.get("/projects/:id/metrics", async (req, res) => {
   try {
-    const projectId = parseInt(req.params.id);
+    const projectId = Number.parseInt(req.params.id);
     const userId = (req as any).user!.id;
     const [project] = await db
       .select()

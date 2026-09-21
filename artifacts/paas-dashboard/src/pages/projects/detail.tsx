@@ -42,7 +42,7 @@ function slugifyDomain(value: string): string {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "app";
+    .replace(/^-/, "").replace(/-$/, "") || "app";
 }
 
 const hostingRates: Record<string, { ram: string, perMinute: number, fit: string }> = {
@@ -119,7 +119,7 @@ function formatMemory(bytes?: number): string {
 
 export default function ProjectDetail() {
   const params = useParams();
-  const projectId = parseInt(params.id || "0", 10);
+  const projectId = Number.parseInt(params.id || "0", 10);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -337,7 +337,7 @@ export default function ProjectDetail() {
   };
 
   const handleAddCustomDomain = () => {
-    let clean = newCustomDomain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    let clean = newCustomDomain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
     if (!clean || !clean.includes(".")) {
        toast({ title: "Masukkan domain valid yang memiliki TLD", variant: "destructive" });
        return;

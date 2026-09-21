@@ -8,7 +8,7 @@ const router = Router();
 
 function parseRouteId(param: string | string[]): number {
   const raw = Array.isArray(param) ? param[0] : param;
-  return parseInt(raw, 10);
+  return Number.parseInt(raw, 10);
 }
 
 type LegacyChange = {

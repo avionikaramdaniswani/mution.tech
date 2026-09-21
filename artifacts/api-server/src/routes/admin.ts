@@ -108,8 +108,8 @@ router.get("/admin/users", async (req, res): Promise<void> => {
 
 // Get single user detail
 router.get("/admin/users/:id", async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [row] = await db
     .select(userSelectFields)
@@ -125,8 +125,8 @@ router.get("/admin/users/:id", async (req, res): Promise<void> => {
 // Delete a user
 router.delete("/admin/users/:id", async (req, res): Promise<void> => {
   const admin = (req as any).user;
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   if (id === admin.id) { res.status(400).json({ error: "Cannot delete your own account" }); return; }
 
   const [deleted] = await db.delete(usersTable).where(eq(usersTable.id, id)).returning();
@@ -212,7 +212,7 @@ router.get("/admin/projects", async (req, res): Promise<void> => {
 router.post("/admin/projects/:id/stop", async (req, res): Promise<void> => {
   const admin = (req as any).user;
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = Number.parseInt(raw, 10);
 
   const [project] = await db
     .update(projectsTable)
@@ -244,7 +244,7 @@ router.post("/admin/projects/:id/stop", async (req, res): Promise<void> => {
 router.delete("/admin/projects/:id", async (req, res): Promise<void> => {
   const admin = (req as any).user;
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw, 10);
+  const id = Number.parseInt(raw, 10);
 
   const [project] = await db
     .delete(projectsTable)
@@ -296,8 +296,8 @@ async function fetchUserWithStats(id: number) {
 // Update a user's role and/or plan
 router.patch("/admin/users/:id/role", async (req, res): Promise<void> => {
   const admin = (req as any).user;
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const { role, plan } = (req.body ?? {}) as { role?: string; plan?: string };
   const updates: Partial<{ role: "user" | "admin"; plan: "hobby" | "pro" | "team" }> = {};
@@ -327,8 +327,8 @@ router.patch("/admin/users/:id/role", async (req, res): Promise<void> => {
 // Manually adjust a user's credit balance (positive = tambah, negative = kurang)
 router.post("/admin/users/:id/credits", async (req, res): Promise<void> => {
   const admin = (req as any).user;
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const { amount, note } = (req.body ?? {}) as { amount?: unknown; note?: unknown };
   if (typeof amount !== "number" || !Number.isInteger(amount) || amount === 0) {
@@ -456,7 +456,7 @@ router.get("/admin/revenue", async (_req, res): Promise<void> => {
 // Ringkasan pemakaian AI-proxy: total, breakdown per model, top user, tren harian.
 // Query param `days` (1–365, default 30) membatasi rentang waktu.
 router.get("/admin/usage", async (req, res): Promise<void> => {
-  const daysRaw = parseInt(String(req.query.days ?? "30"), 10);
+  const daysRaw = Number.parseInt(String(req.query.days ?? "30"), 10);
   const days = Number.isFinite(daysRaw) ? Math.min(365, Math.max(1, daysRaw)) : 30;
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
@@ -823,8 +823,8 @@ router.post("/admin/packages", async (req, res): Promise<void> => {
 });
 
 router.patch("/admin/packages/:id", async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "ID tidak valid" }); return; }
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "ID tidak valid" }); return; }
   const parsed = PackageBody.partial().safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Data tidak valid" }); return; }
   const [row] = await db
@@ -837,8 +837,8 @@ router.patch("/admin/packages/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/admin/packages/:id", async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "ID tidak valid" }); return; }
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "ID tidak valid" }); return; }
   await db.delete(creditPackagesTable).where(eq(creditPackagesTable.id, id));
   res.json({ ok: true });
 });

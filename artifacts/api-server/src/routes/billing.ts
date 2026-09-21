@@ -203,8 +203,8 @@ router.get("/billing/transactions", requireAuth, async (req, res): Promise<void>
 
 router.get("/billing/orders/:id", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const orderId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  if (isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const orderId = Number.parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (Number.isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [order] = await db
     .select()
@@ -265,8 +265,8 @@ router.get("/billing/orders/:id", requireAuth, async (req, res): Promise<void> =
 
 router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const orderId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  if (isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const orderId = Number.parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (Number.isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [order] = await db
     .select()
@@ -320,7 +320,7 @@ router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<v
     }
 
     // Verify amount matches
-    if (parseInt(detail.amount, 10) !== order.amount) {
+    if (Number.parseInt(detail.amount, 10) !== order.amount) {
       logger.warn({ orderId: order.id, expected: order.amount, got: detail.amount }, "Duitku sync amount mismatch");
       res.status(409).json({ error: "Detail pembayaran tidak sesuai dengan order" });
       return;
@@ -348,8 +348,8 @@ router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<v
 
 router.post("/billing/orders/:id/cancel", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const orderId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
-  if (isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const orderId = Number.parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (Number.isNaN(orderId)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [order] = await db
     .select()
@@ -591,7 +591,7 @@ router.post("/billing/duitku/webhook", async (req, res): Promise<void> => {
   }
 
   // Verify amount matches
-  if (parseInt(String(payload.amount), 10) !== order.amount) {
+  if (Number.parseInt(String(payload.amount), 10) !== order.amount) {
     logger.warn({
       orderId: order.id,
       expected: order.amount,

@@ -122,8 +122,8 @@ function EditUserDialog({
 
   if (!user) return null;
 
-  const parsed = parseInt(amount, 10);
-  const hasAmount = amount.trim() !== "" && !isNaN(parsed) && parsed !== 0;
+  const parsed = Number.parseInt(amount, 10);
+  const hasAmount = amount.trim() !== "" && !Number.isNaN(parsed) && parsed !== 0;
   const roleChanged = role !== user.role;
   const planChanged = plan !== user.plan;
   const hasChanges = hasAmount || roleChanged || planChanged;
@@ -225,7 +225,7 @@ function EditUserDialog({
                 <button
                   type="button"
                   title="Positif (tambah)"
-                  onClick={() => setAmount((a) => String(Math.abs(parseInt(a, 10) || 0) || ""))}
+                  onClick={() => setAmount((a) => String(Math.abs(Number.parseInt(a, 10) || 0) || ""))}
                   className="h-9 w-9 rounded-md flex items-center justify-center border border-border/60 text-emerald-500 hover:bg-emerald-500/10"
                 >
                   <Plus className="h-4 w-4" />
@@ -233,7 +233,7 @@ function EditUserDialog({
                 <button
                   type="button"
                   title="Negatif (kurangi)"
-                  onClick={() => setAmount((a) => { const n = Math.abs(parseInt(a, 10) || 0); return n ? String(-n) : ""; })}
+                  onClick={() => setAmount((a) => { const n = Math.abs(Number.parseInt(a, 10) || 0); return n ? String(-n) : ""; })}
                   className="h-9 w-9 rounded-md flex items-center justify-center border border-border/60 text-destructive hover:bg-destructive/10"
                 >
                   <Minus className="h-4 w-4" />

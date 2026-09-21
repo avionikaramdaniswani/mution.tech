@@ -184,18 +184,18 @@ export default function AdminChangelog() {
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium">Versi (misal: v1.0.0)</label>
-                <Input value={form.version} onChange={e => setForm({ ...form, version: e.target.value })} placeholder="vX.X.X" />
+                <label htmlFor="version" className="text-xs font-medium">Versi (misal: v1.0.0)</label>
+                <Input id="version" value={form.version} onChange={e => setForm({ ...form, version: e.target.value })} placeholder="vX.X.X" />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium">Tanggal</label>
-                <Input value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} placeholder="14 Okt 2023" />
+                <label htmlFor="date" className="text-xs font-medium">Tanggal</label>
+                <Input id="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} placeholder="14 Okt 2023" />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium">Judul Rilis</label>
-              <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Fitur baru Mution..." />
+              <label htmlFor="title" className="text-xs font-medium">Judul Rilis</label>
+              <Input id="title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Fitur baru Mution..." />
             </div>
 
             <div className="space-y-1.5">

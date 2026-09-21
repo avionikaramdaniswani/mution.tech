@@ -24,7 +24,7 @@ function parseGithubOwnerRepo(repoUrl: string): { owner: string; repo: string } 
 function getWebhookTargetUrl(): string {
   const host = process.env.MUTION_PUBLIC_URL?.trim()
     || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "https://mution.tech");
-  return `${host.replace(/\/+$/, "")}/api/webhooks/github`;
+  return `${host.replace(/\/$/, "")}/api/webhooks/github`;
 }
 
 /**

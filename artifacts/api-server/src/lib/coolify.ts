@@ -99,7 +99,7 @@ function getCoolifyConfig(): CoolifyConfig {
     throw new CoolifyError("Deployment engine belum dikonfigurasi. Set URL dan token deployment di Config Vars.");
   }
 
-  const trimmed = apiUrl.replace(/\/+$/, "");
+  const trimmed = apiUrl.replace(/\/$/, "");
   const apiBase = trimmed.endsWith("/api/v1") ? trimmed : `${trimmed}/api/v1`;
   const githubAppUuid = process.env.COOLIFY_GITHUB_APP_UUID?.trim() || undefined;
   const sourceMode = (process.env.COOLIFY_SOURCE_MODE?.trim() === "github-app" || githubAppUuid)
@@ -206,7 +206,7 @@ function slugify(value: string, fallback: string): string {
   const slug = value
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/^-/, "").replace(/-$/, "")
     .replace(/-+/g, "-")
     .slice(0, 60);
   return slug || fallback;
@@ -347,7 +347,7 @@ function normalizeBaseDirectory(value: string | null | undefined): string | unde
   const trimmed = (value ?? "").trim();
   if (!trimmed) return undefined;
   const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-  return withLeadingSlash.replace(/\/+$/, "") || "/";
+  return withLeadingSlash.replace(/\/$/, "") || "/";
 }
 
 function normalizeCommand(command: string | null | undefined): string {
@@ -728,7 +728,7 @@ export function formatCleanBuildLog(rawLogs: any): string {
     if (time) {
       try {
         const d = new Date(time);
-        if (!isNaN(d.getTime())) {
+        if (!Number.isNaN(d.getTime())) {
           const t = d.toTimeString().split(" ")[0];
           return `[${t}] ${str}`;
         }
@@ -966,7 +966,7 @@ export async function fetchCoolifyApplicationDomain(projectId: number): Promise<
     // Coolify stores FQDN as "https://domain.example.com" — strip the protocol
     const clean = app.fqdn
       .replace(/^https?:\/\//i, "")
-      .replace(/\/+$/, "")
+      .replace(/\/$/, "")
       .trim();
     return clean || null;
   } catch {

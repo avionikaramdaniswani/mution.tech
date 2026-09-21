@@ -182,7 +182,7 @@ const authRoutes = ["/login", "/register", "/forgot-password"];
 function normalizePath(path: string) {
   const cleanPath = path.split("?")[0]?.split("#")[0] || "/";
   if (cleanPath === "/") return cleanPath;
-  return cleanPath.replace(/\/+$/, "");
+  return cleanPath.replace(/\/$/, "");
 }
 
 function canonicalUrl(path: string) {

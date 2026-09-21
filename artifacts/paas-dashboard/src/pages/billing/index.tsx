@@ -306,7 +306,7 @@ function TopupSection() {
   const resolvedAmount = (() => {
     if (selectedPackage) return selectedPackage.priceIdr;
     if (isCustom) {
-      const n = parseInt(customRaw.replace(/\D/g, ""), 10);
+      const n = Number.parseInt(customRaw.replace(/\D/g, ""), 10);
       return Number.isNaN(n) ? null : n;
     }
     return null;
@@ -447,7 +447,7 @@ function TopupSection() {
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Nominal Cepat</p>
                 <div className="grid grid-cols-3 gap-2">
                   {PRESETS.map((amount) => {
-                    const activePreset = isCustom && !selectedPackage && parseInt(customRaw || "0") === amount;
+                    const activePreset = isCustom && !selectedPackage && Number.parseInt(customRaw || "0") === amount;
                     const label = amount >= 1_000_000
                       ? `${amount / 1_000_000}jt`
                       : `${amount / 1_000}rb`;
@@ -480,11 +480,11 @@ function TopupSection() {
                     type="text"
                     inputMode="numeric"
                     placeholder="Masukkan nominal..."
-                    value={isCustom && !selectedPackage && !PRESETS.includes(parseInt(customRaw || "0"))
-                      ? (customRaw ? parseInt(customRaw).toLocaleString("id-ID") : "")
+                    value={isCustom && !selectedPackage && !PRESETS.includes(Number.parseInt(customRaw || "0"))
+                      ? (customRaw ? Number.parseInt(customRaw).toLocaleString("id-ID") : "")
                       : ""}
                     onFocus={() => {
-                      if (selectedPackage || !isCustom || PRESETS.includes(parseInt(customRaw || "0"))) {
+                      if (selectedPackage || !isCustom || PRESETS.includes(Number.parseInt(customRaw || "0"))) {
                         setIsCustom(true);
                         setSelectedPackage(null);
                         setCustomRaw("");
@@ -496,12 +496,12 @@ function TopupSection() {
                       "w-full h-[46px] rounded-xl pl-11 pr-10 text-sm font-bold bg-background text-foreground outline-none border-2 transition-all",
                       amountError
                         ? "border-destructive/50 focus:border-destructive"
-                        : isCustom && !selectedPackage && !PRESETS.includes(parseInt(customRaw || "0")) && customRaw
+                        : isCustom && !selectedPackage && !PRESETS.includes(Number.parseInt(customRaw || "0")) && customRaw
                         ? "border-primary"
                         : "border-border focus:border-primary/50"
                     )}
                   />
-                  {isCustom && !selectedPackage && customRaw && !PRESETS.includes(parseInt(customRaw)) && (
+                  {isCustom && !selectedPackage && customRaw && !PRESETS.includes(Number.parseInt(customRaw)) && (
                     <button
                       onClick={() => { setIsCustom(false); setCustomRaw(""); setSelectedPackage(null); }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
@@ -863,8 +863,8 @@ export default function BillingPage() {
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get("orderId");
     if (orderId) {
-      const id = parseInt(orderId, 10);
-      if (!isNaN(id)) {
+      const id = Number.parseInt(orderId, 10);
+      if (!Number.isNaN(id)) {
         setPendingOrderId(id);
         const clean = window.location.pathname;
         window.history.replaceState({}, "", clean);

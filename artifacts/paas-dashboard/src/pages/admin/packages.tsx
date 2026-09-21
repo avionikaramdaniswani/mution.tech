@@ -114,13 +114,13 @@ function PackageFormDialog({
             <div>
               <label className={labelCls}>Harga (IDR) *</label>
               <input className={inputCls} type="number" min={1000} step={1000}
-                value={form.priceIdr} onChange={e => set("priceIdr", parseInt(e.target.value) || 0)} />
+                value={form.priceIdr} onChange={e => set("priceIdr", Number.parseInt(e.target.value) || 0)} />
               <p className="mt-1 text-[10px] text-[#526173]">{formatRp(form.priceIdr)}</p>
             </div>
             <div>
               <label className={labelCls}>Kredit Didapat *</label>
               <input className={inputCls} type="number" min={1}
-                value={form.creditsAmount} onChange={e => set("creditsAmount", parseInt(e.target.value) || 0)} />
+                value={form.creditsAmount} onChange={e => set("creditsAmount", Number.parseInt(e.target.value) || 0)} />
               <p className="mt-1 text-[10px] text-[#526173]">
                 {autoBonus != null
                   ? <span className="text-emerald-600 font-semibold">+{autoBonus}% bonus</span>
@@ -140,7 +140,7 @@ function PackageFormDialog({
             <div>
               <label className={labelCls}>Urutan</label>
               <input className={inputCls} type="number" min={0}
-                value={form.sortOrder} onChange={e => set("sortOrder", parseInt(e.target.value) || 0)} />
+                value={form.sortOrder} onChange={e => set("sortOrder", Number.parseInt(e.target.value) || 0)} />
             </div>
           </div>
 

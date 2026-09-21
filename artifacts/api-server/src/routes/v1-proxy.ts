@@ -348,7 +348,7 @@ export async function adminFetchRemoteModels(id: string) {
   if (!apiKey) throw new Error("Failed to decrypt API key");
   
   // Normalize base URL: remove trailing slashes, ensure /v1 suffix
-  let fetchUrl = row.baseUrl.replace(/\/+$/, "");
+  let fetchUrl = row.baseUrl.replace(/\/$/, "");
   if (!fetchUrl.endsWith('/v1') && !fetchUrl.match(/\/v\d/)) {
     fetchUrl += '/v1';
   }
@@ -383,7 +383,7 @@ export async function adminTestProviderModel(providerId: string, modelId: string
   if (!apiKey) throw new Error("Failed to decrypt API key");
   
   // Normalize base URL: remove trailing slashes, ensure /v1 suffix
-  let fetchUrl = provider.baseUrl.replace(/\/+$/, "");
+  let fetchUrl = provider.baseUrl.replace(/\/$/, "");
   if (!fetchUrl.endsWith('/v1') && !fetchUrl.match(/\/v\d/)) {
     fetchUrl += '/v1';
   }
@@ -427,7 +427,7 @@ export async function adminTestRawModel(providerId: string, upstreamModelId: str
   if (!apiKey) throw new Error("Failed to decrypt API key");
   
   // Normalize base URL: remove trailing slashes, ensure /v1 suffix
-  let fetchUrl = provider.baseUrl.replace(/\/+$/, "");
+  let fetchUrl = provider.baseUrl.replace(/\/$/, "");
   if (!fetchUrl.endsWith('/v1') && !fetchUrl.match(/\/v\d/)) {
     fetchUrl += '/v1';
   }
@@ -682,7 +682,7 @@ function urlToId(url: string): string {
  *  - Otherwise (path already set)       → use as-is (user knows what they're doing)
  */
 function buildOpenaiBase(rawUrl: string): string {
-  const url = rawUrl.replace(/\/+$/, "");
+  const url = rawUrl.replace(/\/$/, "");
   if (url.endsWith("/v1")) return url;
   try {
     const parsed = new URL(url);
@@ -821,8 +821,8 @@ export async function getConfiguredPublicModelCatalog() {
       pricing = { input: basePricing.input * factor, output: basePricing.output * factor };
     } else if (override?.mode === "fixed_price") {
       pricing = {
-        input: override.inputPriceOverride != null ? parseFloat(override.inputPriceOverride) : basePricing.input,
-        output: override.outputPriceOverride != null ? parseFloat(override.outputPriceOverride) : basePricing.output,
+        input: override.inputPriceOverride != null ? Number.parseFloat(override.inputPriceOverride) : basePricing.input,
+        output: override.outputPriceOverride != null ? Number.parseFloat(override.outputPriceOverride) : basePricing.output,
       };
     }
     return {
@@ -947,8 +947,8 @@ function calculateCredits(tokensUsed: number, model: string, breakdown?: CreditB
     inputPrice = inputPrice * factor;
     outputPrice = outputPrice * factor;
   } else if (override?.mode === "fixed_price") {
-    if (override.inputPriceOverride != null) inputPrice = parseFloat(override.inputPriceOverride);
-    if (override.outputPriceOverride != null) outputPrice = parseFloat(override.outputPriceOverride);
+    if (override.inputPriceOverride != null) inputPrice = Number.parseFloat(override.inputPriceOverride);
+    if (override.outputPriceOverride != null) outputPrice = Number.parseFloat(override.outputPriceOverride);
   }
 
   const inputCredits = (inputTokens * inputPrice) / MODEL_PRICING_TOKEN_UNIT;

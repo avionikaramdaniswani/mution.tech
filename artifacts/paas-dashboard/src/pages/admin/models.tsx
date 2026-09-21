@@ -371,7 +371,7 @@ export default function AdminModels() {
                       {formatCredits(m.override?.mode === "discount_percent" && m.override.discountPercent != null
                         ? Math.ceil(m.basePricingInput * (1 - m.override.discountPercent / 100))
                         : m.override?.mode === "fixed_price" && m.override.inputPriceOverride != null
-                        ? parseFloat(m.override.inputPriceOverride)
+                        ? Number.parseFloat(m.override.inputPriceOverride)
                         : m.override?.mode === "free"
                         ? 0
                         : m.basePricingInput)}
@@ -387,7 +387,7 @@ export default function AdminModels() {
                       {formatCredits(m.override?.mode === "discount_percent" && m.override.discountPercent != null
                         ? Math.ceil(m.basePricingOutput * (1 - m.override.discountPercent / 100))
                         : m.override?.mode === "fixed_price" && m.override.outputPriceOverride != null
-                        ? parseFloat(m.override.outputPriceOverride)
+                        ? Number.parseFloat(m.override.outputPriceOverride)
                         : m.override?.mode === "free"
                         ? 0
                         : m.basePricingOutput)}

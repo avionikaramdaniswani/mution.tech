@@ -34,7 +34,7 @@ function getAllowedOrigins(): Set<string> {
   const origins = new Set(DEFAULT_ALLOWED_ORIGINS);
 
   for (const value of splitEnvList(process.env.ALLOWED_ORIGINS)) {
-    const origin = originFromUrl(value) ?? value.replace(/\/+$/, "");
+    const origin = originFromUrl(value) ?? value.replace(/\/$/, "");
     origins.add(origin);
   }
 
