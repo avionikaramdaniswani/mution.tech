@@ -18,6 +18,17 @@ function actionLabel(action: string) {
     "env_var.deleted": "Hapus env var",
     "database.provisioned": "Provisioning database",
     "admin.user.deleted": "Admin: hapus user",
+    "admin.user.updated": "Admin: update user",
+    "admin.user.credits_adjusted": "Admin: sesuaikan saldo",
+    "apikey.created": "Membuat API Key",
+    "apikey.updated": "Mengubah API Key",
+    "apikey.deleted": "Menghapus API Key",
+    "user.registered": "Mendaftar akun",
+    "user.login": "Login",
+    "user.password_reset": "Reset password",
+    "user.password_changed": "Mengubah password",
+    "billing.topup_created": "Membuat tagihan topup",
+    "billing.topup_paid": "Membayar topup",
   };
   return map[action] ?? action;
 }

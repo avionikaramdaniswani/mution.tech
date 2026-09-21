@@ -19,6 +19,7 @@ const frontendDist = path.resolve(__dirname, "../../paas-dashboard/dist/public")
 const app: Express = express();
 
 app.set("trust proxy", 1);
+app.disable("x-powered-by");
 
 app.use(
   pinoHttp({

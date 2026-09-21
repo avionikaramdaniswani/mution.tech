@@ -3,6 +3,7 @@ import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, cr
 import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
+import { logger } from "../lib/logger";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
 import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminFetchRemoteModels, adminTestProviderModel, adminTestRawModel, adminUpsertProviderModel, adminDeleteProviderModel, adminPruneProviderModels, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
 import { getModelById, getModelPricing } from "@workspace/model-catalog";
@@ -628,7 +629,7 @@ router.get("/admin/providers/:id/models/sync", async (req, res): Promise<void> =
     const models = await adminFetchRemoteModels(id);
     res.json({ models });
   } catch (error: any) {
-    console.error(`Failed to sync models for provider ${id}:`, error);
+    logger.error({ err: error, providerId: id }, "Failed to sync models for provider");
     res.status(500).json({ error: error?.message || "Gagal mengambil daftar model dari provider" });
   }
 });
@@ -658,7 +659,7 @@ router.post("/admin/providers/:id/models/:modelId/test", async (req, res): Promi
     const result = await adminTestProviderModel(providerId, modelId);
     res.json(result);
   } catch (error: any) {
-    console.error(`Failed to test model ${modelId} for provider ${providerId}:`, error);
+    logger.error({ err: error, modelId, providerId }, "Failed to test model for provider");
     res.status(500).json({ ok: false, error: error?.message || "Gagal menguji model" });
   }
 });
@@ -674,7 +675,7 @@ router.post("/admin/providers/:id/test-raw", async (req, res): Promise<void> => 
     const result = await adminTestRawModel(providerId, upstreamModelId.trim());
     res.json(result);
   } catch (error: any) {
-    console.error(`Failed to test raw model ${upstreamModelId} for provider ${providerId}:`, error);
+    logger.error({ err: error, upstreamModelId, providerId }, "Failed to test raw model for provider");
     res.status(500).json({ ok: false, error: error?.message || "Gagal menguji model" });
   }
 });

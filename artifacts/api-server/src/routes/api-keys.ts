@@ -2,6 +2,7 @@ import { Router } from "express";
 import { cleanupInactiveApiKeys, db, deleteApiKeyForUser, apiKeysTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
+import { logActivity } from "../lib/activity";
 import crypto from "crypto";
 import { z } from "zod";
 import { AVAILABLE_MODEL_IDS } from "@workspace/model-catalog";
@@ -123,6 +124,8 @@ router.post("/api-keys", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  await logActivity(user.id, "apikey.created", created.id, { name: created.name });
+
   res.status(201).json({
     ...serializeKey(created),
     fullKey,
@@ -204,6 +207,8 @@ router.patch("/api-keys/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  await logActivity(user.id, "apikey.updated", updated.id, { name: updated.name });
+
   res.json(serializeKey(updated));
 });
 
@@ -221,6 +226,8 @@ router.delete("/api-keys/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(404).json({ error: "API key tidak ditemukan" });
     return;
   }
+
+  await logActivity(user.id, "apikey.deleted", id, { id });
 
   res.json({ success: true });
 });

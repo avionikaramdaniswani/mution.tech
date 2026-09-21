@@ -2,21 +2,22 @@ import { Router } from "express";
 import { db, usersTable, referralsTable, creditTransactionsTable, otpVerificationsTable, sessionsTable } from "@workspace/db";
 import { eq, and, isNull, gt } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { createHash, randomBytes } from "crypto";
+import { createHash, randomBytes, randomInt } from "crypto";
 import { z } from "zod";
 import { createSession, deleteOtherUserSessions, deleteSession, requireAuth, SESSION_COOKIE, SESSION_DURATION_MS } from "../lib/auth";
 import { authRateLimitKey, issueCsrfToken, rateLimit } from "../lib/security";
 import { logger } from "../lib/logger";
 import { REFEREE_BONUS } from "./referral";
 import { sendOtpEmail } from "../lib/email";
+import { logActivity } from "../lib/activity";
 
 function generateReferralCode(): string {
   return randomBytes(4).toString("hex");
 }
 
 function generateOtp(): string {
-  // 6-digit numeric OTP
-  return String(Math.floor(100000 + Math.random() * 900000));
+  // 6-digit numeric OTP — cryptographically secure
+  return String(randomInt(100000, 999999));
 }
 
 function hashOtp(otp: string): string {
@@ -244,6 +245,7 @@ router.post("/auth/forgot-password/reset", AuthLimiter, async (req, res): Promis
   await db.delete(sessionsTable).where(eq(sessionsTable.userId, existing.id));
 
   logger.info({ email }, "Password reset successful");
+  await logActivity(existing.id, "user.password_reset");
   res.json({ success: true });
 });
 
@@ -325,6 +327,8 @@ router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
   const sessionId = await createSession(user.id);
   setSessionCookie(res, sessionId);
 
+  await logActivity(user.id, "user.registered");
+
   res.status(201).json({ user: serializeUser(user) });
 });
 
@@ -375,6 +379,8 @@ router.post("/auth/login", AuthLimiter, async (req, res): Promise<void> => {
   const sessionId = await createSession(user.id);
   setSessionCookie(res, sessionId);
 
+  await logActivity(user.id, "user.login");
+
   res.json({ user: serializeUser(updated) });
 });
 
@@ -418,6 +424,8 @@ router.post("/auth/password", requireAuth, PasswordLimiter, async (req, res): Pr
   if (currentSessionId) {
     await deleteOtherUserSessions(user.id, currentSessionId);
   }
+
+  await logActivity(user.id, "user.password_changed");
 
   res.json({ success: true });
 });

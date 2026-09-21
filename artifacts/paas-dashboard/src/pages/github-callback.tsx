@@ -8,7 +8,7 @@ export default function GitHubCallback() {
 
   useEffect(() => {
     if (window.opener) {
-      window.opener.postMessage({ type: "github-oauth", status }, "*");
+      window.opener.postMessage({ type: "github-oauth", status }, window.location.origin);
       window.close();
     }
   }, [status]);

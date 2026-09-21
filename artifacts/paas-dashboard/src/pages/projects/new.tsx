@@ -171,6 +171,7 @@ export default function NewProject() {
 
   useEffect(() => {
     function handleMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
       if (e.data?.type === "github-oauth") {
         if (e.data.status === "connected") {
           refetchStatus();

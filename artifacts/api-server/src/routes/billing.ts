@@ -5,6 +5,7 @@ import { REFERRER_REWARD } from "./referral";
 import { requireAuth } from "../lib/auth";
 import { logger } from "../lib/logger";
 import { broadcastToUser, broadcastAdmin } from "../lib/events";
+import { logActivity } from "../lib/activity";
 import { z } from "zod";
 import {
   getDuitkuBase,
@@ -51,7 +52,7 @@ function parseInstructions(value: unknown): { title: string; steps: string[] }[]
 }
 
 async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: string) {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [claimed] = await tx
       .update(paymentOrdersTable)
       .set({ status: "paid", paidAt: new Date() })
@@ -140,6 +141,12 @@ async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: string) 
       creditsAmount: claimed.creditsAmount,
     };
   });
+
+  if (result.processed) {
+    await logActivity(result.userId, "billing.topup_paid", result.orderId, { amount: result.creditsAmount });
+  }
+
+  return result;
 }
 
 router.get("/billing/topup-config", (_req, res): void => {
@@ -500,6 +507,8 @@ router.post("/billing/duitku/create", requireAuth, async (req, res): Promise<voi
       .update(paymentOrdersTable)
       .set({ paymentUrl, duitkuReference, payCode, qrString })
       .where(eq(paymentOrdersTable.id, order.id));
+
+    await logActivity(user.id, "billing.topup_created", order.id, { invoice: invoiceNumber, amount: creditsAmount, method });
 
     res.json({
       orderId: order.id,
