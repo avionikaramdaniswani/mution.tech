@@ -721,7 +721,7 @@ export async function seedProvidersFromEnv(): Promise<void> {
     return;
   }
 
-  const skipPrefixes = ["SESSION", "DATABASE", "SUPABASE", "AGENTROUTER", "TRIPAY", "GITHUB"];
+  const skipPrefixes = ["SESSION", "DATABASE", "SUPABASE", "AGENTROUTER", "TRIPAY", "DUITKU", "GITHUB"];
   let seeded = 0;
   const now = new Date();
 

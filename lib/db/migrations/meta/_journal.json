@@ -78,6 +78,13 @@
       "when": 1787000200000,
       "tag": "0010_model_brand_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789976463761,
+      "tag": "0011_add_duitku_reference",
+      "breakpoints": true
     }
   ]
 }

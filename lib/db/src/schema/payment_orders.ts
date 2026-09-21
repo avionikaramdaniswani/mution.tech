@@ -9,10 +9,11 @@ export const paymentOrdersTable = pgTable("payment_orders", {
   invoiceNumber: text("invoice_number").notNull().unique(),
   amount: integer("amount").notNull(),
   creditsAmount: integer("credits_amount").notNull().default(0),
-  provider: text("provider").notNull().default("tripay"),
+  provider: text("provider").notNull().default("duitku"),
   status: paymentStatusEnum("status").notNull().default("pending"),
   paymentUrl: text("payment_url"),
-  tripayReference: text("tripay_reference"), // TriPay's own reference (DEV-xxx / T-xxx), dipakai untuk sync status
+  tripayReference: text("tripay_reference"), // Legacy: TriPay's own reference (DEV-xxx / T-xxx), kept for backward compat
+  duitkuReference: text("duitku_reference"), // Duitku's reference ID
   createdAt: timestamp("created_at").notNull().defaultNow(),
   paidAt: timestamp("paid_at"),
 });

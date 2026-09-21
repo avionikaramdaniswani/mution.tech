@@ -7,26 +7,25 @@ import { logger } from "../lib/logger";
 import { broadcastToUser, broadcastAdmin } from "../lib/events";
 import { z } from "zod";
 import {
-  getTripayBase,
-  createOrderSignature,
-  verifyCallbackSignature,
+  getDuitkuBase,
   getPaymentChannels,
+  createTransaction,
+  checkTransactionStatus,
+  verifyCallbackSignature,
   MIN_TOPUP_IDR,
   MAX_TOPUP_IDR,
   TOPUP_PRESETS,
-  type TripayCreateResponse,
-  type TripayCallbackPayload,
-  type TripayTransactionDetail,
-} from "../lib/tripay";
+  type DuitkuCallbackPayload,
+} from "../lib/duitku";
 
 const router = Router();
 
 type PaymentOrderRow = typeof paymentOrdersTable.$inferSelect;
 
-const CreateTripayBody = z.object({
+const CreateDuitkuBody = z.object({
   packageId: z.number().int().optional(),
   amount: z.number().int().min(MIN_TOPUP_IDR).max(MAX_TOPUP_IDR).optional(),
-  method: z.string().trim().regex(/^[A-Z0-9_-]{2,32}$/).default("QRIS"),
+  method: z.string().trim().regex(/^[A-Z0-9_-]{2,32}$/).default("SP"),
 }).refine((d) => d.packageId != null || d.amount != null, {
   message: "Harus ada packageId atau amount",
 });
@@ -49,20 +48,6 @@ function parseInstructions(value: unknown): { title: string; steps: string[] }[]
         : [],
     };
   }).filter((item) => item.title || item.steps.length > 0);
-}
-
-function isPaidDetailForOrder(order: PaymentOrderRow, detail: TripayTransactionDetail["data"]): boolean {
-  return detail.status === "PAID"
-    && detail.merchant_ref === order.invoiceNumber
-    && detail.total_amount === order.amount
-    && (!order.tripayReference || detail.reference === order.tripayReference);
-}
-
-function isCallbackForOrder(order: PaymentOrderRow, payload: TripayCallbackPayload): boolean {
-  return payload.status === "PAID"
-    && payload.merchant_ref === order.invoiceNumber
-    && payload.total_amount === order.amount
-    && (!order.tripayReference || payload.reference === order.tripayReference);
 }
 
 async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: string) {
@@ -103,7 +88,7 @@ async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: string) 
       userId: claimed.userId,
       type: "topup",
       amount: claimed.creditsAmount,
-      note: `Topup via Tripay (${cleanPaymentName(paymentName)}) - ${claimed.invoiceNumber}`,
+      note: `Topup via Duitku (${cleanPaymentName(paymentName)}) - ${claimed.invoiceNumber}`,
     });
 
     // Check if this is the user's first topup → reward referrer if applicable
@@ -162,29 +147,29 @@ router.get("/billing/topup-config", (_req, res): void => {
 });
 
 router.get("/billing/payment-channels", async (_req, res): Promise<void> => {
-  const apiKey = process.env.TRIPAY_API_KEY;
-  if (!apiKey) {
-    res.status(503).json({ error: "Tripay belum dikonfigurasi" });
+  const merchantCode = process.env.DUITKU_MERCHANT_CODE;
+  const apiKey = process.env.DUITKU_API_KEY;
+  if (!merchantCode || !apiKey) {
+    res.status(503).json({ error: "Duitku belum dikonfigurasi" });
     return;
   }
   try {
-    const channels = await getPaymentChannels(apiKey, getTripayBase());
+    const channels = await getPaymentChannels(merchantCode, apiKey, 10000, getDuitkuBase());
     res.json(channels.map((c) => ({
-      code: c.code,
-      name: c.name,
-      group: c.group,
-      icon_url: c.icon_url,
-      minimum_amount: c.minimum_amount,
-      maximum_amount: c.maximum_amount,
+      code: c.paymentMethod,
+      name: c.paymentName,
+      group: "Payment",
+      icon_url: c.paymentImage,
+      totalFee: c.totalFee,
     })));
   } catch (err) {
-    logger.error({ err }, "Failed to fetch payment channels");
+    logger.error({ err }, "Failed to fetch Duitku payment channels");
     res.status(502).json({ error: "Gagal mengambil daftar channel pembayaran" });
   }
 });
 
 router.post("/billing/topup", requireAuth, (_req, res): void => {
-  res.status(410).json({ error: "Topup manual dinonaktifkan. Gunakan endpoint pembayaran Tripay." });
+  res.status(410).json({ error: "Topup manual dinonaktifkan. Gunakan endpoint pembayaran Duitku." });
 });
 
 router.get("/billing/transactions", requireAuth, async (req, res): Promise<void> => {
@@ -222,69 +207,51 @@ router.get("/billing/orders/:id", requireAuth, async (req, res): Promise<void> =
 
   if (!order || order.userId !== user.id) { res.status(404).json({ error: "Not found" }); return; }
 
-  const apiKey = process.env.TRIPAY_API_KEY;
-  let tx: Record<string, unknown> | null = null;
+  const merchantCode = process.env.DUITKU_MERCHANT_CODE;
+  const apiKey = process.env.DUITKU_API_KEY;
+  let duitkuStatus: string | null = null;
 
-  if (apiKey && order.status !== "cancelled") {
+  if (merchantCode && apiKey && order.status !== "cancelled" && order.provider === "duitku") {
     try {
-      const base = getTripayBase();
-      // Prefer direct detail lookup by reference if available
-      if (order.tripayReference) {
-        const r = await fetch(`${base}/transaction/detail?reference=${encodeURIComponent(order.tripayReference)}`, {
-          headers: { Authorization: `Bearer ${apiKey}` },
-        });
-        const d = await r.json() as { success: boolean; data?: Record<string, unknown> };
-        if (d.success && d.data) tx = d.data;
-      } else {
-        // Fall back to list scan
-        const r = await fetch(`${base}/merchant/transactions?per_page=100`, {
-          headers: { Authorization: `Bearer ${apiKey}` },
-        });
-        const d = await r.json() as { success: boolean; data?: Record<string, unknown>[] };
-        if (d.success && Array.isArray(d.data)) {
-          tx = d.data.find((t) => t.merchant_ref === order.invoiceNumber) ?? null;
-        }
-      }
+      const detail = await checkTransactionStatus({
+        merchantCode,
+        apiKey,
+        merchantOrderId: order.invoiceNumber,
+        base: getDuitkuBase(),
+      });
+      // Duitku statusCode: "00" = success, "01" = pending, "02" = cancelled/failed
+      if (detail.statusCode === "00") duitkuStatus = "paid";
+      else if (detail.statusCode === "02") duitkuStatus = "expired";
+      else duitkuStatus = "pending";
     } catch { /* ignore */ }
   }
 
   let status: string = order.status;
-  if (tx && order.status !== "cancelled") {
-    const ts = String(tx.status ?? "");
-    if (ts === "PAID") status = "paid";
-    else if (ts === "EXPIRED") status = "expired";
-    else if (ts === "FAILED") status = "failed";
-    else status = "pending";
+  if (duitkuStatus && order.status !== "cancelled") {
+    status = duitkuStatus;
   }
 
   res.json({
     id: order.id,
     invoiceNumber: order.invoiceNumber,
-    reference: (tx?.reference as string) ?? order.tripayReference ?? null,
-    paymentMethod: (tx?.payment_method as string) ?? null,
-    paymentName: (tx?.payment_name as string) ?? null,
+    reference: order.duitkuReference ?? order.tripayReference ?? null,
+    paymentMethod: null,
+    paymentName: null,
     amount: order.amount,
-    feeMerchant: (tx?.fee_merchant as number) ?? null,
-    feeCustomer: (tx?.fee_customer as number) ?? null,
-    totalFee: (tx?.total_fee as number) ?? null,
-    amountReceived: (tx?.amount_received as number) ?? null,
+    feeMerchant: null,
+    feeCustomer: null,
+    totalFee: null,
+    amountReceived: null,
     creditsAmount: order.creditsAmount,
-    payCode: (tx?.pay_code as string | number) ?? null,
-    payUrl: (tx?.pay_url as string) ?? null,
-    checkoutUrl: (tx?.checkout_url as string) ?? order.paymentUrl ?? null,
+    payCode: null,
+    payUrl: null,
+    checkoutUrl: order.paymentUrl ?? null,
     status,
     createdAt: order.createdAt.toISOString(),
-    // detail endpoint uses expired_time; list endpoint uses expired_at
-    expiredAt: tx?.expired_time
-      ? new Date((tx.expired_time as number) * 1000).toISOString()
-      : tx?.expired_at
-        ? new Date((tx.expired_at as number) * 1000).toISOString()
-        : null,
-    paidAt: tx?.paid_at
-      ? new Date((tx.paid_at as number) * 1000).toISOString()
-      : (order.paidAt?.toISOString() ?? null),
-    orderItems: (tx?.order_items as { name: string; price: number; quantity: number; subtotal: number }[]) ?? [],
-    instructions: parseInstructions(tx?.instructions),
+    expiredAt: null,
+    paidAt: order.paidAt?.toISOString() ?? null,
+    orderItems: [],
+    instructions: [],
   });
 });
 
@@ -306,50 +273,68 @@ router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<v
     return;
   }
 
-  const apiKey = process.env.TRIPAY_API_KEY;
-  if (!apiKey) { res.status(503).json({ error: "Tripay tidak dikonfigurasi" }); return; }
+  const merchantCode = process.env.DUITKU_MERCHANT_CODE;
+  const apiKey = process.env.DUITKU_API_KEY;
+  if (!merchantCode || !apiKey) { res.status(503).json({ error: "Duitku tidak dikonfigurasi" }); return; }
 
-  // Order lama tanpa tripayReference tidak bisa di-sync (TriPay hanya terima reference T-xxx)
-  if (!order.tripayReference) {
+  // Legacy Tripay orders cannot be synced via Duitku
+  if (order.provider === "tripay") {
     res.json({ status: order.status, cannotSync: true });
     return;
   }
 
   try {
-    const base = getTripayBase();
-    const tripayRes = await fetch(
-      `${base}/transaction/detail?reference=${encodeURIComponent(order.tripayReference)}`,
-      { headers: { Authorization: `Bearer ${apiKey}` } }
-    );
-    const detail = await tripayRes.json() as TripayTransactionDetail;
+    const base = getDuitkuBase();
+    const detail = await checkTransactionStatus({
+      merchantCode,
+      apiKey,
+      merchantOrderId: order.invoiceNumber,
+      base,
+    });
+
     logger.info({
       orderId: order.id,
-      tripayStatus: detail.data?.status,
-      reference: detail.data?.reference,
-    }, "Tripay sync detail");
+      duitkuStatusCode: detail.statusCode,
+      reference: detail.reference,
+    }, "Duitku sync detail");
 
-    if (!detail.success || detail.data.status !== "PAID") {
-      res.json({ status: order.status });
+    if (detail.statusCode !== "00") {
+      // Not paid yet
+      let newStatus = order.status;
+      if (detail.statusCode === "02") newStatus = "expired";
+      if (newStatus !== order.status) {
+        await db.update(paymentOrdersTable)
+          .set({ status: newStatus as any })
+          .where(eq(paymentOrdersTable.id, order.id));
+      }
+      res.json({ status: newStatus });
       return;
     }
 
-    if (!isPaidDetailForOrder(order, detail.data)) {
-      logger.warn({ orderId: order.id, reference: detail.data.reference }, "Tripay sync detail mismatch");
+    // Verify amount matches
+    if (parseInt(detail.amount, 10) !== order.amount) {
+      logger.warn({ orderId: order.id, expected: order.amount, got: detail.amount }, "Duitku sync amount mismatch");
       res.status(409).json({ error: "Detail pembayaran tidak sesuai dengan order" });
       return;
     }
 
-    const result = await creditPaidOrderOnce(order, detail.data.payment_name);
+    const result = await creditPaidOrderOnce(order, "Duitku");
 
     if (result.processed) {
+      // Update duitku reference if available
+      if (detail.reference && !order.duitkuReference) {
+        await db.update(paymentOrdersTable)
+          .set({ duitkuReference: detail.reference })
+          .where(eq(paymentOrdersTable.id, order.id));
+      }
       broadcastToUser(result.userId, { type: "credits.changed", amount: result.creditsAmount });
       broadcastAdmin({ type: "order.paid", userId: result.userId, orderId: result.orderId });
     }
 
     res.json({ status: "paid", creditsAmount: result.creditsAmount, processed: result.processed });
   } catch (err) {
-    logger.error({ err }, "Tripay sync error");
-    res.status(502).json({ error: "Gagal cek status ke Tripay" });
+    logger.error({ err }, "Duitku sync error");
+    res.status(502).json({ error: "Gagal cek status ke Duitku" });
   }
 });
 
@@ -381,7 +366,6 @@ router.post("/billing/orders/:id/cancel", requireAuth, async (req, res): Promise
 
 router.get("/billing/orders", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const apiKey = process.env.TRIPAY_API_KEY;
 
   const dbOrders = await db
     .select()
@@ -390,78 +374,43 @@ router.get("/billing/orders", requireAuth, async (req, res): Promise<void> => {
     .orderBy(desc(paymentOrdersTable.createdAt))
     .limit(50);
 
-  // Fetch TriPay merchant transactions for enrichment
-  const tripayMap = new Map<string, Record<string, unknown>>();
-  if (apiKey && dbOrders.length > 0) {
-    try {
-      const base = getTripayBase();
-      const r = await fetch(`${base}/merchant/transactions?per_page=100`, {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
-      const data = await r.json() as { success: boolean; data?: Record<string, unknown>[] };
-      if (data.success && Array.isArray(data.data)) {
-        for (const tx of data.data) {
-          tripayMap.set(tx.merchant_ref as string, tx);
-        }
-      }
-    } catch {
-      // ignore — DB only fallback
-    }
-  }
-
   const result = dbOrders.map((o) => {
-    const tx = tripayMap.get(o.invoiceNumber);
-
-    let status: string = o.status;
-    if (tx && o.status !== "cancelled") {
-      const ts = String(tx.status ?? "");
-      if (ts === "PAID") status = "paid";
-      else if (ts === "EXPIRED") status = "expired";
-      else if (ts === "FAILED") status = "failed";
-      else status = "pending";
-    }
-
     return {
       id: o.id,
       invoiceNumber: o.invoiceNumber,
-      reference: (tx?.reference as string) ?? o.tripayReference ?? null,
-      paymentMethod: (tx?.payment_method as string) ?? null,
-      paymentName: (tx?.payment_name as string) ?? null,
+      reference: o.duitkuReference ?? o.tripayReference ?? null,
+      paymentMethod: null,
+      paymentName: null,
       amount: o.amount,
-      feeMerchant: (tx?.fee_merchant as number) ?? null,
-      feeCustomer: (tx?.fee_customer as number) ?? null,
-      totalFee: (tx?.total_fee as number) ?? null,
-      amountReceived: (tx?.amount_received as number) ?? null,
+      feeMerchant: null,
+      feeCustomer: null,
+      totalFee: null,
+      amountReceived: null,
       creditsAmount: o.creditsAmount,
-      payCode: (tx?.pay_code as string | number) ?? null,
-      payUrl: (tx?.pay_url as string) ?? null,
-      checkoutUrl: (tx?.checkout_url as string) ?? o.paymentUrl ?? null,
-      status,
+      payCode: null,
+      payUrl: null,
+      checkoutUrl: o.paymentUrl ?? null,
+      status: o.status,
       createdAt: o.createdAt.toISOString(),
-      expiredAt: tx?.expired_at
-        ? new Date((tx.expired_at as number) * 1000).toISOString()
-        : null,
-      paidAt: tx?.paid_at
-        ? new Date((tx.paid_at as number) * 1000).toISOString()
-        : (o.paidAt?.toISOString() ?? null),
-      orderItems: (tx?.order_items as { name: string; price: number; quantity: number; subtotal: number }[]) ?? [],
+      expiredAt: null,
+      paidAt: o.paidAt?.toISOString() ?? null,
+      orderItems: [],
     };
   });
 
   res.json(result);
 });
 
-router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<void> => {
-  const apiKey = process.env.TRIPAY_API_KEY;
-  const privateKey = process.env.TRIPAY_PRIVATE_KEY;
-  const merchantCode = process.env.TRIPAY_MERCHANT_CODE;
+router.post("/billing/duitku/create", requireAuth, async (req, res): Promise<void> => {
+  const merchantCode = process.env.DUITKU_MERCHANT_CODE;
+  const apiKey = process.env.DUITKU_API_KEY;
 
-  if (!apiKey || !privateKey || !merchantCode) {
-    res.status(503).json({ error: "Tripay belum dikonfigurasi" });
+  if (!merchantCode || !apiKey) {
+    res.status(503).json({ error: "Duitku belum dikonfigurasi" });
     return;
   }
 
-  const parsed = CreateTripayBody.safeParse(req.body);
+  const parsed = CreateDuitkuBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Nominal tidak valid" });
     return;
@@ -490,7 +439,6 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
 
   const user = (req as any).user;
   const invoiceNumber = `MUTION-${Date.now()}-${user.id}`;
-  const signature = createOrderSignature(merchantCode, invoiceNumber, amount, privateKey);
 
   const [order] = await db
     .insert(paymentOrdersTable)
@@ -499,119 +447,124 @@ router.post("/billing/tripay/create", requireAuth, async (req, res): Promise<voi
       invoiceNumber,
       amount,
       creditsAmount,
-      provider: "tripay",
+      provider: "duitku",
       status: "pending",
     })
     .returning();
 
-  const expiredTime = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
-  const base = getTripayBase();
+  const base = getDuitkuBase();
+  const appUrl = (process.env.PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://mution.tech").replace(/\/$/, "");
+  const callbackUrl = `${appUrl}/api/billing/duitku/webhook`;
+  const returnUrl = `${appUrl}/billing?orderId=${order.id}`;
 
-  logger.info({ base, method, amount, creditsAmount, invoiceNumber }, "Calling Tripay API");
+  logger.info({ base, method, amount, creditsAmount, invoiceNumber }, "Calling Duitku API");
 
   try {
-    const tripayRes = await fetch(`${base}/transaction/create`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        method,
-        merchant_ref: invoiceNumber,
-        amount,
-        customer_name: user.name,
-        customer_email: user.email,
-        customer_phone: "08000000000",
-        order_items: [
-          {
-            name: itemName,
-            price: amount,
-            quantity: 1,
-          },
-        ],
-        return_url: `${(process.env.PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://mution.tech").replace(/\/$/, "")}/billing?orderId=${order.id}`,
-        expired_time: expiredTime,
-        signature,
-      }),
+    const duitkuRes = await createTransaction({
+      merchantCode,
+      apiKey,
+      merchantOrderId: invoiceNumber,
+      paymentAmount: amount,
+      paymentMethod: method,
+      productDetails: itemName,
+      email: user.email,
+      customerVaName: user.name ?? "Mution User",
+      callbackUrl,
+      returnUrl,
+      expiryPeriod: 1440, // 24 jam dalam menit
+      base,
     });
 
-    const tripayData = (await tripayRes.json()) as TripayCreateResponse;
     logger.info({
-      success: tripayData.success,
-      reference: tripayData.data?.reference,
-      status: tripayData.data?.status,
+      statusCode: duitkuRes.statusCode,
+      reference: duitkuRes.reference,
       invoiceNumber,
-    }, "Tripay API response");
+    }, "Duitku API response");
 
-    if (!tripayData.success || tripayData.data?.merchant_ref !== invoiceNumber) {
+    if (duitkuRes.statusCode !== "00" && duitkuRes.statusCode !== "01") {
       await db
         .update(paymentOrdersTable)
         .set({ status: "failed" })
         .where(eq(paymentOrdersTable.id, order.id));
-      res.status(502).json({ error: tripayData.message ?? "Gagal membuat transaksi Tripay" });
+      res.status(502).json({ error: duitkuRes.statusMessage ?? "Gagal membuat transaksi Duitku" });
       return;
     }
 
-    const paymentUrl = tripayData.data.checkout_url ?? tripayData.data.payment_url;
-    const tripayReference = tripayData.data.reference; // DEV-xxx / T-xxx — dipakai untuk sync
+    const paymentUrl = duitkuRes.paymentUrl;
+    const duitkuReference = duitkuRes.reference;
     await db
       .update(paymentOrdersTable)
-      .set({ paymentUrl, tripayReference })
+      .set({ paymentUrl, duitkuReference })
       .where(eq(paymentOrdersTable.id, order.id));
 
-    res.json({ orderId: order.id, invoiceNumber, tripayReference, paymentUrl, amount, credits: amount });
+    res.json({
+      orderId: order.id,
+      invoiceNumber,
+      duitkuReference,
+      paymentUrl,
+      vaNumber: duitkuRes.vaNumber ?? null,
+      qrString: duitkuRes.qrString ?? null,
+      amount,
+      credits: creditsAmount,
+    });
   } catch (err) {
-    logger.error({ err }, "Tripay fetch error");
+    logger.error({ err }, "Duitku fetch error");
     await db
       .update(paymentOrdersTable)
       .set({ status: "failed" })
       .where(eq(paymentOrdersTable.id, order.id));
-    res.status(502).json({ error: "Gagal terhubung ke Tripay" });
+    res.status(502).json({ error: "Gagal terhubung ke Duitku" });
   }
 });
 
-router.post("/billing/tripay/webhook", async (req, res): Promise<void> => {
-  const privateKey = process.env.TRIPAY_PRIVATE_KEY;
-  if (!privateKey) {
+router.post("/billing/duitku/webhook", async (req, res): Promise<void> => {
+  const merchantCode = process.env.DUITKU_MERCHANT_CODE;
+  const apiKey = process.env.DUITKU_API_KEY;
+  if (!merchantCode || !apiKey) {
     res.status(503).json({ error: "Unconfigured" });
     return;
   }
 
-  // req.body harus Buffer (dari express.raw) — fallback ke string jika perlu
-  let rawBody: string;
-  if (Buffer.isBuffer(req.body)) {
-    rawBody = req.body.toString("utf-8");
-  } else if (typeof req.body === "string") {
-    rawBody = req.body;
+  // Duitku callback sends form-urlencoded or JSON
+  let payload: DuitkuCallbackPayload;
+  if (typeof req.body === "object" && req.body !== null) {
+    payload = req.body as DuitkuCallbackPayload;
   } else {
-    logger.error({ bodyType: typeof req.body, body: req.body }, "Tripay webhook body bukan Buffer — raw middleware tidak jalan");
-    res.status(400).json({ error: "Cannot read raw body" });
+    logger.error({ bodyType: typeof req.body }, "Duitku webhook body unexpected format");
+    res.status(400).json({ error: "Invalid body" });
     return;
   }
 
-  let payload: TripayCallbackPayload;
-  try {
-    payload = JSON.parse(rawBody) as TripayCallbackPayload;
-  } catch {
-    res.status(400).json({ error: "Invalid JSON" });
-    return;
-  }
-
-  if (!verifyCallbackSignature(rawBody, payload.signature, privateKey)) {
+  // Verify signature: MD5(merchantCode + amount + merchantOrderId + apiKey)
+  if (!verifyCallbackSignature(
+    merchantCode,
+    String(payload.amount),
+    payload.merchantOrderId,
+    apiKey,
+    payload.signature,
+  )) {
+    logger.warn({ merchantOrderId: payload.merchantOrderId }, "Duitku webhook invalid signature");
     res.status(401).json({ error: "Invalid signature" });
     return;
   }
 
-  if (payload.status !== "PAID") {
-    res.json({ success: true, message: "Status ignored" });
+  // resultCode: "00" = success, "01" = pending, "02" = failed
+  if (payload.resultCode !== "00") {
+    // Update status jika failed
+    if (payload.resultCode === "02") {
+      await db
+        .update(paymentOrdersTable)
+        .set({ status: "failed" })
+        .where(eq(paymentOrdersTable.invoiceNumber, payload.merchantOrderId));
+    }
+    res.json({ success: true, message: "Status noted" });
     return;
   }
 
   const [order] = await db
     .select()
     .from(paymentOrdersTable)
-    .where(eq(paymentOrdersTable.invoiceNumber, payload.merchant_ref))
+    .where(eq(paymentOrdersTable.invoiceNumber, payload.merchantOrderId))
     .limit(1);
 
   if (!order) {
@@ -624,13 +577,25 @@ router.post("/billing/tripay/webhook", async (req, res): Promise<void> => {
     return;
   }
 
-  if (!isCallbackForOrder(order, payload)) {
-    logger.warn({ orderId: order.id, reference: payload.reference }, "Tripay webhook payload mismatch");
-    res.status(409).json({ error: "Payment payload does not match order" });
+  // Verify amount matches
+  if (parseInt(String(payload.amount), 10) !== order.amount) {
+    logger.warn({
+      orderId: order.id,
+      expected: order.amount,
+      got: payload.amount,
+    }, "Duitku webhook amount mismatch");
+    res.status(409).json({ error: "Payment amount does not match order" });
     return;
   }
 
-  const result = await creditPaidOrderOnce(order, payload.payment_name);
+  // Update duitku reference
+  if (payload.reference && !order.duitkuReference) {
+    await db.update(paymentOrdersTable)
+      .set({ duitkuReference: payload.reference })
+      .where(eq(paymentOrdersTable.id, order.id));
+  }
+
+  const result = await creditPaidOrderOnce(order, payload.paymentCode ?? "Duitku");
 
   if (result.processed) {
     broadcastToUser(result.userId, { type: "credits.changed", amount: result.creditsAmount });

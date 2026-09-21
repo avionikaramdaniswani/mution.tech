@@ -238,7 +238,7 @@ function TopupSection() {
   const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null);
   const [customRaw, setCustomRaw] = useState("");
   const [isCustom, setIsCustom] = useState(false);
-  const [method, setMethod] = useState("QRIS");
+  const [method, setMethod] = useState("SP");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { channels, loading: chLoading, error: chError } = usePaymentChannels();
@@ -297,7 +297,7 @@ function TopupSection() {
       const body = selectedPackage
         ? { packageId: selectedPackage.id, method }
         : { amount: resolvedAmount, method };
-      const res = await csrfFetch("/api/billing/tripay/create", {
+      const res = await csrfFetch("/api/billing/duitku/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -771,7 +771,7 @@ function PaymentStatusBanner({ orderId, onDone }: { orderId: number; onDone: () 
           <p className="text-xs text-muted-foreground">
             {timedOut
               ? "Kalau sudah bayar, klik \"Cek Sekarang\" untuk memperbarui status secara manual."
-              : `Server sedang mengecek status ke Tripay${retries > 0 ? ` (cek ke-${retries})` : ""}...`}
+              : `Server sedang mengecek status ke Duitku${retries > 0 ? ` (cek ke-${retries})` : ""}...`}
           </p>
         </div>
       </div>
@@ -801,7 +801,7 @@ export default function BillingPage() {
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [pollDone, setPollDone] = useState(false);
 
-  // Detect return from Tripay via xorderId=??x URL param
+  // Detect return from Duitku via orderId=xx URL param
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get("orderId");

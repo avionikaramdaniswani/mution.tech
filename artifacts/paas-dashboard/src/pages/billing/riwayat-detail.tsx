@@ -210,7 +210,7 @@ export default function RiwayatDetailPage() {
         showToast("Pembayaran dikonfirmasi. Kredit sudah masuk!", true);
         load();
       } else if (data.cannotSync) {
-        showToast("Referensi TriPay tidak tersedia - tidak bisa cek otomatis.", false);
+        showToast("Referensi tidak tersedia - tidak bisa cek otomatis.", false);
       } else {
         showToast("Belum terbayar. Coba lagi setelah kamu selesai bayar.", false);
       }
@@ -359,7 +359,7 @@ export default function RiwayatDetailPage() {
       <Section title="Info Pesanan">
         <Row label="No. Invoice" value={<span className="font-mono text-xs">{order.invoiceNumber}</span>} />
         {order.reference && (
-          <Row label="Ref. TriPay" value={<span className="font-mono text-xs">{order.reference}</span>} />
+          <Row label="Ref. Duitku" value={<span className="font-mono text-xs">{order.reference}</span>} />
         )}
         <Row label="Dibuat" value={fmtDateTime(order.createdAt)} />
         {order.paidAt && (
@@ -413,7 +413,7 @@ export default function RiwayatDetailPage() {
         </Section>
       )}
 
-      {/* Cara Pembayaran - hanya muncul kalau ada instructions dari TriPay */}
+      {/* Cara Pembayaran - hanya muncul kalau ada instructions */}
       {isPending && order.instructions.length > 0 && (
         <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
           {/* Header seksi */}

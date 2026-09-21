@@ -177,6 +177,7 @@ export function csrfOriginGuard(req: Request, res: Response, next: NextFunction)
 
   if (
     req.path === "/billing/tripay/webhook" || 
+    req.path === "/billing/duitku/webhook" ||
     req.path === "/billing/payment/notify" ||
     req.path === "/webhooks/github"
   ) {

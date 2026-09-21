@@ -117,7 +117,7 @@ export default function RiwayatOrderPage() {
           <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>
             {loading
               ? "Memuat data transaksi..."
-              : `Menampilkan ${orders.length} riwayat transaksi dari TriPay.`}
+              : `Menampilkan ${orders.length} riwayat transaksi.`}
           </p>
         </div>
         <button
@@ -171,7 +171,7 @@ export default function RiwayatOrderPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Loader2 className="h-6 w-6 animate-spin" style={{ color: "rgba(255,255,255,0.2)" }} />
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.28)" }}>Mengambil data dari TriPay...</p>
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.28)" }}>Mengambil data transaksi...</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
