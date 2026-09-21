@@ -32,12 +32,6 @@ async function fetchCatalog(): Promise<Model[]> {
   return res.json();
 }
 
-async function fetchCatalog(): Promise<Model[]> {
-  const res = await fetch("/api/catalog");
-  if (!res.ok) throw new Error("gagal");
-  return res.json();
-}
-
 function formatPricing(value: number) {
   return value.toLocaleString("id-ID");
 }
@@ -52,10 +46,12 @@ function getProviderIcon(provider: string, baseClassName?: string) {
   if (provider === "Google") return <img src="/gemini.jpg" alt="Google" className={cls} style={{ objectFit: "contain" }} />;
   return <Brain className={`${cls} text-[#64748b]`} />;
 }
+
+type UpstreamHealth = {
   status: "Online" | "Degraded" | "Offline";
   latencyMs: number;
   lastChecked: number;
-}
+};
 
 export default function ProvidersPage() {
   const { toast } = useToast();
