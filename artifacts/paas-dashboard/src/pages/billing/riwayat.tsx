@@ -111,10 +111,10 @@ export default function RiwayatOrderPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: "rgba(255,255,255,0.9)" }}>
+          <h1 className="text-xl font-bold" style={{ color: "var(--muted-foreground)" }}>
             Riwayat Transaksi
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
             {loading
               ? "Memuat data transaksi..."
               : `Menampilkan ${orders.length} riwayat transaksi.`}
@@ -124,13 +124,13 @@ export default function RiwayatOrderPage() {
           onClick={refresh}
           className="h-9 w-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-70"
           style={{
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: "hsl(var(--muted))",
+            border: "1px solid hsl(var(--border))",
           }}
         >
           <RefreshCw
             className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-            style={{ color: "rgba(255,255,255,0.35)" }}
+            style={{ color: "var(--muted-foreground)" }}
           />
         </button>
       </div>
@@ -150,8 +150,8 @@ export default function RiwayatOrderPage() {
                   active
                     ? sc
                       ? { background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color }
-                      : { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.85)" }
-                    : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.38)" }
+                      : { background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))", color: "var(--muted-foreground)" }
+                    : { background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))", color: "var(--muted-foreground)" }
                 }
               >
                 {active && sc && sc.icon}
@@ -170,12 +170,12 @@ export default function RiwayatOrderPage() {
       {/* List */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Loader2 className="h-6 w-6 animate-spin" style={{ color: "rgba(255,255,255,0.2)" }} />
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.28)" }}>Mengambil data transaksi...</p>
+          <Loader2 className="h-6 w-6 animate-spin" style={{ color: "var(--muted-foreground)" }} />
+          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Mengambil data transaksi...</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
             {activeTab === "all"
               ? "Belum ada transaksi."
               : `Tidak ada order ${STATUS_CONFIG[activeTab as OrderStatus]?.label.toLowerCase() ?? ""}.`}
@@ -205,8 +205,8 @@ export default function RiwayatOrderPage() {
                 <div
                   className="flex items-center gap-4 px-5 py-4 rounded-xl cursor-pointer transition-opacity hover:opacity-75"
                   style={{
-                    background: "rgba(255,255,255,0.025)",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    background: "hsl(var(--muted))",
+                    border: "1px solid hsl(var(--border))",
                   }}
                 >
                   {/* Status icon circle */}
@@ -220,7 +220,7 @@ export default function RiwayatOrderPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-base font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>
+                      <span className="text-base font-semibold" style={{ color: "var(--muted-foreground)" }}>
                         {rp(order.amount)}
                       </span>
                       <span
@@ -230,7 +230,7 @@ export default function RiwayatOrderPage() {
                         {sc.label}
                       </span>
                     </div>
-                    <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.3)" }}>
+                    <p className="text-xs truncate" style={{ color: "var(--muted-foreground)" }}>
                       {order.paymentName ?? order.paymentMethod ?? "-"}
                       <span className="mx-1.5 opacity-40">·</span>
                       <span className="font-mono text-[11px]">{order.invoiceNumber}</span>
@@ -240,10 +240,10 @@ export default function RiwayatOrderPage() {
                   {/* Date + chevron */}
                   <div className="text-right flex-shrink-0 flex items-center gap-3">
                     <div className="text-right">
-                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{fmtDate(order.createdAt)}</p>
-                      <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.18)" }}>{fmtTime(order.createdAt)}</p>
+                      <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{fmtDate(order.createdAt)}</p>
+                      <p className="text-[10px]" style={{ color: "var(--muted-foreground)" }}>{fmtTime(order.createdAt)}</p>
                     </div>
-                    <ChevronRight className="h-4 w-4" style={{ color: "rgba(255,255,255,0.2)" }} />
+                    <ChevronRight className="h-4 w-4" style={{ color: "var(--muted-foreground)" }} />
                   </div>
                 </div>
               </Link>

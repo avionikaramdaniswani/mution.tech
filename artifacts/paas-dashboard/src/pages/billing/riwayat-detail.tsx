@@ -556,8 +556,7 @@ export default function RiwayatDetailPage() {
               href={order.checkoutUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
-              style={{ background: "#F97316", color: "white" }}
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] bg-orange-500 hover:bg-orange-600 text-white"
             >
               <ExternalLink className="h-4 w-4" />
               Lanjutkan Pembayaran
@@ -566,56 +565,34 @@ export default function RiwayatDetailPage() {
           <button
             onClick={syncStatus}
             disabled={syncing}
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
-            style={{
-              background: "hsl(var(--muted))",
-              border: "1px solid hsl(var(--border))",
-              color: syncing ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.55)",
-              cursor: syncing ? "not-allowed" : "pointer",
-            }}
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.98] border shadow-sm bg-background hover:bg-accent hover:text-accent-foreground text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Mengecek Status...</> : <><RefreshCw className="h-4 w-4" /> Cek Status Pembayaran</>}
           </button>
           {!confirmCancel ? (
             <button
               onClick={() => setConfirmCancel(true)}
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium transition-all"
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(239,68,68,0.15)",
-                color: "rgba(239,68,68,0.5)",
-                cursor: "pointer",
-              }}
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium transition-all border border-transparent hover:border-red-500/20 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
             >
               <Ban className="h-4 w-4" />
               Batalkan Order
             </button>
           ) : (
-            <div
-              className="rounded-xl px-4 py-3.5 space-y-3"
-              style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}
-            >
-              <p className="text-sm text-center" style={{ color: "var(--muted-foreground)" }}>
+            <div className="rounded-xl px-4 py-3.5 space-y-3 border border-red-500/20 bg-red-50 dark:bg-red-500/10">
+              <p className="text-sm text-center text-red-600 dark:text-red-400">
                 Batalkan order ini? Tindakan ini tidak bisa diurungkan.
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setConfirmCancel(false)}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-medium"
-                  style={{ background: "hsl(var(--muted))", border: "1px solid hsl(var(--border))", color: "var(--muted-foreground)", cursor: "pointer" }}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-medium border bg-background hover:bg-accent text-foreground"
                 >
                   Kembali
                 </button>
                 <button
                   onClick={cancelOrder}
                   disabled={cancelling}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold"
-                  style={{
-                    background: "rgba(239,68,68,0.15)",
-                    border: "1px solid rgba(239,68,68,0.3)",
-                    color: cancelling ? "rgba(239,68,68,0.3)" : "#EF4444",
-                    cursor: cancelling ? "not-allowed" : "pointer",
-                  }}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {cancelling ? "Membatalkan..." : "Ya, Batalkan"}
                 </button>
@@ -628,15 +605,7 @@ export default function RiwayatDetailPage() {
       {isInactive && (
         <div className="pt-1">
           <Link href="/billing">
-            <button
-              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
-              style={{
-                background: "rgba(249,115,22,0.08)",
-                border: "1px solid rgba(249,115,22,0.2)",
-                color: "#F97316",
-                cursor: "pointer",
-              }}
-            >
+            <button className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] border border-orange-500/20 bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-500 hover:bg-orange-100 dark:hover:bg-orange-500/20">
               <Wallet className="h-4 w-4" />
               Topup Kredit Lagi
             </button>
