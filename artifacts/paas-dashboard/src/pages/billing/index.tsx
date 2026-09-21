@@ -386,7 +386,7 @@ function TopupSection() {
             {packages.length > 0 && (
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Paket Pilihan</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="flex sm:grid sm:grid-cols-3 gap-3 overflow-x-auto pb-4 sm:pb-0 snap-x hide-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0">
                   {packages.map((pkg, i) => {
                     const active = !isCustom && selectedPackage?.id === pkg.id;
                     const isPopular = i === 1; // Highlight middle package
@@ -399,7 +399,7 @@ function TopupSection() {
                         key={pkg.id}
                         onClick={() => pickPackage(pkg)}
                         className={cn(
-                          "relative flex flex-col items-center justify-center text-center rounded-2xl p-4 transition-all border-2",
+                          "relative flex flex-col items-center justify-center text-center rounded-2xl p-4 transition-all border-2 flex-shrink-0 w-[200px] sm:w-auto snap-center",
                           active 
                             ? "border-primary bg-primary/5 shadow-sm" 
                             : isPopular 
@@ -584,31 +584,40 @@ function TopupSection() {
                     {qris && (() => {
                       const active = method === qris.code;
                       return (
-                        <button
-                          key={qris.code}
-                          onClick={() => setMethod(qris.code)}
-                          className={cn(
-                            "w-full flex items-center gap-4 rounded-xl px-4 py-4 transition-all text-left border-2",
-                            active ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-background hover:bg-muted"
-                          )}
-                        >
-                          <div className="h-10 w-10 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 bg-white border border-border/50 shadow-sm">
-                            <img src={qris.icon_url} alt={qris.name} className="h-8 w-8 object-contain"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        <div className="mb-6">
+                          <p className="text-[10px] font-bold uppercase tracking-widest mb-2 text-muted-foreground/60 ml-1">Pembayaran Instan</p>
+                          <div className="rounded-xl border border-border bg-background overflow-hidden shadow-sm">
+                            <button
+                              key={qris.code}
+                              onClick={() => setMethod(qris.code)}
+                              className={cn(
+                                "w-full flex items-center justify-between p-4 transition-all text-left hover:bg-muted/50",
+                                active && "bg-primary/5"
+                              )}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className="h-10 w-10 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 bg-white border border-border/50 shadow-sm">
+                                  <img src={qris.icon_url} alt={qris.name} className="h-8 w-8 object-contain"
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={cn("text-sm font-bold", active ? "text-primary" : "text-foreground")}>{qris.name}</p>
+                                  <p className="text-[11px] text-muted-foreground mt-0.5">GoPay · OVO · Dana · ShopeePay & e-wallet</p>
+                                </div>
+                              </div>
+                              <div className={cn("h-5 w-5 flex-shrink-0 rounded-full border-2 flex items-center justify-center transition-colors", active ? "border-primary" : "border-muted-foreground/30")}>
+                                {active && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                              </div>
+                            </button>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={cn("text-sm font-bold", active ? "text-primary" : "text-foreground")}>{qris.name}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">GoPay · OVO · Dana · ShopeePay & semua e-wallet</p>
-                          </div>
-                          {active && <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-primary" />}
-                        </button>
+                        </div>
                       );
                     })()}
 
                     {Object.entries(groups).map(([group, chs]) => (
-                      <div key={group} className="mt-4">
+                      <div key={group} className="mb-6 last:mb-0">
                         <p className="text-[10px] font-bold uppercase tracking-widest mb-2 text-muted-foreground/60 ml-1">{group}</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="rounded-xl border border-border bg-background overflow-hidden shadow-sm divide-y divide-border">
                           {chs.map((c) => {
                             const active = method === c.code;
                             return (
@@ -616,17 +625,22 @@ function TopupSection() {
                                 key={c.code}
                                 onClick={() => setMethod(c.code)}
                                 className={cn(
-                                  "flex items-center gap-3 rounded-xl px-3 py-3 transition-all text-left border-2",
-                                  active ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-background hover:bg-muted"
+                                  "w-full flex items-center justify-between p-4 transition-all text-left hover:bg-muted/50",
+                                  active && "bg-primary/5"
                                 )}
                               >
-                                <div className="h-8 w-8 rounded-md overflow-hidden flex items-center justify-center flex-shrink-0 bg-white border border-border/50 shadow-sm p-1">
-                                  <img src={c.icon_url} alt={c.name} className="h-full w-full object-contain"
-                                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                                <div className="flex items-center gap-3">
+                                  <div className="h-8 w-8 rounded-md overflow-hidden flex items-center justify-center flex-shrink-0 bg-white border border-border/50 p-1">
+                                    <img src={c.icon_url} alt={c.name} className="h-full w-full object-contain"
+                                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                                  </div>
+                                  <span className={cn("text-sm font-semibold truncate", active ? "text-primary" : "text-foreground")}>
+                                    {c.name.replace(" Virtual Account", " VA")}
+                                  </span>
                                 </div>
-                                <span className={cn("text-xs font-bold leading-tight truncate", active ? "text-primary" : "text-foreground")}>
-                                  {c.name.replace(" Virtual Account", " VA")}
-                                </span>
+                                <div className={cn("h-5 w-5 flex-shrink-0 rounded-full border-2 flex items-center justify-center transition-colors", active ? "border-primary" : "border-muted-foreground/30")}>
+                                  {active && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                                </div>
                               </button>
                             );
                           })}
