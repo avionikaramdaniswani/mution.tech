@@ -810,7 +810,8 @@ export async function getConfiguredPublicModelCatalog() {
   }
 
   return Array.from(configured.entries()).map(([modelId, entry]) => {
-    const catalog = MODEL_CATALOG.find((model) => model.id === modelId || model.aliases?.includes(modelId));
+    const cleanModelId = modelId.includes('/') ? modelId.split('/').pop()! : modelId;
+    const catalog = MODEL_CATALOG.find((model) => model.id === modelId || model.aliases?.includes(modelId) || model.id === cleanModelId || model.aliases?.includes(cleanModelId));
     const basePricing = getCatalogModelPricing(modelId);
     const override = _modelPricingOverrides.get(modelId);
     let pricing = basePricing;

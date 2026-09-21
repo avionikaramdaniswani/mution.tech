@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, projectsTable, deploymentsTable, envVarsTable, coolifyResourcesTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth } from "../lib/auth";
 import { logActivity } from "../lib/activity";
@@ -530,6 +530,17 @@ router.post("/projects/:id/stop", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Project not found" });
     return;
   }
+
+  // Override any active deployment statuses so the UI doesn't get stuck in 'deploying' mode
+  await db
+    .update(deploymentsTable)
+    .set({ status: "stopped" })
+    .where(
+      and(
+        eq(deploymentsTable.projectId, id),
+        inArray(deploymentsTable.status, ["queued", "building", "deploying"])
+      )
+    );
 
   await logActivity(user.id, "project.stopped", id, { name: project.name });
   res.json(mapProject(project));
