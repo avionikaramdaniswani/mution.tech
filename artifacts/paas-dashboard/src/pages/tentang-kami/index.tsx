@@ -9,6 +9,7 @@ import {
   CreditCard,
   KeyRound,
   Mail,
+  MapPin,
   MessageCircle,
   Phone,
   Server,
@@ -41,26 +42,41 @@ const principles = [
 
 const contacts = [
   {
-    href: "mailto:supportmution@gmail.com",
+    href: "mailto:support@mution.tech",
     icon: Mail,
     label: "Email",
-    value: "supportmution@gmail.com",
+    value: "support@mution.tech",
     note: "Untuk support, kerja sama, dan pertanyaan umum.",
   },
   {
-    href: "https://wa.me/6285709557572",
+    href: "mailto:supportmution@gmail.com",
+    icon: Mail,
+    label: "Email Alternatif",
+    value: "supportmution@gmail.com",
+    note: "Email alternatif untuk support dan pertanyaan.",
+  },
+  {
+    href: "https://wa.me/6283895472636",
     icon: MessageCircle,
     label: "WhatsApp",
-    value: "+62 857-0955-7572",
+    value: "+62 838-9547-2636",
     note: "Untuk pertanyaan cepat.",
     external: true,
   },
   {
-    href: "tel:+6285709557572",
+    href: "tel:+6283895472636",
     icon: Phone,
     label: "Telepon",
-    value: "+62 857-0955-7572",
+    value: "+62 838-9547-2636",
     note: "Senin-Jumat, 09.00-17.00 WIB.",
+  },
+  {
+    href: "https://maps.google.com/?q=Jalan+Kemang+No+81+Prabumulih",
+    icon: MapPin,
+    label: "Alamat Kantor",
+    value: "Jl. Kemang No. 81, Kel. Muntang Tapus, Kec. Prabumulih Barat, Kota Prabumulih, Sumatera Selatan, Indonesia 31121",
+    note: "Kantor pusat Mution.",
+    external: true,
   },
 ];
 
@@ -89,7 +105,7 @@ export default function TentangKamiPage() {
                     </button>
                   </Link>
                   <a
-                    href="mailto:supportmution@gmail.com"
+                    href="mailto:support@mution.tech"
                     className="inline-flex h-11 items-center justify-center rounded-md border border-[#c9d8e7] bg-white px-5 text-sm font-semibold text-[#172033] transition-colors hover:bg-[#eef8ff]"
                   >
                     Hubungi Kami

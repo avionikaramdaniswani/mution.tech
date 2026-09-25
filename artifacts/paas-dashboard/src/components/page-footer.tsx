@@ -10,7 +10,7 @@ const footerLinks = [
 ];
 
 const socialLinks = [
-  { label: "WhatsApp", href: "https://wa.me/6285709557572", Icon: SiWhatsapp },
+  { label: "WhatsApp", href: "https://wa.me/6283895472636", Icon: SiWhatsapp },
   { label: "Instagram", href: "https://www.instagram.com/mution.tech", Icon: SiInstagram },
   { label: "TikTok", href: "https://www.tiktok.com/@mution.tech", Icon: SiTiktok },
 ];
@@ -68,15 +68,24 @@ export function PageFooter() {
           <div className="space-y-4 text-sm">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#172033]">Call:</p>
-              <a href="tel:+6285709557572" className="mt-1 block font-semibold text-[#526173] transition-colors hover:text-[#172033]">
-                +62 857-0955-7572
+              <a href="tel:+6283895472636" className="mt-1 block font-semibold text-[#526173] transition-colors hover:text-[#172033]">
+                +62 838-9547-2636
               </a>
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#172033]">Email:</p>
-              <a href="mailto:supportmution@gmail.com" className="mt-1 block break-all font-semibold text-[#526173] transition-colors hover:text-[#172033]">
+              <a href="mailto:support@mution.tech" className="mt-1 block break-all font-semibold text-[#526173] transition-colors hover:text-[#172033]">
+                support@mution.tech
+              </a>
+              <a href="mailto:supportmution@gmail.com" className="mt-0.5 block break-all font-semibold text-[#526173] transition-colors hover:text-[#172033]">
                 supportmution@gmail.com
               </a>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#172033]">Kantor:</p>
+              <p className="mt-1 text-sm font-semibold leading-5 text-[#526173]">
+                Jl. Kemang No. 81, Kel. Muntang Tapus, Kec. Prabumulih Barat, Kota Prabumulih, Sumatera Selatan 31121
+              </p>
             </div>
           </div>
           <p className="mt-7 text-xs text-[#526173]/75">(c) {new Date().getFullYear()} Mution. Dibuat dengan ❤️.</p>

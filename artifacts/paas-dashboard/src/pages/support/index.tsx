@@ -16,7 +16,7 @@ export default function SupportPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto w-full">
         {/* WhatsApp Card */}
         <a 
-          href="https://wa.me/6281234567890" 
+          href="https://wa.me/6283895472636" 
           target="_blank" 
           rel="noopener noreferrer"
           className="group relative flex flex-col p-8 rounded-3xl bg-white border-2 border-[#dbe8f3] hover:border-emerald-500 hover:shadow-[0_8px_30px_rgba(16,185,129,0.12)] transition-all duration-300 dark:bg-card dark:border-border overflow-hidden"
