@@ -11,7 +11,6 @@ import {
   Mail,
   MapPin,
   MessageCircle,
-  Phone,
   Server,
 } from "lucide-react";
 
@@ -40,45 +39,6 @@ const principles = [
   "Masukan pengguna diprioritaskan.",
 ];
 
-const contacts = [
-  {
-    href: "mailto:support@mution.tech",
-    icon: Mail,
-    label: "Email",
-    value: "support@mution.tech",
-    note: "Untuk support, kerja sama, dan pertanyaan umum.",
-  },
-  {
-    href: "mailto:supportmution@gmail.com",
-    icon: Mail,
-    label: "Email Alternatif",
-    value: "supportmution@gmail.com",
-    note: "Email alternatif untuk support dan pertanyaan.",
-  },
-  {
-    href: "https://wa.me/6283895472636",
-    icon: MessageCircle,
-    label: "WhatsApp",
-    value: "+62 838-9547-2636",
-    note: "Untuk pertanyaan cepat.",
-    external: true,
-  },
-  {
-    href: "tel:+6283895472636",
-    icon: Phone,
-    label: "Telepon",
-    value: "+62 838-9547-2636",
-    note: "Senin-Jumat, 09.00-17.00 WIB.",
-  },
-  {
-    href: "https://maps.google.com/?q=Jalan+Kemang+No+81+Prabumulih",
-    icon: MapPin,
-    label: "Alamat Kantor",
-    value: "Jl. Kemang No. 81, Kel. Muntang Tapus, Kec. Prabumulih Barat, Kota Prabumulih, Sumatera Selatan, Indonesia 31121",
-    note: "Kantor pusat Mution.",
-    external: true,
-  },
-];
 
 export default function TentangKamiPage() {
   return (
@@ -236,27 +196,67 @@ export default function TentangKamiPage() {
               </h2>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
-              {contacts.map(({ href, icon: Icon, label, value, note, external }) => (
+            <div className="space-y-4">
+              {/* Top row: 2 cards */}
+              <div className="grid gap-4 lg:grid-cols-2">
+                {/* Email Card - 2 emails combined */}
                 <a
-                  key={label}
-                  href={href}
-                  target={external ? "_blank" : undefined}
-                  rel={external ? "noopener noreferrer" : undefined}
+                  href="mailto:support@mution.tech"
                   className="group rounded-2xl border border-[#dbe8f3] bg-white p-5 shadow-[0_18px_50px_rgba(23,32,51,0.06)] transition-colors hover:border-[#f97316]/35 hover:bg-[#fff7ed]"
                 >
                   <div className="flex items-start gap-4">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#fed7aa] bg-[#fff7ed] text-[#f97316]">
-                      <Icon className="h-5 w-5" />
+                      <Mail className="h-5 w-5" />
                     </span>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">{label}</p>
-                      <p className="mt-2 break-all text-sm font-bold text-[#172033]">{value}</p>
-                      <p className="mt-2 text-sm leading-6 text-[#526173]">{note}</p>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Email</p>
+                      <p className="mt-2 break-all text-sm font-bold text-[#172033]">support@mution.tech</p>
+                      <p className="mt-1 break-all text-sm font-bold text-[#172033]">supportmution@gmail.com</p>
+                      <p className="mt-2 text-sm leading-6 text-[#526173]">Untuk support, kerja sama, dan pertanyaan umum.</p>
                     </div>
                   </div>
                 </a>
-              ))}
+
+                {/* WhatsApp & Telepon Card - combined */}
+                <a
+                  href="https://wa.me/6283895472636"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group rounded-2xl border border-[#dbe8f3] bg-white p-5 shadow-[0_18px_50px_rgba(23,32,51,0.06)] transition-colors hover:border-[#f97316]/35 hover:bg-[#fff7ed]"
+                >
+                  <div className="flex items-start gap-4">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#fed7aa] bg-[#fff7ed] text-[#f97316]">
+                      <MessageCircle className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">WhatsApp & Telepon</p>
+                      <p className="mt-2 text-sm font-bold text-[#172033]">+62 838-9547-2636</p>
+                      <p className="mt-2 text-sm leading-6 text-[#526173]">Untuk pertanyaan cepat. Senin-Jumat, 09.00-17.00 WIB.</p>
+                    </div>
+                  </div>
+                </a>
+              </div>
+
+              {/* Bottom row: wide office address card */}
+              <a
+                href="https://maps.google.com/?q=Jalan+Kemang+No+81+Prabumulih"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex rounded-2xl border border-[#dbe8f3] bg-white p-5 shadow-[0_18px_50px_rgba(23,32,51,0.06)] transition-colors hover:border-[#f97316]/35 hover:bg-[#fff7ed]"
+              >
+                <div className="flex items-start gap-4 w-full">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#fed7aa] bg-[#fff7ed] text-[#f97316]">
+                    <MapPin className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Alamat Kantor</p>
+                    <p className="mt-2 text-sm font-bold text-[#172033]">
+                      Jl. Kemang No. 81, Kel. Muntang Tapus, Kec. Prabumulih Barat, Kota Prabumulih, Sumatera Selatan, Indonesia 31121
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[#526173]">Kantor pusat Mution.</p>
+                  </div>
+                </div>
+              </a>
             </div>
 
           </div>

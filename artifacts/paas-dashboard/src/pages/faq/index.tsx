@@ -121,7 +121,7 @@ const faqs: FAQEntry[] = [
   {
     category: "Keamanan",
     q: "Bagaimana jika saya butuh bantuan teknis?",
-    a: "Kamu bisa menghubungi support melalui email supportmution@gmail.com atau WhatsApp di +62 857-0955-7572. Sertakan nama proyek, error yang muncul, dan waktu kejadian agar pengecekan lebih cepat.",
+    a: "Kamu bisa menghubungi support melalui email support@mution.tech atau WhatsApp di +62 838-9547-2636. Sertakan nama proyek, error yang muncul, dan waktu kejadian agar pengecekan lebih cepat.",
   },
 ];
 
@@ -214,14 +214,14 @@ export default function FAQPage() {
 
                 <div className="mt-6 space-y-3 text-sm">
                   <a
-                    href="mailto:supportmution@gmail.com"
+                    href="mailto:support@mution.tech"
                     className="flex items-center justify-between rounded-2xl border border-[#dbe8f3] bg-white px-4 py-3 font-semibold text-[#172033] transition-colors hover:border-[#f97316]/40 hover:bg-[#fff7ed]"
                   >
-                    supportmution@gmail.com
+                    support@mution.tech
                     <ArrowRight className="h-4 w-4 text-[#f97316]" />
                   </a>
                   <a
-                    href="https://wa.me/6285709557572"
+                    href="https://wa.me/6283895472636"
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-between rounded-2xl border border-[#dbe8f3] bg-white px-4 py-3 font-semibold text-[#172033] transition-colors hover:border-[#14b8a6]/40 hover:bg-[#eefdfa]"

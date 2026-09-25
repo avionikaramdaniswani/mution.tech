@@ -24,8 +24,8 @@ const organizationJsonLd = {
   contactPoint: {
     "@type": "ContactPoint",
     contactType: "customer support",
-    email: "supportmution@gmail.com",
-    telephone: "+62-857-0955-7572",
+    email: "support@mution.tech",
+    telephone: "+62-838-9547-2636",
     areaServed: "ID",
     availableLanguage: ["id", "en"],
   },
