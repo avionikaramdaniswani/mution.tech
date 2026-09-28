@@ -215,7 +215,7 @@ function PriceCell({
               ? "bg-amber-50 text-amber-600 ring-amber-200"
               : "bg-sky-50 text-sky-600 ring-sky-200"
           }`}>
-            {isReduced ? "↓ custom" : "↑ custom"}
+            {isReduced ? "↓ promo" : "↑ harga khusus"}
           </span>
         </div>
         <span className="font-mono text-[11px] text-[#94a3b8] line-through">{baseStr}</span>

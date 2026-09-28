@@ -196,7 +196,7 @@ export default function ProvidersPage() {
                               )}
                               {item.pricingMode === "fixed_price" && (
                                 <div className="flex items-center gap-1.5 text-[10px] text-sky-600">
-                                  <Tag className="h-2.5 w-2.5" /> Harga custom
+                                  <Tag className="h-2.5 w-2.5" /> Promo Spesial
                                 </div>
                               )}
                             </>
@@ -305,7 +305,7 @@ export default function ProvidersPage() {
                     )}
                     {detailsModel.pricingMode === "fixed_price" && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
-                        <Tag className="h-3 w-3" /> Custom
+                        <Tag className="h-3 w-3" /> Promo
                       </span>
                     )}
                   </div>
