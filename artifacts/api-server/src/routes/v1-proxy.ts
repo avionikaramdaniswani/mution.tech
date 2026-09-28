@@ -2193,7 +2193,10 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
   try {
   for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = providers[attempt];
-    const providerBody = { ...chatBody, model: upstreamModelFor(provider, originalModel) };
+    const providerBody: any = { ...chatBody, model: upstreamModelFor(provider, originalModel) };
+    if (providerBody.stream === true) {
+      providerBody.stream_options = { ...(providerBody.stream_options || {}), include_usage: true };
+    }
     updateApiRequestLog(res, { providerId: provider.id });
     logger.info({ provider: provider.id }, "Proxying Responses API → /chat/completions");
 
@@ -2214,8 +2217,11 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
         if (!reader) { res.end(); return; }
         const { inputTokens, outputTokens, cachedTokens } = await streamChatToResponses(reader, res, respId, msgId, createdAt, originalModel, namespaceMap);
         const tokens = (inputTokens + outputTokens) || estimateFallbackTokens(chatBody);
-        updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
-        reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
+        const breakdown = (inputTokens + outputTokens > 0)
+          ? { inputTokens, outputTokens, cachedTokens }
+          : undefined;
+        updateApiRequestUsageLog(res, tokens, originalModel, breakdown);
+        reservationClosed = await finalizeReservation(reservation, tokens, originalModel, breakdown);
         if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         return;
 
