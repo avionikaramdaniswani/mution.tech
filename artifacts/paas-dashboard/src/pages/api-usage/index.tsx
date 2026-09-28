@@ -81,7 +81,8 @@ function dateInputValue(date: Date) {
 
 function initialFrom() {
   const now = new Date();
-  return dateInputValue(new Date(now.getFullYear(), now.getMonth(), 1));
+  now.setDate(now.getDate() - 14);
+  return dateInputValue(now);
 }
 
 function initialTo() {
@@ -273,12 +274,28 @@ export default function ApiUsagePage() {
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Dari</label>
-            <Input type="date" value={from} onChange={(e) => updateFilter(setFrom, e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Sampai</label>
-            <Input type="date" value={to} onChange={(e) => updateFilter(setTo, e.target.value)} />
+            <label className="text-xs font-medium text-muted-foreground">Rentang Waktu</label>
+            <select
+              value={(() => {
+                const diff = (new Date(to).getTime() - new Date(from).getTime()) / (1000 * 3600 * 24);
+                return Math.round(diff).toString();
+              })()}
+              onChange={(e) => {
+                const days = parseInt(e.target.value);
+                const endDate = new Date();
+                const startDate = new Date();
+                startDate.setDate(endDate.getDate() - days);
+                setFrom(dateInputValue(startDate));
+                setTo(dateInputValue(endDate));
+                setPage(1);
+              }}
+              className={selectClass}
+            >
+              <option value="3">3 Hari Terakhir</option>
+              <option value="7">7 Hari Terakhir</option>
+              <option value="14">14 Hari Terakhir</option>
+              <option value="30">30 Hari Terakhir</option>
+            </select>
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">API Key</label>
