@@ -124,8 +124,8 @@ export default function ReferralPage() {
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Program Referral</p>
         <h1 className="mt-1 text-2xl font-black text-[#172033]">Ajak teman, dapat kredit gratis</h1>
         <p className="mt-1 text-sm text-[#526173]">
-          Bagikan link referralmu. Teman yang daftar langsung dapat <strong>Rp 5.000 kredit</strong> welcome bonus,
-          dan kamu dapat <strong>Rp 5.000 kredit</strong> setelah mereka topup pertama.
+          Bagikan link referralmu. Teman yang daftar langsung dapat <strong>Rp 2.000 kredit</strong> welcome bonus,
+          dan kamu dapat <strong>Rp 2.000 kredit</strong> setelah mereka topup pertama.
         </p>
       </div>
 
@@ -170,8 +170,8 @@ export default function ReferralPage() {
       <div className="grid gap-3 sm:grid-cols-3">
         {[
           { step: "1", icon: Link2, color: "#f97316", title: "Salin link", body: "Salin link referral unik milikmu di atas." },
-          { step: "2", icon: Users, color: "#14b8a6", title: "Teman daftar", body: "Teman daftar lewat linkmu → langsung dapat Rp 5.000 kredit." },
-          { step: "3", icon: Wallet, color: "#8b5cf6", title: "Kamu dapat kredit", body: "Setelah teman topup pertama, kamu dapat Rp 5.000 kredit otomatis." },
+          { step: "2", icon: Users, color: "#14b8a6", title: "Teman daftar", body: "Teman daftar lewat linkmu → langsung dapat Rp 2.000 kredit." },
+          { step: "3", icon: Wallet, color: "#8b5cf6", title: "Kamu dapat kredit", body: "Setelah teman topup pertama, kamu dapat Rp 2.000 kredit otomatis." },
         ].map(({ step, icon: Icon, color, title, body }) => (
           <div key={step} className="relative rounded-xl border border-[#dbe8f3] bg-white p-5 shadow-[0_4px_20px_rgba(23,32,51,0.06)]">
             <div className="mb-3 flex items-center gap-3">
@@ -245,7 +245,7 @@ export default function ReferralPage() {
                     </td>
                     <td className="px-5 py-3 font-mono text-[#526173]">
                       {r.rewardedAt ? (
-                        <span className="font-semibold text-emerald-600">+{formatRupiah(5000)}</span>
+                        <span className="font-semibold text-emerald-600">+{formatRupiah(2000)}</span>
                       ) : (
                         <span className="text-[#94a3b8]">—</span>
                       )}

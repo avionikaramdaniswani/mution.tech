@@ -299,7 +299,7 @@ router.post("/auth/register", AuthLimiter, async (req, res): Promise<void> => {
 
   const referralCode = generateReferralCode();
   const passwordHash = await bcrypt.hash(password, 12);
-  const initialCredits = referrer ? 5000 + REFEREE_BONUS : 5000;
+  const initialCredits = referrer ? 2000 + REFEREE_BONUS : 2000;
 
   const [user] = await db
     .insert(usersTable)

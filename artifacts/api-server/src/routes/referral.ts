@@ -8,8 +8,8 @@ import { db, usersTable, referralsTable, creditTransactionsTable } from "@worksp
 import { eq, and, count } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 
-export const REFEREE_BONUS = 5000;    // Rp 5.000 kredit untuk pendaftar baru
-export const REFERRER_REWARD = 5000;  // Rp 5.000 kredit untuk pengundang (setelah teman topup pertama)
+export const REFEREE_BONUS = 2000;    // Rp 2.000 kredit untuk pendaftar baru
+export const REFERRER_REWARD = 2000;  // Rp 2.000 kredit untuk pengundang (setelah teman topup pertama)
 
 const router = Router();
 

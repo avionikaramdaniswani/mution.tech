@@ -219,7 +219,7 @@ export default function Register() {
             {refCheck?.valid && step === "email" && (
               <div className="mx-auto flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
                 <Gift className="h-4 w-4 text-emerald-500" />
-                Diundang oleh <strong>{refCheck.referrerName}</strong> — dapat bonus Rp&nbsp;5.000!
+                Diundang oleh <strong>{refCheck.referrerName}</strong> — dapat bonus Rp&nbsp;2.000!
               </div>
             )}
             {refCode && refCheck && !refCheck.valid && step === "email" && (

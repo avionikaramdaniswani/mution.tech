@@ -370,7 +370,7 @@ export default function Landing() {
             <div className="mb-6 flex items-center gap-3 rounded-2xl border border-[#14b8a6]/30 bg-[#eefdf9] px-5 py-4">
               <CheckCircle2 className="h-5 w-5 shrink-0 text-[#14b8a6]" />
               <div>
-                <p className="text-sm font-bold text-[#172033]">Mulai gratis — dapat 5.000 kredit saat daftar</p>
+                <p className="text-sm font-bold text-[#172033]">Mulai gratis — dapat 2.000 kredit saat daftar</p>
                 <p className="text-xs text-[#526173]">Cukup untuk coba deploy aplikasi kecil dan pakai AI API. Topup kapan saja saat siap.</p>
               </div>
               <Link href="/register" className="ml-auto shrink-0">
