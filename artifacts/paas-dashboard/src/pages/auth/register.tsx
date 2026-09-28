@@ -22,7 +22,7 @@ import { csrfFetch } from "@/lib/csrf";
 
 // ─── Step 1: Email form ───────────────────────────────────────────────────────
 const emailSchema = z.object({
-  email: z.string().email({ message: "Format email tidak valid." }),
+  email: z.string().email({ message: "Format email tidak valid." }).refine(v => v.toLowerCase().endsWith('@gmail.com'), { message: "Hanya menerima alamat @gmail.com" }),
 });
 
 // ─── Step 2: OTP form ─────────────────────────────────────────────────────────

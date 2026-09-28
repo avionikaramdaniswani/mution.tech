@@ -23,7 +23,7 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   name: z.string().min(2, { message: "Nama minimal 2 karakter." }),
-  email: z.string().email({ message: "Format email tidak valid." }),
+  email: z.string().email({ message: "Format email tidak valid." }).refine(v => v.toLowerCase().endsWith('@gmail.com'), { message: "Hanya menerima alamat @gmail.com" }),
   password: z.string().min(6, { message: "Password minimal 6 karakter." }),
   confirmPassword: z.string().min(1, { message: "Konfirmasi password wajib diisi." }),
 }).refine(v => v.password === v.confirmPassword, {
@@ -175,7 +175,7 @@ function LoginPanel({ onSwitchTab }: { onSwitchTab: () => void }) {
 // ─── Register schemas per step ────────────────────────────────────────────────
 
 const emailStepSchema = z.object({
-  email: z.string().email({ message: "Format email tidak valid." }),
+  email: z.string().email({ message: "Format email tidak valid." }).refine(v => v.toLowerCase().endsWith('@gmail.com'), { message: "Hanya menerima alamat @gmail.com" }),
 });
 
 const otpStepSchema = z.object({

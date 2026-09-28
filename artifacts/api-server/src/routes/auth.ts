@@ -51,7 +51,7 @@ const PasswordLimiter = rateLimit({
 });
 
 const RegisterBody = z.object({
-  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
+  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()).refine(v => v.endsWith('@gmail.com'), { message: "Pendaftaran hanya menerima alamat @gmail.com" }),
   password: z.string().min(8).max(128),
   name: z.string().trim().min(2).max(80),
   otp: z.string().length(6).regex(/^\d{6}$/),
@@ -68,7 +68,7 @@ const ChangePasswordBody = z.object({
 });
 
 const OtpSendBody = z.object({
-  email: z.string().trim().email().max(254).transform((v) => v.toLowerCase()),
+  email: z.string().trim().email().max(254).transform((v) => v.toLowerCase()).refine(v => v.endsWith('@gmail.com'), { message: "Pendaftaran hanya menerima alamat @gmail.com" }),
 });
 
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
