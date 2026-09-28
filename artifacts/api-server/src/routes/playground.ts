@@ -80,7 +80,9 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
         try {
           const chunk = JSON.parse(line.slice(6));
           const delta = chunk.choices?.[0]?.delta;
-          if (delta?.content) content += delta.content;
+          const message = chunk.choices?.[0]?.message;
+          const text = delta?.content ?? message?.content;
+          if (text) content += text;
           if (chunk.choices?.[0]?.finish_reason) finishReason = chunk.choices[0].finish_reason;
           if (chunk.usage) usage = chunk.usage;
         } catch { /* skip malformed chunk */ }

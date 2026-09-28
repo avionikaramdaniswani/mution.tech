@@ -51,9 +51,9 @@ const navGroups = [
   {
     label: "Developer",
     items: [
-      { title: "API Keys",     url: "/api-keys",   icon: KeyRound },
-      { title: "AI Models",    url: "/providers",  icon: Brain },
       { title: "Playground",   url: "/playground", icon: FlaskConical },
+      { title: "AI Models",    url: "/providers",  icon: Brain },
+      { title: "API Keys",     url: "/api-keys",   icon: KeyRound },
       { title: "API Usage",    url: "/api-usage",  icon: LineChart },
       { title: "Documentation",url: "/docs",       icon: BookOpen },
     ],
