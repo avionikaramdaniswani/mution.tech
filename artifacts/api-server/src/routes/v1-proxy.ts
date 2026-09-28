@@ -838,7 +838,16 @@ export async function getConfiguredPublicModelCatalog() {
       description: catalog?.description ?? `Model ${entry.displayName} tersedia melalui Mution AI Gateway.`,
       aliases: catalog?.aliases ?? [],
     };
-  }).sort((a, b) => a.label.localeCompare(b.label));
+  }).sort((a, b) => {
+    const cleanA = a.id.includes('/') ? a.id.split('/').pop()! : a.id;
+    const cleanB = b.id.includes('/') ? b.id.split('/').pop()! : b.id;
+    const indexA = MODEL_CATALOG.findIndex((m) => m.id === a.id || m.aliases?.includes(a.id) || m.id === cleanA || m.aliases?.includes(cleanA));
+    const indexB = MODEL_CATALOG.findIndex((m) => m.id === b.id || m.aliases?.includes(b.id) || m.id === cleanB || m.aliases?.includes(cleanB));
+    const orderA = indexA === -1 ? 9999 : indexA;
+    const orderB = indexB === -1 ? 9999 : indexB;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.label.localeCompare(b.label);
+  });
 }
 
 function upstreamModelFor(provider: Provider, publicModelId: string): string {

@@ -6,7 +6,7 @@ import { logActivity } from "../lib/activity";
 import { logger } from "../lib/logger";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
 import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminFetchRemoteModels, adminTestProviderModel, adminTestRawModel, adminUpsertProviderModel, adminDeleteProviderModel, adminPruneProviderModels, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
-import { getModelById, getModelPricing } from "@workspace/model-catalog";
+import { getModelById, getModelPricing, MODEL_CATALOG } from "@workspace/model-catalog";
 
 const router = Router();
 
@@ -746,7 +746,16 @@ router.get("/admin/model-pricing", async (_req, res) => {
             }
           : null,
       };
-    }).sort((a, b) => a.label.localeCompare(b.label));
+    }).sort((a, b) => {
+      const cleanA = a.modelId.includes('/') ? a.modelId.split('/').pop()! : a.modelId;
+      const cleanB = b.modelId.includes('/') ? b.modelId.split('/').pop()! : b.modelId;
+      const indexA = MODEL_CATALOG.findIndex((m) => m.id === a.modelId || m.aliases?.includes(a.modelId) || m.id === cleanA || m.aliases?.includes(cleanA));
+      const indexB = MODEL_CATALOG.findIndex((m) => m.id === b.modelId || m.aliases?.includes(b.modelId) || m.id === cleanB || m.aliases?.includes(cleanB));
+      const orderA = indexA === -1 ? 9999 : indexA;
+      const orderB = indexB === -1 ? 9999 : indexB;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.label.localeCompare(b.label);
+    });
 
     res.json(result);
   } catch (error) {
