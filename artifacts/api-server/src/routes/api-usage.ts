@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, apiRequestsTable, apiKeysTable } from "@workspace/db";
+import { db, apiRequestsTable, apiKeysTable, apiUsageDailyTable } from "@workspace/db";
 import { and, asc, count, desc, eq, gte, lte, sum, sql, type SQL } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 
@@ -151,20 +151,31 @@ router.get("/api-usage", requireAuth, async (req, res): Promise<void> => {
       return;
     }
 
+    const dailyFilters: SQL[] = [
+      eq(apiUsageDailyTable.userId, userId),
+      gte(apiUsageDailyTable.date, toDateInputValue(fromDate)),
+      lte(apiUsageDailyTable.date, toDateInputValue(toDate)),
+    ];
+    if (model) dailyFilters.push(eq(apiUsageDailyTable.model, model));
+    if (status === "success") dailyFilters.push(eq(apiUsageDailyTable.status, "success"));
+    if (status === "error") dailyFilters.push(eq(apiUsageDailyTable.status, "error"));
+    if (Number.isInteger(keyId)) dailyFilters.push(eq(apiUsageDailyTable.keyId, keyId as number));
+    const whereDailyClause = and(...dailyFilters);
+
     const [summaryResult] = await db
       .select({
-        totalRequests: count(apiRequestsTable.id),
-        successfulRequests: sql<number>`coalesce(sum(case when ${apiRequestsTable.success} then 1 else 0 end), 0)::int`,
-        failedRequests: sql<number>`coalesce(sum(case when ${apiRequestsTable.success} then 0 else 1 end), 0)::int`,
-        totalCredits: sum(apiRequestsTable.credits),
-        totalTokens: sum(apiRequestsTable.totalTokens),
-        promptTokens: sum(apiRequestsTable.promptTokens),
-        cachedTokens: sum(apiRequestsTable.cachedTokens),
-        completionTokens: sum(apiRequestsTable.completionTokens),
-        averageLatencyMs: sql<number>`coalesce(avg(${apiRequestsTable.latencyMs}), 0)::int`,
+        totalRequests: sql<number>`coalesce(sum(${apiUsageDailyTable.totalRequests}), 0)::int`,
+        successfulRequests: sql<number>`coalesce(sum(case when ${apiUsageDailyTable.status} = 'success' then ${apiUsageDailyTable.totalRequests} else 0 end), 0)::int`,
+        failedRequests: sql<number>`coalesce(sum(case when ${apiUsageDailyTable.status} = 'error' then ${apiUsageDailyTable.totalRequests} else 0 end), 0)::int`,
+        totalCredits: sql<number>`coalesce(sum(${apiUsageDailyTable.totalCredits}), 0)::int`,
+        totalTokens: sql<number>`coalesce(sum(${apiUsageDailyTable.totalTokens}), 0)::int`,
+        promptTokens: sql<number>`coalesce(sum(${apiUsageDailyTable.promptTokens}), 0)::int`,
+        cachedTokens: sql<number>`coalesce(sum(${apiUsageDailyTable.cachedTokens}), 0)::int`,
+        completionTokens: sql<number>`coalesce(sum(${apiUsageDailyTable.completionTokens}), 0)::int`,
+        averageLatencyMs: sql<number>`0`, // Latency is not tracked daily
       })
-      .from(apiRequestsTable)
-      .where(whereClause);
+      .from(apiUsageDailyTable)
+      .where(whereDailyClause);
 
     const usageList = await db
       .select(usageSelect)
@@ -180,26 +191,25 @@ router.get("/api-usage", requireAuth, async (req, res): Promise<void> => {
       .from(apiRequestsTable)
       .where(whereClause);
 
-    const dayCol = sql<string>`to_char(date_trunc('day', ${apiRequestsTable.createdAt}), 'YYYY-MM-DD')`;
     const daily = await db
       .select({
-        day: dayCol,
-        requests: count(apiRequestsTable.id),
-        errors: sql<number>`coalesce(sum(case when ${apiRequestsTable.success} then 0 else 1 end), 0)::int`,
-        totalTokens: sum(apiRequestsTable.totalTokens),
-        credits: sum(apiRequestsTable.credits),
+        day: sql<string>`to_char(${apiUsageDailyTable.date}::date, 'YYYY-MM-DD')`,
+        requests: sql<number>`coalesce(sum(${apiUsageDailyTable.totalRequests}), 0)::int`,
+        errors: sql<number>`coalesce(sum(case when ${apiUsageDailyTable.status} = 'error' then ${apiUsageDailyTable.totalRequests} else 0 end), 0)::int`,
+        totalTokens: sql<number>`coalesce(sum(${apiUsageDailyTable.totalTokens}), 0)::int`,
+        credits: sql<number>`coalesce(sum(${apiUsageDailyTable.totalCredits}), 0)::int`,
       })
-      .from(apiRequestsTable)
-      .where(whereClause)
-      .groupBy(dayCol)
-      .orderBy(asc(dayCol));
+      .from(apiUsageDailyTable)
+      .where(whereDailyClause)
+      .groupBy(apiUsageDailyTable.date)
+      .orderBy(asc(apiUsageDailyTable.date));
 
     const modelRows = await db
-      .select({ model: apiRequestsTable.model })
-      .from(apiRequestsTable)
-      .where(eq(apiRequestsTable.userId, userId))
-      .groupBy(apiRequestsTable.model)
-      .orderBy(apiRequestsTable.model);
+      .select({ model: apiUsageDailyTable.model })
+      .from(apiUsageDailyTable)
+      .where(eq(apiUsageDailyTable.userId, userId))
+      .groupBy(apiUsageDailyTable.model)
+      .orderBy(apiUsageDailyTable.model);
 
     const apiKeys = await db
       .select({

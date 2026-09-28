@@ -240,6 +240,32 @@ export default function ApiUsagePage() {
         </Button>
       </div>
 
+      {data && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <SummaryCard
+            title="Total Requests"
+            value={(data.summary.totalRequests ?? 0).toLocaleString("id-ID")}
+            icon={Activity}
+            accent="border-sky-100 bg-sky-50 text-sky-600"
+            description={`${(data.summary.successfulRequests || 0).toLocaleString("id-ID")} berhasil - ${(data.summary.failedRequests || 0).toLocaleString("id-ID")} error`}
+          />
+          <SummaryCard
+            title="Total Tokens"
+            value={(data.summary.totalTokens ?? 0).toLocaleString("id-ID")}
+            icon={Hash}
+            accent="border-orange-100 bg-orange-50 text-primary"
+            description={`${Math.max(0, (data.summary.promptTokens || 0) - (data.summary.cachedTokens || 0)).toLocaleString("id-ID")} input - ${(data.summary.completionTokens || 0).toLocaleString("id-ID")} output - ${(data.summary.cachedTokens || 0).toLocaleString("id-ID")} cached`}
+          />
+          <SummaryCard
+            title="Total Cost"
+            value={`Rp ${(data.summary.totalCredits ?? 0).toLocaleString("id-ID")}`}
+            icon={DollarSign}
+            accent="border-emerald-100 bg-emerald-50 text-emerald-600"
+            description="Total kredit terpakai pada filter aktif"
+          />
+        </div>
+      )}
+
       <div className="rounded-lg border border-border bg-card p-4 shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
         <div className="mb-4 flex items-center gap-2">
           <Filter className="h-4 w-4 text-primary" />
@@ -301,29 +327,6 @@ export default function ApiUsagePage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <SummaryCard
-              title="Total Requests"
-              value={(data?.summary.totalRequests ?? 0).toLocaleString("id-ID")}
-              icon={Activity}
-              accent="border-sky-100 bg-sky-50 text-sky-600"
-              description={`${(data?.summary.successfulRequests || 0).toLocaleString("id-ID")} berhasil - ${(data?.summary.failedRequests || 0).toLocaleString("id-ID")} error`}
-            />
-            <SummaryCard
-              title="Total Tokens"
-              value={(data?.summary.totalTokens ?? 0).toLocaleString("id-ID")}
-              icon={Hash}
-              accent="border-orange-100 bg-orange-50 text-primary"
-              description={`${Math.max(0, (data?.summary.promptTokens || 0) - (data?.summary.cachedTokens || 0)).toLocaleString("id-ID")} input - ${(data?.summary.completionTokens || 0).toLocaleString("id-ID")} output - ${(data?.summary.cachedTokens || 0).toLocaleString("id-ID")} cached`}
-            />
-            <SummaryCard
-              title="Total Cost"
-              value={`Rp ${(data?.summary.totalCredits ?? 0).toLocaleString("id-ID")}`}
-              icon={DollarSign}
-              accent="border-emerald-100 bg-emerald-50 text-emerald-600"
-              description="Total kredit terpakai pada filter aktif"
-            />
-          </div>
 
           <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
             <div className="overflow-x-auto">

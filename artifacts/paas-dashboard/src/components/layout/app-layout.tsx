@@ -49,7 +49,7 @@ const navGroups = [
     ],
   },
   {
-    label: "Developer",
+    label: "API Gateway",
     items: [
       { title: "Playground",   url: "/playground", icon: FlaskConical },
       { title: "AI Models",    url: "/providers",  icon: Brain },
