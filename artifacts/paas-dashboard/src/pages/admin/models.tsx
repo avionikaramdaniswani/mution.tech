@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tag, Search, Pencil, RotateCcw, Sparkles } from "lucide-react";
+import { Tag, Search, Pencil, RotateCcw, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { csrfFetch } from "@/lib/csrf";
 
@@ -285,6 +285,19 @@ function EditDialog({ entry, open, onClose }: EditDialogProps) {
 export default function AdminModels() {
   const [search, setSearch] = useState("");
   const [editEntry, setEditEntry] = useState<ModelPricingEntry | null>(null);
+  const [collapsedProviders, setCollapsedProviders] = useState<Set<string>>(new Set());
+
+  const toggleProvider = (provider: string) => {
+    setCollapsedProviders((prev) => {
+      const next = new Set(prev);
+      if (next.has(provider)) {
+        next.delete(provider);
+      } else {
+        next.add(provider);
+      }
+      return next;
+    });
+  };
 
   const { data: models, isLoading } = useQuery({
     queryKey: ["admin", "model-pricing"],
@@ -338,84 +351,126 @@ export default function AdminModels() {
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-[#dbe8f3] bg-white shadow-[0_12px_34px_rgba(23,32,51,0.04)]">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#dbe8f3] bg-[#f8fbff]">
-                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-widest text-[#526173]/70">Model</th>
-                <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-[#526173]/70 sm:table-cell">Provider</th>
-                <th className="hidden px-4 py-3 text-right text-xs font-semibold uppercase tracking-widest text-[#526173]/70 md:table-cell">Input / 1M</th>
-                <th className="hidden px-4 py-3 text-right text-xs font-semibold uppercase tracking-widest text-[#526173]/70 md:table-cell">Output / 1M</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-widest text-[#526173]/70">Mode</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-widest text-[#526173]/70">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#f0f5fa]">
-              {filtered.map((m) => (
-                <tr
-                  key={m.modelId}
-                  className={`transition-colors hover:bg-[#f8fbff] ${hasOverride(m) ? "bg-orange-50/40" : ""}`}
-                >
-                  <td className="px-5 py-3.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-[#172033]">{m.label}</span>
-                      {!m.catalogMatched && <Badge variant="outline" className="border-amber-300 bg-amber-50 text-[10px] text-amber-700">Harga fallback</Badge>}
+        <div className="space-y-4">
+          {(() => {
+            const grouped: Record<string, ModelPricingEntry[]> = {};
+            for (const m of filtered) {
+              if (!grouped[m.provider]) grouped[m.provider] = [];
+              grouped[m.provider].push(m);
+            }
+            const providerNames = Object.keys(grouped).sort();
+            return providerNames.map((provider) => {
+              const isCollapsed = collapsedProviders.has(provider);
+              const providerModels = grouped[provider];
+              const overrideCount = providerModels.filter(hasOverride).length;
+              return (
+                <div key={provider} className="overflow-hidden rounded-xl border border-[#dbe8f3] bg-white shadow-[0_12px_34px_rgba(23,32,51,0.04)]">
+                  {/* Provider accordion header */}
+                  <button
+                    type="button"
+                    onClick={() => toggleProvider(provider)}
+                    className="flex w-full items-center justify-between gap-3 border-b border-[#dbe8f3] bg-[#f8fbff] px-5 py-3.5 text-left transition-colors hover:bg-[#eef4fb]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ProviderBadge provider={provider} />
+                      <span className="text-xs font-medium text-[#526173]">
+                        {providerModels.length} model{providerModels.length !== 1 ? "s" : ""}
+                      </span>
+                      {overrideCount > 0 && (
+                        <Badge variant="outline" className="border-orange-300 bg-orange-50 text-[10px] text-orange-700">
+                          {overrideCount} override
+                        </Badge>
+                      )}
                     </div>
-                    <div className="mt-0.5 font-mono text-[10px] text-[#526173]/60">{m.modelId}</div>
-                  </td>
-                  <td className="hidden px-4 py-3.5 sm:table-cell">
-                    <ProviderBadge provider={m.provider} />
-                  </td>
-                  <td className="hidden px-4 py-3.5 text-right md:table-cell">
-                    <span className="font-mono text-xs text-[#526173]">
-                      {formatCredits(m.override?.mode === "discount_percent" && m.override.discountPercent != null
-                        ? Math.ceil(m.basePricingInput * (1 - m.override.discountPercent / 100))
-                        : m.override?.mode === "fixed_price" && m.override.inputPriceOverride != null
-                        ? Number.parseFloat(m.override.inputPriceOverride)
-                        : m.override?.mode === "free"
-                        ? 0
-                        : m.basePricingInput)}
-                    </span>
-                    {hasOverride(m) && m.override?.mode !== "free" && (
-                      <div className="font-mono text-[10px] text-muted-foreground/60 line-through">
-                        {formatCredits(m.basePricingInput)}
-                      </div>
+                    {isCollapsed ? (
+                      <ChevronDown className="h-4 w-4 shrink-0 text-[#526173]/60 transition-transform" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4 shrink-0 text-[#526173]/60 transition-transform" />
                     )}
-                  </td>
-                  <td className="hidden px-4 py-3.5 text-right md:table-cell">
-                    <span className="font-mono text-xs text-[#526173]">
-                      {formatCredits(m.override?.mode === "discount_percent" && m.override.discountPercent != null
-                        ? Math.ceil(m.basePricingOutput * (1 - m.override.discountPercent / 100))
-                        : m.override?.mode === "fixed_price" && m.override.outputPriceOverride != null
-                        ? Number.parseFloat(m.override.outputPriceOverride)
-                        : m.override?.mode === "free"
-                        ? 0
-                        : m.basePricingOutput)}
-                    </span>
-                    {hasOverride(m) && m.override?.mode !== "free" && (
-                      <div className="font-mono text-[10px] text-muted-foreground/60 line-through">
-                        {formatCredits(m.basePricingOutput)}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <ModeBadge mode={m.override?.mode ?? "default"} />
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1.5 px-2.5 text-xs"
-                      onClick={() => setEditEntry(m)}
-                    >
-                      <Pencil className="h-3 w-3" />
-                      Edit
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </button>
+
+                  {/* Collapsible table body */}
+                  {!isCollapsed && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-[#dbe8f3] bg-[#f8fbff]/50">
+                            <th className="px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-widest text-[#526173]/70">Model</th>
+                            <th className="hidden px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-widest text-[#526173]/70 md:table-cell">Input / 1M</th>
+                            <th className="hidden px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-widest text-[#526173]/70 md:table-cell">Output / 1M</th>
+                            <th className="px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-widest text-[#526173]/70">Mode</th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-widest text-[#526173]/70">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#f0f5fa]">
+                          {providerModels.map((m) => (
+                            <tr
+                              key={m.modelId}
+                              className={`transition-colors hover:bg-[#f8fbff] ${hasOverride(m) ? "bg-orange-50/40" : ""}`}
+                            >
+                              <td className="px-5 py-3.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-medium text-[#172033]">{m.label}</span>
+                                  {!m.catalogMatched && <Badge variant="outline" className="border-amber-300 bg-amber-50 text-[10px] text-amber-700">Harga fallback</Badge>}
+                                </div>
+                                <div className="mt-0.5 font-mono text-[10px] text-[#526173]/60">{m.modelId}</div>
+                              </td>
+                              <td className="hidden px-4 py-3.5 text-right md:table-cell">
+                                <span className="font-mono text-xs text-[#526173]">
+                                  {formatCredits(m.override?.mode === "discount_percent" && m.override.discountPercent != null
+                                    ? Math.ceil(m.basePricingInput * (1 - m.override.discountPercent / 100))
+                                    : m.override?.mode === "fixed_price" && m.override.inputPriceOverride != null
+                                    ? Number.parseFloat(m.override.inputPriceOverride)
+                                    : m.override?.mode === "free"
+                                    ? 0
+                                    : m.basePricingInput)}
+                                </span>
+                                {hasOverride(m) && m.override?.mode !== "free" && (
+                                  <div className="font-mono text-[10px] text-muted-foreground/60 line-through">
+                                    {formatCredits(m.basePricingInput)}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="hidden px-4 py-3.5 text-right md:table-cell">
+                                <span className="font-mono text-xs text-[#526173]">
+                                  {formatCredits(m.override?.mode === "discount_percent" && m.override.discountPercent != null
+                                    ? Math.ceil(m.basePricingOutput * (1 - m.override.discountPercent / 100))
+                                    : m.override?.mode === "fixed_price" && m.override.outputPriceOverride != null
+                                    ? Number.parseFloat(m.override.outputPriceOverride)
+                                    : m.override?.mode === "free"
+                                    ? 0
+                                    : m.basePricingOutput)}
+                                </span>
+                                {hasOverride(m) && m.override?.mode !== "free" && (
+                                  <div className="font-mono text-[10px] text-muted-foreground/60 line-through">
+                                    {formatCredits(m.basePricingOutput)}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3.5 text-center">
+                                <ModeBadge mode={m.override?.mode ?? "default"} />
+                              </td>
+                              <td className="px-4 py-3.5 text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 gap-1.5 px-2.5 text-xs"
+                                  onClick={() => setEditEntry(m)}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                  Edit
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            });
+          })()}
         </div>
       )}
 
