@@ -327,7 +327,15 @@ export default function ApiUsagePage() {
         </div>
       ) : (
         <>
-
+          <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-sky-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-sky-900">Kebijakan Penyimpanan Log Detail</p>
+              <p className="mt-1">
+                Data ringkasan dan statistik total di atas disimpan secara permanen. Namun, untuk menjaga kecepatan sistem, <strong>tabel rincian di bawah ini hanya menampilkan log dari 14 hari terakhir</strong>.
+              </p>
+            </div>
+          </div>
           <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
