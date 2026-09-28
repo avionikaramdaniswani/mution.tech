@@ -1484,8 +1484,11 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (actualInputTokens + actualOutputTokens === 0) {
             logger.warn({ model: originalModel, fallbackTokens: tokens, estimatedChars: estimatedOutputChars }, "Generic stream: usage missing, using estimate");
           }
-          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens: finalInput, outputTokens: finalOutput, cachedTokens: actualCachedTokens });
-          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: finalInput, outputTokens: finalOutput, cachedTokens: actualCachedTokens });
+          const breakdown = (finalInput + finalOutput > 0)
+            ? { inputTokens: finalInput, outputTokens: finalOutput, cachedTokens: actualCachedTokens }
+            : undefined;
+          updateApiRequestUsageLog(res, tokens, originalModel, breakdown);
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, breakdown);
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         } else {
           const contentType = upstream.headers.get("content-type") ?? "";
@@ -1634,6 +1637,9 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
   for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = providers[attempt];
     const providerBody = req.method !== "GET" ? { ...req.body, model: upstreamModelFor(provider, originalModel) } : req.body;
+    if (providerBody && providerBody.stream === true) {
+      providerBody.stream_options = { ...(providerBody.stream_options || {}), include_usage: true };
+    }
     updateApiRequestLog(res, { providerId: provider.id });
 
     logger.info({ provider: provider.id, path }, "Proxying OpenAI call");
@@ -1688,8 +1694,11 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
           logger.warn({ model: req.body?.model, fallbackTokens: tokens }, "OpenAI stream: usage missing, using capped fallback");
         }
         if (reservation) {
-          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens: streamInputTokens, outputTokens: streamOutputTokens, cachedTokens: streamCachedTokens });
-          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: streamInputTokens, outputTokens: streamOutputTokens, cachedTokens: streamCachedTokens });
+          const breakdown = (streamInputTokens + streamOutputTokens > 0)
+            ? { inputTokens: streamInputTokens, outputTokens: streamOutputTokens, cachedTokens: streamCachedTokens }
+            : undefined;
+          updateApiRequestUsageLog(res, tokens, originalModel, breakdown);
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, breakdown);
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         }
         return;
