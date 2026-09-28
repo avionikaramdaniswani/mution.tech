@@ -1375,8 +1375,11 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (totalInputTokens + totalOutputTokens === 0) {
             logger.warn({ model: originalModel, fallbackTokens: tokens }, "Conduit stream: usage missing, using capped fallback");
           }
-          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, cachedTokens: totalCachedTokens });
-          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, cachedTokens: totalCachedTokens });
+          const breakdown = (totalInputTokens + totalOutputTokens > 0)
+            ? { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, cachedTokens: totalCachedTokens }
+            : undefined;
+          updateApiRequestUsageLog(res, tokens, originalModel, breakdown);
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, breakdown);
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         } else {
           const data = await upstream.json() as any;
@@ -1388,8 +1391,11 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           if (inputTokens + outputTokens === 0) {
             logger.warn({ model: originalModel, fallbackTokens: tokens }, "Conduit non-stream: usage missing, using capped fallback");
           }
-          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
-          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
+          const breakdown = (inputTokens + outputTokens > 0)
+            ? { inputTokens, outputTokens, cachedTokens }
+            : undefined;
+          updateApiRequestUsageLog(res, tokens, originalModel, breakdown);
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, breakdown);
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         }
         return;
@@ -1512,8 +1518,11 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           const outputTokens = data.usage?.completion_tokens ?? 0;
           const cachedTokens = extractCachedTokens(data.usage);
           const tokens = (inputTokens + outputTokens) || estimateFallbackTokens(req.body);
-          updateApiRequestUsageLog(res, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
-          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, { inputTokens, outputTokens, cachedTokens });
+          const breakdown = (inputTokens + outputTokens > 0)
+            ? { inputTokens, outputTokens, cachedTokens }
+            : undefined;
+          updateApiRequestUsageLog(res, tokens, originalModel, breakdown);
+          reservationClosed = await finalizeReservation(reservation, tokens, originalModel, breakdown);
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         }
         return;
@@ -1719,8 +1728,11 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
             logger.warn({ model: data.model ?? req.body?.model, fallbackTokens: tokens }, "OpenAI non-stream: usage missing, using capped fallback");
           }
           if (reservation) {
-            updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, { inputTokens, outputTokens, cachedTokens });
-            reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, { inputTokens, outputTokens, cachedTokens });
+            const breakdown = (inputTokens + outputTokens > 0)
+              ? { inputTokens, outputTokens, cachedTokens }
+              : undefined;
+            updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, breakdown);
+            reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, breakdown);
             if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
           }
         } else {
@@ -2242,8 +2254,11 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
         const outputTokens = data.usage?.completion_tokens ?? 0;
         const cachedTokens = extractCachedTokens(data.usage);
         const tokens = (data.usage?.total_tokens ?? (inputTokens + outputTokens)) || estimateFallbackTokens(chatBody);
-        updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, { inputTokens, outputTokens, cachedTokens });
-        reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, { inputTokens, outputTokens, cachedTokens });
+        const breakdown = (inputTokens + outputTokens > 0)
+          ? { inputTokens, outputTokens, cachedTokens }
+          : undefined;
+        updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, breakdown);
+        reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, breakdown);
         if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         return;
 
