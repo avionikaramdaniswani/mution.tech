@@ -11,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard,
@@ -106,35 +107,40 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             collapsible="icon"
             className="top-16 h-[calc(100svh-4rem)] border-r border-[#dbe8f3] shadow-[8px_0_30px_rgba(23,32,51,0.04)]"
           >
-            <SidebarContent>
-              {adminNavGroups.map((group) => (
-                <SidebarGroup key={group.title}>
-                  <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-widest text-[#526173]/60">
-                    {group.title}
-                  </SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {group.items.map((item) => (
-                        <SidebarMenuItem key={item.title}>
-                          <SidebarMenuButton
-                            asChild
-                            isActive={isNavActive(location, item.url, item.exact)}
-                            tooltip={item.title}
-                          >
-                            <Link href={item.url} className="flex items-center gap-3">
-                              <item.icon className="h-4 w-4" />
-                              <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
+            <SidebarContent className="pt-2">
+              {adminNavGroups.map((group, gi) => (
+                <div key={group.title}>
+                  {gi > 0 && <SidebarSeparator />}
+                  
+                  <SidebarGroup className="pt-1 pb-0">
+                    <SidebarGroupLabel className="h-5 text-[10px] font-semibold uppercase tracking-widest text-[#526173]/60">
+                      {group.title}
+                    </SidebarGroupLabel>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {group.items.map((item) => (
+                          <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton
+                              asChild
+                              isActive={isNavActive(location, item.url, item.exact)}
+                              tooltip={item.title}
+                            >
+                              <Link href={item.url} className="flex items-center gap-3">
+                                <item.icon className="h-4 w-4" />
+                                <span>{item.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </SidebarGroup>
+                </div>
               ))}
 
-              <SidebarGroup>
-                <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-widest text-[#526173]/60">
+              <SidebarSeparator />
+              <SidebarGroup className="pt-1 pb-0">
+                <SidebarGroupLabel className="h-5 text-[10px] font-semibold uppercase tracking-widest text-[#526173]/60">
                   User Panel
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
