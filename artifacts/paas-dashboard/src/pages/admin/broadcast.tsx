@@ -206,33 +206,34 @@ export default function AdminBroadcast() {
               <div className="bg-slate-100 p-2 border-b text-center text-xs font-medium text-slate-500 uppercase tracking-widest">
                 Preview Email
               </div>
-              <div className="bg-[#fafafa] p-6 h-full min-h-[500px]">
+              <div className="bg-[#fffaf5] p-6 h-full min-h-[500px]">
                 {/* Simulated Email Wrapper */}
-                <div className="max-w-[480px] mx-auto bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
+                <div className="max-w-[480px] mx-auto bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-[0_8px_30px_rgba(249,115,22,0.04)] text-left">
                   
-                  <div className="p-8 pb-6 border-b border-slate-50">
-                    <div className="flex justify-between items-center">
-                      <p className="m-0 text-xl font-bold tracking-tight text-slate-900">
-                        Mution<span className="text-orange-500">.</span>
-                      </p>
-                      <span className="bg-orange-50 text-orange-600 text-[10px] font-semibold px-3 py-1.5 rounded-full uppercase tracking-wider">
-                        PaaS & AI
-                      </span>
-                    </div>
+                  {/* Accent Line */}
+                  <div className="h-1 bg-orange-500 w-full"></div>
+
+                  <div className="p-8 pb-4">
+                    <p className="m-0 text-[22px] font-extrabold tracking-tight text-slate-800">
+                      Mution<span className="text-orange-500">.</span>
+                    </p>
+                    <p className="m-0 mt-1 text-[13px] font-medium text-orange-500">
+                      PaaS & AI Gateway
+                    </p>
                   </div>
                   
-                  <div className="p-8 text-slate-700 leading-relaxed text-[15px] font-normal" 
+                  <div className="px-8 pb-10 text-slate-700 leading-relaxed text-[15px]" 
                        dangerouslySetInnerHTML={{ __html: messageHtml || "<p class='text-slate-400 italic m-0'>Ketik pesan di kolom kiri untuk melihat preview.</p>" }}>
                   </div>
                   
-                  <div className="bg-[#fafafa] border-t border-slate-100 p-6 text-center">
+                  <div className="bg-[#fffdfa] border-t border-amber-100 p-6">
                     <p className="m-0 text-[13px] text-slate-400">Terima kasih telah menjadi bagian dari Mution.</p>
-                    <p className="m-0 mt-2 text-[12px] text-slate-300">© {new Date().getFullYear()} Mution Inc. &middot; <span className="underline underline-offset-2">mution.tech</span></p>
+                    <p className="m-0 mt-2 text-[12px] text-slate-300">© {new Date().getFullYear()} Mution Inc. &middot; <span className="text-orange-500">mution.tech</span></p>
                   </div>
                 </div>
                 
                 <div className="mt-6 text-center">
-                  <p className="text-[12px] text-slate-300">Pesan otomatis dari sistem. Harap tidak membalas email ini.</p>
+                  <p className="text-[12px] text-slate-300">Pesan ini dikirimkan dari sistem secara otomatis. Harap tidak membalas email ini.</p>
                 </div>
               </div>
             </Card>
