@@ -20,6 +20,11 @@ export async function sendOtpEmail(to: string, otp: string): Promise<boolean> {
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <meta name="color-scheme" content="light only" />
+      <meta name="supported-color-schemes" content="light" />
+      <style>
+        :root { color-scheme: light; }
+      </style>
     </head>
     <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
       <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:40px 16px;">
@@ -105,6 +110,11 @@ export async function sendBroadcastEmail(bccList: string[], subject: string, mes
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <meta name="color-scheme" content="light only" />
+      <meta name="supported-color-schemes" content="light" />
+      <style>
+        :root { color-scheme: light; }
+      </style>
     </head>
     <body style="margin:0;padding:0;background-color:#fffaf5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
       <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#fffaf5;padding:60px 20px;">
