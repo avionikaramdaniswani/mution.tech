@@ -58,6 +58,9 @@ export const LoginResponse = zod.object({
   "role": zod.enum(['user', 'admin']),
   "plan": zod.enum(['hobby', 'pro', 'team']),
   "credits": zod.number(),
+  "googleId": zod.string().nullish(),
+  "githubLogin": zod.string().nullish(),
+  "hasPassword": zod.boolean(),
   "createdAt": zod.string()
 })
 })
@@ -81,6 +84,9 @@ export const GetMeResponse = zod.object({
   "role": zod.enum(['user', 'admin']),
   "plan": zod.enum(['hobby', 'pro', 'team']),
   "credits": zod.number(),
+  "googleId": zod.string().nullish(),
+  "githubLogin": zod.string().nullish(),
+  "hasPassword": zod.boolean(),
   "createdAt": zod.string()
 })
 

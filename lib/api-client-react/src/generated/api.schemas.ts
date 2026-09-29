@@ -66,6 +66,9 @@ export interface User {
   role: UserRole;
   plan: UserPlan;
   credits: number;
+  googleId?: string | null;
+  githubLogin?: string | null;
+  hasPassword: boolean;
   createdAt: string;
 }
 

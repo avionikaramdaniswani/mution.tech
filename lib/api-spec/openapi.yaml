@@ -981,7 +981,7 @@ components:
 
     User:
       type: object
-      required: [id, email, name, role, plan, credits, createdAt]
+      required: [id, email, name, role, plan, credits, hasPassword, createdAt]
       properties:
         id:
           type: integer
@@ -997,6 +997,14 @@ components:
           enum: [hobby, pro, team]
         credits:
           type: integer
+        googleId:
+          type: string
+          nullable: true
+        githubLogin:
+          type: string
+          nullable: true
+        hasPassword:
+          type: boolean
         createdAt:
           type: string
 
