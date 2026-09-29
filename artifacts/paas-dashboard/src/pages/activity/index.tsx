@@ -6,6 +6,7 @@ import {
   Trash2, PlusCircle, CheckCircle2, AlertCircle, RefreshCw, Key
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function ActivityLog() {
   const { data: activities, isLoading } = useListActivity();
@@ -96,17 +97,19 @@ export default function ActivityLog() {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Aktivitas</h1>
           <p className="text-slate-500 mt-1">Memuat riwayat...</p>
         </div>
-        <div className="space-y-6">
-          {Array(3).fill(0).map((_, i) => (
-            <div key={i} className="flex gap-4">
-              <Skeleton className="h-10 w-10 rounded-full shrink-0" />
-              <div className="space-y-2 flex-1 pt-2">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/4" />
+        <Card>
+          <CardContent className="p-8 space-y-6">
+            {Array(3).fill(0).map((_, i) => (
+              <div key={i} className="flex gap-4">
+                <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                <div className="space-y-2 flex-1 pt-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/4" />
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -120,74 +123,78 @@ export default function ActivityLog() {
         </div>
       </div>
 
-      {!activities || activities.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center border rounded-2xl bg-white border-slate-100 shadow-sm">
-          <ActivityIcon className="h-12 w-12 text-slate-300 mb-4" />
-          <h3 className="text-lg font-medium text-slate-900">Belum ada aktivitas</h3>
-          <p className="text-slate-500 max-w-sm mt-1">
-            Riwayat log sistem seperti deploy, perubahan env, dan aksi lainnya akan muncul di sini.
-          </p>
-        </div>
-      ) : (
-        <div className="relative border-l border-slate-200 ml-5 space-y-10 pb-4">
-          {Object.entries(groupedActivities!).map(([dateStr, items]) => (
-            <div key={dateStr} className="relative">
-              {/* Date Header */}
-              <div className="mb-6 ml-10">
-                <span className="bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
-                  {dateStr}
-                </span>
-              </div>
-
-              {/* Items */}
-              <div className="space-y-8">
-                {items.map((activity) => {
-                  const style = getActionStyle(activity.action);
-                  const meta = parseMetadata(activity.metadata);
-                  
-                  return (
-                    <div key={activity.id} className="relative flex gap-6 items-start group">
-                      {/* Timeline Dot/Icon */}
-                      <div className={`absolute -left-[20px] flex h-10 w-10 items-center justify-center rounded-full border shadow-sm bg-white ${style.color} ring-4 ring-white`}>
-                        <style.icon className="h-4 w-4" />
-                      </div>
-                      
-                      {/* Content Box */}
-                      <div className="ml-10 flex-1">
-                        <div className="flex items-baseline justify-between gap-4">
-                          <p className="text-sm font-medium text-slate-900">
-                            <span className="capitalize">{translateAction(activity.action)}</span>
-                            {activity.projectName && (
-                              <span className="text-slate-500 font-normal">
-                                {" "}untuk <span className="font-semibold text-slate-700">{activity.projectName}</span>
-                              </span>
-                            )}
-                          </p>
-                          <span className="text-xs text-slate-400 whitespace-nowrap" title={format(new Date(activity.createdAt), "PPpp", { locale: id })}>
-                            {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true, locale: id })}
-                          </span>
-                        </div>
-
-                        {/* Metadata Badges */}
-                        {meta && (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {Object.entries(meta).map(([k, v]) => (
-                              <div key={k} className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1 text-xs text-slate-600">
-                                <span className="font-medium text-slate-400">{k}:</span>
-                                <span className="truncate max-w-[200px]" title={String(v)}>{String(v)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+      <Card className="border-border/50 overflow-hidden bg-white/50 backdrop-blur-sm">
+        <CardContent className="p-8">
+          {!activities || activities.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <ActivityIcon className="h-12 w-12 text-slate-300 mb-4" />
+              <h3 className="text-lg font-medium text-slate-900">Belum ada aktivitas</h3>
+              <p className="text-slate-500 max-w-sm mt-1">
+                Riwayat log sistem seperti deploy, perubahan env, dan aksi lainnya akan muncul di sini.
+              </p>
             </div>
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="relative border-l border-slate-200 ml-4 space-y-10 pb-4">
+              {Object.entries(groupedActivities!).map(([dateStr, items]) => (
+                <div key={dateStr} className="relative">
+                  {/* Date Header */}
+                  <div className="mb-6 ml-10">
+                    <span className="bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
+                      {dateStr}
+                    </span>
+                  </div>
+
+                  {/* Items */}
+                  <div className="space-y-8">
+                    {items.map((activity) => {
+                      const style = getActionStyle(activity.action);
+                      const meta = parseMetadata(activity.metadata);
+                      
+                      return (
+                        <div key={activity.id} className="relative flex gap-6 items-start group">
+                          {/* Timeline Dot/Icon */}
+                          <div className={`absolute -left-[36px] flex h-10 w-10 items-center justify-center rounded-full border shadow-sm bg-white ${style.color} ring-4 ring-white`}>
+                            <style.icon className="h-4 w-4" />
+                          </div>
+                          
+                          {/* Content Box */}
+                          <div className="ml-6 flex-1 bg-white border border-slate-100 shadow-sm p-4 rounded-xl hover:shadow-md transition-shadow">
+                            <div className="flex items-baseline justify-between gap-4">
+                              <p className="text-sm font-medium text-slate-900">
+                                <span className="capitalize">{translateAction(activity.action)}</span>
+                                {activity.projectName && (
+                                  <span className="text-slate-500 font-normal">
+                                    {" "}untuk <span className="font-semibold text-slate-700">{activity.projectName}</span>
+                                  </span>
+                                )}
+                              </p>
+                              <span className="text-xs text-slate-400 whitespace-nowrap" title={format(new Date(activity.createdAt), "PPpp", { locale: id })}>
+                                {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true, locale: id })}
+                              </span>
+                            </div>
+
+                            {/* Metadata Badges */}
+                            {meta && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {Object.entries(meta).map(([k, v]) => (
+                                  <div key={k} className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 border border-slate-200 px-2 py-1 text-xs text-slate-600">
+                                    <span className="font-medium text-slate-400">{k}:</span>
+                                    <span className="truncate max-w-[250px]" title={String(v)}>{String(v)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

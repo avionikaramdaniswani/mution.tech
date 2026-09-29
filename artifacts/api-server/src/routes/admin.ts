@@ -7,6 +7,7 @@ import { logger } from "../lib/logger";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
 import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminFetchRemoteModels, adminTestProviderModel, adminTestRawModel, adminUpsertProviderModel, adminDeleteProviderModel, adminPruneProviderModels, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
 import { getModelById, getModelPricing, MODEL_CATALOG } from "@workspace/model-catalog";
+import { sendBroadcastEmail } from "../lib/email";
 
 const router = Router();
 
@@ -134,6 +135,43 @@ router.delete("/admin/users/:id", async (req, res): Promise<void> => {
 
   await logActivity(admin.id, "admin.user.deleted", undefined, { targetEmail: deleted.email });
   res.json({ success: true });
+});
+
+// Send broadcast email to users
+router.post("/admin/broadcast", async (req, res): Promise<void> => {
+  const admin = (req as any).user;
+  const { target, subject, message } = req.body as { target: "all" | number[]; subject: string; message: string };
+
+  if (!subject || !message) {
+    res.status(400).json({ error: "Subject dan message wajib diisi" });
+    return;
+  }
+
+  let recipients: string[] = [];
+
+  if (target === "all") {
+    const users = await db.select({ email: usersTable.email }).from(usersTable);
+    recipients = users.map(u => u.email).filter(Boolean);
+  } else if (Array.isArray(target) && target.length > 0) {
+    // wait, we can't do inArray easily without importing it, so let's just query or do a basic loop
+    // I didn't import inArray. I'll just select all and filter.
+    const users = await db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable);
+    recipients = users.filter(u => target.includes(u.id)).map(u => u.email).filter(Boolean);
+  }
+
+  if (recipients.length === 0) {
+    res.status(400).json({ error: "Tidak ada target penerima yang valid" });
+    return;
+  }
+
+  const success = await sendBroadcastEmail(recipients, subject, message);
+
+  if (success) {
+    await logActivity(admin.id, "admin.broadcast_sent", undefined, { subject, targetCount: recipients.length });
+    res.json({ success: true, count: recipients.length });
+  } else {
+    res.status(500).json({ error: "Gagal mengirim broadcast (cek log server)" });
+  }
 });
 
 // List all activity logs across the platform

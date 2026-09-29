@@ -24,6 +24,7 @@ import {
   GitCommit,
   Tag,
   ShoppingBag,
+  Send,
 } from "lucide-react";
 import { TopNavbar, isNavActive, type TopNavLink } from "./shared";
 import { useRealtimeEvents } from "@/hooks/use-realtime";
@@ -36,6 +37,7 @@ const adminNavGroups = [
       { title: "Users", url: "/admin/users", icon: Users, exact: false },
       { title: "Projects", url: "/admin/projects", icon: FolderGit2, exact: false },
       { title: "Activity", url: "/admin/activity", icon: Activity, exact: false },
+      { title: "Broadcast", url: "/admin/broadcast", icon: Send, exact: false },
     ],
   },
   {

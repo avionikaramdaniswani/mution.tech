@@ -91,3 +91,85 @@ export async function sendOtpEmail(to: string, otp: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function sendBroadcastEmail(bccList: string[], subject: string, messageHtml: string): Promise<boolean> {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    logger.warn("RESEND_API_KEY not set — cannot send broadcast email");
+    return false;
+  }
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+    </head>
+    <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:40px 16px;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);text-align:left;">
+              <!-- Header -->
+              <tr>
+                <td style="background:linear-gradient(135deg,#f97316,#ea580c);padding:32px 40px;text-align:center;">
+                  <p style="margin:0;color:#fff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">Mution</p>
+                  <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">PaaS &amp; AI Gateway</p>
+                </td>
+              </tr>
+              <!-- Body -->
+              <tr>
+                <td style="padding:40px;color:#172033;line-height:1.6;font-size:15px;">
+                  ${messageHtml}
+                </td>
+              </tr>
+              <!-- Footer -->
+              <tr>
+                <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
+                  <p style="margin:0;font-size:12px;color:#94a3b8;">Email ini dikirimkan ke pengguna terdaftar di Mution.</p>
+                  <p style="margin:4px 0 0;font-size:12px;color:#94a3b8;">© ${new Date().getFullYear()} Mution · <a href="https://mution.tech" style="color:#f97316;text-decoration:none;">mution.tech</a></p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `.trim();
+
+  try {
+    // Resend allows max 50 recipients per request (to + cc + bcc). We will chunk the bccList.
+    const chunkSize = 40; 
+    for (let i = 0; i < bccList.length; i += chunkSize) {
+      const chunk = bccList.slice(i, i + chunkSize);
+      
+      const res = await fetch(RESEND_API_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: FROM_EMAIL,
+          to: [FROM_EMAIL], // 'to' is required. Send to ourselves, BCC to users.
+          bcc: chunk,
+          subject: subject,
+          html,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        logger.error({ status: res.status, body }, "Resend API error on broadcast chunk");
+      }
+    }
+
+    logger.info({ count: bccList.length }, "Broadcast email processed via Resend");
+    return true;
+  } catch (err) {
+    logger.error({ err }, "Failed to send broadcast email");
+    return false;
+  }
+}

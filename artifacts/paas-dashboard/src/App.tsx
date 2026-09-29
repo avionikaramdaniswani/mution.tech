@@ -49,6 +49,7 @@ import AdminPackages from "@/pages/admin/packages";
 import AdminPayments from "@/pages/admin/payments";
 import AdminUsage from "@/pages/admin/usage";
 import AdminChangelog from "@/pages/admin/changelog";
+import AdminBroadcast from "@/pages/admin/broadcast";
 
 const queryClient = new QueryClient();
 
@@ -138,6 +139,7 @@ function Router() {
         <Route path="/admin/packages" component={() => <AdminRoute component={AdminPackages} />} />
         <Route path="/admin/usage" component={() => <AdminRoute component={AdminUsage} />} />
         <Route path="/admin/changelog" component={() => <AdminRoute component={AdminChangelog} />} />
+        <Route path="/admin/broadcast" component={() => <AdminRoute component={AdminBroadcast} />} />
         <Route path="/admin" component={() => <AdminRoute component={AdminOverview} />} />
 
         {/* Root last - so it doesn't swallow every other path */}
