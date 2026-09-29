@@ -39,14 +39,19 @@ const adminNavGroups = [
     ],
   },
   {
-    title: "Platform Management",
+    title: "AI & Configuration",
     items: [
       { title: "AI Providers", url: "/admin/providers", icon: Brain, exact: false },
       { title: "Model Pricing", url: "/admin/models", icon: Tag, exact: false },
-      { title: "Credit Packages", url: "/admin/packages", icon: ShoppingBag, exact: false },
-      { title: "Payments", url: "/admin/payments", icon: CreditCard, exact: false },
       { title: "AI Usage", url: "/admin/usage", icon: Server, exact: false },
       { title: "Changelog", url: "/admin/changelog", icon: GitCommit, exact: false },
+    ],
+  },
+  {
+    title: "Finance & Billing",
+    items: [
+      { title: "Credit Packages", url: "/admin/packages", icon: ShoppingBag, exact: false },
+      { title: "Payments", url: "/admin/payments", icon: CreditCard, exact: false },
     ],
   },
 ];

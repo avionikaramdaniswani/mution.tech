@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, usersTable, creditTransactionsTable, paymentOrdersTable, creditPackagesTable, referralsTable } from "@workspace/db";
-import { and, count, desc, eq, ne } from "drizzle-orm";
+import { and, count, desc, eq, ne, sql } from "drizzle-orm";
 import { REFERRER_REWARD } from "./referral";
 import { requireAuth } from "../lib/auth";
 import { logger } from "../lib/logger";
@@ -234,8 +234,17 @@ router.get("/billing/orders/:id", requireAuth, async (req, res): Promise<void> =
   }
 
   let status: string = order.status;
-  if (duitkuStatus && order.status !== "cancelled") {
+  if (duitkuStatus && order.status !== "cancelled" && duitkuStatus !== order.status) {
     status = duitkuStatus;
+    if (duitkuStatus === "paid") {
+      // It is paid in Duitku but not in DB yet!
+      await creditPaidOrderOnce(order, order.provider ?? "duitku");
+    } else if (duitkuStatus === "expired") {
+      await db
+        .update(paymentOrdersTable)
+        .set({ status: "expired" })
+        .where(eq(paymentOrdersTable.id, order.id));
+    }
   }
 
   res.json({
@@ -374,6 +383,12 @@ router.post("/billing/orders/:id/cancel", requireAuth, async (req, res): Promise
 
 router.get("/billing/orders", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
+
+  // Auto-expire old pending orders (> 24 hours) before fetching
+  await db
+    .update(paymentOrdersTable)
+    .set({ status: "expired" })
+    .where(and(eq(paymentOrdersTable.status, "pending"), eq(paymentOrdersTable.userId, user.id), sql`${paymentOrdersTable.createdAt} < NOW() - INTERVAL '1 day'`));
 
   const dbOrders = await db
     .select()

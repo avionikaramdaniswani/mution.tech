@@ -441,14 +441,14 @@ console.log(response.choices[0].message.content);`} />
               <p className="text-foreground/70 text-sm mb-3">Isi dengan API key Mution kamu:</p>
               <OsTabs
                 linux={`export ANTHROPIC_BASE_URL="${base}"
-export ANTHROPIC_AUTH_TOKEN="${displayKey}"
-export ANTHROPIC_API_KEY="${displayKey}"`}
+export ANTHROPIC_API_KEY="${displayKey}"
+export ANTHROPIC_MODEL="${defaultModel}"`}
                 powershell={`$env:ANTHROPIC_BASE_URL = "${base}"
-$env:ANTHROPIC_AUTH_TOKEN = "${displayKey}"
-$env:ANTHROPIC_API_KEY = "${displayKey}"`}
+$env:ANTHROPIC_API_KEY = "${displayKey}"
+$env:ANTHROPIC_MODEL = "${defaultModel}"`}
                 cmd={`set ANTHROPIC_BASE_URL=${base}
-set ANTHROPIC_AUTH_TOKEN=mk_live_YOUR_KEY_HERE
-set ANTHROPIC_API_KEY=mk_live_YOUR_KEY_HERE`}
+set ANTHROPIC_API_KEY=mk_live_YOUR_KEY_HERE
+set ANTHROPIC_MODEL=${defaultModel}`}
               />
 
               <p className="text-xs mt-4 text-foreground/70 mb-3">
@@ -456,19 +456,19 @@ set ANTHROPIC_API_KEY=mk_live_YOUR_KEY_HERE`}
               </p>
               <OsTabs
                 linux={`echo 'export ANTHROPIC_BASE_URL="${base}"' >> ~/.zshrc
-echo 'export ANTHROPIC_AUTH_TOKEN="${displayKey}"' >> ~/.zshrc
 echo 'export ANTHROPIC_API_KEY="${displayKey}"' >> ~/.zshrc
+echo 'export ANTHROPIC_MODEL="${defaultModel}"' >> ~/.zshrc
 source ~/.zshrc
 
 # Untuk bash ganti ~/.zshrc dengan ~/.bashrc`}
                 powershell={`[System.Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL", "${base}", "User")
-[System.Environment]::SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "${displayKey}", "User")
 [System.Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "${displayKey}", "User")
+[System.Environment]::SetEnvironmentVariable("ANTHROPIC_MODEL", "${defaultModel}", "User")
 
 # Restart PowerShell setelah ini`}
                 cmd={`setx ANTHROPIC_BASE_URL "${base}"
-setx ANTHROPIC_AUTH_TOKEN "${displayKey}"
 setx ANTHROPIC_API_KEY "${displayKey}"
+setx ANTHROPIC_MODEL "${defaultModel}"
 
 REM Buka CMD baru setelah ini`}
               />

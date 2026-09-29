@@ -370,6 +370,12 @@ router.post("/admin/users/:id/credits", async (req, res): Promise<void> => {
 
 // List all payment orders across users
 router.get("/admin/orders", async (_req, res): Promise<void> => {
+  // Auto-expire old pending orders (> 24 hours) before fetching
+  await db
+    .update(paymentOrdersTable)
+    .set({ status: "expired" })
+    .where(and(eq(paymentOrdersTable.status, "pending"), sql`${paymentOrdersTable.createdAt} < NOW() - INTERVAL '1 day'`));
+
   const orders = await db
     .select({
       id: paymentOrdersTable.id,
