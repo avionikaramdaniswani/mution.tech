@@ -5,7 +5,7 @@ import { Link, useLocation } from "wouter";
 import { useLogin, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,19 @@ export default function Login() {
   const queryClient = useQueryClient();
   const loginMutation = useLogin();
   const [showPassword, setShowPassword] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const errorParam = searchParams.get("error");
+    const reasonParam = searchParams.get("reason");
+    
+    if (errorParam === "account_suspended") {
+      setUrlError(reasonParam || "Akun Anda telah ditangguhkan.");
+    } else if (errorParam) {
+      setUrlError("Login gagal. Silakan coba lagi.");
+    }
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -144,10 +157,12 @@ export default function Login() {
                     </FormItem>
                   )}
                 />
-                {loginMutation.isError && (
+                {(loginMutation.isError || urlError) && (
                   <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
-                    {/* @ts-ignore */}
-                    {loginMutation.error?.data?.error || loginMutation.error?.message || "Login gagal. Periksa kembali email dan password kamu."}
+                    {urlError ? urlError : (
+                      /* @ts-ignore */
+                      loginMutation.error?.data?.error || loginMutation.error?.message || "Login gagal. Periksa kembali email dan password kamu."
+                    )}
                   </div>
                 )}
                 <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]" disabled={loginMutation.isPending}>

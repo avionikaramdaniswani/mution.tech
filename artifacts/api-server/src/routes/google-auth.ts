@@ -169,8 +169,15 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
 
     // 1. Check by googleId first (returning Google user)
     let [user] = await db.select().from(usersTable).where(eq(usersTable.googleId, googleId));
+    
+    const { isUserBanned, getBanMessage } = await import("../lib/auth");
 
     if (user) {
+      if (isUserBanned(user as any)) {
+        res.redirect(`/login?error=account_suspended&reason=${encodeURIComponent(getBanMessage(user as any))}`);
+        return;
+      }
+      
       // Existing Google user — just login
       const [updated] = await db
         .update(usersTable)
@@ -189,6 +196,11 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
     [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
 
     if (user) {
+      if (isUserBanned(user as any)) {
+        res.redirect(`/login?error=account_suspended&reason=${encodeURIComponent(getBanMessage(user as any))}`);
+        return;
+      }
+      
       // Link Google to existing email account
       const [updated] = await db
         .update(usersTable)
