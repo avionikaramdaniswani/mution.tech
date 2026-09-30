@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, usersTable, referralsTable, creditTransactionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
-import { createSession, SESSION_COOKIE, SESSION_DURATION_MS } from "../lib/auth";
+import { createSession, SESSION_COOKIE, SESSION_DURATION_MS, isUserBanned, getBanMessage } from "../lib/auth";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -169,8 +169,6 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
 
     // 1. Check by googleId first (returning Google user)
     let [user] = await db.select().from(usersTable).where(eq(usersTable.googleId, googleId));
-    
-    const { isUserBanned, getBanMessage } = await import("../lib/auth");
 
     if (user) {
       if (isUserBanned(user as any)) {
