@@ -1171,6 +1171,18 @@ async function authenticate(req: Request, res: Response): Promise<{ key: typeof 
     return null;
   }
   updateApiRequestLog(res, { userId: row.user.id, keyId: row.key.id });
+
+  // Check if user is banned
+  if (row.user.bannedAt) {
+    const isPermanent = !row.user.bannedUntil;
+    const isStillBanned = isPermanent || new Date() < new Date(row.user.bannedUntil!);
+    if (isStillBanned) {
+      updateApiRequestLog(res, { errorType: "forbidden" });
+      res.status(403).json({ type: "error", error: { type: "forbidden", message: "Account suspended. Contact support at mution.tech" } });
+      return null;
+    }
+  }
+
   if (row.user.credits <= 0) {
     updateApiRequestLog(res, { errorType: "insufficient_quota" });
     res.status(402).json({ type: "error", error: { type: "insufficient_quota", message: "Insufficient credits. Top up at mution.tech/billing" } });

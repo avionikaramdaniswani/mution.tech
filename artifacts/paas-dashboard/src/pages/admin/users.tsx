@@ -5,12 +5,16 @@ import {
   getAdminListUsersQueryKey, getAdminGetUserQueryKey,
 } from "@workspace/api-client-react";
 import type { UserWithStats } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Users, ShieldAlert, User, Eye, Trash2, Wallet,
   Box, Calendar, Clock, Mail, AlertTriangle, Plus, Minus, Loader2,
-  Pencil, Sparkles,
+  Pencil, Sparkles, Ban, ShieldCheck,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { csrfFetch } from "@/lib/csrf";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +77,136 @@ function RoleBadge({ role }: { role: string }) {
       {isAdmin ? <ShieldAlert className="h-2.5 w-2.5" /> : <User className="h-2.5 w-2.5" />}
       {isAdmin ? "Admin" : "User"}
     </span>
+  );
+}
+
+function isUserBanned(user: UserWithStats): boolean {
+  if (!user.bannedAt) return false;
+  if (!user.bannedUntil) return true;
+  return new Date() < new Date(user.bannedUntil);
+}
+
+function BanBadge({ user }: { user: UserWithStats }) {
+  if (!isUserBanned(user)) return null;
+  const isPermanent = !user.bannedUntil;
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+      style={{ background: "rgba(239,68,68,0.12)", color: "rgb(220,38,38)", border: "1px solid rgba(239,68,68,0.22)" }}
+    >
+      <Ban className="h-2.5 w-2.5" />
+      {isPermanent ? "Banned" : "Suspended"}
+    </span>
+  );
+}
+
+function BanUserDialog({
+  user, open, onClose, onBanned,
+}: {
+  user: UserWithStats | null;
+  open: boolean;
+  onClose: () => void;
+  onBanned: () => void;
+}) {
+  const { toast } = useToast();
+  const [duration, setDuration] = useState<string>("7");
+  const [reason, setReason] = useState("");
+
+  const banMutation = useMutation({
+    mutationFn: async () => {
+      const durationDays = duration === "permanent" ? null : Number.parseInt(duration, 10);
+      const res = await csrfFetch(`/api/admin/users/${user!.id}/ban`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ durationDays, reason: reason.trim() }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || "Gagal melakukan ban");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "User Dibanned", description: `${user?.name} berhasil ditangguhkan.` });
+      onBanned();
+      onClose();
+      setReason("");
+      setDuration("7");
+    },
+    onError: (err: any) => {
+      toast({ variant: "destructive", title: "Gagal", description: err.message });
+    },
+  });
+
+  useEffect(() => {
+    if (open) { setReason(""); setDuration("7"); banMutation.reset(); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  if (!user) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v && !banMutation.isPending) onClose(); }}>
+      <DialogContent className="max-w-md border-[#dbe8f3] bg-white text-[#172033]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <Ban className="h-4 w-4" /> Suspend Pengguna
+          </DialogTitle>
+          <DialogDescription className="flex items-center gap-2 pt-1">
+            <UserAvatar name={user.name} size="sm" />
+            <span className="truncate">{user.name} – {user.email}</span>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-1">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">Durasi Penangguhan</Label>
+            <Select value={duration} onValueChange={setDuration}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 Hari</SelectItem>
+                <SelectItem value="3">3 Hari</SelectItem>
+                <SelectItem value="7">7 Hari</SelectItem>
+                <SelectItem value="14">14 Hari</SelectItem>
+                <SelectItem value="30">30 Hari</SelectItem>
+                <SelectItem value="90">90 Hari</SelectItem>
+                <SelectItem value="permanent">Permanen (Selamanya)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">Alasan (Opsional)</Label>
+            <Textarea
+              placeholder="Cth: Penyalahgunaan API, tidak membayar tagihan, dll."
+              className="min-h-[80px] text-sm"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </div>
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 space-y-1">
+            <p className="font-semibold flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Efek dari ban ini:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-amber-700">
+              <li>User tidak bisa login ke dashboard</li>
+              <li>Semua API AI key milik user akan ditolak</li>
+              <li>Semua hosting/web milik user akan dihentikan (DOWN)</li>
+              <li>Sesi aktif akan dihancurkan seketika</li>
+            </ul>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={banMutation.isPending}>Batal</Button>
+          <Button
+            variant="destructive"
+            onClick={() => banMutation.mutate()}
+            disabled={banMutation.isPending}
+          >
+            {banMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses...</> : <><Ban className="mr-2 h-4 w-4" /> Konfirmasi Ban</>}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -362,9 +496,26 @@ export default function AdminUsers() {
   });
   const deleteMutation = useAdminDeleteUser();
 
+  const { toast } = useToast();
   const [detailId, setDetailId] = useState<number | null>(null);
   const [editTarget, setEditTarget] = useState<UserWithStats | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+  const [banTarget, setBanTarget] = useState<UserWithStats | null>(null);
+
+  const unbanMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await csrfFetch(`/api/admin/users/${id}/unban`, { method: "POST" });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Gagal unban"); }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "User Di-Unban", description: "Pengguna berhasil dipulihkan." });
+      invalidateUsers();
+    },
+    onError: (err: any) => {
+      toast({ variant: "destructive", title: "Gagal Unban", description: err.message });
+    },
+  });
 
   function invalidateUsers(id?: number) {
     queryClient.invalidateQueries({ queryKey: getAdminListUsersQueryKey() });
@@ -438,7 +589,10 @@ export default function AdminUsers() {
                 <div className="flex items-center gap-3 min-w-0">
                   <UserAvatar name={user.name} />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[#172033]">{user.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-[#172033]">{user.name}</p>
+                      <BanBadge user={user} />
+                    </div>
                     <p className="truncate text-xs text-[#526173]">{user.email}</p>
                   </div>
                 </div>
@@ -480,6 +634,24 @@ export default function AdminUsers() {
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
+                  {isUserBanned(user) ? (
+                    <button
+                      onClick={() => unbanMutation.mutate(user.id)}
+                      className="h-7 w-7 rounded-md flex items-center justify-center text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                      title="Unban / Pulihkan"
+                      disabled={unbanMutation.isPending}
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                    </button>
+                  ) : user.role !== "admin" ? (
+                    <button
+                      onClick={() => setBanTarget(user)}
+                      className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-amber-600 hover:bg-amber-50 transition-colors"
+                      title="Suspend / Ban"
+                    >
+                      <Ban className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
                   <button
                     onClick={() => setDeleteTarget({ id: user.id, name: user.name })}
                     className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
@@ -502,6 +674,14 @@ export default function AdminUsers() {
       />
 
       {/* Edit modal */}
+      {/* Ban dialog */}
+      <BanUserDialog
+        user={banTarget}
+        open={banTarget !== null}
+        onClose={() => setBanTarget(null)}
+        onBanned={() => invalidateUsers(banTarget?.id)}
+      />
+
       <EditUserDialog
         user={editTarget}
         open={editTarget !== null}

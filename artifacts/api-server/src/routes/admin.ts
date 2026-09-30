@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable, aiProviderModelsTable, activityLogsTable } from "@workspace/db";
+import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable, aiProviderModelsTable, activityLogsTable, sessionsTable } from "@workspace/db";
 import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
@@ -69,6 +69,9 @@ function formatUser(u: {
   createdAt: Date;
   lastLoginAt: Date | null;
   projectCount: number;
+  bannedAt: Date | null;
+  bannedUntil: Date | null;
+  banReason: string | null;
 }) {
   return {
     id: u.id,
@@ -80,6 +83,9 @@ function formatUser(u: {
     createdAt: u.createdAt.toISOString(),
     lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
     projectCount: u.projectCount,
+    bannedAt: u.bannedAt?.toISOString() ?? null,
+    bannedUntil: u.bannedUntil?.toISOString() ?? null,
+    banReason: u.banReason,
   };
 }
 
@@ -92,6 +98,9 @@ const userSelectFields = {
   credits: usersTable.credits,
   createdAt: usersTable.createdAt,
   lastLoginAt: usersTable.lastLoginAt,
+  bannedAt: usersTable.bannedAt,
+  bannedUntil: usersTable.bannedUntil,
+  banReason: usersTable.banReason,
   projectCount: sql<number>`count(${projectsTable.id})::int`,
 };
 
@@ -134,6 +143,64 @@ router.delete("/admin/users/:id", async (req, res): Promise<void> => {
   if (!deleted) { res.status(404).json({ error: "User not found" }); return; }
 
   await logActivity(admin.id, "admin.user.deleted", undefined, { targetEmail: deleted.email });
+  res.json({ success: true });
+});
+
+// Ban a user
+router.post("/admin/users/:id/ban", async (req, res): Promise<void> => {
+  const admin = (req as any).user;
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (id === admin.id) { res.status(400).json({ error: "Tidak bisa ban akun sendiri" }); return; }
+
+  const { durationDays, reason } = req.body as { durationDays: number | null; reason: string };
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+  if (user.role === "admin") { res.status(400).json({ error: "Tidak bisa ban sesama admin" }); return; }
+
+  const bannedAt = new Date();
+  const bannedUntil = durationDays ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000) : null;
+  const banReason = reason?.trim() || null;
+
+  await db.update(usersTable).set({ bannedAt, bannedUntil, banReason }).where(eq(usersTable.id, id));
+
+  // Destroy all active sessions
+  await db.delete(sessionsTable).where(eq(sessionsTable.userId, id));
+
+  // Stop all running projects via Coolify
+  try {
+    const userProjects = await db.select({ id: projectsTable.id }).from(projectsTable).where(eq(projectsTable.userId, id));
+    const { stopProjectWithCoolify } = await import("../lib/coolify");
+    for (const p of userProjects) {
+      try { await stopProjectWithCoolify(p.id); } catch { /* ignore individual stop failures */ }
+    }
+  } catch (err) {
+    logger.error({ err, userId: id }, "Failed to stop some projects during ban");
+  }
+
+  await logActivity(admin.id, "admin.user.banned", undefined, {
+    targetEmail: user.email,
+    duration: durationDays ? `${durationDays} hari` : "permanen",
+    reason: banReason,
+  });
+
+  res.json({ success: true, bannedAt: bannedAt.toISOString(), bannedUntil: bannedUntil?.toISOString() ?? null });
+});
+
+// Unban a user
+router.post("/admin/users/:id/unban", async (req, res): Promise<void> => {
+  const admin = (req as any).user;
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  await db.update(usersTable).set({ bannedAt: null, bannedUntil: null, banReason: null }).where(eq(usersTable.id, id));
+
+  await logActivity(admin.id, "admin.user.unbanned", undefined, { targetEmail: user.email });
+
   res.json({ success: true });
 });
 

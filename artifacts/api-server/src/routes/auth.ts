@@ -373,6 +373,13 @@ router.post("/auth/login", AuthLimiter, async (req, res): Promise<void> => {
     return;
   }
 
+  // Check if user is banned
+  const { isUserBanned, getBanMessage } = await import("../lib/auth");
+  if (isUserBanned(user)) {
+    res.status(403).json({ error: getBanMessage(user), code: "ACCOUNT_SUSPENDED" });
+    return;
+  }
+
   const [updated] = await db
     .update(usersTable)
     .set({ lastLoginAt: new Date() })

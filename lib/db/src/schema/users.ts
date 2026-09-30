@@ -19,6 +19,9 @@ export const usersTable = pgTable("users", {
   referralCode: text("referral_code").unique(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastLoginAt: timestamp("last_login_at"),
+  bannedAt: timestamp("banned_at"),
+  bannedUntil: timestamp("banned_until"),
+  banReason: text("ban_reason"),
 });
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true });

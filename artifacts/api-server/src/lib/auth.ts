@@ -38,6 +38,25 @@ export async function deleteOtherUserSessions(userId: number, currentSessionId: 
     .where(and(eq(sessionsTable.userId, userId), ne(sessionsTable.sessionId, currentSessionId)));
 }
 
+/** Check whether a user is currently banned.
+ *  - bannedAt set + bannedUntil null → permanent ban
+ *  - bannedAt set + bannedUntil in the future → temp ban
+ *  - bannedAt set + bannedUntil in the past → ban expired (effectively not banned)
+ */
+export function isUserBanned(user: { bannedAt: Date | null; bannedUntil: Date | null }): boolean {
+  if (!user.bannedAt) return false;
+  // Permanent ban (no end date)
+  if (!user.bannedUntil) return true;
+  // Temp ban – still active?
+  return new Date() < new Date(user.bannedUntil);
+}
+
+export function getBanMessage(user: { bannedUntil: Date | null; banReason: string | null }): string {
+  const reason = user.banReason ? ` Alasan: ${user.banReason}` : "";
+  if (!user.bannedUntil) return `Akun kamu ditangguhkan secara permanen.${reason}`;
+  return `Akun kamu ditangguhkan hingga ${new Date(user.bannedUntil).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}.${reason}`;
+}
+
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   const sessionId = req.cookies?.[SESSION_COOKIE];
   if (!sessionId) {
@@ -49,6 +68,15 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     res.status(401).json({ error: "Session expired" });
     return;
   }
+
+  // Check if user is banned
+  if (isUserBanned(user)) {
+    // Destroy their session so they can't keep retrying
+    await deleteSession(sessionId);
+    res.status(403).json({ error: getBanMessage(user), code: "ACCOUNT_SUSPENDED" });
+    return;
+  }
+
   (req as any).user = user;
   next();
 }
