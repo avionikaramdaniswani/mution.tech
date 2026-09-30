@@ -147,7 +147,7 @@ export default function Login() {
                 {loginMutation.isError && (
                   <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
                     {/* @ts-ignore */}
-                    {loginMutation.error?.error || "Login gagal. Periksa kembali email dan password kamu."}
+                    {loginMutation.error?.data?.error || loginMutation.error?.message || "Login gagal. Periksa kembali email dan password kamu."}
                   </div>
                 )}
                 <Button type="submit" className="h-11 w-full bg-[#f97316] text-white hover:bg-[#ea580c]" disabled={loginMutation.isPending}>
