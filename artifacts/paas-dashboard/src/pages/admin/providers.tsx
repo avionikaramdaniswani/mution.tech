@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,8 +18,8 @@ interface ProviderStatus { id: string; name: string; openaiBase: string; type: "
 type ModelForm = ProviderModel & { originalModelId?: string };
 const emptyModelForm: ModelForm = { modelId: "", displayName: "", brandProvider: "Other", upstreamModelId: "", enabled: true };
 
-interface ProviderForm { id: string; name: string; baseUrl: string; apiKey: string; type: string; priority: number }
-const emptyProviderForm: ProviderForm = { id: "", name: "", baseUrl: "", apiKey: "", type: "generic", priority: 0 };
+interface ProviderForm { id: string; name: string; baseUrl: string; apiKey: string; backupApiKeysText: string; type: string; priority: number }
+const emptyProviderForm: ProviderForm = { id: "", name: "", baseUrl: "", apiKey: "", backupApiKeysText: "", type: "generic", priority: 0 };
 
 async function fetchProviders(): Promise<ProviderStatus[]> { const res = await fetch("/api/admin/providers", { credentials: "include" }); if (!res.ok) throw new Error(); return res.json(); }
 async function request(url: string, method: string, body?: unknown) {
@@ -71,10 +72,15 @@ export default function AdminProviders() {
     const { form, editing } = providerEditor;
     if (!form.name.trim() || !form.baseUrl.trim()) { toast({ title: "Nama dan Base URL wajib diisi", variant: "destructive" }); return; }
     if (!editing && (!form.id.trim() || !form.apiKey.trim())) { toast({ title: "ID dan API Key wajib diisi untuk provider baru", variant: "destructive" }); return; }
+    
+    const backupApiKeys = form.backupApiKeysText.split('\n').map(k => k.trim()).filter(k => k);
+    // Jika editing dan text kosong, jangan kirim supaya tidak menimpa dengan array kosong
+    const payloadBackupApiKeys = (editing && backupApiKeys.length === 0) ? undefined : backupApiKeys;
+    
     if (editing) {
-      mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(form.id)}`, method: "PUT", body: { name: form.name.trim(), baseUrl: form.baseUrl.trim(), apiKey: form.apiKey.trim() || undefined, type: form.type, priority: form.priority } });
+      mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(form.id)}`, method: "PUT", body: { name: form.name.trim(), baseUrl: form.baseUrl.trim(), apiKey: form.apiKey.trim() || undefined, backupApiKeys: payloadBackupApiKeys, type: form.type, priority: form.priority } });
     } else {
-      mutate.mutate({ url: "/api/admin/providers", method: "POST", body: { id: form.id.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "_"), name: form.name.trim(), baseUrl: form.baseUrl.trim(), apiKey: form.apiKey.trim(), type: form.type, priority: form.priority } });
+      mutate.mutate({ url: "/api/admin/providers", method: "POST", body: { id: form.id.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "_"), name: form.name.trim(), baseUrl: form.baseUrl.trim(), apiKey: form.apiKey.trim(), backupApiKeys: payloadBackupApiKeys, type: form.type, priority: form.priority } });
     }
   };
 
@@ -217,7 +223,7 @@ export default function AdminProviders() {
             </div>
           </button>
           <div className="flex items-center gap-2">
-            <Button size="icon" variant="ghost" title="Edit provider" onClick={() => { setProviderEditor({ form: { id: p.id, name: p.name || p.id, baseUrl: p.openaiBase.replace(/\/v1$/, ""), apiKey: "", type: p.type, priority: p.priority }, editing: true }); setShowApiKey(false); }}>
+            <Button size="icon" variant="ghost" title="Edit provider" onClick={() => { setProviderEditor({ form: { id: p.id, name: p.name || p.id, baseUrl: p.openaiBase.replace(/\/v1$/, ""), apiKey: "", backupApiKeysText: "", type: p.type, priority: p.priority }, editing: true }); setShowApiKey(false); }}>
               <Pencil className="h-4 w-4" />
             </Button>
             <Button size="icon" variant="ghost" className="text-red-600" title="Hapus provider" onClick={() => { if (window.confirm(`Hapus provider "${p.name || p.id}" beserta semua model-nya?`)) mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(p.id)}`, method: "DELETE" }); }}>
@@ -267,6 +273,11 @@ export default function AdminProviders() {
                 {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Backup API Keys (Opsional)</Label>
+            <Textarea value={providerEditor.form.backupApiKeysText} placeholder="sk-backup1...\nsk-backup2..." onChange={e => setProviderEditor({ ...providerEditor, form: { ...providerEditor.form, backupApiKeysText: e.target.value } })} rows={3} />
+            <p className="text-xs text-muted-foreground">Pisahkan dengan baris baru (enter). Kunci ini akan digunakan jika kunci utama gagal atau terkena rate limit.</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

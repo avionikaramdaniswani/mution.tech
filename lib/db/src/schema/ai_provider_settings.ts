@@ -5,6 +5,7 @@ export const aiProviderSettingsTable = pgTable("ai_provider_settings", {
   name: text("name").notNull().default(""),
   baseUrl: text("base_url").notNull().default(""),
   apiKeyEncrypted: text("api_key_encrypted").notNull().default(""),
+  backupApiKeysEncrypted: text("backup_api_keys_encrypted").array(),
   type: text("type").notNull().default("generic"),
   priority: integer("priority").notNull().default(0),
   enabled: boolean("enabled").notNull().default(true),

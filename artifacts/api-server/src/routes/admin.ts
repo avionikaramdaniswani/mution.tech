@@ -679,13 +679,13 @@ router.get("/admin/providers", async (_req, res): Promise<void> => {
 });
 
 router.post("/admin/providers", async (req, res): Promise<void> => {
-  const { id, name, baseUrl, apiKey, type, priority } = req.body ?? {};
+  const { id, name, baseUrl, apiKey, backupApiKeys, type, priority } = req.body ?? {};
   if (!id?.trim() || !name?.trim() || !baseUrl?.trim() || !apiKey?.trim()) {
     res.status(400).json({ error: "ID, nama, base URL, dan API key wajib diisi" });
     return;
   }
   try {
-    await adminCreateProvider({ id: id.trim().toLowerCase(), name: name.trim(), baseUrl: baseUrl.trim(), apiKey: apiKey.trim(), type: type || "generic", priority: typeof priority === "number" ? priority : 0 });
+    await adminCreateProvider({ id: id.trim().toLowerCase(), name: name.trim(), baseUrl: baseUrl.trim(), apiKey: apiKey.trim(), backupApiKeys, type: type || "generic", priority: typeof priority === "number" ? priority : 0 });
     res.status(201).json({ ok: true });
   } catch (error: any) {
     if (error?.code === "23505") { res.status(409).json({ error: `Provider dengan ID '${id.trim()}' sudah ada` }); return; }
@@ -696,9 +696,9 @@ router.post("/admin/providers", async (req, res): Promise<void> => {
 
 router.put("/admin/providers/:id", async (req, res): Promise<void> => {
   const id = decodeURIComponent(req.params.id);
-  const { name, baseUrl, apiKey, type, priority } = req.body ?? {};
+  const { name, baseUrl, apiKey, backupApiKeys, type, priority } = req.body ?? {};
   try {
-    await adminUpdateProvider(id, { name, baseUrl, apiKey, type, priority });
+    await adminUpdateProvider(id, { name, baseUrl, apiKey, backupApiKeys, type, priority });
     res.json({ ok: true });
   } catch (error) {
     console.error("Failed to update provider:", error);

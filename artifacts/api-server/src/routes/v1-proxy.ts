@@ -204,6 +204,7 @@ function getReservationOutputTokens(path: string, body: any): number | null {
 
 interface Provider {
   id: string;
+  cooldownId: string;
   openaiBase: string;  // full base for OpenAI calls, e.g. "https://conduit.ozdoev.net/v1"
   apiKey: string;
   type: "conduit" | "generic";
@@ -271,10 +272,29 @@ async function refreshProviderSettings(force = false): Promise<void> {
         if (apiKey) {
           newProviders.push({
             id: row.id,
+            cooldownId: `${row.id}-0`,
             openaiBase: buildOpenaiBase(row.baseUrl),
             apiKey,
             type: (row.type as Provider["type"]) || "generic",
           });
+        }
+        
+        // Add backup API keys if any
+        if (row.backupApiKeysEncrypted && Array.isArray(row.backupApiKeysEncrypted)) {
+          let idx = 1;
+          for (const encryptedKey of row.backupApiKeysEncrypted) {
+            const backupKey = decryptSecret(encryptedKey);
+            if (backupKey) {
+              newProviders.push({
+                id: row.id,
+                cooldownId: `${row.id}-${idx}`,
+                openaiBase: buildOpenaiBase(row.baseUrl),
+                apiKey: backupKey,
+                type: (row.type as Provider["type"]) || "generic",
+              });
+              idx++;
+            }
+          }
         }
       }
     }
@@ -326,34 +346,48 @@ export async function adminGetProviderStatuses() {
   await refreshProviderSettings(true);
   const providers = getProviders();
   const rows = await db.select().from(aiProviderSettingsTable).orderBy(asc(aiProviderSettingsTable.priority));
-  const rowMap = new Map(rows.map(r => [r.id, r]));
   const now = Date.now();
-  return providers.map((p) => {
-    const row = rowMap.get(p.id);
+  return rows.map((row) => {
+    // Check if the primary key is in cooldown
+    const inCooldown = (_cooldowns.get(`${row.id}-0`) ?? 0) > now;
+    const cooldownExpiresAt = inCooldown
+      ? new Date(_cooldowns.get(`${row.id}-0`)!).toISOString()
+      : null;
+      
+    // Count total keys (1 primary + backups)
+    const backupKeysCount = Array.isArray(row.backupApiKeysEncrypted) ? row.backupApiKeysEncrypted.length : 0;
+    const totalKeys = 1 + backupKeysCount;
+
     return {
-      id: p.id,
-      name: row?.name || p.id,
-      openaiBase: p.openaiBase,
-      type: p.type,
-      priority: row?.priority ?? 0,
-      enabled: !_disabledProviders.has(p.id),
-      inCooldown: (_cooldowns.get(p.id) ?? 0) > now,
-      cooldownExpiresAt: (_cooldowns.get(p.id) ?? 0) > now
-        ? new Date(_cooldowns.get(p.id)!).toISOString()
-        : null,
-      models: Array.from(_providerModels.get(p.id)?.values() ?? []),
+      id: row.id,
+      name: row.name || row.id,
+      openaiBase: buildOpenaiBase(row.baseUrl),
+      type: row.type,
+      priority: row.priority ?? 0,
+      enabled: !_disabledProviders.has(row.id),
+      inCooldown,
+      cooldownExpiresAt,
+      totalKeys, // Helpful for admin to see how many keys are configured
+      models: Array.from(_providerModels.get(row.id)?.values() ?? []),
     };
   });
 }
 
 // ─── Admin: Provider CRUD ────────────────────────────────────────────────────
-export async function adminCreateProvider(data: { id: string; name: string; baseUrl: string; apiKey: string; type?: string; priority?: number }) {
+export async function adminCreateProvider(data: { id: string; name: string; baseUrl: string; apiKey: string; backupApiKeys?: string[]; type?: string; priority?: number }) {
   const now = new Date();
+  
+  let backupApiKeysEncrypted: string[] = [];
+  if (data.backupApiKeys && Array.isArray(data.backupApiKeys)) {
+    backupApiKeysEncrypted = data.backupApiKeys.map(k => encryptSecret(k.trim())).filter(k => k);
+  }
+
   await db.insert(aiProviderSettingsTable).values({
     id: data.id,
     name: data.name,
     baseUrl: data.baseUrl,
     apiKeyEncrypted: encryptSecret(data.apiKey),
+    backupApiKeysEncrypted: backupApiKeysEncrypted.length > 0 ? backupApiKeysEncrypted : null,
     type: data.type || "generic",
     priority: data.priority ?? 0,
     enabled: true,
@@ -363,12 +397,21 @@ export async function adminCreateProvider(data: { id: string; name: string; base
   await refreshProviderSettings(true);
 }
 
-export async function adminUpdateProvider(id: string, data: { name?: string; baseUrl?: string; apiKey?: string; type?: string; priority?: number }) {
+export async function adminUpdateProvider(id: string, data: { name?: string; baseUrl?: string; apiKey?: string; backupApiKeys?: string[]; type?: string; priority?: number }) {
   const now = new Date();
   const updates: Record<string, unknown> = { updatedAt: now };
   if (data.name !== undefined) updates.name = data.name;
   if (data.baseUrl !== undefined) updates.baseUrl = data.baseUrl;
   if (data.apiKey !== undefined && data.apiKey.trim()) updates.apiKeyEncrypted = encryptSecret(data.apiKey);
+  
+  if (data.backupApiKeys !== undefined) {
+    if (Array.isArray(data.backupApiKeys) && data.backupApiKeys.length > 0) {
+      updates.backupApiKeysEncrypted = data.backupApiKeys.map(k => encryptSecret(k.trim())).filter(k => k);
+    } else {
+      updates.backupApiKeysEncrypted = null;
+    }
+  }
+
   if (data.type !== undefined) updates.type = data.type;
   if (data.priority !== undefined) updates.priority = data.priority;
   await db.update(aiProviderSettingsTable).set(updates).where(eq(aiProviderSettingsTable.id, id));
@@ -892,8 +935,8 @@ function upstreamModelFor(provider: Provider, publicModelId: string): string {
 function orderProvidersForAttempts(providers: Provider[]): Provider[] {
   const now = Date.now();
   return [...providers].sort((a, b) => {
-    const aCooling = (_cooldowns.get(a.id) ?? 0) >= now ? 1 : 0;
-    const bCooling = (_cooldowns.get(b.id) ?? 0) >= now ? 1 : 0;
+    const aCooling = (_cooldowns.get(a.cooldownId) ?? 0) >= now ? 1 : 0;
+    const bCooling = (_cooldowns.get(b.cooldownId) ?? 0) >= now ? 1 : 0;
     return aCooling - bCooling;
   });
 }
@@ -903,13 +946,13 @@ function pickProvider(providers: Provider[]): Provider {
   const now = Date.now();
   // Prefer: enabled AND not in cooldown
   const best = providers.find(
-    (p) => !_disabledProviders.has(p.id) && (_cooldowns.get(p.id) ?? 0) < now
+    (p) => !_disabledProviders.has(p.id) && (_cooldowns.get(p.cooldownId) ?? 0) < now
   );
   if (best) return best;
   // Fallback: enabled but in cooldown
   const enabledAny = providers.find((p) => !_disabledProviders.has(p.id));
   if (enabledAny) {
-    logger.warn({ id: enabledAny.id }, "Provider in cooldown but no other enabled provider");
+    logger.warn({ id: enabledAny.cooldownId }, "Provider in cooldown but no other enabled provider");
     return enabledAny;
   }
   // All disabled — use first (fail gracefully)
@@ -920,14 +963,14 @@ function pickProvider(providers: Provider[]): Provider {
 /** Pick next available provider excluding the given one (for retry). */
 function pickNextProvider(providers: Provider[], exclude: Provider): Provider | null {
   const now = Date.now();
-  const others = providers.filter((p) => p.id !== exclude.id && !_disabledProviders.has(p.id));
+  const others = providers.filter((p) => p.cooldownId !== exclude.cooldownId && !_disabledProviders.has(p.id));
   if (others.length === 0) return null;
-  return others.find((p) => (_cooldowns.get(p.id) ?? 0) < now) ?? others[0];
+  return others.find((p) => (_cooldowns.get(p.cooldownId) ?? 0) < now) ?? others[0];
 }
 
 function markCooldown(provider: Provider): void {
-  _cooldowns.set(provider.id, Date.now() + PROVIDER_COOLDOWN_MS);
-  logger.warn({ provider: provider.id, cooldownSec: PROVIDER_COOLDOWN_MS / 1000 }, "Provider put in cooldown");
+  _cooldowns.set(provider.cooldownId, Date.now() + PROVIDER_COOLDOWN_MS);
+  logger.warn({ provider: provider.cooldownId, cooldownSec: PROVIDER_COOLDOWN_MS / 1000 }, "Provider put in cooldown");
 }
 
 // ─── Auth helpers ─────────────────────────────────────────────────────────────

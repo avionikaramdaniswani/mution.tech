@@ -66,7 +66,7 @@ export default function ActivityLog() {
     return map[action] || action.replace(/_/g, ' ');
   };
 
-  const parseMetadata = (metadata: string | null) => {
+  const parseMetadata = (metadata: string | null | undefined) => {
     if (!metadata) return null;
     try {
       const parsed = JSON.parse(metadata);
