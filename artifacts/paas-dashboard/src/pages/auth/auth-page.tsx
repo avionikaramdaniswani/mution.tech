@@ -585,7 +585,9 @@ function RegisterPanel({ onSwitchTab }: { onSwitchTab: () => void }) {
 export default function AuthPage({ initialTab = "login" }: { initialTab?: "login" | "register" }) {
   const [tab, setTab] = useState<"login" | "register">(initialTab);
   const [, setLocation] = useLocation();
-  const googleError = new URLSearchParams(window.location.search).get("error");
+  const searchParams = new URLSearchParams(window.location.search);
+  const googleError = searchParams.get("error");
+  const banReason = searchParams.get("reason");
 
   function switchTo(t: "login" | "register") {
     setTab(t);
@@ -656,7 +658,9 @@ export default function AuthPage({ initialTab = "login" }: { initialTab?: "login
           {/* Google OAuth error banner */}
           {googleError && (
             <div className="mx-6 mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
-              {googleError === "google_denied"
+              {googleError === "account_suspended"
+                ? banReason || "Akun Anda telah ditangguhkan."
+                : googleError === "google_denied"
                 ? "Login dibatalkan. Silakan coba lagi."
                 : "Login dengan Google gagal. Silakan coba lagi."}
             </div>
