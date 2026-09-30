@@ -216,17 +216,6 @@ export default function Register() {
             </div>
             <CardTitle className="text-2xl font-extrabold tracking-normal text-[#172033]">{stepMeta[step].title}</CardTitle>
             <CardDescription className="text-sm leading-6 text-[#526173]">{stepMeta[step].desc}</CardDescription>
-            {refCheck?.valid && step === "email" && (
-              <div className="mx-auto flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-                <Gift className="h-4 w-4 text-emerald-500" />
-                Diundang oleh <strong>{refCheck.referrerName}</strong> — dapat bonus Rp&nbsp;2.000!
-              </div>
-            )}
-            {refCode && refCheck && !refCheck.valid && step === "email" && (
-              <div className="mx-auto rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-600">
-                Kode referral tidak valid
-              </div>
-            )}
           </CardHeader>
 
           <CardContent className="px-6">

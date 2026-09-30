@@ -64,12 +64,6 @@ const navGroups = [
       { title: "Activity Logs",url: "/activity",   icon: Activity },
     ],
   },
-  {
-    label: "Komunitas",
-    items: [
-      { title: "Referral",     url: "/referral",   icon: Gift },
-    ],
-  },
 ];
 
 const topNavLinks: TopNavLink[] = [

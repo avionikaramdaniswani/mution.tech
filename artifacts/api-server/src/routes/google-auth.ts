@@ -10,7 +10,7 @@ const router = Router();
 const GOOGLE_STATE_COOKIE = "google_oauth_state";
 const GOOGLE_REF_COOKIE = "google_oauth_ref";
 const GOOGLE_STATE_MAX_AGE_MS = 10 * 60 * 1000;
-const REFEREE_BONUS = 2000;
+const REFEREE_BONUS = 0;
 
 function getGoogleClientId(): string {
   const id = process.env.GOOGLE_CLIENT_ID;
