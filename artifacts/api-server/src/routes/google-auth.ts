@@ -223,7 +223,7 @@ router.get("/auth/google/callback", async (req, res): Promise<void> => {
       if (found) referrer = found;
     }
 
-    const initialCredits = referrer ? 2000 + REFEREE_BONUS : 2000;
+    const initialCredits = 0;
 
     const [newUser] = await db
       .insert(usersTable)

@@ -11,7 +11,7 @@ export const usersTable = pgTable("users", {
   name: text("name").notNull(),
   passwordHash: text("password_hash"),
   role: userRoleEnum("role").notNull().default("user"),
-  credits: real("credits").notNull().default(2000),
+  credits: real("credits").notNull().default(0),
   plan: userPlanEnum("plan").notNull().default("hobby"),
   googleId: text("google_id").unique(),
   githubAccessToken: text("github_access_token"),

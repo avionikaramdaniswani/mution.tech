@@ -56,7 +56,7 @@ const faqs: FAQEntry[] = [
   {
     category: "Mulai",
     q: "Apakah perlu kartu kredit untuk mencoba?",
-    a: "Tidak perlu. Kamu bisa daftar dan mulai mencoba dari plan gratis. Kredit baru dipakai saat resource berjalan atau saat kamu menggunakan layanan berbasis usage.",
+    a: "Tidak perlu kartu kredit untuk daftar. Kamu bisa mendaftar secara gratis. Namun, untuk mulai mendeploy resource atau menggunakan layanan AI, kamu perlu melakukan top up kredit terlebih dahulu.",
   },
   {
     category: "Deploy",
