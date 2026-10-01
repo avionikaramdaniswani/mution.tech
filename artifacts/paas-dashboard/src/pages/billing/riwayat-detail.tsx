@@ -268,7 +268,7 @@ export default function RiwayatDetailPage() {
             </p>
           )}
 
-          {isPending && order.payCode && (
+          {isPending && order.payCode && String(order.payCode).length > 4 && (
             <div className="mt-6 w-full">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Nomor Virtual Account</p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2">

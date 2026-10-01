@@ -26,6 +26,7 @@ import {
   Tag,
   ShoppingBag,
   Send,
+  QrCode,
 } from "lucide-react";
 import { TopNavbar, isNavActive, type TopNavLink } from "./shared";
 import { useRealtimeEvents } from "@/hooks/use-realtime";
@@ -54,7 +55,8 @@ const adminNavGroups = [
     title: "Finance & Billing",
     items: [
       { title: "Credit Packages", url: "/admin/packages", icon: ShoppingBag, exact: false },
-      { title: "Payments", url: "/admin/payments", icon: CreditCard, exact: false },
+      { title: "Payments", url: "/admin/payments", icon: CreditCard, exact: true },
+      { title: "Manual QRIS", url: "/admin/payments/manual", icon: QrCode, exact: true },
     ],
   },
 ];
