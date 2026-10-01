@@ -633,4 +633,66 @@ router.post("/billing/duitku/webhook", async (req, res): Promise<void> => {
   res.json({ success: true, processed: result.processed });
 });
 
+router.post("/billing/manual-qris/create", requireAuth, async (req, res): Promise<void> => {
+  const parsed = CreateDuitkuBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Nominal tidak valid" });
+    return;
+  }
+  const { packageId, method } = parsed.data;
+  
+  if (method !== "MANUAL_QRIS") {
+    res.status(400).json({ error: "Metode tidak didukung" });
+    return;
+  }
+
+  let baseAmount: number;
+  let creditsAmount: number;
+
+  if (packageId != null) {
+    const [pkg] = await db.select().from(creditPackagesTable).where(eq(creditPackagesTable.id, packageId));
+    if (!pkg || !pkg.isActive) {
+      res.status(400).json({ error: "Paket tidak tersedia" });
+      return;
+    }
+    baseAmount = pkg.priceIdr;
+    creditsAmount = pkg.creditsAmount;
+  } else {
+    baseAmount = parsed.data.amount!;
+    creditsAmount = baseAmount;
+  }
+
+  // Generate random unique code (1-999)
+  const uniqueCode = Math.floor(Math.random() * 999) + 1;
+  const amount = baseAmount + uniqueCode;
+
+  const user = (req as any).user;
+  const invoiceNumber = `MUTION-M-${Date.now()}-${user.id}`;
+
+  const [order] = await db
+    .insert(paymentOrdersTable)
+    .values({
+      userId: user.id,
+      invoiceNumber,
+      amount,
+      creditsAmount,
+      provider: "manual_qris",
+      status: "pending",
+      payCode: String(uniqueCode),
+      qrString: "MANUAL",
+    })
+    .returning();
+
+  await logActivity(user.id, "billing.topup_created", order.id, { invoice: invoiceNumber, amount: creditsAmount, method });
+
+  res.json({
+    orderId: order.id,
+    invoiceNumber,
+    paymentUrl: null, // manual
+    qrString: "MANUAL",
+    amount,
+    credits: creditsAmount,
+  });
+});
+
 export default router;

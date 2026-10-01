@@ -49,15 +49,16 @@ function usePaymentChannels() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    fetch("/api/billing/payment-channels", { credentials: "include" })
-      .then((r) => r.json())
-      .then((data: PaymentChannel[] | { error: string }) => {
-        if (Array.isArray(data)) setChannels(data);
-        else setError((data as { error: string }).error ?? "Gagal memuat channel");
-      })
-      .catch(() => setError("Gagal memuat channel pembayaran"))
-      .finally(() => setLoading(false));
+    // Override channels completely for Manual QRIS because Duitku is down
+    setChannels([{
+      code: "MANUAL_QRIS",
+      name: "QRIS (Manual Verifikasi)",
+      group: "E-Wallet & QRIS",
+      icon_url: "/qris-logo.png",
+      minimum_amount: 1000,
+      maximum_amount: 10000000,
+    }]);
+    setLoading(false);
   }, []);
 
   return { channels, loading, error };
@@ -347,14 +348,21 @@ function TopupSection() {
       const body = selectedPackage
         ? { packageId: selectedPackage.id, method }
         : { amount: resolvedAmount, method };
-      const res = await csrfFetch("/api/billing/duitku/create", {
+      
+      const endpoint = method === "MANUAL_QRIS" 
+        ? "/api/billing/manual-qris/create" 
+        : "/api/billing/duitku/create";
+
+      const res = await csrfFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(body),
       });
       const data = await res.json() as { paymentUrl?: string; error?: string; orderId?: number };
-      if (!res.ok || !data.paymentUrl) {
+      
+      // For manual QRIS, paymentUrl is null, but we still proceed
+      if (!res.ok || (!data.paymentUrl && method !== "MANUAL_QRIS")) {
         setError(data.error ?? "Gagal membuat transaksi");
         return;
       }
@@ -572,8 +580,8 @@ function TopupSection() {
                   return <p className="text-sm text-center py-6 text-muted-foreground font-medium border border-dashed rounded-xl bg-muted/30">Tidak ada channel tersedia untuk nominal ini</p>;
                 }
 
-                const qris = availableChannels.find(c => c.code === "QRIS");
-                const others = availableChannels.filter(c => c.code !== "QRIS");
+                const qris = availableChannels.find(c => c.code === "MANUAL_QRIS" || c.code === "QRIS");
+                const others = availableChannels.filter(c => c.code !== "MANUAL_QRIS" && c.code !== "QRIS");
                 const groups: Record<string, PaymentChannel[]> = {};
                 others.forEach(c => {
                   if (!groups[c.group]) groups[c.group] = [];
@@ -581,6 +589,13 @@ function TopupSection() {
                 });
                 return (
                   <>
+                    <div className="mb-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl flex gap-3 text-orange-600 dark:text-orange-400">
+                      <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+                      <div className="text-sm">
+                        <span className="font-semibold">Sistem Otomatis Sedang Diperbaiki.</span>
+                        <p className="opacity-90">Pembayaran Duitku sedang error karena traffic tinggi. Silakan gunakan QRIS Manual sementara waktu.</p>
+                      </div>
+                    </div>
                     {qris && (() => {
                       const active = method === qris.code;
                       return (

@@ -290,7 +290,26 @@ export default function RiwayatDetailPage() {
             </div>
           )}
 
-          {isPending && order.qrString && (
+          {isPending && order.qrString === "MANUAL" && (
+            <div className="mt-6 w-full flex flex-col items-center">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Scan QR Code (Shopee QRIS)</p>
+              <div className="p-3 bg-white border shadow-sm rounded-xl inline-block max-w-[300px]">
+                <img 
+                  src="/qris-shopee.jpeg" 
+                  alt="QRIS Shopee" 
+                  className="w-full h-auto object-contain"
+                />
+              </div>
+              <p className="text-sm font-semibold text-orange-600 mt-4 text-center px-4 bg-orange-50 py-2 rounded-lg border border-orange-200">
+                Penting: Transfer TEPAT Rp {order.amount.toLocaleString("id-ID")} (Termasuk 3 angka unik) agar otomatis diproses.
+              </p>
+              <p className="text-xs text-muted-foreground text-center mt-2 px-6">
+                Setelah transfer, silakan konfirmasi ke admin via WhatsApp / Ticket Support dengan menyertakan Invoice {order.invoiceNumber}.
+              </p>
+            </div>
+          )}
+
+          {isPending && order.qrString && order.qrString !== "MANUAL" && (
             <div className="mt-6 w-full flex flex-col items-center">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Scan QR Code</p>
               <div className="p-3 bg-white border shadow-sm rounded-xl inline-block">
