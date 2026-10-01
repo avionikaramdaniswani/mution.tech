@@ -8,6 +8,7 @@ import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, add
 import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminFetchRemoteModels, adminTestProviderModel, adminTestRawModel, adminUpsertProviderModel, adminDeleteProviderModel, adminPruneProviderModels, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
 import { getModelById, getModelPricing, MODEL_CATALOG } from "@workspace/model-catalog";
 import { sendBroadcastEmail } from "../lib/email";
+import { creditPaidOrderOnce } from "./billing";
 
 const router = Router();
 
@@ -239,6 +240,57 @@ router.post("/admin/broadcast", async (req, res): Promise<void> => {
   } else {
     res.status(500).json({ error: "Gagal mengirim broadcast (cek log server)" });
   }
+});
+
+// ─── Manual Payment Approvals ───────────────────────────────────────────────
+
+router.get("/admin/payments/manual-pending", async (req, res): Promise<void> => {
+  const orders = await db.select({
+    id: paymentOrdersTable.id,
+    invoiceNumber: paymentOrdersTable.invoiceNumber,
+    amount: paymentOrdersTable.amount,
+    creditsAmount: paymentOrdersTable.creditsAmount,
+    createdAt: paymentOrdersTable.createdAt,
+    userEmail: usersTable.email,
+  }).from(paymentOrdersTable)
+  .leftJoin(usersTable, eq(usersTable.id, paymentOrdersTable.userId))
+  .where(and(eq(paymentOrdersTable.provider, "manual_qris"), eq(paymentOrdersTable.status, "pending")))
+  .orderBy(desc(paymentOrdersTable.createdAt));
+  
+  res.json(orders);
+});
+
+router.post("/admin/payments/:id/approve", async (req, res): Promise<void> => {
+  const admin = (req as any).user;
+  const id = Number.parseInt(req.params.id, 10);
+  
+  const [order] = await db.select().from(paymentOrdersTable).where(eq(paymentOrdersTable.id, id));
+  if (!order || order.status !== "pending") {
+     res.status(400).json({ error: "Order tidak valid" });
+     return;
+  }
+  
+  const result = await creditPaidOrderOnce(order, "Manual QRIS (Admin)");
+  if (result.processed) {
+    broadcastToUser(result.userId, { type: "credits.changed", amount: result.creditsAmount });
+    await logActivity(admin.id, "admin.payment.approved", undefined, { invoice: order.invoiceNumber });
+  }
+  res.json({ success: true });
+});
+
+router.post("/admin/payments/:id/reject", async (req, res): Promise<void> => {
+  const admin = (req as any).user;
+  const id = Number.parseInt(req.params.id, 10);
+  
+  const [order] = await db.select().from(paymentOrdersTable).where(eq(paymentOrdersTable.id, id));
+  if (!order || order.status !== "pending") {
+     res.status(400).json({ error: "Order tidak valid" });
+     return;
+  }
+  
+  await db.update(paymentOrdersTable).set({ status: "failed" }).where(eq(paymentOrdersTable.id, id));
+  await logActivity(admin.id, "admin.payment.rejected", undefined, { invoice: order.invoiceNumber });
+  res.json({ success: true });
 });
 
 // List all activity logs across the platform

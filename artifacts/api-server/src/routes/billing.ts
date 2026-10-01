@@ -52,7 +52,7 @@ function parseInstructions(value: unknown): { title: string; steps: string[] }[]
   }).filter((item) => item.title || item.steps.length > 0);
 }
 
-async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: string) {
+export async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: string) {
   const result = await db.transaction(async (tx) => {
     const [claimed] = await tx
       .update(paymentOrdersTable)

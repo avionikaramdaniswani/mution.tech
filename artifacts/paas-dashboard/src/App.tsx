@@ -46,6 +46,7 @@ import AdminProviders from "@/pages/admin/providers";
 import AdminModels from "@/pages/admin/models";
 import AdminPackages from "@/pages/admin/packages";
 import AdminPayments from "@/pages/admin/payments";
+import AdminManualPayments from "@/pages/admin/manual-payments";
 import AdminUsage from "@/pages/admin/usage";
 import AdminChangelog from "@/pages/admin/changelog";
 import AdminBroadcast from "@/pages/admin/broadcast";
@@ -130,6 +131,7 @@ function Router() {
         {/* Admin routes - dedicated layout */}
         <Route path="/admin/users" component={() => <AdminRoute component={AdminUsers} />} />
         <Route path="/admin/projects" component={() => <AdminRoute component={AdminProjects} />} />
+        <Route path="/admin/payments/manual" component={() => <AdminRoute component={AdminManualPayments} />} />
         <Route path="/admin/payments" component={() => <AdminRoute component={AdminPayments} />} />
         <Route path="/admin/activity" component={() => <AdminRoute component={AdminActivity} />} />
         <Route path="/admin/providers" component={() => <AdminRoute component={AdminProviders} />} />
