@@ -6,6 +6,7 @@ import { requireAuth } from "../lib/auth";
 import { logger } from "../lib/logger";
 import { broadcastToUser, broadcastAdmin } from "../lib/events";
 import { logActivity } from "../lib/activity";
+import { generateDynamicQRIS } from "../lib/qris";
 import { z } from "zod";
 import {
   getDuitkuBase,
@@ -662,12 +663,20 @@ router.post("/billing/manual-qris/create", requireAuth, async (req, res): Promis
     creditsAmount = baseAmount;
   }
 
-  // Generate random unique code (1-999)
-  const uniqueCode = Math.floor(Math.random() * 999) + 1;
+  // Generate random unique code (max 0.7% of amount, capped at 999)
+  const maxAllowed = Math.max(1, Math.floor(baseAmount * 0.007));
+  const maxCode = Math.min(999, maxAllowed);
+  const uniqueCode = Math.floor(Math.random() * maxCode) + 1;
   const amount = baseAmount + uniqueCode;
 
   const user = (req as any).user;
   const invoiceNumber = `MUTION-M-${Date.now()}-${user.id}`;
+
+  const baseStaticQris = process.env.MANUAL_QRIS_STRING;
+  let finalQrString = "MANUAL";
+  if (baseStaticQris) {
+    finalQrString = generateDynamicQRIS(baseStaticQris, amount);
+  }
 
   const [order] = await db
     .insert(paymentOrdersTable)
@@ -679,7 +688,7 @@ router.post("/billing/manual-qris/create", requireAuth, async (req, res): Promis
       provider: "manual_qris",
       status: "pending",
       payCode: String(uniqueCode),
-      qrString: "MANUAL",
+      qrString: finalQrString,
     })
     .returning();
 
@@ -689,7 +698,7 @@ router.post("/billing/manual-qris/create", requireAuth, async (req, res): Promis
     orderId: order.id,
     invoiceNumber,
     paymentUrl: null, // manual
-    qrString: "MANUAL",
+    qrString: finalQrString,
     amount,
     credits: creditsAmount,
   });
