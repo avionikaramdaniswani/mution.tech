@@ -18,8 +18,8 @@ const AllowedModelsSchema = z
   .transform((models) => [...new Set(models)]);
 
 const ApiKeyCreateBody = z.object({
-  name: z.string().trim().min(1).max(80).optional(),
-  expiresAt: z.union([z.string().trim().max(30), z.null()]).optional(),
+  name: z.string().trim().max(80).optional().transform(v => v === "" ? undefined : v),
+  expiresAt: z.union([z.string().trim().max(30), z.null()]).optional().transform(v => v === "" ? null : v),
   creditLimit: z.union([z.number().int().min(1).max(MAX_KEY_CREDIT_LIMIT), z.null()]).optional(),
   allowedModels: z.union([AllowedModelsSchema, z.null()]).optional(),
 });
@@ -78,7 +78,7 @@ router.post("/api-keys", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
   const parsed = ApiKeyCreateBody.safeParse(req.body ?? {});
   if (!parsed.success) {
-    res.status(400).json({ error: "Konfigurasi API key tidak valid" });
+    res.status(400).json({ error: "Konfigurasi API key tidak valid: " + parsed.error.issues[0].message });
     return;
   }
 
