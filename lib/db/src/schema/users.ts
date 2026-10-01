@@ -17,6 +17,7 @@ export const usersTable = pgTable("users", {
   githubAccessToken: text("github_access_token"),
   githubLogin: text("github_login"),
   referralCode: text("referral_code").unique(),
+  telegramId: text("telegram_id").unique(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastLoginAt: timestamp("last_login_at"),
   bannedAt: timestamp("banned_at"),

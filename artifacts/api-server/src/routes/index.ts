@@ -19,6 +19,7 @@ import packagesRouter from "./packages";
 import referralRouter from "./referral";
 import webhooksRouter from "./webhooks";
 import playgroundRouter from "./playground";
+import botRouter from "./bot";
 
 const router: IRouter = Router();
 
@@ -27,6 +28,7 @@ router.use(healthRouter);
 router.use(catalogRouter);   // /catalog — public, tidak butuh auth
 router.use(packagesRouter);  // /packages — public, tidak butuh auth
 router.use(webhooksRouter);  // /webhooks/github — public, webhook push event dari GitHub
+router.use(botRouter);
 
 // Auth routes
 router.use(authRouter);

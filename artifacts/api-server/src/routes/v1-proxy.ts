@@ -1259,15 +1259,73 @@ function anthropicToOpenAIBody(body: any): any {
   }
 
   for (const msg of body.messages ?? []) {
-    let content: string;
-    if (typeof msg.content === "string") {
-      content = msg.content;
-    } else if (Array.isArray(msg.content)) {
-      content = msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n");
+    if (msg.role === "assistant" && Array.isArray(msg.content)) {
+      // Handle assistant messages that may contain tool_use blocks
+      const textParts = msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text);
+      const toolUseParts = msg.content.filter((b: any) => b.type === "tool_use");
+
+      const assistantMsg: any = {
+        role: "assistant",
+        content: textParts.join("\n") || null,
+      };
+
+      if (toolUseParts.length > 0) {
+        assistantMsg.tool_calls = toolUseParts.map((tu: any) => ({
+          id: tu.id,
+          type: "function",
+          function: {
+            name: tu.name,
+            arguments: typeof tu.input === "string" ? tu.input : JSON.stringify(tu.input ?? {}),
+          },
+        }));
+      }
+
+      messages.push(assistantMsg);
+    } else if (msg.role === "user" && Array.isArray(msg.content)) {
+      // Handle user messages that may contain tool_result blocks
+      const toolResults = msg.content.filter((b: any) => b.type === "tool_result");
+      const otherParts = msg.content.filter((b: any) => b.type !== "tool_result");
+
+      // Emit tool results as separate OpenAI "tool" role messages
+      for (const tr of toolResults) {
+        let trContent: string;
+        if (typeof tr.content === "string") {
+          trContent = tr.content;
+        } else if (Array.isArray(tr.content)) {
+          trContent = tr.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n");
+        } else {
+          trContent = String(tr.content ?? "");
+        }
+        messages.push({
+          role: "tool",
+          tool_call_id: tr.tool_use_id,
+          content: trContent,
+        });
+      }
+
+      // Add remaining user content if any
+      if (otherParts.length > 0) {
+        const textContent = otherParts.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n");
+        if (textContent) {
+          messages.push({ role: "user", content: textContent });
+        }
+      } else if (toolResults.length === 0) {
+        // Plain user message fallback
+        const content = msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n");
+        messages.push({ role: "user", content });
+      }
     } else {
-      content = String(msg.content ?? "");
+      // Simple string content or other cases
+      let content: string;
+      if (typeof msg.content === "string") {
+        content = msg.content;
+      } else if (Array.isArray(msg.content)) {
+        content = msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n");
+      } else {
+        content = String(msg.content ?? "");
+      }
+      messages.push({ role: msg.role, content });
     }
-    messages.push({ role: msg.role, content });
   }
 
   const model = body.model ?? "claude-sonnet-4-6";
@@ -1275,18 +1333,83 @@ function anthropicToOpenAIBody(body: any): any {
   const converted: any = { model, messages, max_tokens: body.max_tokens ?? 4096, stream: body.stream };
   if (body.temperature !== undefined) converted.temperature = body.temperature;
   if (body.top_p !== undefined) converted.top_p = body.top_p;
+
+  // Convert tools (Anthropic format → OpenAI format)
+  if (body.tools && Array.isArray(body.tools) && body.tools.length > 0) {
+    converted.tools = body.tools.map((tool: any) => ({
+      type: "function",
+      function: {
+        name: tool.name,
+        description: tool.description ?? "",
+        parameters: tool.input_schema ?? { type: "object", properties: {} },
+      },
+    }));
+  }
+
+  // Convert tool_choice
+  if (body.tool_choice) {
+    if (typeof body.tool_choice === "object" && body.tool_choice.type === "tool") {
+      converted.tool_choice = { type: "function", function: { name: body.tool_choice.name } };
+    } else if (body.tool_choice === "auto" || (typeof body.tool_choice === "object" && body.tool_choice.type === "auto")) {
+      converted.tool_choice = "auto";
+    } else if (body.tool_choice === "any" || (typeof body.tool_choice === "object" && body.tool_choice.type === "any")) {
+      converted.tool_choice = "required";
+    } else if (body.tool_choice === "none") {
+      converted.tool_choice = "none";
+    }
+  }
+
+  // Request usage stats for streaming
+  if (body.stream) {
+    converted.stream_options = { include_usage: true };
+  }
+
   return converted;
 }
 
 function openAIToAnthropicResponse(data: any, originalModel: string): any {
   const choice = data.choices?.[0];
+  const content: any[] = [];
+
+  // Add text content if present
+  if (choice?.message?.content) {
+    content.push({ type: "text", text: choice.message.content });
+  }
+
+  // Add tool_use blocks if present (OpenAI tool_calls → Anthropic tool_use)
+  if (choice?.message?.tool_calls && Array.isArray(choice.message.tool_calls)) {
+    for (const tc of choice.message.tool_calls) {
+      let input: any;
+      try {
+        input = JSON.parse(tc.function?.arguments ?? "{}");
+      } catch {
+        input = {};
+      }
+      content.push({
+        type: "tool_use",
+        id: tc.id ?? `toolu_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name: tc.function?.name ?? "unknown",
+        input,
+      });
+    }
+  }
+
+  // If no content at all, add empty text
+  if (content.length === 0) {
+    content.push({ type: "text", text: "" });
+  }
+
+  const stopReason = choice?.finish_reason === "tool_calls" ? "tool_use"
+    : choice?.finish_reason === "stop" ? "end_turn"
+    : (choice?.finish_reason ?? "end_turn");
+
   return {
     id: data.id ?? `msg_${Date.now()}`,
     type: "message",
     role: "assistant",
-    content: [{ type: "text", text: choice?.message?.content ?? "" }],
+    content,
     model: originalModel,
-    stop_reason: choice?.finish_reason === "stop" ? "end_turn" : (choice?.finish_reason ?? "end_turn"),
+    stop_reason: stopReason,
     stop_sequence: null,
     usage: {
       input_tokens: data.usage?.prompt_tokens ?? 0,
@@ -1487,7 +1610,6 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
             type: "message_start",
             message: { id: msgId, type: "message", role: "assistant", content: [], model: originalModel, stop_reason: null, usage: { input_tokens: 0, output_tokens: 0 } },
           }));
-          res.write(sseEvent("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }));
           res.write(sseEvent("ping", { type: "ping" }));
 
           const reader = upstream.body?.getReader();
@@ -1498,6 +1620,13 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           let estimatedOutputChars = 0;
           const decoder = new TextDecoder();
           let buffer = "";
+
+          // State for tool_use streaming translation
+          let hasTextBlock = false;
+          let textBlockClosed = false;
+          let nextBlockIndex = 0;
+          const toolCallState = new Map<number, { id: string; name: string; argsBuffer: string; blockIndex: number }>();
+          let streamFinishReason = "end_turn";
 
           while (true) {
             const { done, value } = await reader.read();
@@ -1511,14 +1640,67 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
               if (raw === "[DONE]") continue;
               try {
                 const chunk = JSON.parse(raw);
-                const delta = chunk.choices?.[0]?.delta?.content;
-                if (delta) {
+                const choiceDelta = chunk.choices?.[0]?.delta;
+                const finishReason = chunk.choices?.[0]?.finish_reason;
+
+                // Handle text content delta
+                if (choiceDelta?.content) {
+                  if (!hasTextBlock) {
+                    hasTextBlock = true;
+                    const textIdx = nextBlockIndex++;
+                    res.write(sseEvent("content_block_start", { type: "content_block_start", index: textIdx, content_block: { type: "text", text: "" } }));
+                  }
                   res.write(sseEvent("content_block_delta", {
                     type: "content_block_delta", index: 0,
-                    delta: { type: "text_delta", text: delta },
+                    delta: { type: "text_delta", text: choiceDelta.content },
                   }));
-                  estimatedOutputChars += delta.length;
+                  estimatedOutputChars += choiceDelta.content.length;
                 }
+
+                // Handle tool_calls delta (OpenAI → Anthropic tool_use)
+                if (choiceDelta?.tool_calls && Array.isArray(choiceDelta.tool_calls)) {
+                  // Close text block first if it was open
+                  if (hasTextBlock && !textBlockClosed) {
+                    res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: 0 }));
+                    textBlockClosed = true;
+                  }
+
+                  for (const tc of choiceDelta.tool_calls) {
+                    const tcIdx = tc.index ?? 0;
+
+                    if (tc.id) {
+                      // New tool call starting
+                      const blockIndex = nextBlockIndex++;
+                      toolCallState.set(tcIdx, { id: tc.id, name: tc.function?.name ?? "", argsBuffer: tc.function?.arguments ?? "", blockIndex });
+                      res.write(sseEvent("content_block_start", {
+                        type: "content_block_start", index: blockIndex,
+                        content_block: { type: "tool_use", id: tc.id, name: tc.function?.name ?? "", input: "" },
+                      }));
+                      if (tc.function?.arguments) {
+                        res.write(sseEvent("content_block_delta", {
+                          type: "content_block_delta", index: blockIndex,
+                          delta: { type: "input_json_delta", partial_json: tc.function.arguments },
+                        }));
+                      }
+                    } else if (toolCallState.has(tcIdx)) {
+                      // Continuation of existing tool call arguments
+                      const state = toolCallState.get(tcIdx)!;
+                      if (tc.function?.arguments) {
+                        state.argsBuffer += tc.function.arguments;
+                        res.write(sseEvent("content_block_delta", {
+                          type: "content_block_delta", index: state.blockIndex,
+                          delta: { type: "input_json_delta", partial_json: tc.function.arguments },
+                        }));
+                      }
+                    }
+                  }
+                }
+
+                // Track finish reason
+                if (finishReason) {
+                  streamFinishReason = finishReason === "tool_calls" ? "tool_use" : finishReason === "stop" ? "end_turn" : "end_turn";
+                }
+
                 if (chunk.usage) {
                   actualInputTokens = chunk.usage.prompt_tokens ?? actualInputTokens;
                   actualOutputTokens = chunk.usage.completion_tokens ?? actualOutputTokens;
@@ -1532,10 +1714,20 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           const finalInput = actualInputTokens;
           const finalOutput = actualOutputTokens || Math.min(Math.ceil(estimatedOutputChars / 4), FALLBACK_MAX_TOKENS);
 
-          res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: 0 }));
+          // Close text block if it was opened but not yet closed
+          if (hasTextBlock && !textBlockClosed) {
+            res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: 0 }));
+          }
+          // If no text block was ever opened (pure tool call response), nothing to close for text
+
+          // Close all tool call blocks
+          for (const [, tc] of toolCallState) {
+            res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: tc.blockIndex }));
+          }
+
           res.write(sseEvent("message_delta", {
             type: "message_delta",
-            delta: { stop_reason: "end_turn", stop_sequence: null },
+            delta: { stop_reason: streamFinishReason, stop_sequence: null },
             usage: { output_tokens: finalOutput },
           }));
           res.write(sseEvent("message_stop", { type: "message_stop" }));
