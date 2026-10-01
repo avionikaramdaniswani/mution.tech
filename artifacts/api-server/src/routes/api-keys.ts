@@ -5,15 +5,15 @@ import { requireAuth } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import crypto from "crypto";
 import { z } from "zod";
-import { AVAILABLE_MODEL_IDS } from "@workspace/model-catalog";
 import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/secret-box";
+import { getConfiguredPublicModelCatalog } from "./v1-proxy";
 
 const router = Router();
 const MAX_ACTIVE_KEYS = 10;
 const MAX_KEY_CREDIT_LIMIT = 10_000_000;
 
 const AllowedModelsSchema = z
-  .array(z.string().trim().min(1).max(128).refine((model) => AVAILABLE_MODEL_IDS.includes(model), "Model tidak valid"))
+  .array(z.string().trim().min(1).max(128))
   .max(25)
   .transform((models) => [...new Set(models)]);
 
@@ -78,8 +78,19 @@ router.post("/api-keys", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
   const parsed = ApiKeyCreateBody.safeParse(req.body ?? {});
   if (!parsed.success) {
-    res.status(400).json({ error: "Konfigurasi API key tidak valid: " + parsed.error.issues[0].message });
+    res.status(400).json({ error: "Konfigurasi API key tidak valid" });
     return;
+  }
+
+  // Validate allowed models against the live configured catalog
+  if (parsed.data.allowedModels && parsed.data.allowedModels.length > 0) {
+    const catalog = await getConfiguredPublicModelCatalog();
+    const validModelIds = new Set(catalog.map(m => m.id));
+    const invalidModels = parsed.data.allowedModels.filter(m => !validModelIds.has(m));
+    if (invalidModels.length > 0) {
+      res.status(400).json({ error: `Model tidak tersedia: ${invalidModels.join(", ")}` });
+      return;
+    }
   }
 
   const expiresAt = parseExpiresAt(parsed.data.expiresAt, true);
