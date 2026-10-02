@@ -83,6 +83,7 @@ function serializeUser(user: typeof usersTable.$inferSelect) {
     credits: user.credits,
     googleId: user.googleId,
     githubLogin: user.githubLogin,
+    telegramId: (user as any).telegramId,
     hasPassword: !!user.passwordHash,
     createdAt: user.createdAt.toISOString(),
   };

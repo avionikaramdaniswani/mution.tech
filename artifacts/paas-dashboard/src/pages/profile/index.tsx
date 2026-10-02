@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Mail, ShieldCheck, KeyRound, Loader2, CheckCircle2, Github, Link2, Chrome } from "lucide-react";
+import { User, Mail, ShieldCheck, KeyRound, Loader2, CheckCircle2, Github, Link2, Chrome, MessageCircle } from "lucide-react";
 import { apiFetch } from "@/lib/api-fetch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,7 @@ function InfoRow({ icon: Icon, label, value, isLast = false }: { icon: any; labe
   );
 }
 
-function ConnectionRow({ icon: Icon, label, detail, connected, isLast = false }: { icon: any; label: string; detail?: string | null; connected: boolean; isLast?: boolean }) {
+function ConnectionRow({ icon: Icon, label, detail, connected, isLast = false, action }: { icon: any; label: string; detail?: string | null; connected: boolean; isLast?: boolean; action?: React.ReactNode }) {
   return (
     <div className={`flex items-center gap-4 py-4 ${!isLast ? 'border-b border-border/50' : ''}`}>
       <div className={`h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 ${connected ? 'bg-primary/10 text-primary' : 'bg-muted/50 text-muted-foreground'}`}>
@@ -38,6 +38,7 @@ function ConnectionRow({ icon: Icon, label, detail, connected, isLast = false }:
       >
         {connected ? "Terhubung" : "Belum"}
       </Badge>
+      {action && <div className="ml-2">{action}</div>}
     </div>
   );
 }
@@ -50,6 +51,11 @@ export default function ProfilePage() {
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isConnectingTelegram, setIsConnectingTelegram] = useState(false);
+
+  function isPasswordAccount(u: any) {
+    return u?.hasPassword === true;
+  }
 
   const isGoogleAccount = !!user?.googleId && !isPasswordAccount(user);
   const hasPassword = isPasswordAccount(user);
@@ -60,6 +66,20 @@ export default function ProfilePage() {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  const handleConnectTelegram = async () => {
+    try {
+      setIsConnectingTelegram(true);
+      const res = await apiFetch("/telegram/generate-link");
+      if (res.link) {
+        window.open(res.link, "_blank");
+      }
+    } catch (error) {
+      alert("Gagal memuat link Telegram");
+    } finally {
+      setIsConnectingTelegram(false);
+    }
+  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,7 +176,27 @@ export default function ProfilePage() {
                 label="GitHub"
                 detail={user?.githubLogin ? `@${user.githubLogin}` : null}
                 connected={!!user?.githubLogin}
+              />
+              <ConnectionRow
+                icon={MessageCircle}
+                label="Telegram Bot"
+                detail={(user as any)?.telegramId ? `ID: ${(user as any).telegramId}` : null}
+                connected={!!(user as any)?.telegramId}
                 isLast={true}
+                action={
+                  !(user as any)?.telegramId && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 text-xs font-medium"
+                      onClick={handleConnectTelegram}
+                      disabled={isConnectingTelegram}
+                    >
+                      {isConnectingTelegram ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <MessageCircle className="h-3 w-3 mr-1" />}
+                      Hubungkan
+                    </Button>
+                  )
+                }
               />
             </CardContent>
           </Card>

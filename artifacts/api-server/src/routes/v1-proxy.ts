@@ -142,7 +142,7 @@ function apiRequestLogger(req: Request, res: Response, next: NextFunction): void
 // ─── Per-Model Pricing (kredit per 1M token) ──────────────────────────────────
   // Try partial match — sort by key length DESC so "claude-sonnet-4-7" beats "claude-sonnet-4"
 /** Safe fallback token estimate — capped to prevent overcharging when usage data is missing. */
-const MAX_OUTPUT_TOKENS = 65_536;
+const MAX_OUTPUT_TOKENS = 131_072;
 const DEFAULT_OUTPUT_TOKENS = 4_096;
 const FALLBACK_MAX_TOKENS = MAX_OUTPUT_TOKENS;
 function estimateFallbackTokens(reqBody: any): number {
@@ -188,10 +188,18 @@ function estimateInputTokens(reqBody: any): number {
 }
 
 function getRequestedOutputTokens(body: any): number | null {
-  const raw = body?.max_tokens ?? body?.max_completion_tokens ?? DEFAULT_OUTPUT_TOKENS;
-  if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 1 || raw > MAX_OUTPUT_TOKENS) {
-    return null;
+  let raw = body?.max_tokens ?? body?.max_completion_tokens;
+  if (raw === undefined || raw === null) {
+    raw = DEFAULT_OUTPUT_TOKENS;
   }
+  if (typeof raw === "string") {
+    raw = parseInt(raw, 10);
+  }
+  if (typeof raw !== "number" || !Number.isInteger(raw) || isNaN(raw)) {
+    return DEFAULT_OUTPUT_TOKENS;
+  }
+  if (raw < 1) return 1;
+  if (raw > MAX_OUTPUT_TOKENS) return MAX_OUTPUT_TOKENS;
   return raw;
 }
 

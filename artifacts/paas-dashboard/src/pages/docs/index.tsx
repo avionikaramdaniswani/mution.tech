@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { csrfFetch } from "@/lib/csrf";
 
 type OsTab = "linux" | "powershell" | "cmd";
-type ActiveTab = "quickstart" | "openai" | "openai-node" | "claude-code" | "codex" | "curl";
+type ActiveTab = "quickstart" | "openai" | "openai-node" | "claude-code" | "codex" | "opencode" | "curl";
 
 function OsTabs({ linux, powershell, cmd }: { linux: string; powershell: string; cmd: string }) {
   const [active, setActive] = useState<OsTab>("linux");
@@ -116,6 +116,7 @@ const DOCS_SECTIONS: { id: ActiveTab; label: string; icon: any }[] = [
   { id: "openai-node", label: "Node.js", icon: Code },
   { id: "claude-code", label: "Claude Code", icon: Terminal },
   { id: "codex", label: "Codex", icon: Terminal },
+  { id: "opencode", label: "OpenCode", icon: Terminal },
   { id: "curl", label: "cURL", icon: Terminal },
 ];
 
@@ -579,6 +580,58 @@ goals = true`}
 
               <H3>4. Jalankan Codex</H3>
               <CodeBlock lang="bash" code={`codex\n# Atau langsung dengan prompt:\ncodex "Buat REST API dengan Express dan TypeScript"`} />
+            </div>
+          )}
+
+          {activeTab === "opencode" && (
+            <div>
+              <h2 className="text-2xl font-bold mb-5 text-foreground">OpenCode CLI</h2>
+              <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-foreground/70 mb-4 flex items-start gap-2">
+                <span className="mt-0.5">💡</span>
+                <span>OpenCode dikonfigurasi melalui file <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">opencode.json</code>.</span>
+              </div>
+              
+              <H3>1. Install OpenCode</H3>
+              <CodeBlock lang="bash" code="npm install -g opencode-ai" />
+
+              <H3>2. Buat Direktori dan File Konfigurasi</H3>
+              <p className="text-foreground/70 text-xs mb-3">Buat direktori <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">~/.config/opencode</code> lalu tulis konfigurasi berikut.</p>
+              
+              <CodeBlock lang="bash" code={`mkdir -p ~/.config/opencode
+cat > ~/.config/opencode/opencode.json <<'OPENCODESETTINGS'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "Mution-gateway": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Mution-gateway",
+      "options": {
+        "baseURL": "${base}/v1"
+      },
+      "models": {
+        "${defaultModel}": {
+          "name": "${defaultModel}"
+        }
+      }
+    }
+  },
+  "model": "Mution-gateway/${defaultModel}"
+}
+OPENCODESETTINGS`} />
+              
+              <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm my-5">
+                <p className="font-medium text-foreground mb-2">Catatan Kunci API</p>
+                <p className="text-foreground/70 text-xs leading-relaxed">
+                  Saat pertama kali menjalankan OpenCode dengan konfigurasi di atas, Anda akan diminta memasukkan API Key Mution (<code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">{displayKey}</code>).
+                </p>
+              </div>
+
+              <H3>3. Pengujian dan Verifikasi</H3>
+              <CodeBlock lang="bash" code={`# Mulai OpenCode
+opencode
+
+# Di dalam OpenCode, ketik perintah berikut untuk melihat daftar model
+/model`} />
             </div>
           )}
 
