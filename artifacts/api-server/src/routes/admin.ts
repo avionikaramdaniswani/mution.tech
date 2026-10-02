@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable, aiProviderModelsTable, activityLogsTable, sessionsTable } from "@workspace/db";
+import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable, aiProviderModelsTable, activityLogsTable, sessionsTable, apiUsageDailyTable } from "@workspace/db";
 import { eq, desc, sql, count, and, gte, asc, notInArray } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
@@ -203,6 +203,33 @@ router.post("/admin/users/:id/unban", async (req, res): Promise<void> => {
   await logActivity(admin.id, "admin.user.unbanned", undefined, { targetEmail: user.email });
 
   res.json({ success: true });
+});
+
+// Get user model statistics
+router.get("/admin/users/:id/model-stats", async (req, res): Promise<void> => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  try {
+    const stats = await db
+      .select({
+        model: apiUsageDailyTable.model,
+        totalTokens: sql<number>`coalesce(sum(${apiUsageDailyTable.totalTokens}), 0)::int`,
+        promptTokens: sql<number>`coalesce(sum(${apiUsageDailyTable.promptTokens}), 0)::int`,
+        completionTokens: sql<number>`coalesce(sum(${apiUsageDailyTable.completionTokens}), 0)::int`,
+        requests: sql<number>`coalesce(sum(${apiUsageDailyTable.totalRequests}), 0)::int`,
+        credits: sql<number>`coalesce(sum(${apiUsageDailyTable.totalCredits}), 0)::int`,
+      })
+      .from(apiUsageDailyTable)
+      .where(eq(apiUsageDailyTable.userId, id))
+      .groupBy(apiUsageDailyTable.model)
+      .orderBy(desc(sql`sum(${apiUsageDailyTable.totalTokens})`));
+
+    res.json(stats);
+  } catch (error) {
+    console.error("Failed to fetch user model stats:", error);
+    res.status(500).json({ error: "Gagal mengambil statistik model" });
+  }
 });
 
 // Send broadcast email to users

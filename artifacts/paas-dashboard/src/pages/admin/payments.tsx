@@ -1,8 +1,12 @@
+import { useState, useMemo, useEffect } from "react";
 import { useAdminListOrders, useAdminGetRevenue, getAdminListOrdersQueryKey, getAdminGetRevenueQueryKey } from "@workspace/api-client-react";
 import type { PaymentOrderWithUser } from "@workspace/api-client-react";
 import {
-  Wallet, TrendingUp, Calendar, CheckCircle2, Clock, XCircle, Receipt,
+  Wallet, TrendingUp, Calendar, CheckCircle2, Clock, XCircle, Receipt, Search
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -87,6 +91,34 @@ export default function AdminPayments() {
     query: { queryKey: getAdminListOrdersQueryKey(), refetchInterval: 5000 },
   });
 
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const filteredOrders = useMemo(() => {
+    if (!orders) return [];
+    let list = orders;
+
+    if (search) {
+      const lower = search.toLowerCase();
+      list = list.filter(o => o.ownerName.toLowerCase().includes(lower) || o.ownerEmail.toLowerCase().includes(lower));
+    }
+
+    if (statusFilter !== "all") {
+      list = list.filter(o => o.status === statusFilter);
+    }
+
+    return list;
+  }, [orders, search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / itemsPerPage));
+  const paginatedOrders = filteredOrders.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, itemsPerPage]);
+
   return (
     <div className="mx-auto max-w-7xl space-y-8">
       {/* Header */}
@@ -149,10 +181,36 @@ export default function AdminPayments() {
       )}
 
       {/* Orders table */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-[#172033]">Transaksi Terbaru</h2>
-          {orders && <span className="text-xs text-[#526173]">{orders.length} transaksi</span>}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-[#172033]">Transaksi Terbaru</h2>
+            {orders && <span className="text-xs text-[#526173]">({orders.length} total)</span>}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Input 
+                placeholder="Cari nama atau email..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9 border-[#dbe8f3] text-sm"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[140px] h-9 border-[#dbe8f3] text-sm">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="paid">Lunas</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="failed">Gagal</SelectItem>
+                <SelectItem value="cancelled">Dibatalkan</SelectItem>
+                <SelectItem value="expired">Kedaluwarsa</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_16px_44px_rgba(23,32,51,0.07)]">
@@ -173,14 +231,14 @@ export default function AdminPayments() {
                 <div key={i} className="px-5 py-4"><Skeleton className="h-8 w-full" /></div>
               ))}
             </div>
-          ) : !orders || orders.length === 0 ? (
+          ) : paginatedOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <Receipt className="h-10 w-10 text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">Belum ada transaksi.</p>
             </div>
           ) : (
             <div>
-              {orders.map((order: PaymentOrderWithUser) => (
+              {paginatedOrders.map((order: PaymentOrderWithUser) => (
                 <div
                   key={order.id}
                   className="grid items-center border-b border-[#edf4fb] px-5 py-3.5 transition-colors last:border-b-0 hover:bg-[#f8fbff]"
@@ -218,6 +276,55 @@ export default function AdminPayments() {
             </div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {filteredOrders.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[#526173]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="whitespace-nowrap">Tampilkan:</span>
+              <Select value={String(itemsPerPage)} onValueChange={(val) => setItemsPerPage(Number(val))}>
+                <SelectTrigger className="h-8 w-16 border-[#dbe8f3] px-2 py-1 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="30">30</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="whitespace-nowrap ml-2">
+                Menampilkan <span className="font-semibold text-[#172033]">{(page - 1) * itemsPerPage + 1}</span> hingga{" "}
+                <span className="font-semibold text-[#172033]">{Math.min(page * itemsPerPage, filteredOrders.length)}</span> dari{" "}
+                <span className="font-semibold text-[#172033]">{filteredOrders.length}</span> transaksi
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="h-8 border-[#dbe8f3]"
+              >
+                Sebelumnnya
+              </Button>
+              <span className="px-2 font-medium">
+                Hal {page} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="h-8 border-[#dbe8f3]"
+              >
+                Selanjutnya
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

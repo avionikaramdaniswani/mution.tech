@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useAdminGetUsage, getAdminGetUsageQueryKey } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, Cpu, Coins, Hash, TrendingUp, Users2 } from "lucide-react";
+import { Activity, Cpu, Coins, Hash, TrendingUp, Users2, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { csrfFetch } from "@/lib/csrf";
 
 function formatNumber(n: number) {
   return n.toLocaleString("id-ID");
@@ -65,13 +68,65 @@ const RANGE_OPTIONS = [
   { label: "90 hari", days: 90 },
 ];
 
+function UserModelStatsDialog({ user, onClose }: { user: { userId: number; name: string } | null; onClose: () => void }) {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ["admin", "users", user?.userId, "model-stats"],
+    queryFn: async () => {
+      const res = await csrfFetch(`/api/admin/users/${user?.userId}/model-stats`, { credentials: "include" });
+      if (!res.ok) throw new Error("Gagal mengambil data");
+      return res.json() as Promise<{ model: string; totalTokens: number; requests: number; credits: number }[]>;
+    },
+    enabled: !!user,
+  });
+
+  return (
+    <Dialog open={!!user} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md bg-white border-[#dbe8f3] text-[#172033]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-[#f97316]">
+            <Cpu className="h-5 w-5" /> Statistik Model
+          </DialogTitle>
+          <DialogDescription>
+            Pemakaian model oleh pengguna <strong>{user?.name}</strong>
+          </DialogDescription>
+        </DialogHeader>
+        <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-4 pr-2">
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </div>
+          ) : stats?.length === 0 ? (
+            <div className="text-center py-6 text-sm text-muted-foreground">
+              Belum ada data pemakaian model.
+            </div>
+          ) : (
+            stats?.map((s) => (
+              <div key={s.model} className="flex flex-col gap-1 rounded-lg border border-[#edf4fb] bg-[#f8fbff] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-sm font-semibold truncate mr-2">{s.model}</span>
+                  <span className="text-xs font-semibold tabular-nums text-[#f97316]">{formatCompact(s.totalTokens)} tok</span>
+                </div>
+                <div className="flex justify-between text-[11px] text-[#526173]">
+                  <span>{formatNumber(s.requests)} requests</span>
+                  <span>{formatNumber(s.credits)} kredit</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function AdminUsage() {
   const [days, setDays] = useState(30);
   const [excludeAdmins, setExcludeAdmins] = useState(false);
+  const [detailUser, setDetailUser] = useState<{ userId: number; name: string } | null>(null);
   
   const { data, isLoading } = useAdminGetUsage(
-    { days, excludeAdmins },
-    { query: { queryKey: getAdminGetUsageQueryKey({ days, excludeAdmins }), refetchInterval: 10000 } },
+    { days, excludeAdmins } as any,
+    { query: { queryKey: getAdminGetUsageQueryKey({ days, excludeAdmins } as any), refetchInterval: 10000 } },
   );
 
   const totals = data?.totals;
@@ -274,9 +329,10 @@ export default function AdminUsage() {
             ) : (
               <div>
                 {topUsers.map((u) => (
-                  <div
+                  <button
                     key={u.userId}
-                    className="flex items-center gap-3 border-b border-[#edf4fb] px-5 py-3 last:border-b-0"
+                    onClick={() => setDetailUser({ userId: u.userId, name: u.name })}
+                    className="w-full flex items-center gap-3 border-b border-[#edf4fb] px-5 py-3 last:border-b-0 hover:bg-[#f8fbff] transition-colors text-left"
                   >
                     <UserAvatar name={u.name} />
                     <div className="min-w-0 flex-1">
@@ -287,13 +343,15 @@ export default function AdminUsage() {
                       <p className="text-sm font-semibold tabular-nums text-[#172033]">{formatCompact(u.totalTokens)} tok</p>
                       <p className="text-xs tabular-nums text-[#526173]">{formatNumber(u.credits)} kredit</p>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      <UserModelStatsDialog user={detailUser} onClose={() => setDetailUser(null)} />
     </div>
   );
 }

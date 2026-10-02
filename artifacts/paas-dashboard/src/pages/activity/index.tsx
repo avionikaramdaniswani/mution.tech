@@ -1,15 +1,23 @@
+import { useState } from "react";
 import { useListActivity } from "@workspace/api-client-react";
 import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import { 
   Activity as ActivityIcon, Settings, Terminal, Play, Square, Database, Box, 
-  Trash2, PlusCircle, CheckCircle2, AlertCircle, RefreshCw, Key
+  Trash2, PlusCircle, RefreshCw, Key
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function ActivityLog() {
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const { data: activities, isLoading } = useListActivity();
+
+  const totalPages = Math.max(1, Math.ceil((activities?.length ?? 0) / itemsPerPage));
+  const paginatedActivities = activities?.slice((page - 1) * itemsPerPage, page * itemsPerPage) ?? [];
 
   // Memilih icon & warna (semantic) berdasarkan action
   const getActionStyle = (action: string) => {
@@ -77,7 +85,7 @@ export default function ActivityLog() {
   };
 
   // Group activities by date
-  const groupedActivities = activities?.reduce((groups, activity) => {
+  const groupedActivities = paginatedActivities.reduce((groups, activity) => {
     const date = new Date(activity.createdAt);
     let dateStr = "";
     
@@ -86,9 +94,9 @@ export default function ActivityLog() {
     else dateStr = format(date, "d MMMM yyyy", { locale: id });
 
     if (!groups[dateStr]) groups[dateStr] = [];
-    groups[dateStr].push(activity);
+    groups[dateStr]!.push(activity);
     return groups;
-  }, {} as Record<string, typeof activities>);
+  }, {} as Record<string, typeof paginatedActivities>);
 
   if (isLoading) {
     return (
@@ -191,6 +199,54 @@ export default function ActivityLog() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {activities && activities.length > 0 && (
+            <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="whitespace-nowrap">Tampilkan:</span>
+                <Select value={String(itemsPerPage)} onValueChange={(val) => { setItemsPerPage(Number(val)); setPage(1); }}>
+                  <SelectTrigger className="h-8 w-16 bg-white border-slate-200 px-2 py-1 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="30">30</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="whitespace-nowrap ml-2">
+                  Menampilkan <span className="font-semibold text-slate-900">{(page - 1) * itemsPerPage + 1}</span> hingga{" "}
+                  <span className="font-semibold text-slate-900">{Math.min(page * itemsPerPage, activities.length)}</span> dari{" "}
+                  <span className="font-semibold text-slate-900">{activities.length}</span> aktivitas
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="h-8 bg-white border-slate-200"
+                >
+                  Sebelumnnya
+                </Button>
+                <span className="px-2 font-medium">
+                  Hal {page} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="h-8 bg-white border-slate-200"
+                >
+                  Selanjutnya
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

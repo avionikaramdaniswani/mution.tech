@@ -506,7 +506,7 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -736,12 +736,27 @@ export default function AdminUsers() {
 
       {/* Pagination Controls */}
       {filteredUsers.length > 0 && (
-        <div className="flex items-center justify-between text-sm text-[#526173]">
-          <p>
-            Menampilkan <span className="font-semibold text-[#172033]">{(page - 1) * itemsPerPage + 1}</span> hingga{" "}
-            <span className="font-semibold text-[#172033]">{Math.min(page * itemsPerPage, filteredUsers.length)}</span> dari{" "}
-            <span className="font-semibold text-[#172033]">{filteredUsers.length}</span> pengguna
-          </p>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[#526173]">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="whitespace-nowrap">Tampilkan:</span>
+            <Select value={String(itemsPerPage)} onValueChange={(val) => { setItemsPerPage(Number(val)); setPage(1); }}>
+              <SelectTrigger className="h-8 w-16 border-[#dbe8f3] px-2 py-1 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="30">30</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="whitespace-nowrap ml-2">
+              Menampilkan <span className="font-semibold text-[#172033]">{(page - 1) * itemsPerPage + 1}</span> hingga{" "}
+              <span className="font-semibold text-[#172033]">{Math.min(page * itemsPerPage, filteredUsers.length)}</span> dari{" "}
+              <span className="font-semibold text-[#172033]">{filteredUsers.length}</span> pengguna
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
