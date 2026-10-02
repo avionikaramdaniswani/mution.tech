@@ -122,7 +122,7 @@ export default function LeaderboardPage() {
           icon={Brain}
           color="bg-purple-100 text-purple-600"
         />
-        <div className="md:col-span-2 bg-[linear-gradient(135deg,#f8fbff_0%,#f1f5f9_100%)] border border-[#dbe8f3] rounded-xl p-6 relative overflow-hidden flex items-center shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
+        <div className="md:col-span-2 bg-white border border-[#dbe8f3] rounded-xl p-6 relative overflow-hidden flex items-center shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
            <div className="relative z-10">
               <h2 className="text-xl font-black text-[#172033] mb-2">Mution Leaderboard</h2>
               <p className="text-sm text-[#526173] max-w-md">Daftar pengguna dengan pemakaian token dan kredit terbanyak di ekosistem Mution Gateway.</p>

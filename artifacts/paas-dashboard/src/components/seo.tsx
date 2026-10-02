@@ -175,6 +175,7 @@ const privatePrefixes = [
   "/referral",
   "/usage",
   "/playground",
+  "/leaderboard",
 ];
 
 const authRoutes = ["/login", "/register", "/forgot-password"];
