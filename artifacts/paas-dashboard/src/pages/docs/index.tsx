@@ -606,7 +606,8 @@ cat > ~/.config/opencode/opencode.json <<'OPENCODESETTINGS'
       "npm": "@ai-sdk/openai-compatible",
       "name": "Mution-gateway",
       "options": {
-        "baseURL": "${base}/v1"
+        "baseURL": "${base}/v1",
+        "apiKey": "{env:MUTION_API_KEY}"
       },
       "models": {
         "${defaultModel}": {
@@ -618,20 +619,28 @@ cat > ~/.config/opencode/opencode.json <<'OPENCODESETTINGS'
   "model": "Mution-gateway/${defaultModel}"
 }
 OPENCODESETTINGS`} />
-              
+
               <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm my-5">
-                <p className="font-medium text-foreground mb-2">Catatan Kunci API</p>
-                <p className="text-foreground/70 text-xs leading-relaxed">
-                  Saat pertama kali menjalankan OpenCode dengan konfigurasi di atas, Anda akan diminta memasukkan API Key Mution (<code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">{displayKey}</code>).
+                <p className="font-medium text-foreground mb-2">3. Masukkan API Key Mution</p>
+                <p className="text-foreground/70 text-xs leading-relaxed mb-3">
+                  Ganti <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">mk_live_YOUR_KEY_HERE</code> dengan API key dari dashboard Mution, lalu jalankan salah satu perintah berikut <strong>(jangan commit key ke file konfigurasi)</strong>.
+                </p>
+                <CodeBlock lang="bash" code={`# Linux / macOS
+export MUTION_API_KEY="mk_live_YOUR_KEY_HERE"
+
+# Windows PowerShell
+$env:MUTION_API_KEY = "mk_live_YOUR_KEY_HERE"`} />
+                <p className="text-foreground/70 text-xs leading-relaxed mt-3">
+                  Alternatif: jalankan <code className="font-mono bg-background border border-border rounded px-1">opencode</code>, ketik <code className="font-mono bg-background border border-border rounded px-1">/connect</code>, pilih <strong>Other</strong>, masukkan provider ID <code className="font-mono bg-background border border-border rounded px-1">Mution-gateway</code>, lalu masukkan API key. Provider ID harus sama persis dengan konfigurasi di atas.
                 </p>
               </div>
 
-              <H3>3. Pengujian dan Verifikasi</H3>
-              <CodeBlock lang="bash" code={`# Mulai OpenCode
+              <H3>4. Pengujian dan Verifikasi</H3>
+              <CodeBlock lang="bash" code={`# Mulai OpenCode setelah MUTION_API_KEY diatur
 opencode
 
 # Di dalam OpenCode, ketik perintah berikut untuk melihat daftar model
-/model`} />
+/models`} />
             </div>
           )}
 
