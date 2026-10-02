@@ -559,5 +559,9 @@ export type AdminGetUsageParams = {
  * @maximum 365
  */
 days?: number;
+/**
+ * Exclude admins from the usage statistics.
+ */
+excludeAdmins?: boolean;
 };
 

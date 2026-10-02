@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   useAdminListUsers, useAdminGetUser, useAdminDeleteUser,
   useAdminUpdateUser, useAdminAdjustCredits,
@@ -9,7 +9,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Users, ShieldAlert, User, Eye, Trash2, Wallet,
   Box, Calendar, Clock, Mail, AlertTriangle, Plus, Minus, Loader2,
-  Pencil, Sparkles, Ban, ShieldCheck,
+  Pencil, Sparkles, Ban, ShieldCheck, Search, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -502,6 +502,42 @@ export default function AdminUsers() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [banTarget, setBanTarget] = useState<UserWithStats | null>(null);
 
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    let list = users;
+
+    if (search) {
+      const lower = search.toLowerCase();
+      list = list.filter(u => u.name.toLowerCase().includes(lower) || u.email.toLowerCase().includes(lower));
+    }
+
+    if (roleFilter !== "all") {
+      list = list.filter(u => u.role === roleFilter);
+    }
+
+    if (statusFilter !== "all") {
+      if (statusFilter === "banned") list = list.filter(u => isUserBanned(u));
+      else if (statusFilter === "active") list = list.filter(u => !isUserBanned(u));
+    }
+
+    return list;
+  }, [users, search, roleFilter, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage));
+  const paginatedUsers = filteredUsers.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, roleFilter, statusFilter]);
+
+
+
   const unbanMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await csrfFetch(`/api/admin/users/${id}/unban`, { method: "POST" });
@@ -548,6 +584,38 @@ export default function AdminUsers() {
         )}
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Input 
+            placeholder="Cari nama atau email..." 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-10 border-[#dbe8f3]"
+          />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-[160px] h-10 border-[#dbe8f3]">
+            <SelectValue placeholder="Role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Role</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="user">User</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[160px] h-10 border-[#dbe8f3]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Status</SelectItem>
+            <SelectItem value="active">Aktif</SelectItem>
+            <SelectItem value="banned">Banned</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Table */}
       <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_16px_44px_rgba(23,32,51,0.07)]">
         {/* Table header */}
@@ -570,14 +638,14 @@ export default function AdminUsers() {
               </div>
             ))}
           </div>
-        ) : !users || users.length === 0 ? (
+        ) : filteredUsers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <Users className="h-10 w-10 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">Belum ada pengguna.</p>
+            <p className="text-sm text-muted-foreground">Tidak ada pengguna yang cocok dengan filter.</p>
           </div>
         ) : (
           <div>
-            {users.map((user) => (
+            {paginatedUsers.map((user) => (
               <div
                 key={user.id}
                 className="grid items-center border-b border-[#edf4fb] px-5 py-3.5 transition-colors last:border-b-0 hover:bg-[#f8fbff]"
@@ -665,6 +733,40 @@ export default function AdminUsers() {
           </div>
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {filteredUsers.length > 0 && (
+        <div className="flex items-center justify-between text-sm text-[#526173]">
+          <p>
+            Menampilkan <span className="font-semibold text-[#172033]">{(page - 1) * itemsPerPage + 1}</span> hingga{" "}
+            <span className="font-semibold text-[#172033]">{Math.min(page * itemsPerPage, filteredUsers.length)}</span> dari{" "}
+            <span className="font-semibold text-[#172033]">{filteredUsers.length}</span> pengguna
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="h-8 border-[#dbe8f3] text-[#526173]"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <p className="px-2 text-xs font-semibold">
+              {page} / {totalPages}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="h-8 border-[#dbe8f3] text-[#526173]"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Detail sheet (read-only) */}
       <UserDetailSheet

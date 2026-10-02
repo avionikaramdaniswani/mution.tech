@@ -14,12 +14,12 @@ import { useToast } from "@/hooks/use-toast";
 import { csrfFetch } from "@/lib/csrf";
 
 interface ProviderModel { modelId: string; displayName: string; brandProvider: string; upstreamModelId: string; enabled: boolean }
-interface ProviderStatus { id: string; name: string; openaiBase: string; type: "conduit" | "generic"; priority: number; enabled: boolean; inCooldown: boolean; cooldownExpiresAt: string | null; models: ProviderModel[] }
+interface ProviderStatus { id: string; name: string; openaiBase: string; type: "conduit" | "generic"; priority: number; enabled: boolean; inCooldown: boolean; cooldownExpiresAt: string | null; totalKeys?: number; models: ProviderModel[] }
 type ModelForm = ProviderModel & { originalModelId?: string };
 const emptyModelForm: ModelForm = { modelId: "", displayName: "", brandProvider: "Other", upstreamModelId: "", enabled: true };
 
-interface ProviderForm { id: string; name: string; baseUrl: string; apiKey: string; backupApiKeysText: string; type: string; priority: number }
-const emptyProviderForm: ProviderForm = { id: "", name: "", baseUrl: "", apiKey: "", backupApiKeysText: "", type: "generic", priority: 0 };
+interface ProviderForm { id: string; name: string; baseUrl: string; apiKey: string; backupApiKeys: string[]; type: string; priority: number }
+const emptyProviderForm: ProviderForm = { id: "", name: "", baseUrl: "", apiKey: "", backupApiKeys: [""], type: "generic", priority: 0 };
 
 async function fetchProviders(): Promise<ProviderStatus[]> { const res = await fetch("/api/admin/providers", { credentials: "include" }); if (!res.ok) throw new Error(); return res.json(); }
 async function request(url: string, method: string, body?: unknown) {
@@ -73,9 +73,9 @@ export default function AdminProviders() {
     if (!form.name.trim() || !form.baseUrl.trim()) { toast({ title: "Nama dan Base URL wajib diisi", variant: "destructive" }); return; }
     if (!editing && (!form.id.trim() || !form.apiKey.trim())) { toast({ title: "ID dan API Key wajib diisi untuk provider baru", variant: "destructive" }); return; }
     
-    const backupApiKeys = form.backupApiKeysText.split('\n').map(k => k.trim()).filter(k => k);
-    // Jika editing dan text kosong, jangan kirim supaya tidak menimpa dengan array kosong
-    const payloadBackupApiKeys = (editing && backupApiKeys.length === 0) ? undefined : backupApiKeys;
+    const backupApiKeysFiltered = form.backupApiKeys.map(k => k.trim()).filter(k => k);
+    // Jika editing dan array kosong, jangan kirim supaya tidak menimpa dengan array kosong
+    const payloadBackupApiKeys = (editing && backupApiKeysFiltered.length === 0) ? undefined : backupApiKeysFiltered;
     
     if (editing) {
       mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(form.id)}`, method: "PUT", body: { name: form.name.trim(), baseUrl: form.baseUrl.trim(), apiKey: form.apiKey.trim() || undefined, backupApiKeys: payloadBackupApiKeys, type: form.type, priority: form.priority } });
@@ -219,11 +219,11 @@ export default function AdminProviders() {
                 <Badge variant="outline" className="gap-1 border-blue-200 bg-blue-50 text-blue-700">P{p.priority}</Badge>
                 <StatusBadge provider={p} />
               </div>
-              <p className="mt-1 truncate text-xs text-muted-foreground">{p.openaiBase} · {p.models.filter(m => m.enabled).length}/{p.models.length} model aktif</p>
+              <p className="mt-1 truncate text-xs text-muted-foreground">{p.openaiBase} · {p.models.filter(m => m.enabled).length}/{p.models.length} model aktif · {p.totalKeys ?? 1} API keys tersimpan</p>
             </div>
           </button>
           <div className="flex items-center gap-2">
-            <Button size="icon" variant="ghost" title="Edit provider" onClick={() => { setProviderEditor({ form: { id: p.id, name: p.name || p.id, baseUrl: p.openaiBase.replace(/\/v1$/, ""), apiKey: "", backupApiKeysText: "", type: p.type, priority: p.priority }, editing: true }); setShowApiKey(false); }}>
+            <Button size="icon" variant="ghost" title="Edit provider" onClick={() => { setProviderEditor({ form: { id: p.id, name: p.name || p.id, baseUrl: p.openaiBase.replace(/\/v1$/, ""), apiKey: "", backupApiKeys: [""], type: p.type, priority: p.priority }, editing: true }); setShowApiKey(false); }}>
               <Pencil className="h-4 w-4" />
             </Button>
             <Button size="icon" variant="ghost" className="text-red-600" title="Hapus provider" onClick={() => { if (window.confirm(`Hapus provider "${p.name || p.id}" beserta semua model-nya?`)) mutate.mutate({ url: `/api/admin/providers/${encodeURIComponent(p.id)}`, method: "DELETE" }); }}>
@@ -276,8 +276,43 @@ export default function AdminProviders() {
           </div>
           <div className="space-y-2">
             <Label>Backup API Keys (Opsional)</Label>
-            <Textarea value={providerEditor.form.backupApiKeysText} placeholder="sk-backup1...\nsk-backup2..." onChange={e => setProviderEditor({ ...providerEditor, form: { ...providerEditor.form, backupApiKeysText: e.target.value } })} rows={3} />
-            <p className="text-xs text-muted-foreground">Pisahkan dengan baris baru (enter). Kunci ini akan digunakan jika kunci utama gagal atau terkena rate limit.</p>
+            {providerEditor.form.backupApiKeys.map((key, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Input
+                  value={key}
+                  placeholder={providerEditor.editing ? "Tambah backup key baru..." : "sk-backup..."}
+                  onChange={(e) => {
+                    const newKeys = [...providerEditor.form.backupApiKeys];
+                    newKeys[i] = e.target.value;
+                    setProviderEditor({ ...providerEditor, form: { ...providerEditor.form, backupApiKeys: newKeys } });
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => {
+                    const newKeys = providerEditor.form.backupApiKeys.filter((_, idx) => idx !== i);
+                    setProviderEditor({ ...providerEditor, form: { ...providerEditor.form, backupApiKeys: newKeys } });
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full text-xs"
+              onClick={() => {
+                setProviderEditor({ ...providerEditor, form: { ...providerEditor.form, backupApiKeys: [...providerEditor.form.backupApiKeys, ""] } });
+              }}
+            >
+              <Plus className="mr-2 h-3 w-3" /> Tambah Backup Key
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1">Kunci ini akan digunakan jika kunci utama gagal atau terkena rate limit.</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

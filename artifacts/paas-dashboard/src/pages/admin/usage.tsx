@@ -67,9 +67,11 @@ const RANGE_OPTIONS = [
 
 export default function AdminUsage() {
   const [days, setDays] = useState(30);
+  const [excludeAdmins, setExcludeAdmins] = useState(false);
+  
   const { data, isLoading } = useAdminGetUsage(
-    { days },
-    { query: { queryKey: getAdminGetUsageQueryKey({ days }), refetchInterval: 10000 } },
+    { days, excludeAdmins },
+    { query: { queryKey: getAdminGetUsageQueryKey({ days, excludeAdmins }), refetchInterval: 10000 } },
   );
 
   const totals = data?.totals;
@@ -91,21 +93,52 @@ export default function AdminUsage() {
             Analitik pemakaian AI-proxy: token, kredit terpakai, breakdown model, dan pengguna teratas.
           </p>
         </div>
-        <div className="flex items-center gap-1 rounded-md border border-[#dbe8f3] bg-white p-1 shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
-          {RANGE_OPTIONS.map((opt) => (
-            <button
-              key={opt.days}
-              onClick={() => setDays(opt.days)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-              style={
-                days === opt.days
-                  ? { background: "rgba(249,115,22,0.15)", color: "rgb(249,115,22)" }
-                  : { color: "rgb(82,97,115)" }
-              }
-            >
-              {opt.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+              <input
+                type="checkbox"
+                name="excludeAdmins"
+                id="excludeAdmins"
+                className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                style={{
+                  top: '2px',
+                  left: excludeAdmins ? '20px' : '2px',
+                  borderColor: excludeAdmins ? '#f97316' : '#dbe8f3',
+                  transition: 'left 0.2s, border-color 0.2s',
+                }}
+                checked={excludeAdmins}
+                onChange={(e) => setExcludeAdmins(e.target.checked)}
+              />
+              <div 
+                className="toggle-label block overflow-hidden h-6 rounded-full cursor-pointer" 
+                style={{
+                  backgroundColor: excludeAdmins ? '#f97316' : '#edf4fb',
+                  transition: 'background-color 0.2s',
+                }}
+              ></div>
+            </div>
+            <span className="text-sm font-medium text-[#526173]">
+              Sembunyikan Admin
+            </span>
+          </label>
+
+          <div className="flex items-center gap-1 rounded-md border border-[#dbe8f3] bg-white p-1 shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
+            {RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.days}
+                onClick={() => setDays(opt.days)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                style={
+                  days === opt.days
+                    ? { background: "rgba(249,115,22,0.15)", color: "rgb(249,115,22)" }
+                    : { color: "rgb(82,97,115)" }
+                }
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

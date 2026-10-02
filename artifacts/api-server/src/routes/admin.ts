@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable, aiProviderModelsTable, activityLogsTable, sessionsTable } from "@workspace/db";
-import { eq, desc, sql, count, and, gte, asc } from "drizzle-orm";
+import { eq, desc, sql, count, and, gte, asc, notInArray } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { logger } from "../lib/logger";
@@ -629,7 +629,13 @@ router.get("/admin/usage", async (req, res): Promise<void> => {
   const totalCredits = sql<number>`coalesce(sum(${apiUsageTable.credits}), 0)::bigint`;
   const requestCount = sql<number>`count(*)::int`;
 
-  const inRange = gte(apiUsageTable.createdAt, since);
+  const excludeAdmins = req.query.excludeAdmins === "true";
+  const inRange = excludeAdmins 
+    ? and(
+        gte(apiUsageTable.createdAt, since),
+        notInArray(apiUsageTable.userId, db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, "admin")))
+      )
+    : gte(apiUsageTable.createdAt, since);
 
   // Total keseluruhan dalam rentang.
   const [totals] = await db
