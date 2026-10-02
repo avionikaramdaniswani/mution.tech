@@ -61,12 +61,12 @@ function useApiUsageDaily() {
     queryFn: async () => {
       const to = new Date();
       const from = new Date();
-      from.setDate(to.getDate() - 48);
+      from.setDate(to.getDate() - 139); // exactly 140 days (20 weeks)
       
       const params = new URLSearchParams({
         from: from.toISOString().slice(0, 10),
         to: to.toISOString().slice(0, 10),
-        limit: "100"
+        limit: "200"
       });
       const res = await csrfFetch(`/api/api-usage?${params.toString()}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch API usage");
@@ -309,9 +309,9 @@ function ArchitectureMap({ projects, apiKeys }: { projects: Project[], apiKeys: 
 
 function ApiTrafficPulse({ daily }: { daily: ApiUsageDaily[] }) {
   const today = new Date();
-  const days = Array.from({length: 49}).map((_, i) => {
+  const days = Array.from({length: 140}).map((_, i) => {
     const d = new Date(today);
-    d.setDate(d.getDate() - (48 - i));
+    d.setDate(d.getDate() - (139 - i));
     return d.toISOString().split('T')[0];
   });
 
@@ -330,38 +330,41 @@ function ApiTrafficPulse({ daily }: { daily: ApiUsageDaily[] }) {
              <h3 className="text-sm font-bold text-[#172033] flex items-center gap-1.5">
                <ActivityIcon className="w-4 h-4 text-emerald-500" /> API Traffic Pulse
              </h3>
-             <p className="text-xs text-[#526173]">Total API Requests 49 hari terakhir (7 minggu)</p>
+             <p className="text-xs text-[#526173]">Total API Requests 140 hari terakhir</p>
            </div>
            <div className="flex items-center gap-1 text-xs text-[#526173] bg-emerald-50 px-2 py-1 rounded border border-emerald-100">
               <span className="text-emerald-600 font-bold">{totalRequests.toLocaleString('id-ID')}</span> requests
            </div>
         </div>
         
-        <div className="grid grid-rows-7 grid-flow-col gap-1 flex-1 content-start w-full">
-           {days.map(d => {
-              const count = counts[d] || 0;
-              let bg = "bg-[#edf3f8]"; 
-              let hover = "hover:ring-[#dbe8f3]";
-              if (count > 0 && count <= 50) { bg = "bg-emerald-200"; hover = "hover:ring-emerald-300"; }
-              else if (count > 50 && count <= 500) { bg = "bg-emerald-400"; hover = "hover:ring-emerald-400"; }
-              else if (count > 500) { bg = "bg-emerald-600"; hover = "hover:ring-emerald-500"; }
+        {/* Container for scrolling horizontally if needed, though 140 days usually fits well */}
+        <div className="flex-1 overflow-x-auto overflow-y-hidden pb-2 -mx-2 px-2">
+          <div className="grid grid-rows-7 grid-flow-col gap-[3px] w-max">
+             {days.map(d => {
+                const count = counts[d] || 0;
+                let bg = "bg-[#ebedf0]"; 
+                let hover = "hover:ring-1 hover:ring-[#dbe8f3]";
+                if (count > 0 && count <= 50) { bg = "bg-[#9be9a8]"; hover = "hover:ring-1 hover:ring-[#9be9a8]"; }
+                else if (count > 50 && count <= 500) { bg = "bg-[#40c463]"; hover = "hover:ring-1 hover:ring-[#40c463]"; }
+                else if (count > 500) { bg = "bg-[#216e39]"; hover = "hover:ring-1 hover:ring-[#216e39]"; }
 
-              return (
-                <div 
-                  key={d} 
-                  title={`${d}: ${count.toLocaleString('id-ID')} requests`}
-                  className={`w-full aspect-square min-w-[10px] rounded-[3px] ${bg} hover:ring-2 hover:ring-offset-1 ${hover} transition-all cursor-pointer`}
-                />
-              )
-           })}
+                return (
+                  <div 
+                    key={d} 
+                    title={`${d}: ${count.toLocaleString('id-ID')} requests`}
+                    className={`w-[11px] h-[11px] rounded-[2px] ${bg} ${hover} transition-all cursor-pointer`}
+                  />
+                )
+             })}
+          </div>
         </div>
-        <div className="mt-4 flex items-center justify-end gap-2 text-[10px] text-[#526173] font-medium">
+        <div className="mt-2 flex items-center justify-end gap-1.5 text-[10px] text-[#526173] font-medium">
            <span>Less</span>
-           <div className="flex gap-1">
-             <div className="w-3 h-3 rounded-[2px] bg-[#edf3f8]" title="0" />
-             <div className="w-3 h-3 rounded-[2px] bg-emerald-200" title="1 - 50" />
-             <div className="w-3 h-3 rounded-[2px] bg-emerald-400" title="51 - 500" />
-             <div className="w-3 h-3 rounded-[2px] bg-emerald-600" title="> 500" />
+           <div className="flex gap-[3px]">
+             <div className="w-[11px] h-[11px] rounded-[2px] bg-[#ebedf0]" title="0" />
+             <div className="w-[11px] h-[11px] rounded-[2px] bg-[#9be9a8]" title="1 - 50" />
+             <div className="w-[11px] h-[11px] rounded-[2px] bg-[#40c463]" title="51 - 500" />
+             <div className="w-[11px] h-[11px] rounded-[2px] bg-[#216e39]" title="> 500" />
            </div>
            <span>More</span>
         </div>
@@ -443,7 +446,7 @@ export default function Dashboard() {
          <div className="lg:col-span-5 space-y-6">
             <div>
                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-sm font-extrabold tracking-widest uppercase text-[#172033]">Quick Resources</h2>
+                  <h2 className="text-sm font-extrabold tracking-widest uppercase text-[#172033]">Server Metrics</h2>
                   <Link href="/projects" className="text-xs font-semibold text-[#f97316] hover:underline">View All</Link>
                </div>
                {projectsLoading ? (

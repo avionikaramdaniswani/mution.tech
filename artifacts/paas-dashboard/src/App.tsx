@@ -37,6 +37,7 @@ import TentangKamiPage from "@/pages/tentang-kami";
 import UsagePage from "@/pages/usage";
 import PlaygroundPage from "@/pages/playground";
 import SupportPage from "@/pages/support";
+import LeaderboardPage from "@/pages/leaderboard";
 
 import AdminOverview from "@/pages/admin/overview";
 import AdminUsers from "@/pages/admin/users";
@@ -102,6 +103,7 @@ function Router() {
         {/* User routes */}
         <Route path="/dashboard/billing" component={() => { window.location.replace("/billing" + window.location.search); return null; }} />
         <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
+        <Route path="/leaderboard" component={() => <ProtectedRoute component={LeaderboardPage} />} />
         <Route path="/projects/new" component={() => <ProtectedRoute component={NewProject} />} />
         <Route path="/projects/:id" component={() => <ProtectedRoute component={ProjectDetail} />} />
         <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />

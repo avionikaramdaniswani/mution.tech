@@ -20,6 +20,7 @@ import referralRouter from "./referral";
 import webhooksRouter from "./webhooks";
 import playgroundRouter from "./playground";
 import botRouter from "./bot";
+import leaderboardRouter from "./leaderboard";
 
 const router: IRouter = Router();
 
@@ -48,6 +49,7 @@ router.use(apiUsageRouter);
 router.use(playgroundRouter);
 router.use(changelogsRouter);
 router.use(integrationsRouter);
+router.use(leaderboardRouter);
 router.use(adminRouter);      // last: has global requireAdmin middleware
 
 export default router;

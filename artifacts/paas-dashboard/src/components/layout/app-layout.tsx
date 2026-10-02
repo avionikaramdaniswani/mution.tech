@@ -29,6 +29,7 @@ import {
   CreditCard,
   Gift,
   FlaskConical,
+  Trophy,
 } from "lucide-react";
 import { TopNavbar, isNavActive, formatCredits, creditColor, type TopNavLink } from "./shared";
 import { useRealtimeEvents } from "@/hooks/use-realtime";
@@ -39,6 +40,7 @@ const navGroups = [
     label: null,
     items: [
       { title: "Dashboard",      url: "/dashboard",  icon: LayoutDashboard },
+      { title: "Global Ranking", url: "/leaderboard",icon: Trophy },
     ],
   },
   {
