@@ -122,12 +122,12 @@ export default function LeaderboardPage() {
           icon={Brain}
           color="bg-purple-100 text-purple-600"
         />
-        <div className="md:col-span-2 bg-[linear-gradient(135deg,#172033_0%,#263247_100%)] rounded-xl p-6 relative overflow-hidden flex items-center shadow-lg">
+        <div className="md:col-span-2 bg-[linear-gradient(135deg,#f8fbff_0%,#f1f5f9_100%)] border border-[#dbe8f3] rounded-xl p-6 relative overflow-hidden flex items-center shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
            <div className="relative z-10">
-              <h2 className="text-xl font-black text-white mb-2">Jadilah Yang Terbaik!</h2>
-              <p className="text-sm text-slate-300 max-w-md">Terus gunakan layanan API Gateway Mution untuk naik ke puncak klasemen dan tunjukkan kepada dunia bahwa Anda adalah top developer.</p>
+              <h2 className="text-xl font-black text-[#172033] mb-2">Mution Leaderboard</h2>
+              <p className="text-sm text-[#526173] max-w-md">Daftar pengguna dengan pemakaian token dan kredit terbanyak di ekosistem Mution Gateway.</p>
            </div>
-           <Trophy className="absolute right-4 -bottom-4 w-32 h-32 text-white opacity-10" />
+           <Trophy className="absolute right-4 -bottom-4 w-32 h-32 text-indigo-600 opacity-[0.03]" />
         </div>
       </div>
 
