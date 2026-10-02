@@ -82,7 +82,7 @@ async function writeApiRequestLog(state: ApiRequestLogState, statusCode: number)
       totalTokens: state.totalTokens ?? 0,
       cachedTokens: state.cachedTokens ?? 0,
       credits: state.credits ?? 0,
-    });
+    }).onConflictDoNothing({ target: apiRequestsTable.requestId });
 
     if (state.userId) {
       const today = new Date().toISOString().split("T")[0]!;
@@ -1430,6 +1430,36 @@ function sseEvent(event: string, data: object): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+const SSE_HEARTBEAT_MS = 10_000;
+
+function startMessagesStream(res: Response): { close: () => void; sendError: (message: string) => void } {
+  res.status(200);
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.setHeader("anthropic-version", "2023-06-01");
+  res.flushHeaders();
+  res.write(": connected\n\n");
+
+  const heartbeat = setInterval(() => {
+    if (!res.writableEnded) res.write(": heartbeat\n\n");
+  }, SSE_HEARTBEAT_MS);
+  const close = () => clearInterval(heartbeat);
+  res.once("close", close);
+
+  return {
+    close,
+    sendError: (message: string) => {
+      if (!res.writableEnded) {
+        res.write(sseEvent("error", { type: "error", error: { type: "api_error", message } }));
+        res.end();
+      }
+      close();
+    },
+  };
+}
+
 // ─── Anthropic /messages proxy ────────────────────────────────────────────────
 
 async function proxyMessages(req: Request, res: Response): Promise<void> {
@@ -1485,6 +1515,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
     return;
   }
   let reservationClosed = false;
+  const streamSession = isStream ? startMessagesStream(res) : null;
 
   try {
   // Try providers with fallback on non-streaming failures
@@ -1521,14 +1552,21 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           return;
         }
 
-        if (isStream) {
-          res.setHeader("Content-Type", "text/event-stream");
-          res.setHeader("Cache-Control", "no-cache");
-          res.setHeader("Connection", "keep-alive");
-          res.setHeader("anthropic-version", "2023-06-01");
+        if (isStream && (!upstream.ok || !upstream.headers.get("content-type")?.includes("text/event-stream"))) {
+          const body = await upstream.text().catch(() => "");
+          logger.error({ provider: provider.id, status: upstream.status, contentType: upstream.headers.get("content-type"), body: body.slice(0, 500) }, "Conduit returned an invalid streaming response");
+          updateApiRequestLog(res, { errorType: upstream.ok ? "upstream_non_sse" : classifyErrorType(upstream.status) });
+          streamSession?.sendError(upstream.ok ? "Upstream provider did not return a streaming response" : `Upstream provider error (${upstream.status})`);
+          return;
+        }
 
+        if (isStream) {
           const reader = upstream.body?.getReader();
-          if (!reader) { res.end(); return; }
+          if (!reader) {
+            updateApiRequestLog(res, { errorType: "upstream_non_sse" });
+            streamSession?.sendError("Upstream provider returned an empty streaming response");
+            return;
+          }
           let totalInputTokens = 0;
           let totalOutputTokens = 0;
           let totalCachedTokens = 0;
@@ -1556,6 +1594,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
             }
           }
           res.end();
+          streamSession?.close();
 
           const tokens = (totalInputTokens + totalOutputTokens) || estimateFallbackTokens(req.body);
           if (totalInputTokens + totalOutputTokens === 0) {
@@ -1607,11 +1646,21 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           }
         }
 
+        if (isStream && (!upstream.ok || !upstream.headers.get("content-type")?.includes("text/event-stream"))) {
+          const body = await upstream.text().catch(() => "");
+          logger.error({ provider: provider.id, status: upstream.status, contentType: upstream.headers.get("content-type"), body: body.slice(0, 500) }, "Generic provider returned an invalid streaming response");
+          updateApiRequestLog(res, { errorType: upstream.ok ? "upstream_non_sse" : classifyErrorType(upstream.status) });
+          streamSession?.sendError(upstream.ok ? "Upstream provider did not return a streaming response" : `Upstream provider error (${upstream.status})`);
+          return;
+        }
+
         if (isStream) {
-          res.setHeader("Content-Type", "text/event-stream");
-          res.setHeader("Cache-Control", "no-cache");
-          res.setHeader("Connection", "keep-alive");
-          res.setHeader("anthropic-version", "2023-06-01");
+          const reader = upstream.body?.getReader();
+          if (!reader) {
+            updateApiRequestLog(res, { errorType: "upstream_non_sse" });
+            streamSession?.sendError("Upstream provider returned an empty streaming response");
+            return;
+          }
 
           const msgId = `msg_${Date.now()}`;
           res.write(sseEvent("message_start", {
@@ -1619,9 +1668,6 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
             message: { id: msgId, type: "message", role: "assistant", content: [], model: originalModel, stop_reason: null, usage: { input_tokens: 0, output_tokens: 0 } },
           }));
           res.write(sseEvent("ping", { type: "ping" }));
-
-          const reader = upstream.body?.getReader();
-          if (!reader) { res.end(); return; }
           let actualInputTokens = 0;
           let actualOutputTokens = 0;
           let actualCachedTokens = 0;
@@ -1631,6 +1677,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
 
           // State for tool_use streaming translation
           let hasTextBlock = false;
+          let textBlockIndex: number | null = null;
           let textBlockClosed = false;
           let nextBlockIndex = 0;
           const toolCallState = new Map<number, { id: string; name: string; argsBuffer: string; blockIndex: number }>();
@@ -1656,10 +1703,11 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
                   if (!hasTextBlock) {
                     hasTextBlock = true;
                     const textIdx = nextBlockIndex++;
+                    textBlockIndex = textIdx;
                     res.write(sseEvent("content_block_start", { type: "content_block_start", index: textIdx, content_block: { type: "text", text: "" } }));
                   }
                   res.write(sseEvent("content_block_delta", {
-                    type: "content_block_delta", index: 0,
+                    type: "content_block_delta", index: textBlockIndex!,
                     delta: { type: "text_delta", text: choiceDelta.content },
                   }));
                   estimatedOutputChars += choiceDelta.content.length;
@@ -1669,7 +1717,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
                 if (choiceDelta?.tool_calls && Array.isArray(choiceDelta.tool_calls)) {
                   // Close text block first if it was open
                   if (hasTextBlock && !textBlockClosed) {
-                    res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: 0 }));
+                    res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: textBlockIndex! }));
                     textBlockClosed = true;
                   }
 
@@ -1714,7 +1762,12 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
                   actualOutputTokens = chunk.usage.completion_tokens ?? actualOutputTokens;
                   actualCachedTokens = extractCachedTokens(chunk.usage) || actualCachedTokens;
                 }
-              } catch { }
+              } catch {
+                logger.error({ provider: provider.id, data: raw.slice(0, 500) }, "Generic provider returned malformed SSE data");
+                updateApiRequestLog(res, { errorType: "upstream_malformed_stream" });
+                streamSession?.sendError("Upstream provider returned an invalid streaming response");
+                return;
+              }
             }
           }
 
@@ -1724,7 +1777,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
 
           // Close text block if it was opened but not yet closed
           if (hasTextBlock && !textBlockClosed) {
-            res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: 0 }));
+            res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: textBlockIndex! }));
           }
           // If no text block was ever opened (pure tool call response), nothing to close for text
 
@@ -1740,6 +1793,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           }));
           res.write(sseEvent("message_stop", { type: "message_stop" }));
           res.end();
+          streamSession?.close();
 
           const tokens = (finalInput + finalOutput) || estimateFallbackTokens(req.body);
           if (actualInputTokens + actualOutputTokens === 0) {
@@ -1782,17 +1836,20 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
         }
         return;
       }
-    } catch (err) {
-      logger.error({ err, provider: provider.id }, "Messages proxy error");
+    } catch (err: any) {
+      const errorCode = err?.cause?.code ?? err?.code;
+      logger.error({ err, provider: provider.id, errorCode }, "Messages proxy error");
       markCooldown(provider);
       if (attempt >= providers.length - 1) {
-        updateApiRequestLog(res, { errorType: "upstream_error" });
-        if (!res.headersSent) res.status(502).json({ type: "error", error: { type: "api_error", message: "All upstream providers failed" } });
+        updateApiRequestLog(res, { errorType: errorCode === "UND_ERR_HEADERS_TIMEOUT" ? "upstream_headers_timeout" : "upstream_error" });
+        if (isStream) streamSession?.sendError("All upstream providers failed");
+        else if (!res.headersSent) res.status(502).json({ type: "error", error: { type: "api_error", message: "All upstream providers failed" } });
         return;
       }
     }
   }
   } finally {
+    streamSession?.close();
     if (!reservationClosed) await refundUnfinalizedReservation(reservation);
   }
 }
