@@ -73,8 +73,10 @@ const refundSections: {
         <p>Pengguna dapat mengajukan refund untuk kredit yang belum digunakan dalam kondisi berikut:</p>
         <div className="mt-4 grid gap-3">
           {[
-            "Permintaan refund diajukan dalam 7 hari kalender sejak tanggal pembelian kredit.",
+            "Permintaan refund diajukan maksimal dalam 2 hari kalender (2x24 jam) sejak tanggal pembelian kredit.",
             "Kredit yang diminta refund belum pernah digunakan sama sekali.",
+            "Nominal pengajuan refund minimal sebesar Rp 30.000.",
+            "Wajib menyisakan saldo mengendap minimal Rp 10.000 di akun Mution Anda setelah penarikan.",
             "Akun pengguna dalam status aktif dan tidak sedang dibatasi karena pelanggaran.",
           ].map((item) => (
             <div key={item} className="flex gap-3 rounded-md border border-[#dbe8f3] bg-[#f8fbff] p-3">
@@ -97,7 +99,7 @@ const refundSections: {
         <ul className="mt-4 grid gap-2">
           {[
             "Kredit yang sudah digunakan sebagian atau seluruhnya untuk layanan.",
-            "Pembelian kredit yang dilakukan lebih dari 7 hari kalender sebelumnya.",
+            "Pembelian kredit yang dilakukan lebih dari 2 hari kalender sebelumnya.",
             "Akun yang melanggar Syarat & Ketentuan Mution.",
             "Kredit yang berasal dari program promosi, bonus, hadiah, atau kompensasi.",
           ].map((item) => (
@@ -121,9 +123,10 @@ const refundSections: {
         <ol className="mt-4 grid gap-3">
           {[
             "Kirim email ke supportmution@gmail.com dengan subjek refund yang jelas.",
-            "Sertakan nama lengkap, email akun, tanggal pembelian, jumlah kredit yang dibeli, dan alasan refund.",
+            "Sertakan nama lengkap, email akun, tanggal pembelian, jumlah kredit yang dibeli, nomor rekening tujuan, dan alasan refund.",
             "Tim Mution akan memeriksa pengajuan dan dapat meminta informasi tambahan jika diperlukan.",
-            "Jika disetujui, refund akan diproses ke kanal pembayaran yang sesuai dalam estimasi waktu kerja yang wajar.",
+            "Jika disetujui, refund akan diproses ke rekening Anda dalam waktu 2-3 hari kerja.",
+            "Catatan: Setiap pengajuan refund yang disetujui akan dipotong biaya penanganan administrasi sebesar Rp 2.500 dari nominal penarikan.",
           ].map((item, index) => (
             <li key={item} className="flex gap-3 rounded-md border border-[#dbe8f3] bg-[#f8fbff] p-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f97316] text-xs font-bold text-white">

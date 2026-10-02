@@ -3,7 +3,9 @@ import {
   useListProjects,
   useStopProject,
   useRestartProject,
+  useListActivity,
 } from "@workspace/api-client-react";
+import { useAuth } from "@/hooks/use-auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +22,14 @@ import {
   Code2,
   FolderOpen,
   Plus,
+  Wallet,
+  Activity as ActivityIcon,
+  Terminal,
+  Database,
+  Box,
+  Trash2,
+  Key,
+  Settings,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -186,8 +196,10 @@ function ProjectCard({ project }: { project: Project }) {
 }
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const { data: stats }    = useGetDashboardStats();
   const { data: projects, isLoading: projectsLoading } = useListProjects();
+  const { data: activities, isLoading: activitiesLoading } = useListActivity();
   const statItems = [
     {
       label: "Berjalan",
@@ -207,7 +219,22 @@ export default function Dashboard() {
       icon: <FolderOpen className="h-4 w-4 text-[#f97316]" />,
       accent: "bg-[#fff7ed] border-[#fed7aa]",
     },
+    {
+      label: "Saldo Mution",
+      value: new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(user?.credits || 0),
+      icon: <Wallet className="h-4 w-4 text-blue-600" />,
+      accent: "bg-blue-50 border-blue-200",
+    }
   ];
+
+  const getActionStyle = (action: string) => {
+    const act = action.toLowerCase();
+    if (act.includes('delete') || act.includes('remove') || act.includes('stop')) return { icon: Trash2, color: "text-red-500" };
+    if (act.includes('deploy') || act.includes('start') || act.includes('create')) return { icon: Play, color: "text-emerald-500" };
+    if (act.includes('update') || act.includes('restart')) return { icon: RefreshCw, color: "text-blue-500" };
+    if (act.includes('auth') || act.includes('key')) return { icon: Key, color: "text-amber-500" };
+    return { icon: Settings, color: "text-slate-500" };
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
@@ -242,7 +269,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {statItems.map(({ label, value, icon, accent }) => (
           <div key={label} className="rounded-lg border border-[#dbe8f3] bg-white p-4 shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
             <div className="flex items-center gap-3">
@@ -250,7 +277,7 @@ export default function Dashboard() {
                 {icon}
               </span>
               <div>
-                <p className="text-2xl font-black leading-none tracking-normal text-[#172033]">{value ?? "-"}</p>
+                <p className="text-xl font-black leading-none tracking-normal text-[#172033]">{value ?? "-"}</p>
                 <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#526173]">{label}</p>
               </div>
             </div>
@@ -258,42 +285,93 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div>
-        <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="grid gap-6 lg:grid-cols-3">
+        
+        {/* Kolom Kiri: Proyek */}
+        <div className="lg:col-span-2">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Hosting</p>
+              <h2 className="mt-1 text-lg font-extrabold tracking-normal text-[#172033]">Proyek Anda</h2>
+            </div>
+          </div>
+          {projectsLoading ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {Array(2).fill(0).map((_, i) => (
+                <Card key={i} className="rounded-lg border-[#dbe8f3] bg-white">
+                  <CardContent className="p-5 space-y-3">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <Skeleton className="h-3 w-full" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : !projects?.length ? (
+            <div className="rounded-lg border border-dashed border-[#c9d8e7] bg-white/80 py-14 text-center shadow-[0_12px_34px_rgba(23,32,51,0.04)]">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-[#fed7aa] bg-[#fff7ed]">
+                <FolderOpen className="h-6 w-6 text-[#f97316]" />
+              </div>
+              <p className="text-sm font-semibold text-[#172033]">Belum ada proyek.</p>
+              <p className="mt-1 text-sm text-[#526173]">Buat project pertama untuk mulai deploy aplikasi.</p>
+              <Button size="sm" className="mt-4 rounded-md bg-[#f97316] text-white hover:bg-[#ea580c]" asChild>
+                <Link href="/projects/new">Buat Proyek</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {projects.slice(0, 4).map((p) => <ProjectCard key={p.id} project={p} />)}
+            </div>
+          )}
+        </div>
+
+        {/* Kolom Kanan: Aktivitas & Akses Cepat */}
+        <div className="space-y-6">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Hosting</p>
-            <h2 className="mt-1 text-lg font-extrabold tracking-normal text-[#172033]">Proyek</h2>
+            <div className="mb-3">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f97316]">Log</p>
+              <h2 className="mt-1 text-lg font-extrabold tracking-normal text-[#172033]">Aktivitas Terakhir</h2>
+            </div>
+            
+            <Card className="rounded-lg border-[#dbe8f3] bg-white shadow-sm">
+              <CardContent className="p-0">
+                {activitiesLoading ? (
+                  <div className="p-4 space-y-4">
+                    {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+                  </div>
+                ) : !activities?.length ? (
+                  <div className="p-8 text-center text-sm text-[#526173]">Belum ada aktivitas.</div>
+                ) : (
+                  <div className="divide-y divide-[#edf3f8]">
+                    {activities.slice(0, 5).map((act) => {
+                      const { icon: ActIcon, color } = getActionStyle(act.action);
+                      return (
+                        <div key={act.id} className="flex items-start gap-3 p-4">
+                          <ActIcon className={`mt-0.5 h-4 w-4 shrink-0 ${color}`} />
+                          <div className="flex-1 space-y-1">
+                            <p className="text-sm font-medium text-[#172033] leading-none">
+                              {act.action}
+                            </p>
+                            <p className="text-xs text-[#526173] line-clamp-1">{act.description}</p>
+                          </div>
+                          <span className="text-[10px] whitespace-nowrap text-[#8c9bab]">
+                            {formatDistanceToNow(new Date(act.createdAt), { addSuffix: true, locale: idLocale })}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="border-t border-[#edf3f8] bg-[#f8fbff] p-3 text-center rounded-b-lg">
+                  <Link href="/activity" className="text-xs font-semibold text-[#f97316] hover:underline">
+                    Lihat Semua Aktivitas
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-        {projectsLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array(3).fill(0).map((_, i) => (
-              <Card key={i} className="rounded-lg border-[#dbe8f3] bg-white">
-                <CardContent className="p-5 space-y-3">
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-3 w-1/2" />
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-full" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : !projects?.length ? (
-          <div className="rounded-lg border border-dashed border-[#c9d8e7] bg-white/80 py-14 text-center shadow-[0_12px_34px_rgba(23,32,51,0.04)]">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-[#fed7aa] bg-[#fff7ed]">
-              <FolderOpen className="h-6 w-6 text-[#f97316]" />
-            </div>
-            <p className="text-sm font-semibold text-[#172033]">Belum ada proyek.</p>
-            <p className="mt-1 text-sm text-[#526173]">Buat project pertama untuk mulai deploy aplikasi.</p>
-            <Button size="sm" className="mt-4 rounded-md bg-[#f97316] text-white hover:bg-[#ea580c]" asChild>
-              <Link href="/projects/new">Buat Proyek</Link>
-            </Button>
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((p) => <ProjectCard key={p.id} project={p} />)}
-          </div>
-        )}
+
       </div>
 
     </div>

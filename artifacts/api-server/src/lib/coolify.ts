@@ -185,8 +185,15 @@ function getErrorMessage(value: unknown): string | null {
       : typeof obj.error === "string"
         ? obj.error
         : null;
-  if (baseMessage && errorDetails) return sanitizeDeploymentProviderText(`${baseMessage} ${errorDetails}`);
-  if (baseMessage) return sanitizeDeploymentProviderText(baseMessage);
+  if (baseMessage && errorDetails) {
+    const msg = `${baseMessage} ${errorDetails}`;
+    if (msg.trim().startsWith("<!DOCTYPE html>")) return "Koneksi ke server deployment bermasalah (Bad Gateway/HTML Response).";
+    return sanitizeDeploymentProviderText(msg);
+  }
+  if (baseMessage) {
+    if (baseMessage.trim().startsWith("<!DOCTYPE html>")) return "Koneksi ke server deployment bermasalah (Bad Gateway/HTML Response).";
+    return sanitizeDeploymentProviderText(baseMessage);
+  }
   if (errorDetails) return sanitizeDeploymentProviderText(errorDetails);
   return null;
 }

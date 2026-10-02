@@ -473,10 +473,14 @@ router.delete("/projects/:id", async (req, res): Promise<void> => {
     try {
       await deleteProjectWithCoolify(id);
     } catch (err) {
-      res.status(err instanceof CoolifyError ? 502 : 500).json({
-        error: err instanceof CoolifyError ? err.message : "Gagal menghapus resource deployment",
-      });
-      return;
+      if (req.query.force === "true") {
+        console.warn(`Force deleting project ${id} despite Coolify error:`, err);
+      } else {
+        res.status(err instanceof CoolifyError ? 502 : 500).json({
+          error: err instanceof CoolifyError ? err.message : "Gagal menghapus resource deployment",
+        });
+        return;
+      }
     }
   }
 
