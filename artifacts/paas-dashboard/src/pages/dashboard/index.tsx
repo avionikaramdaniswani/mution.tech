@@ -337,9 +337,9 @@ function ApiTrafficPulse({ daily }: { daily: ApiUsageDaily[] }) {
            </div>
         </div>
         
-        {/* Container for scrolling horizontally if needed, though 140 days usually fits well */}
-        <div className="flex-1 overflow-x-auto overflow-y-hidden pb-2 -mx-2 px-2">
-          <div className="grid grid-rows-7 grid-flow-col gap-[3px] w-max">
+        {/* Container for the pulse grid */}
+        <div className="flex-1 w-full flex items-center pt-2">
+          <div className="grid grid-rows-7 grid-flow-col gap-1 sm:gap-1.5 w-full">
              {days.map(d => {
                 const count = counts[d] || 0;
                 let bg = "bg-[#ebedf0]"; 
@@ -352,19 +352,19 @@ function ApiTrafficPulse({ daily }: { daily: ApiUsageDaily[] }) {
                   <div 
                     key={d} 
                     title={`${d}: ${count.toLocaleString('id-ID')} requests`}
-                    className={`w-[11px] h-[11px] rounded-[2px] ${bg} ${hover} transition-all cursor-pointer`}
+                    className={`w-full aspect-square rounded-[2px] sm:rounded-sm ${bg} ${hover} transition-all cursor-pointer`}
                   />
                 )
              })}
           </div>
         </div>
-        <div className="mt-2 flex items-center justify-end gap-1.5 text-[10px] text-[#526173] font-medium">
+        <div className="mt-4 flex items-center justify-end gap-1.5 text-[10px] text-[#526173] font-medium">
            <span>Less</span>
-           <div className="flex gap-[3px]">
-             <div className="w-[11px] h-[11px] rounded-[2px] bg-[#ebedf0]" title="0" />
-             <div className="w-[11px] h-[11px] rounded-[2px] bg-[#9be9a8]" title="1 - 50" />
-             <div className="w-[11px] h-[11px] rounded-[2px] bg-[#40c463]" title="51 - 500" />
-             <div className="w-[11px] h-[11px] rounded-[2px] bg-[#216e39]" title="> 500" />
+           <div className="flex gap-1 sm:gap-1.5">
+             <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-[2px] bg-[#ebedf0]" title="0" />
+             <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-[2px] bg-[#9be9a8]" title="1 - 50" />
+             <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-[2px] bg-[#40c463]" title="51 - 500" />
+             <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-[2px] bg-[#216e39]" title="> 500" />
            </div>
            <span>More</span>
         </div>
