@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useQueryClient } from "@tanstack/react-query";
+import { getGetMeQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +47,7 @@ function ConnectionRow({ icon: Icon, label, detail, connected, isLast = false, a
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -52,6 +55,31 @@ export default function ProfilePage() {
   const [pwSuccess, setPwSuccess] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isConnectingTelegram, setIsConnectingTelegram] = useState(false);
+  
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
+
+  useEffect(() => {
+    if (user?.name) setNewName(user.name);
+  }, [user?.name]);
+
+  const handleUpdateName = async () => {
+    if (!newName.trim() || newName.trim().length < 2) return;
+    try {
+      setIsUpdatingName(true);
+      await apiFetch("/auth/me", {
+        method: "PUT",
+        body: JSON.stringify({ name: newName.trim() }),
+      });
+      await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      setIsEditingName(false);
+    } catch (error) {
+      alert("Gagal memperbarui nama");
+    } finally {
+      setIsUpdatingName(false);
+    }
+  };
 
   function isPasswordAccount(u: any) {
     return u?.hasPassword === true;
@@ -139,7 +167,50 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="px-6 py-2">
-                <InfoRow icon={User} label="Nama Lengkap" value={user?.name} />
+                <div className="flex items-start gap-4 py-4 border-b border-border/50">
+                  <div className="mt-0.5 h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground mb-0.5 font-medium">Nama Lengkap</p>
+                    {isEditingName ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input 
+                          size={1}
+                          className="h-8 text-sm max-w-[200px]" 
+                          value={newName} 
+                          onChange={(e) => setNewName(e.target.value)} 
+                          autoFocus 
+                          disabled={isUpdatingName}
+                        />
+                        <Button 
+                          size="sm" 
+                          className="h-8 px-3" 
+                          onClick={handleUpdateName} 
+                          disabled={isUpdatingName || !newName.trim()}
+                        >
+                          {isUpdatingName ? <Loader2 className="h-3 w-3 animate-spin" /> : "Simpan"}
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-8 px-2" 
+                          onClick={() => { setIsEditingName(false); setNewName(user?.name || ""); }}
+                          disabled={isUpdatingName}
+                        >
+                          Batal
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-foreground truncate">{user?.name ?? "-"}</p>
+                        <Button size="sm" variant="link" className="h-auto p-0 text-xs text-primary" onClick={() => setIsEditingName(true)}>
+                          Edit
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <InfoRow icon={Mail} label="Alamat Email" value={user?.email} />
                 <InfoRow icon={ShieldCheck} label="Tipe Akun" value={user?.role === "admin" ? "Administrator" : "Regular User"} isLast={true} />
               </div>

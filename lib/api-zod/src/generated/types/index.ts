@@ -57,6 +57,7 @@ export * from './projectWithOwner';
 export * from './registerInput';
 export * from './statusCount';
 export * from './successResponse';
+export * from './updateMeInput';
 export * from './user';
 export * from './userPlan';
 export * from './userRole';

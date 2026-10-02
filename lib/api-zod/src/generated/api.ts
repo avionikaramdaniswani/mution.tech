@@ -92,6 +92,32 @@ export const GetMeResponse = zod.object({
 
 
 /**
+ * @summary Update current user profile
+ */
+export const updateMeBodyNameMin = 2;
+export const updateMeBodyNameMax = 50;
+
+
+
+export const UpdateMeBody = zod.object({
+  "name": zod.string().min(updateMeBodyNameMin).max(updateMeBodyNameMax)
+})
+
+export const UpdateMeResponse = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "role": zod.enum(['user', 'admin']),
+  "plan": zod.enum(['hobby', 'pro', 'team']),
+  "credits": zod.number(),
+  "googleId": zod.string().nullish(),
+  "githubLogin": zod.string().nullish(),
+  "hasPassword": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary List user's projects
  */
 export const ListProjectsResponseItem = zod.object({
@@ -551,7 +577,10 @@ export const AdminListUsersResponseItem = zod.object({
   "credits": zod.number(),
   "createdAt": zod.string(),
   "projectCount": zod.number(),
-  "lastLoginAt": zod.string().nullish()
+  "lastLoginAt": zod.string().nullish(),
+  "bannedAt": zod.string().nullish(),
+  "bannedUntil": zod.string().nullish(),
+  "banReason": zod.string().nullish()
 })
 export const AdminListUsersResponse = zod.array(AdminListUsersResponseItem)
 
@@ -572,7 +601,10 @@ export const AdminGetUserResponse = zod.object({
   "credits": zod.number(),
   "createdAt": zod.string(),
   "projectCount": zod.number(),
-  "lastLoginAt": zod.string().nullish()
+  "lastLoginAt": zod.string().nullish(),
+  "bannedAt": zod.string().nullish(),
+  "bannedUntil": zod.string().nullish(),
+  "banReason": zod.string().nullish()
 })
 
 
@@ -675,7 +707,10 @@ export const AdminUpdateUserResponse = zod.object({
   "credits": zod.number(),
   "createdAt": zod.string(),
   "projectCount": zod.number(),
-  "lastLoginAt": zod.string().nullish()
+  "lastLoginAt": zod.string().nullish(),
+  "bannedAt": zod.string().nullish(),
+  "bannedUntil": zod.string().nullish(),
+  "banReason": zod.string().nullish()
 })
 
 
@@ -700,7 +735,10 @@ export const AdminAdjustCreditsResponse = zod.object({
   "credits": zod.number(),
   "createdAt": zod.string(),
   "projectCount": zod.number(),
-  "lastLoginAt": zod.string().nullish()
+  "lastLoginAt": zod.string().nullish(),
+  "bannedAt": zod.string().nullish(),
+  "bannedUntil": zod.string().nullish(),
+  "banReason": zod.string().nullish()
 })
 
 

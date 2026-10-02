@@ -91,12 +91,7 @@ const faqs: FAQEntry[] = [
   {
     category: "Billing",
     q: "Apakah ada biaya tersembunyi?",
-    a: "Tidak ada biaya setup atau biaya tersembunyi. Biaya mengikuti plan dan resource yang kamu gunakan, sehingga pengeluaran lebih mudah dipantau.",
-  },
-  {
-    category: "Billing",
-    q: "Apa bedanya plan Hobby, Pro, dan Team?",
-    a: "Hobby cocok untuk mencoba dan project kecil. Pro memberi kapasitas lebih besar untuk produk aktif. Team ditujukan untuk kolaborasi, shared project, dan kebutuhan tim.",
+    a: "Tidak ada biaya setup atau biaya tersembunyi. Biaya mengikuti resource yang kamu gunakan, sehingga pengeluaran lebih mudah dipantau.",
   },
   {
     category: "AI & API",
@@ -116,7 +111,7 @@ const faqs: FAQEntry[] = [
   {
     category: "Keamanan",
     q: "Apakah ada jaminan uptime?",
-    a: "Plan berbayar dirancang untuk beban produksi dan monitoring yang lebih serius. Jika kamu butuh komitmen SLA khusus, hubungi tim Mution agar kebutuhanmu bisa dievaluasi.",
+    a: "Infrastruktur Mution dirancang untuk menangani beban produksi dengan monitoring yang serius. Jika kamu butuh komitmen SLA khusus, hubungi tim Mution agar kebutuhanmu bisa dievaluasi.",
   },
   {
     category: "Keamanan",
@@ -139,7 +134,7 @@ const supportCards: { title: string; body: string; Icon: LucideIcon }[] = [
   },
   {
     title: "Billing transparan",
-    body: "Jawaban tentang kredit, plan, dan cara membaca pemakaian resource.",
+    body: "Jawaban tentang kredit dan cara membaca pemakaian resource.",
     Icon: CreditCard,
   },
   {

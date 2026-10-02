@@ -18,4 +18,10 @@ export interface UserWithStats {
   projectCount: number;
   /** @nullable */
   lastLoginAt?: string | null;
+  /** @nullable */
+  bannedAt?: string | null;
+  /** @nullable */
+  bannedUntil?: string | null;
+  /** @nullable */
+  banReason?: string | null;
 }

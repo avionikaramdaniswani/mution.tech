@@ -446,4 +446,23 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
   res.json(serializeUser(user));
 });
 
+router.put("/auth/me", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const { name } = req.body;
+  
+  if (typeof name !== "string" || name.trim().length < 2 || name.trim().length > 50) {
+    res.status(400).json({ error: "Nama harus antara 2 hingga 50 karakter" });
+    return;
+  }
+  
+  const [updated] = await db
+    .update(usersTable)
+    .set({ name: name.trim() })
+    .where(eq(usersTable.id, user.id))
+    .returning();
+    
+  await logActivity(user.id, "user.profile_updated", "Memperbarui nama profil");
+  res.json(serializeUser(updated));
+});
+
 export default router;

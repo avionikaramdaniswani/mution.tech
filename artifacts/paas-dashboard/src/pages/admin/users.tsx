@@ -44,11 +44,6 @@ function creditColor(c: number): string {
   return "rgb(34,197,94)";
 }
 
-function planStyle(plan?: string) {
-  if (plan === "team") return { name: "Team", color: "rgba(139,92,246,0.8)" };
-  if (plan === "pro")  return { name: "Pro",  color: "rgb(249,115,22)" };
-  return { name: "Hobby", color: "rgb(82,97,115)" };
-}
 
 function UserAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg" }) {
   const initials = name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -236,7 +231,6 @@ function EditUserDialog({
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [role, setRole] = useState<string>("user");
-  const [plan, setPlan] = useState<string>("hobby");
 
   const adjustMutation = useAdminAdjustCredits();
   const updateMutation = useAdminUpdateUser();
@@ -245,7 +239,6 @@ function EditUserDialog({
   useEffect(() => {
     if (user) {
       setRole(user.role);
-      setPlan(user.plan);
       setAmount("");
       setNote("");
       adjustMutation.reset();
@@ -259,8 +252,7 @@ function EditUserDialog({
   const parsed = Number.parseInt(amount, 10);
   const hasAmount = amount.trim() !== "" && !Number.isNaN(parsed) && parsed !== 0;
   const roleChanged = role !== user.role;
-  const planChanged = plan !== user.plan;
-  const hasChanges = hasAmount || roleChanged || planChanged;
+  const hasChanges = hasAmount || roleChanged;
 
   const busy = adjustMutation.isPending || updateMutation.isPending;
   const errorMsg =
@@ -274,13 +266,12 @@ function EditUserDialog({
   async function handleSave() {
     if (!user || !hasChanges) return;
     try {
-      // 1) Role / plan
-      if (roleChanged || planChanged) {
+      // 1) Role
+      if (roleChanged) {
         await updateMutation.mutateAsync({
           id: user.id,
           data: {
             ...(roleChanged ? { role: role as "user" | "admin" } : {}),
-            ...(planChanged ? { plan: plan as "hobby" | "pro" | "team" } : {}),
           },
         });
       }
@@ -323,19 +314,6 @@ function EditUserDialog({
                 <SelectContent>
                   <SelectItem value="user">User</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" /> Plan
-              </label>
-              <Select value={plan} onValueChange={setPlan}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hobby">Hobby</SelectItem>
-                  <SelectItem value="pro">Pro</SelectItem>
-                  <SelectItem value="team">Team</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -452,9 +430,6 @@ function UserDetailSheet({ userId, open, onClose }: { userId: number | null; ope
               value={
                 <span style={{ color: creditColor(user.credits) }}>
                   {formatCredits(user.credits)}
-                  <span className="ml-2 text-xs font-semibold" style={{ color: planStyle(user.plan).color }}>
-                    {planStyle(user.plan).name}
-                  </span>
                 </span>
               }
             />
@@ -698,7 +673,7 @@ export default function AdminUsers() {
                   <button
                     onClick={() => setEditTarget(user)}
                     className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                    title="Edit (kredit, role, plan)"
+                    title="Edit (kredit, role)"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>

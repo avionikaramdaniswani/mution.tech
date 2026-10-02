@@ -127,6 +127,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+    put:
+      operationId: updateMe
+      tags: [auth]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # Projects
   /projects:
     get:
@@ -979,6 +1009,15 @@ components:
         user:
           $ref: "#/components/schemas/User"
 
+    UpdateMeInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 50
+
     User:
       type: object
       required: [id, email, name, role, plan, credits, hasPassword, createdAt]
@@ -1367,6 +1406,12 @@ components:
         projectCount:
           type: integer
         lastLoginAt:
+          type: ["string", "null"]
+        bannedAt:
+          type: ["string", "null"]
+        bannedUntil:
+          type: ["string", "null"]
+        banReason:
           type: ["string", "null"]
 
     AdminUpdateUserInput:

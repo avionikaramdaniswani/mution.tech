@@ -76,6 +76,14 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface UpdateMeInput {
+  /**
+     * @minLength 2
+     * @maxLength 50
+     */
+  name: string;
+}
+
 export type ProjectRuntime = typeof ProjectRuntime[keyof typeof ProjectRuntime];
 
 
@@ -559,9 +567,5 @@ export type AdminGetUsageParams = {
  * @maximum 365
  */
 days?: number;
-/**
- * Exclude admins from the usage statistics.
- */
-excludeAdmins?: boolean;
 };
 
