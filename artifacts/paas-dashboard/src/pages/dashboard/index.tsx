@@ -47,6 +47,34 @@ function useListApiKeys() {
   });
 }
 
+interface ApiUsageDaily {
+  day: string;
+  requests: number;
+}
+interface ApiUsageResponse {
+  daily: ApiUsageDaily[];
+}
+
+function useApiUsageDaily() {
+  return useQuery({
+    queryKey: ['/api/api-usage', 'dashboard-pulse'],
+    queryFn: async () => {
+      const to = new Date();
+      const from = new Date();
+      from.setDate(to.getDate() - 48);
+      
+      const params = new URLSearchParams({
+        from: from.toISOString().slice(0, 10),
+        to: to.toISOString().slice(0, 10),
+        limit: "100"
+      });
+      const res = await csrfFetch(`/api/api-usage?${params.toString()}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch API usage");
+      return res.json() as Promise<ApiUsageResponse>;
+    }
+  });
+}
+
 // --- Project Card Component (Kept for functional actions) ---
 function ResourceBar({ label, value, color }: { label: string; value: number; color: string }) {
   return (
@@ -153,12 +181,12 @@ function ArchitectureMap({ projects, apiKeys }: { projects: Project[], apiKeys: 
   
   return (
     <Card className="overflow-hidden border-[#dbe8f3] shadow-[0_12px_40px_rgba(23,32,51,0.06)] relative bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] text-[#172033]">
-      <CardContent className="p-6 md:p-12 relative min-h-[300px]">
+      <CardContent className="p-4 md:p-12 relative min-h-[300px]">
         {/* Animated SVG Connecting Lines using fixed viewBox */}
         <svg 
           viewBox="0 0 100 100" 
           preserveAspectRatio="none" 
-          className="absolute inset-0 w-full h-full pointer-events-none" 
+          className="hidden md:block absolute inset-0 w-full h-full pointer-events-none" 
           style={{ zIndex: 0 }}
         >
            {/* Lines to Projects (Right Side) */}
@@ -241,7 +269,7 @@ function ArchitectureMap({ projects, apiKeys }: { projects: Project[], apiKeys: 
              <span className="mt-3 text-xs font-bold uppercase tracking-widest text-indigo-700">Mution Gateway</span>
              <div className="mt-1 flex items-center gap-1.5 text-[10px] text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 font-semibold">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                System Nominal
+                Normal
              </div>
           </div>
 
@@ -279,49 +307,50 @@ function ArchitectureMap({ projects, apiKeys }: { projects: Project[], apiKeys: 
   );
 }
 
-function ActivityHeatmap({ activities }: { activities: ActivityLog[] }) {
+function ApiTrafficPulse({ daily }: { daily: ApiUsageDaily[] }) {
   const today = new Date();
-  const days = Array.from({length: 35}).map((_, i) => {
+  const days = Array.from({length: 49}).map((_, i) => {
     const d = new Date(today);
-    d.setDate(d.getDate() - (34 - i));
+    d.setDate(d.getDate() - (48 - i));
     return d.toISOString().split('T')[0];
   });
 
-  const counts = activities?.reduce((acc, act) => {
-     const date = act.createdAt.split('T')[0];
-     acc[date] = (acc[date] || 0) + 1;
+  const counts = daily?.reduce((acc, d) => {
+     acc[d.day] = d.requests;
      return acc;
   }, {} as Record<string, number>) || {};
 
+  const totalRequests = daily?.reduce((sum, d) => sum + (d.requests || 0), 0) || 0;
+
   return (
-    <Card className="border-[#dbe8f3] shadow-[0_12px_34px_rgba(23,32,51,0.05)] bg-white h-full">
+    <Card className="border-[#dbe8f3] shadow-[0_12px_34px_rgba(23,32,51,0.05)] bg-white h-full flex-1">
       <CardContent className="p-5 flex flex-col h-full">
         <div className="flex items-center justify-between mb-4">
            <div>
              <h3 className="text-sm font-bold text-[#172033] flex items-center gap-1.5">
-               <ActivityIcon className="w-4 h-4 text-[#f97316]" /> Developer Pulse
+               <ActivityIcon className="w-4 h-4 text-emerald-500" /> API Traffic Pulse
              </h3>
-             <p className="text-xs text-[#526173]">Aktivitas Mution 35 hari terakhir</p>
+             <p className="text-xs text-[#526173]">Total API Requests 49 hari terakhir (7 minggu)</p>
            </div>
            <div className="flex items-center gap-1 text-xs text-[#526173] bg-emerald-50 px-2 py-1 rounded border border-emerald-100">
-              <span className="text-emerald-600 font-bold">{activities?.length || 0}</span> logs
+              <span className="text-emerald-600 font-bold">{totalRequests.toLocaleString('id-ID')}</span> requests
            </div>
         </div>
         
-        <div className="flex flex-wrap gap-1.5 justify-start flex-1 content-start">
+        <div className="grid grid-rows-7 grid-flow-col gap-1 flex-1 content-start w-full">
            {days.map(d => {
               const count = counts[d] || 0;
               let bg = "bg-[#edf3f8]"; 
               let hover = "hover:ring-[#dbe8f3]";
-              if (count === 1) { bg = "bg-emerald-200"; hover = "hover:ring-emerald-300"; }
-              else if (count >= 2 && count <= 4) { bg = "bg-emerald-400"; hover = "hover:ring-emerald-400"; }
-              else if (count > 4) { bg = "bg-emerald-600"; hover = "hover:ring-emerald-500"; }
+              if (count > 0 && count <= 50) { bg = "bg-emerald-200"; hover = "hover:ring-emerald-300"; }
+              else if (count > 50 && count <= 500) { bg = "bg-emerald-400"; hover = "hover:ring-emerald-400"; }
+              else if (count > 500) { bg = "bg-emerald-600"; hover = "hover:ring-emerald-500"; }
 
               return (
                 <div 
                   key={d} 
-                  title={`${d}: ${count} aktivitas`}
-                  className={`w-3.5 h-3.5 sm:w-[22px] sm:h-[22px] rounded-[3px] ${bg} hover:ring-2 hover:ring-offset-1 ${hover} transition-all cursor-pointer`}
+                  title={`${d}: ${count.toLocaleString('id-ID')} requests`}
+                  className={`w-full aspect-square min-w-[10px] rounded-[3px] ${bg} hover:ring-2 hover:ring-offset-1 ${hover} transition-all cursor-pointer`}
                 />
               )
            })}
@@ -329,10 +358,10 @@ function ActivityHeatmap({ activities }: { activities: ActivityLog[] }) {
         <div className="mt-4 flex items-center justify-end gap-2 text-[10px] text-[#526173] font-medium">
            <span>Less</span>
            <div className="flex gap-1">
-             <div className="w-3 h-3 rounded-[2px] bg-[#edf3f8]" />
-             <div className="w-3 h-3 rounded-[2px] bg-emerald-200" />
-             <div className="w-3 h-3 rounded-[2px] bg-emerald-400" />
-             <div className="w-3 h-3 rounded-[2px] bg-emerald-600" />
+             <div className="w-3 h-3 rounded-[2px] bg-[#edf3f8]" title="0" />
+             <div className="w-3 h-3 rounded-[2px] bg-emerald-200" title="1 - 50" />
+             <div className="w-3 h-3 rounded-[2px] bg-emerald-400" title="51 - 500" />
+             <div className="w-3 h-3 rounded-[2px] bg-emerald-600" title="> 500" />
            </div>
            <span>More</span>
         </div>
@@ -345,7 +374,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { data: projects, isLoading: projectsLoading } = useListProjects();
   const { data: apiKeys, isLoading: apiKeysLoading } = useListApiKeys();
-  const { data: activities, isLoading: activitiesLoading } = useListActivity();
+  const { data: apiUsageData, isLoading: usageLoading } = useApiUsageDaily();
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
@@ -359,7 +388,7 @@ export default function Dashboard() {
               Halo, {user?.name?.split(' ')[0] || "Developer"} 👋
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-[#526173]">
-              Pantau arsitektur <i>cloud</i> Anda, evaluasi kesehatan <i>deployment</i>, dan amati intensitas aktivitas (Pulse) di Mution dalam satu layar interaktif.
+              Pantau semua proyek Anda dan kelola layanan API Gateway dari satu tempat terpusat.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -402,32 +431,12 @@ export default function Dashboard() {
          
          {/* Kiri: Activity Pulse & Terminal View */}
          <div className="lg:col-span-7 space-y-6 flex flex-col">
-            <ActivityHeatmap activities={activities || []} />
-            
-            <Card className="bg-[#172033] border-[#172033] shadow-lg rounded-xl overflow-hidden flex-shrink-0">
-               <div className="flex items-center justify-between px-4 py-2 border-b border-[#2d3a54] bg-[#0f172a]">
-                 <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono uppercase tracking-widest">
-                   <Terminal className="h-3 w-3" /> System Tail
-                 </div>
-                 <div className="flex gap-1.5">
-                   <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
-                   <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
-                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
-                 </div>
-               </div>
-               <CardContent className="p-5 font-mono text-[11px] leading-relaxed space-y-1.5 text-slate-300 min-h-[140px]">
-                 <div className="text-indigo-400">{'>'} mution system check --realtime</div>
-                 <div className="opacity-80">[{new Date().toLocaleTimeString('en-US', {hour12: false})}] establishing secure tunnel... OK</div>
-                 <div className="opacity-80">[{new Date().toLocaleTimeString('en-US', {hour12: false})}] indexing active resource nodes...</div>
-                 {projects?.slice(0,1).map(p => (
-                    <div key={p.id} className="text-emerald-400 pl-4">→ ping {p.name}: {Math.floor(Math.random() * 20 + 10)}ms (status: {p.status})</div>
-                 ))}
-                 {apiKeys?.slice(0,1).map(k => (
-                    <div key={k.id} className="text-emerald-400 pl-4">→ auth key {k.keyPrefix}...: verified (active: {k.isActive ? 'true' : 'false'})</div>
-                 ))}
-                 <div className="text-amber-400 mt-2">{'>'} waiting for incoming traffic...</div>
-               </CardContent>
-            </Card>
+            {(usageLoading) ? (
+              <Skeleton className="w-full h-[200px] rounded-xl" />
+            ) : (
+              <ApiTrafficPulse daily={apiUsageData?.daily || []} />
+            )}
+
          </div>
 
          {/* Kanan: Quick Access / Projects Mini List */}
