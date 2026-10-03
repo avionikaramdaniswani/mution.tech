@@ -105,7 +105,7 @@ router.get("/internal/bot/user", requireBotSecret, async (req, res): Promise<voi
     name: user.name,
     email: user.email,
     credits: user.credits,
-    plan: user.plan,
+    role: user.role,
   });
 });
 
