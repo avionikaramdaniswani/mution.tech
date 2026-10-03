@@ -1518,8 +1518,8 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
   const streamSession = isStream ? startMessagesStream(res) : null;
 
   try {
-  // Try providers with fallback on non-streaming failures
-  for (let attempt = 0; attempt < providers.length; attempt++) {
+    // Try providers with fallback on non-streaming failures
+    for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = providers[attempt];
     const providerBody = { ...req.body, model: upstreamModelFor(provider, originalModel) };
     updateApiRequestLog(res, { providerId: provider.id });
@@ -1853,20 +1853,21 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
         }
         return;
       }
-      const errorCode = err?.cause?.code ?? err?.code;
-      logger.error({ err, provider: provider.id, errorCode }, "Messages proxy error");
-      markCooldown(provider);
-      if (attempt >= providers.length - 1) {
-        updateApiRequestLog(res, { errorType: errorCode === "UND_ERR_HEADERS_TIMEOUT" ? "upstream_headers_timeout" : "upstream_error" });
-        if (isStream) {
-          try { res.write(sseEvent("error", { type: "error", error: { type: "api_error", message: "All upstream providers failed or timed out" } })); } catch { /* ignore */ }
-        } else if (!res.headersSent) {
-          res.status(502).json({ type: "error", error: { type: "api_error", message: "All upstream providers failed" } });
+      } catch (err: any) {
+        const errorCode = err?.cause?.code ?? err?.code;
+        logger.error({ err, provider: provider.id, errorCode }, "Messages proxy error");
+        markCooldown(provider);
+        if (attempt >= providers.length - 1) {
+          updateApiRequestLog(res, { errorType: errorCode === "UND_ERR_HEADERS_TIMEOUT" ? "upstream_headers_timeout" : "upstream_error" });
+          if (isStream) {
+            try { res.write(sseEvent("error", { type: "error", error: { type: "api_error", message: "All upstream providers failed or timed out" } })); } catch { /* ignore */ }
+          } else if (!res.headersSent) {
+            res.status(502).json({ type: "error", error: { type: "api_error", message: "All upstream providers failed" } });
+          }
+          return;
         }
-        return;
       }
     }
-  }
   } finally {
     streamSession?.close();
     if (!reservationClosed) await refundUnfinalizedReservation(reservation);

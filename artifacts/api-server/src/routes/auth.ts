@@ -461,7 +461,7 @@ router.put("/auth/me", requireAuth, async (req, res): Promise<void> => {
     .where(eq(usersTable.id, user.id))
     .returning();
     
-  await logActivity(user.id, "user.profile_updated", "Memperbarui nama profil");
+  await logActivity(user.id, "user.profile_updated", undefined, { keterangan: "Memperbarui nama profil" });
   res.json(serializeUser(updated));
 });
 
