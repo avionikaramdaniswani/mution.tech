@@ -1574,6 +1574,12 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           let totalCachedTokens = 0;
           const decoder = new TextDecoder();
           let sseBuffer = "";
+          
+          // Anti-timeout heartbeat for Heroku/Cloudflare
+          const keepAliveInterval = setInterval(() => {
+            try { res.write(": heartbeat\n\n"); } catch { /* ignore */ }
+          }, 15000);
+
 
           while (true) {
             const { done, value } = await reader.read();
@@ -1595,6 +1601,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
               } catch { }
             }
           }
+          clearInterval(keepAliveInterval);
           res.end();
           streamSession?.close();
 
@@ -1676,6 +1683,12 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           let estimatedOutputChars = 0;
           const decoder = new TextDecoder();
           let buffer = "";
+
+          // Anti-timeout heartbeat for Heroku/Cloudflare
+          const keepAliveInterval = setInterval(() => {
+            try { res.write(": heartbeat\n\n"); } catch { /* ignore */ }
+          }, 15000);
+
 
           // State for tool_use streaming translation
           let hasTextBlock = false;
@@ -1765,6 +1778,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
                   actualCachedTokens = extractCachedTokens(chunk.usage) || actualCachedTokens;
                 }
               } catch {
+                clearInterval(keepAliveInterval);
                 logger.error({ provider: provider.id, data: raw.slice(0, 500) }, "Generic provider returned malformed SSE data");
                 updateApiRequestLog(res, { errorType: "upstream_malformed_stream" });
                 streamSession?.sendError("Upstream provider returned an invalid streaming response");
@@ -1772,6 +1786,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
               }
             }
           }
+          clearInterval(keepAliveInterval);
 
           // Prefer actual usage from provider; fall back to char estimate; last resort capped fallback.
           const finalInput = actualInputTokens;
@@ -1838,14 +1853,16 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
         }
         return;
       }
-    } catch (err: any) {
       const errorCode = err?.cause?.code ?? err?.code;
       logger.error({ err, provider: provider.id, errorCode }, "Messages proxy error");
       markCooldown(provider);
       if (attempt >= providers.length - 1) {
         updateApiRequestLog(res, { errorType: errorCode === "UND_ERR_HEADERS_TIMEOUT" ? "upstream_headers_timeout" : "upstream_error" });
-        if (isStream) streamSession?.sendError("All upstream providers failed");
-        else if (!res.headersSent) res.status(502).json({ type: "error", error: { type: "api_error", message: "All upstream providers failed" } });
+        if (isStream) {
+          try { res.write(sseEvent("error", { type: "error", error: { type: "api_error", message: "All upstream providers failed or timed out" } })); } catch { /* ignore */ }
+        } else if (!res.headersSent) {
+          res.status(502).json({ type: "error", error: { type: "api_error", message: "All upstream providers failed" } });
+        }
         return;
       }
     }
