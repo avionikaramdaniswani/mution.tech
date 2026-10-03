@@ -1540,16 +1540,18 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           body: JSON.stringify(providerBody),
         });
 
-        if (!upstream.ok && !isStream) {
+        if (!upstream.ok) {
           const status = upstream.status;
-          if (status === 429 || status >= 500) {
+          if (status === 401 || status === 402 || status === 403 || status === 429 || status >= 500) {
             markCooldown(provider);
             if (attempt < providers.length - 1) continue;
           }
-          const data = await upstream.json().catch(() => ({}));
-          updateApiRequestLog(res, { errorType: classifyErrorType(status) });
-          res.status(status).json(data);
-          return;
+          if (!isStream) {
+            const data = await upstream.json().catch(() => ({}));
+            updateApiRequestLog(res, { errorType: classifyErrorType(status) });
+            res.status(status).json(data);
+            return;
+          }
         }
 
         if (isStream && (!upstream.ok || !upstream.headers.get("content-type")?.includes("text/event-stream"))) {
@@ -1638,9 +1640,9 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           body: JSON.stringify(openAIBody),
         });
 
-        if (!upstream.ok && !isStream) {
+        if (!upstream.ok) {
           const status = upstream.status;
-          if (status === 429 || status >= 500) {
+          if (status === 401 || status === 402 || status === 403 || status === 429 || status >= 500) {
             markCooldown(provider);
             if (attempt < providers.length - 1) continue;
           }
@@ -2025,7 +2027,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
         return;
 
       } else if (contentType.includes("application/json")) {
-        if (!upstream.ok && (upstream.status === 429 || upstream.status >= 500)) {
+        if (!upstream.ok && (upstream.status === 401 || upstream.status === 402 || upstream.status === 403 || upstream.status === 429 || upstream.status >= 500)) {
           markCooldown(provider);
           if (attempt < providers.length - 1) continue;
         }
@@ -2055,7 +2057,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
       } else {
         const text = await upstream.text();
         logger.error({ provider: provider.id, status: upstream.status, body: text.slice(0, 300) }, "Provider non-JSON response");
-        if (upstream.status === 429 || upstream.status >= 500) {
+        if (upstream.status === 401 || upstream.status === 402 || upstream.status === 403 || upstream.status === 429 || upstream.status >= 500) {
           markCooldown(provider);
           if (attempt < providers.length - 1) continue;
         }

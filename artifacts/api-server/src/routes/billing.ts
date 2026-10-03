@@ -427,6 +427,9 @@ router.get("/billing/orders", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.post("/billing/duitku/create", requireAuth, async (req, res): Promise<void> => {
+  res.status(503).json({ error: "Sistem pembayaran Duitku sedang dinonaktifkan sementara. Silakan refresh halaman web (F5) untuk menggunakan Manual QRIS." });
+  return;
+
   const merchantCode = process.env.DUITKU_MERCHANT_CODE;
   const apiKey = process.env.DUITKU_API_KEY;
 
