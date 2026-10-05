@@ -5,7 +5,7 @@ import { getGetMeQueryKey } from "@workspace/api-client-react";
 import {
   ArrowLeft, RefreshCw, Loader2, ExternalLink,
   CheckCircle2, Clock, AlertTriangle, Ban, XCircle,
-  Copy, Check, Wallet, ReceiptText, ChevronDown, ChevronUp
+  Copy, Check, Wallet, ReceiptText, ChevronDown, ChevronUp, MessageCircle
 } from "lucide-react";
 import { csrfFetch } from "@/lib/csrf";
 import { cn } from "@/lib/utils";
@@ -166,7 +166,11 @@ export default function RiwayatDetailPage() {
         showToast("Pembayaran dikonfirmasi. Kredit sudah masuk!", true);
         load();
       } else if (data.cannotSync) {
-        showToast("Referensi tidak tersedia - tidak bisa cek otomatis.", false);
+        if (order.qrString === "MANUAL") {
+          showToast("Sabar ya, pembayaran sedang diproses oleh admin.", false);
+        } else {
+          showToast("Referensi tidak tersedia - tidak bisa cek otomatis.", false);
+        }
       } else {
         showToast("Belum terbayar. Coba lagi setelah kamu selesai bayar.", false);
       }
@@ -418,6 +422,24 @@ export default function RiwayatDetailPage() {
             >
               <ExternalLink className="h-4 w-4" /> Lanjutkan ke Aplikasi
             </a>
+          ) : order.qrString === "MANUAL" ? (
+            <>
+              <a
+                href={`https://wa.me/6283895472636?text=${encodeURIComponent(`Halo Admin, saya sudah melakukan pembayaran untuk tagihan *#${order.invoiceNumber}* sebesar *Rp ${order.amount.toLocaleString("id-ID")}*. Berikut bukti transfernya:`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold transition-all active:scale-95 bg-[#25D366] hover:bg-[#1DA851] text-white shadow-sm col-span-1 sm:col-span-1"
+              >
+                <MessageCircle className="h-4 w-4" /> Konfirmasi via WA
+              </a>
+              <button
+                onClick={syncStatus}
+                disabled={syncing}
+                className="flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold transition-all active:scale-95 bg-muted hover:bg-accent text-foreground shadow-sm disabled:opacity-50 disabled:cursor-not-allowed border col-span-1 sm:col-span-1"
+              >
+                {syncing ? <><Loader2 className="h-4 w-4 animate-spin" /> Mengecek...</> : <><RefreshCw className="h-4 w-4" /> Cek Status</>}
+              </button>
+            </>
           ) : (
             <button
               onClick={syncStatus}

@@ -295,8 +295,8 @@ router.post("/billing/orders/:id/sync", requireAuth, async (req, res): Promise<v
   const apiKey = process.env.DUITKU_API_KEY;
   if (!merchantCode || !apiKey) { res.status(503).json({ error: "Duitku tidak dikonfigurasi" }); return; }
 
-  // Legacy Tripay orders cannot be synced via Duitku
-  if (order.provider === "tripay") {
+  // Legacy Tripay orders and manual QRIS cannot be synced via Duitku
+  if (order.provider === "tripay" || order.provider === "manual_qris") {
     res.json({ status: order.status, cannotSync: true });
     return;
   }
