@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 
 const SITE_URL = "https://mution.tech";
 const SITE_NAME = "Mution";
-const DEFAULT_IMAGE = `${SITE_URL}/opengraph.jpg`;
+const DEFAULT_IMAGE = `${SITE_URL}/opengraph.png`;
 const DEFAULT_DESCRIPTION =
   "Mution adalah platform PaaS dan AI gateway untuk deploy aplikasi, kelola API key, pantau usage, dan operasional produk digital dari satu workspace.";
 
