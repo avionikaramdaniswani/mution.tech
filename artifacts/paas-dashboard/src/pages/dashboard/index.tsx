@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   ArrowRight,
   Plus,
@@ -200,6 +201,7 @@ import { Info, AlertTriangle, BellRing, Sparkles } from "lucide-react";
 
 function AnnouncementFeed() {
   const { data: announcements, isLoading } = useAnnouncements();
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
   if (isLoading) {
     return <Skeleton className="w-full h-[300px] rounded-xl" />;
@@ -242,7 +244,11 @@ function AnnouncementFeed() {
         }
 
         return (
-          <Card key={ann.id} className={`overflow-hidden border ${borderColor} shadow-sm hover:shadow-md transition-all ${bgColor}`}>
+          <Card 
+            key={ann.id} 
+            onClick={() => setSelectedAnnouncement(ann)}
+            className={`overflow-hidden border ${borderColor} shadow-sm hover:shadow-md transition-all cursor-pointer ${bgColor}`}
+          >
             <CardContent className="p-5">
               <div className="flex gap-3 mb-3">
                 <div className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 ${iconBg}`}>
@@ -262,6 +268,20 @@ function AnnouncementFeed() {
           </Card>
         );
       })}
+
+      <Dialog open={!!selectedAnnouncement} onOpenChange={(open) => !open && setSelectedAnnouncement(null)}>
+        <DialogContent className="sm:max-w-[600px] bg-white text-[#172033]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold leading-tight">{selectedAnnouncement?.title}</DialogTitle>
+            <DialogDescription className="text-xs font-medium text-[#8c9bab] uppercase tracking-wider mt-2">
+              {selectedAnnouncement && formatDistanceToNow(new Date(selectedAnnouncement.createdAt), { addSuffix: true, locale: idLocale })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 text-sm text-[#526173] prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-indigo-600 hover:prose-a:text-indigo-500">
+            {selectedAnnouncement && <ReactMarkdown>{selectedAnnouncement.content}</ReactMarkdown>}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -381,9 +401,9 @@ export default function Dashboard() {
       <section>
         <div className="mb-4 flex items-center justify-between">
            <h2 className="text-sm font-extrabold tracking-widest uppercase text-[#172033]">Sistem & Pengumuman</h2>
-           <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100 flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> All Systems Operational
-           </span>
+           <Link href="/changelog" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-1 transition-colors">
+              Lihat Semua Pengumuman <ArrowRight className="w-3 h-3" />
+           </Link>
         </div>
         <AnnouncementFeed />
       </section>
