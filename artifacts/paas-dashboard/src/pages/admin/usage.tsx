@@ -373,10 +373,10 @@ export default function AdminUsage() {
                 Array(5).fill(0).map((_, i) => (
                   <tr key={i}><td colSpan={5} className="px-5 py-4"><Skeleton className="h-6 w-full" /></td></tr>
                 ))
-              ) : data?.recentRequests?.length === 0 ? (
+              ) : ((data as unknown as any)?.recentRequests as any[])?.length === 0 ? (
                  <tr><td colSpan={5} className="px-5 py-12 text-center text-muted-foreground">Belum ada request API.</td></tr>
               ) : (
-                data?.recentRequests?.map((r: any) => (
+                ((data as unknown as any)?.recentRequests as Array<{ id: number; name: string; email: string; model: string; totalTokens: number; credits: number; createdAt: string }>)?.map((r) => (
                   <tr key={r.id} className="hover:bg-[#f8fbff]/50 transition-colors">
                     <td className="px-5 py-4 whitespace-nowrap text-xs font-medium">
                       {new Date(r.createdAt).toLocaleString("id-ID", { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}

@@ -144,7 +144,7 @@ export default function AdminOverview() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis 
                     dataKey="day" 
-                    tickFormatter={(val) => format(new Date(val), "d MMM", { locale: id })}
+                    tickFormatter={(val) => format(new Date(val as unknown as string), "d MMM", { locale: id })}
                     axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 12, fill: "#64748b" }}
@@ -158,7 +158,7 @@ export default function AdminOverview() {
                   />
                   <Tooltip 
                     contentStyle={{ borderRadius: "8px", border: "1px solid #dbe8f3", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}
-                    labelFormatter={(val) => format(new Date(val), "dd MMMM yyyy", { locale: id })}
+                    labelFormatter={(val) => format(new Date(val as unknown as string), "dd MMMM yyyy", { locale: id })}
                     formatter={(value: number) => [new Intl.NumberFormat("id-ID").format(value), "Tokens"]}
                   />
                   <Area type="monotone" dataKey="totalTokens" stroke="rgb(168,85,247)" strokeWidth={2} fillOpacity={1} fill="url(#colorTokens)" />
