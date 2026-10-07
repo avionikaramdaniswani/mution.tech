@@ -353,21 +353,24 @@ export default function Dashboard() {
               Pantau semua proyek Anda dan kelola layanan API Gateway dari satu tempat terpusat.
             </p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex flex-row gap-2 w-full mt-2 sm:mt-0 sm:w-auto">
             <Button
               variant="outline"
-              className="rounded-md border-[#c9d8e7] bg-white text-[#172033] hover:bg-[#eef8ff]"
+              className="flex-1 sm:flex-none h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4 rounded-md border-[#c9d8e7] bg-white text-[#172033] hover:bg-[#eef8ff]"
               asChild
             >
               <Link href="/projects">
-                Semua Proyek
-                <ArrowRight className="h-4 w-4 ml-2" />
+                <Box className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                Hosting
               </Link>
             </Button>
-            <Button className="rounded-md bg-[#f97316] text-white hover:bg-[#ea580c] shadow-md shadow-orange-500/20" asChild>
-              <Link href="/projects/new">
-                <Plus className="h-4 w-4 mr-1" />
-                Proyek Baru
+            <Button 
+              className="flex-1 sm:flex-none h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4 rounded-md bg-[#f97316] text-white hover:bg-[#ea580c] shadow-md shadow-orange-500/20" 
+              asChild
+            >
+              <Link href="/api-keys">
+                <Key className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                API Keys
               </Link>
             </Button>
           </div>

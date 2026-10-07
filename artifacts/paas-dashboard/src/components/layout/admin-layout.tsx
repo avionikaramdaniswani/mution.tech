@@ -34,31 +34,41 @@ import { useRealtimeEvents } from "@/hooks/use-realtime";
 
 const adminNavGroups = [
   {
-    title: "Administration",
+    title: "Dashboard",
     items: [
       { title: "Overview", url: "/admin", icon: LayoutDashboard, exact: true },
+      { title: "System Activity", url: "/admin/activity", icon: Activity, exact: false },
+    ],
+  },
+  {
+    title: "Core Services",
+    items: [
+      { title: "Cloud Hosting", url: "/admin/projects", icon: FolderGit2, exact: false },
+      { title: "API Traffic", url: "/admin/usage", icon: Server, exact: false },
+    ],
+  },
+  {
+    title: "User Management",
+    items: [
       { title: "Users", url: "/admin/users", icon: Users, exact: false },
-      { title: "Projects", url: "/admin/projects", icon: FolderGit2, exact: false },
-      { title: "Activity", url: "/admin/activity", icon: Activity, exact: false },
       { title: "Broadcast", url: "/admin/broadcast", icon: Send, exact: false },
       { title: "Pengumuman", url: "/admin/announcements", icon: Megaphone, exact: false },
     ],
   },
   {
-    title: "AI & Configuration",
+    title: "Finance & Billing",
     items: [
-      { title: "AI Providers", url: "/admin/providers", icon: Brain, exact: false },
-      { title: "Model Pricing", url: "/admin/models", icon: Tag, exact: false },
-      { title: "AI Usage", url: "/admin/usage", icon: Server, exact: false },
-      { title: "Changelog", url: "/admin/changelog", icon: GitCommit, exact: false },
+      { title: "Payments", url: "/admin/payments", icon: CreditCard, exact: true },
+      { title: "Manual QRIS", url: "/admin/payments/manual", icon: QrCode, exact: true },
+      { title: "Credit Packages", url: "/admin/packages", icon: ShoppingBag, exact: false },
     ],
   },
   {
-    title: "Finance & Billing",
+    title: "AI Configuration",
     items: [
-      { title: "Credit Packages", url: "/admin/packages", icon: ShoppingBag, exact: false },
-      { title: "Payments", url: "/admin/payments", icon: CreditCard, exact: true },
-      { title: "Manual QRIS", url: "/admin/payments/manual", icon: QrCode, exact: true },
+      { title: "AI Providers", url: "/admin/providers", icon: Brain, exact: false },
+      { title: "Model Pricing", url: "/admin/models", icon: Tag, exact: false },
+      { title: "Changelogs", url: "/admin/changelog", icon: GitCommit, exact: false },
     ],
   },
 ];
