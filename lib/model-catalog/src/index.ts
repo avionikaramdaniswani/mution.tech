@@ -277,11 +277,15 @@ export function getModelPricing(modelId: string): ModelPricing {
 }
 
 export function groupModelsByProvider(models: readonly ModelCatalogEntry[] = MODEL_CATALOG) {
-  return models.reduce<Record<ModelProvider, ModelCatalogEntry[]>>(
+  return models.reduce<Record<string, ModelCatalogEntry[]>>(
     (acc, model) => {
-      acc[model.provider].push(model);
+      const provider = model.provider || "Unknown";
+      if (!acc[provider]) {
+        acc[provider] = [];
+      }
+      acc[provider].push(model);
       return acc;
     },
-    { Anthropic: [], OpenAI: [], "Zhipu AI": [], MiniMax: [], "Moonshot AI": [], Google: [] },
+    {} as Record<string, ModelCatalogEntry[]>
   );
 }

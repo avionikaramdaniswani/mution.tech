@@ -192,7 +192,7 @@ function ModelAccessSelector({
                     </span>
                     <span className="mt-1 block truncate font-mono text-xs text-muted-foreground">{model.id}</span>
                     <span className="mt-1 block text-xs text-muted-foreground">
-                      {model.context} context - {formatCredits(model.pricing.input)} in / {formatCredits(model.pricing.output)} out per 1M token
+                      {model.context} context - {model.pricing ? formatCredits(model.pricing.input) : 0} in / {model.pricing ? formatCredits(model.pricing.output) : 0} out per 1M token
                     </span>
                   </span>
                 </label>
