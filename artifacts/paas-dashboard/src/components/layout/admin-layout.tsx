@@ -27,6 +27,7 @@ import {
   ShoppingBag,
   Send,
   QrCode,
+  Megaphone,
 } from "lucide-react";
 import { TopNavbar, isNavActive, type TopNavLink } from "./shared";
 import { useRealtimeEvents } from "@/hooks/use-realtime";
@@ -40,6 +41,7 @@ const adminNavGroups = [
       { title: "Projects", url: "/admin/projects", icon: FolderGit2, exact: false },
       { title: "Activity", url: "/admin/activity", icon: Activity, exact: false },
       { title: "Broadcast", url: "/admin/broadcast", icon: Send, exact: false },
+      { title: "Pengumuman", url: "/admin/announcements", icon: Megaphone, exact: false },
     ],
   },
   {

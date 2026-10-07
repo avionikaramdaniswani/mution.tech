@@ -21,6 +21,7 @@ import webhooksRouter from "./webhooks";
 import playgroundRouter from "./playground";
 import botRouter from "./bot";
 import leaderboardRouter from "./leaderboard";
+import announcementsRouter from "./announcements";
 
 const router: IRouter = Router();
 
@@ -50,6 +51,7 @@ router.use(playgroundRouter);
 router.use(changelogsRouter);
 router.use(integrationsRouter);
 router.use(leaderboardRouter);
+router.use(announcementsRouter);
 router.use(adminRouter);      // last: has global requireAdmin middleware
 
 export default router;

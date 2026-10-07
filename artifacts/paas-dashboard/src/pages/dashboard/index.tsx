@@ -47,6 +47,27 @@ function useListApiKeys() {
   });
 }
 
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  type: string;
+  isActive: boolean;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+function useAnnouncements() {
+  return useQuery({
+    queryKey: ['/api/announcements'],
+    queryFn: async () => {
+      const res = await csrfFetch('/api/announcements', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch announcements');
+      return res.json() as Promise<Announcement[]>;
+    }
+  });
+}
+
 interface ApiUsageDaily {
   day: string;
   requests: number;
@@ -174,136 +195,74 @@ function ProjectCard({ project }: { project: Project }) {
 
 // --- New Awesome Components ---
 
-function ArchitectureMap({ projects, apiKeys }: { projects: Project[], apiKeys: ApiKey[] }) {
-  const displayProjects = projects.slice(0, 3);
-  const displayKeys = apiKeys.slice(0, 3);
-  const totalNodes = displayProjects.length + displayKeys.length;
-  
+import ReactMarkdown from "react-markdown";
+import { Info, AlertTriangle, BellRing, Sparkles } from "lucide-react";
+
+function AnnouncementFeed() {
+  const { data: announcements, isLoading } = useAnnouncements();
+
+  if (isLoading) {
+    return <Skeleton className="w-full h-[300px] rounded-xl" />;
+  }
+
+  if (!announcements || announcements.length === 0) {
+    return (
+      <Card className="border-[#dbe8f3] shadow-[0_12px_40px_rgba(23,32,51,0.06)] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] text-[#172033]">
+        <CardContent className="p-8 flex flex-col items-center justify-center min-h-[200px] text-center">
+          <div className="w-12 h-12 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mb-4">
+            <BellRing className="w-5 h-5 text-indigo-400" />
+          </div>
+          <h3 className="text-sm font-semibold text-[#172033]">Tidak ada pengumuman baru</h3>
+          <p className="text-xs text-[#526173] mt-1">Anda sudah melihat semua pembaruan sistem terkini.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="overflow-hidden border-[#dbe8f3] shadow-[0_12px_40px_rgba(23,32,51,0.06)] relative bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] text-[#172033]">
-      <CardContent className="p-4 md:p-12 relative min-h-[300px]">
-        {/* Animated SVG Connecting Lines using fixed viewBox */}
-        <svg 
-          viewBox="0 0 100 100" 
-          preserveAspectRatio="none" 
-          className="hidden md:block absolute inset-0 w-full h-full pointer-events-none" 
-          style={{ zIndex: 0 }}
-        >
-           {/* Lines to Projects (Right Side) */}
-           {displayProjects.map((p, i) => {
-              const y = displayProjects.length === 1 ? 50 : 20 + (60 / (displayProjects.length - 1)) * i;
-              const isRunning = p.status === 'running';
-              const strokeColor = isRunning ? "#10b981" : "#f43f5e";
-              return (
-                <path 
-                  key={`proj-${p.id}`}
-                  d={`M 50 50 C 60 50, 60 ${y}, 75 ${y}`} 
-                  fill="none" 
-                  stroke={strokeColor}
-                  strokeWidth="0.5" 
-                  strokeDasharray="1 1" 
-                  strokeOpacity="0.6"
-                  className={isRunning ? "animate-[dash_10s_linear_infinite]" : ""}
-                />
-              )
-           })}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {announcements.map((ann) => {
+        let bgColor = "bg-white";
+        let borderColor = "border-[#dbe8f3]";
+        let icon = <Info className="w-4 h-4 text-blue-500" />;
+        let iconBg = "bg-blue-50 border-blue-100";
 
-           {/* Lines to API Keys (Left Side) */}
-           {displayKeys.map((k, i) => {
-              const y = displayKeys.length === 1 ? 50 : 20 + (60 / (displayKeys.length - 1)) * i;
-              const isActive = k.isActive;
-              const strokeColor = isActive ? "#10b981" : "#f43f5e";
-              return (
-                <path 
-                  key={`key-${k.id}`}
-                  d={`M 50 50 C 40 50, 40 ${y}, 25 ${y}`} 
-                  fill="none" 
-                  stroke={strokeColor}
-                  strokeWidth="0.5" 
-                  strokeDasharray="1 1" 
-                  strokeOpacity="0.6"
-                  className={isActive ? "animate-[dash_10s_linear_infinite_reverse]" : ""}
-                />
-              )
-           })}
-        </svg>
-        <style>{`
-          @keyframes dash { to { stroke-dashoffset: -100; } }
-        `}</style>
+        if (ann.type === "warning") {
+          borderColor = "border-amber-200";
+          icon = <AlertTriangle className="w-4 h-4 text-amber-500" />;
+          iconBg = "bg-amber-50 border-amber-100";
+        } else if (ann.type === "urgent") {
+          borderColor = "border-rose-200";
+          icon = <BellRing className="w-4 h-4 text-rose-500" />;
+          iconBg = "bg-rose-50 border-rose-100";
+        } else if (ann.type === "promo") {
+          borderColor = "border-emerald-200";
+          icon = <Sparkles className="w-4 h-4 text-emerald-500" />;
+          iconBg = "bg-emerald-50 border-emerald-100";
+        }
 
-        <div className="flex flex-col md:flex-row items-center justify-between h-full relative z-10">
-          
-          {/* Left Side: API Keys */}
-          <div className="flex flex-col w-full md:w-1/3 gap-4 order-2 md:order-1 mt-8 md:mt-0 items-center md:items-end">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#f97316] mb-2 hidden md:block">API Interfaces</h3>
-            {displayKeys.length === 0 ? (
-               <div className="text-center text-[#526173] text-xs p-4 border border-[#dbe8f3] rounded-lg border-dashed">
-                 Belum ada API Key.
-               </div>
-            ) : (
-               displayKeys.map((k) => (
-                 <Link href={`/api-keys`} key={k.id} className="w-full max-w-[220px]">
-                   <div className="group flex items-center justify-between bg-white border border-[#dbe8f3] p-3 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer">
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${k.isActive ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-rose-500'}`} />
-                        <div className="flex flex-col truncate">
-                          <span className="text-sm font-semibold text-[#172033] truncate">{k.name}</span>
-                          <span className="text-[10px] text-[#526173] font-mono truncate">{k.keyPrefix}...</span>
-                        </div>
-                      </div>
-                      <Key className="w-4 h-4 text-[#8c9bab] group-hover:text-indigo-500 transition-colors shrink-0" />
-                   </div>
-                 </Link>
-               ))
-            )}
-          </div>
-
-          {/* Central Node: Mution Gateway */}
-          <div className="flex flex-col items-center order-1 md:order-2 shrink-0 my-4 md:my-0">
-             <div className="h-20 w-20 rounded-full bg-white border-4 border-indigo-50 flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.15)] relative">
-                <Globe className="h-8 w-8 text-indigo-500" />
-                {totalNodes > 0 && (
-                  <div className="absolute inset-0 rounded-full border-2 border-indigo-500/20 animate-ping" style={{ animationDuration: '3s' }} />
-                )}
-             </div>
-             <span className="mt-3 text-xs font-bold uppercase tracking-widest text-indigo-700">Mution Gateway</span>
-             <div className="mt-1 flex items-center gap-1.5 text-[10px] text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 font-semibold">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Normal
-             </div>
-          </div>
-
-          {/* Right Side: Projects */}
-          <div className="flex flex-col w-full md:w-1/3 gap-4 order-3 items-center md:items-start mt-8 md:mt-0">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#f97316] mb-2 hidden md:block">Cloud Deployments</h3>
-            {displayProjects.length === 0 ? (
-               <div className="text-center text-[#526173] text-xs p-4 border border-[#dbe8f3] rounded-lg border-dashed">
-                 Belum ada proyek.
-               </div>
-            ) : (
-               displayProjects.map((p) => {
-                 const isRunning = p.status === 'running';
-                 return (
-                   <Link href={`/projects/${p.id}`} key={p.id} className="w-full max-w-[220px]">
-                     <div className="group flex items-center justify-between bg-white border border-[#dbe8f3] p-3 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isRunning ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-rose-500'}`} />
-                          <div className="flex flex-col truncate">
-                            <span className="text-sm font-semibold text-[#172033] truncate">{p.name}</span>
-                            <span className="text-[10px] text-[#526173] truncate">{p.domain || p.runtime}</span>
-                          </div>
-                        </div>
-                        <Box className="w-4 h-4 text-[#8c9bab] group-hover:text-indigo-500 transition-colors shrink-0" />
-                     </div>
-                   </Link>
-                 )
-               })
-            )}
-          </div>
-
-        </div>
-      </CardContent>
-    </Card>
+        return (
+          <Card key={ann.id} className={`overflow-hidden border ${borderColor} shadow-sm hover:shadow-md transition-all ${bgColor}`}>
+            <CardContent className="p-5">
+              <div className="flex gap-3 mb-3">
+                <div className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 ${iconBg}`}>
+                  {icon}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#172033] line-clamp-2 leading-tight">{ann.title}</h3>
+                  <p className="text-[10px] font-medium text-[#8c9bab] mt-1 uppercase tracking-wider">
+                    {formatDistanceToNow(new Date(ann.createdAt), { addSuffix: true, locale: idLocale })}
+                  </p>
+                </div>
+              </div>
+              <div className="text-xs text-[#526173] prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-indigo-600 hover:prose-a:text-indigo-500 line-clamp-3">
+                <ReactMarkdown>{ann.content}</ReactMarkdown>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
   );
 }
 
@@ -415,19 +374,15 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Interactive Node Map */}
+      {/* Announcements */}
       <section>
         <div className="mb-4 flex items-center justify-between">
-           <h2 className="text-sm font-extrabold tracking-widest uppercase text-[#172033]">Network Topology</h2>
-           <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded border border-indigo-100 flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" /> Live View
+           <h2 className="text-sm font-extrabold tracking-widest uppercase text-[#172033]">Sistem & Pengumuman</h2>
+           <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100 flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> All Systems Operational
            </span>
         </div>
-        {(projectsLoading || apiKeysLoading) ? (
-           <Skeleton className="w-full h-[300px] rounded-xl" />
-        ) : (
-           <ArchitectureMap projects={projects || []} apiKeys={apiKeys || []} />
-        )}
+        <AnnouncementFeed />
       </section>
 
       <div className="grid lg:grid-cols-12 gap-8">

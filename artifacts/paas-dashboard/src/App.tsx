@@ -51,6 +51,7 @@ import AdminManualPayments from "@/pages/admin/manual-payments";
 import AdminUsage from "@/pages/admin/usage";
 import AdminChangelog from "@/pages/admin/changelog";
 import AdminBroadcast from "@/pages/admin/broadcast";
+import AdminAnnouncements from "@/pages/admin/announcements";
 
 const queryClient = new QueryClient();
 
@@ -142,6 +143,7 @@ function Router() {
         <Route path="/admin/usage" component={() => <AdminRoute component={AdminUsage} />} />
         <Route path="/admin/changelog" component={() => <AdminRoute component={AdminChangelog} />} />
         <Route path="/admin/broadcast" component={() => <AdminRoute component={AdminBroadcast} />} />
+        <Route path="/admin/announcements" component={() => <AdminRoute component={AdminAnnouncements} />} />
         <Route path="/admin" component={() => <AdminRoute component={AdminOverview} />} />
 
         {/* Root last - so it doesn't swallow every other path */}
