@@ -720,6 +720,23 @@ router.get("/admin/usage", async (req, res): Promise<void> => {
     .groupBy(dayCol)
     .orderBy(dayCol);
 
+  // Recent requests.
+  const recentRequests = await db
+    .select({
+      id: apiUsageTable.id,
+      userId: apiUsageTable.userId,
+      email: usersTable.email,
+      name: usersTable.name,
+      model: apiUsageTable.model,
+      totalTokens: apiUsageTable.totalTokens,
+      credits: apiUsageTable.credits,
+      createdAt: apiUsageTable.createdAt,
+    })
+    .from(apiUsageTable)
+    .innerJoin(usersTable, eq(apiUsageTable.userId, usersTable.id))
+    .orderBy(desc(apiUsageTable.createdAt))
+    .limit(50);
+
   res.json({
     rangeDays: days,
     since: since.toISOString(),
@@ -749,6 +766,16 @@ router.get("/admin/usage", async (req, res): Promise<void> => {
       requests: Number(d.requests),
       totalTokens: Number(d.totalTokens),
       credits: Number(d.credits),
+    })),
+    recentRequests: recentRequests.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      email: r.email,
+      name: r.name,
+      model: r.model,
+      totalTokens: Number(r.totalTokens),
+      credits: Number(r.credits),
+      createdAt: r.createdAt.toISOString(),
     })),
   });
 });

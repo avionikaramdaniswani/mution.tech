@@ -351,6 +351,64 @@ export default function AdminUsage() {
         </div>
       </div>
 
+      {/* Recent Requests Table */}
+      <div>
+        <div className="flex items-center gap-2 mb-3 mt-8">
+          <Activity className="h-4 w-4 text-[#14b8a6]" />
+          <h2 className="text-sm font-bold text-[#172033]">Log Request Terbaru (50 Terakhir)</h2>
+        </div>
+        <div className="overflow-x-auto rounded-lg border border-[#dbe8f3] bg-white shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
+          <table className="w-full text-left text-sm text-[#526173]">
+            <thead className="bg-[#f8fbff] text-xs uppercase tracking-wider text-[#526173] border-b border-[#dbe8f3]">
+              <tr>
+                <th className="px-5 py-4 font-semibold">Waktu</th>
+                <th className="px-5 py-4 font-semibold">User</th>
+                <th className="px-5 py-4 font-semibold">Model</th>
+                <th className="px-5 py-4 font-semibold text-right">Total Tokens</th>
+                <th className="px-5 py-4 font-semibold text-right">Kredit</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#edf4fb]">
+              {isLoading ? (
+                Array(5).fill(0).map((_, i) => (
+                  <tr key={i}><td colSpan={5} className="px-5 py-4"><Skeleton className="h-6 w-full" /></td></tr>
+                ))
+              ) : data?.recentRequests?.length === 0 ? (
+                 <tr><td colSpan={5} className="px-5 py-12 text-center text-muted-foreground">Belum ada request API.</td></tr>
+              ) : (
+                data?.recentRequests?.map((r: any) => (
+                  <tr key={r.id} className="hover:bg-[#f8fbff]/50 transition-colors">
+                    <td className="px-5 py-4 whitespace-nowrap text-xs font-medium">
+                      {new Date(r.createdAt).toLocaleString("id-ID", { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <UserAvatar name={r.name} />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-[#172033]">{r.name}</span>
+                          <span className="text-[11px] text-[#526173]">{r.email}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="inline-flex rounded-full border border-[#dbe8f3] bg-white px-2.5 py-1 text-[11px] font-mono font-medium text-[#f97316]">
+                        {r.model}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-right tabular-nums font-medium text-[#172033]">
+                      {formatNumber(r.totalTokens)}
+                    </td>
+                    <td className="px-5 py-4 text-right tabular-nums text-red-500 font-medium">
+                      -{formatNumber(r.credits)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <UserModelStatsDialog user={detailUser} onClose={() => setDetailUser(null)} />
     </div>
   );
