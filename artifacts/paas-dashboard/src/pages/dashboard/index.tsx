@@ -211,8 +211,8 @@ function AnnouncementFeed() {
     return (
       <Card className="border-[#dbe8f3] shadow-[0_12px_40px_rgba(23,32,51,0.06)] bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] text-[#172033]">
         <CardContent className="p-8 flex flex-col items-center justify-center min-h-[200px] text-center">
-          <div className="w-12 h-12 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center mb-4">
-            <BellRing className="w-5 h-5 text-indigo-400" />
+          <div className="w-12 h-12 rounded-full bg-orange-50 border border-orange-100 flex items-center justify-center mb-4">
+            <BellRing className="w-5 h-5 text-orange-500" />
           </div>
           <h3 className="text-sm font-semibold text-[#172033]">Tidak ada pengumuman baru</h3>
           <p className="text-xs text-[#526173] mt-1">Anda sudah melihat semua pembaruan sistem terkini.</p>
@@ -261,7 +261,7 @@ function AnnouncementFeed() {
                   </p>
                 </div>
               </div>
-              <div className="text-xs text-[#526173] prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-indigo-600 hover:prose-a:text-indigo-500 line-clamp-3">
+              <div className="text-xs text-[#526173] prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-orange-600 hover:prose-a:text-orange-500 line-clamp-3">
                 <ReactMarkdown>{ann.content}</ReactMarkdown>
               </div>
             </CardContent>
@@ -277,7 +277,7 @@ function AnnouncementFeed() {
               {selectedAnnouncement && formatDistanceToNow(new Date(selectedAnnouncement.createdAt), { addSuffix: true, locale: idLocale })}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 text-sm text-[#526173] prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-indigo-600 hover:prose-a:text-indigo-500">
+          <div className="py-4 text-sm text-[#526173] prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-orange-600 hover:prose-a:text-orange-500">
             {selectedAnnouncement && <ReactMarkdown>{selectedAnnouncement.content}</ReactMarkdown>}
           </div>
         </DialogContent>
@@ -401,7 +401,7 @@ export default function Dashboard() {
       <section>
         <div className="mb-4 flex items-center justify-between">
            <h2 className="text-sm font-extrabold tracking-widest uppercase text-[#172033]">Sistem & Pengumuman</h2>
-           <Link href="/changelog" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-1 transition-colors">
+           <Link href="/changelog" className="text-xs font-semibold text-orange-600 hover:text-orange-700 hover:underline flex items-center gap-1 transition-colors">
               Lihat Semua Pengumuman <ArrowRight className="w-3 h-3" />
            </Link>
         </div>

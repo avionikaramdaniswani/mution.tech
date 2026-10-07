@@ -96,14 +96,14 @@ export default function AdminOverview() {
           label="API Tokens (14h)"
           value={usageData ? new Intl.NumberFormat("id-ID").format(usageData.totals.totalTokens) : undefined}
           icon={Server}
-          color="rgb(168,85,247)"
+          color="rgb(249,115,22)"
           sub={`${usageData ? new Intl.NumberFormat("id-ID").format(usageData.totals.requests) : "..."} Requests`}
         />
         <StatCard
           label="Total Pengguna"
           value={stats?.totalUsers?.toLocaleString()}
           icon={Users}
-          color="rgb(99,102,241)"
+          color="rgb(59,130,246)"
           sub="Terdaftar di platform"
         />
         <StatCard
@@ -124,7 +124,7 @@ export default function AdminOverview() {
               <h2 className="text-base font-bold text-[#172033]">Tren Penggunaan API</h2>
               <p className="text-xs text-[#526173]">Total token 14 hari terakhir</p>
             </div>
-            <div className="rounded-md bg-purple-50 px-2 py-1 text-xs font-semibold text-purple-600">
+            <div className="rounded-md bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-600">
               API Gateway
             </div>
           </div>
@@ -137,8 +137,8 @@ export default function AdminOverview() {
                 <AreaChart data={usageData.daily} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorTokens" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="rgb(168,85,247)" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="rgb(168,85,247)" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="rgb(249,115,22)" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="rgb(249,115,22)" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -161,7 +161,7 @@ export default function AdminOverview() {
                     labelFormatter={(val) => format(new Date(val as unknown as string), "dd MMMM yyyy", { locale: id })}
                     formatter={(value: number) => [new Intl.NumberFormat("id-ID").format(value), "Tokens"]}
                   />
-                  <Area type="monotone" dataKey="totalTokens" stroke="rgb(168,85,247)" strokeWidth={2} fillOpacity={1} fill="url(#colorTokens)" />
+                  <Area type="monotone" dataKey="totalTokens" stroke="rgb(249,115,22)" strokeWidth={2} fillOpacity={1} fill="url(#colorTokens)" />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -179,7 +179,7 @@ export default function AdminOverview() {
               <h2 className="text-base font-bold text-[#172033]">Top AI Models</h2>
               <p className="text-xs text-[#526173]">Distribusi request per model (14h)</p>
             </div>
-            <div className="rounded-md bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-600">
+            <div className="rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-600">
               Models
             </div>
           </div>
@@ -205,7 +205,7 @@ export default function AdminOverview() {
                     contentStyle={{ borderRadius: "8px", border: "1px solid #dbe8f3", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}
                     formatter={(value: number) => [new Intl.NumberFormat("id-ID").format(value), "Requests"]}
                   />
-                  <Bar dataKey="requests" fill="rgb(249,115,22)" radius={[0, 4, 4, 0]} barSize={24} />
+                  <Bar dataKey="requests" fill="rgb(59,130,246)" radius={[0, 4, 4, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (

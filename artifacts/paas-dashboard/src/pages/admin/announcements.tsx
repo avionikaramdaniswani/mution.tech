@@ -132,7 +132,7 @@ export default function AdminAnnouncementsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Pengumuman</h1>
           <p className="text-sm text-muted-foreground mt-1">Kelola notifikasi dan banner informasi untuk pengguna Mution.</p>
         </div>
-        <Button onClick={() => openEditor()} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+        <Button onClick={() => openEditor()} className="gap-2 bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
           <Plus className="w-4 h-4" />
           Pengumuman Baru
         </Button>
