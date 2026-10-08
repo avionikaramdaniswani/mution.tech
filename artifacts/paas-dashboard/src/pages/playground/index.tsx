@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bot, FlaskConical, Play, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, ImageIcon, PanelLeftClose, PanelLeft, ArrowLeft, Wallet } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -364,7 +364,7 @@ export default function PlaygroundPage() {
             {user && (
               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-orange-100/80 text-orange-700 dark:bg-orange-950/50 dark:text-orange-400 rounded-full text-xs font-semibold shadow-sm border border-orange-200/50 dark:border-orange-900/50">
                 <Wallet className="h-3.5 w-3.5" />
-                Rp {(Number(user?.walletBalance) || 0).toLocaleString("id-ID")}
+                Rp {(Number(user?.credits) || 0).toLocaleString("id-ID")}
               </div>
             )}
             
