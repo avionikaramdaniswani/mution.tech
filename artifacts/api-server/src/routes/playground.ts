@@ -1,9 +1,14 @@
 import { Router } from "express";
-import { and, eq } from "drizzle-orm";
-import { apiKeysTable, db } from "@workspace/db";
+import { and, eq, desc, asc, sql } from "drizzle-orm";
+import { apiKeysTable, playgroundSessionsTable, db } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { decryptSecret } from "../lib/secret-box";
 import { getConfiguredPublicModelCatalog } from "./v1-proxy";
+import multer from "multer";
+import { createClient } from "@supabase/supabase-js";
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+
 
 const router = Router();
 
@@ -107,6 +112,135 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
   } finally {
     clearInterval(heartbeat);
     res.end();
+  }
+});
+
+// Get all sessions
+router.get("/playground/sessions", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  try {
+    const sessions = await db
+      .select({ id: playgroundSessionsTable.id, title: playgroundSessionsTable.title, updatedAt: playgroundSessionsTable.updatedAt })
+      .from(playgroundSessionsTable)
+      .where(eq(playgroundSessionsTable.userId, user.id))
+      .orderBy(desc(playgroundSessionsTable.updatedAt));
+    res.json(sessions);
+  } catch (error) {
+    res.status(500).json({ error: "Gagal mengambil sesi" });
+  }
+});
+
+// Get specific session
+router.get("/playground/sessions/:id", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  try {
+    const [session] = await db
+      .select()
+      .from(playgroundSessionsTable)
+      .where(and(eq(playgroundSessionsTable.id, Number(req.params.id)), eq(playgroundSessionsTable.userId, user.id)));
+    if (!session) { res.status(404).json({ error: "Sesi tidak ditemukan" }); return; }
+    res.json(session);
+  } catch (error) {
+    res.status(500).json({ error: "Gagal mengambil sesi" });
+  }
+});
+
+// Create new session
+router.post("/playground/sessions", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const { title = "Obrolan Baru", model, systemPrompt, temperature = "0.7", maxTokens = "1024", keyId } = req.body;
+  
+  try {
+    // Limit to 5 sessions max per user
+    const countRes = await db.select({ count: sql`count(*)` }).from(playgroundSessionsTable).where(eq(playgroundSessionsTable.userId, user.id));
+    const count = Number(countRes[0].count);
+    if (count >= 5) {
+      // Find the oldest sessions to delete
+      const oldest = await db.select({ id: playgroundSessionsTable.id }).from(playgroundSessionsTable).where(eq(playgroundSessionsTable.userId, user.id)).orderBy(asc(playgroundSessionsTable.updatedAt)).limit(count - 4);
+      if (oldest.length > 0) {
+        await db.delete(playgroundSessionsTable).where(and(eq(playgroundSessionsTable.userId, user.id), eq(playgroundSessionsTable.id, oldest[0].id)));
+      }
+    }
+
+    const [newSession] = await db.insert(playgroundSessionsTable).values({
+      userId: user.id,
+      title,
+      model,
+      systemPrompt,
+      temperature,
+      maxTokens,
+      apiKeyId: keyId,
+      messages: [],
+    }).returning();
+    
+    res.json(newSession);
+  } catch (error) {
+    res.status(500).json({ error: "Gagal membuat sesi" });
+  }
+});
+
+// Update session (saves messages)
+router.put("/playground/sessions/:id", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const { title, model, systemPrompt, temperature, maxTokens, messages, keyId } = req.body;
+  
+  try {
+    const updateData: any = { updatedAt: new Date() };
+    if (title !== undefined) updateData.title = title;
+    if (model !== undefined) updateData.model = model;
+    if (systemPrompt !== undefined) updateData.systemPrompt = systemPrompt;
+    if (temperature !== undefined) updateData.temperature = temperature;
+    if (maxTokens !== undefined) updateData.maxTokens = maxTokens;
+    if (messages !== undefined) updateData.messages = messages;
+    if (keyId !== undefined) updateData.apiKeyId = keyId;
+
+    const [updated] = await db.update(playgroundSessionsTable)
+      .set(updateData)
+      .where(and(eq(playgroundSessionsTable.id, Number(req.params.id)), eq(playgroundSessionsTable.userId, user.id)))
+      .returning();
+      
+    if (!updated) { res.status(404).json({ error: "Sesi tidak ditemukan" }); return; }
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: "Gagal menyimpan sesi" });
+  }
+});
+
+// Delete session
+router.delete("/playground/sessions/:id", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  try {
+    await db.delete(playgroundSessionsTable)
+      .where(and(eq(playgroundSessionsTable.id, Number(req.params.id)), eq(playgroundSessionsTable.userId, user.id)));
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Gagal menghapus sesi" });
+  }
+});
+
+// Upload image
+router.post("/playground/upload", requireAuth, upload.single("file"), async (req, res): Promise<void> => {
+  if (!req.file) { res.status(400).json({ error: "File tidak ditemukan" }); return; }
+  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    res.status(500).json({ error: "Konfigurasi storage belum lengkap di .env" }); return;
+  }
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const ext = req.file.originalname.split('.').pop();
+    const fileName = `${Date.now()}-${Math.round(Math.random()*1000)}.${ext}`;
+    
+    const { error } = await supabase.storage.from("playground").upload(fileName, req.file.buffer, {
+      contentType: req.file.mimetype,
+      upsert: false
+    });
+    
+    if (error) throw error;
+    
+    const { data: publicData } = supabase.storage.from("playground").getPublicUrl(fileName);
+    res.json({ url: publicData.publicUrl });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Gagal upload gambar" });
   }
 });
 
