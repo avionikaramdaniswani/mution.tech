@@ -1030,8 +1030,11 @@ const PackageBody = _z.object({
   name: _z.string().trim().min(1).max(80),
   description: _z.string().trim().max(200).nullish(),
   priceIdr: _z.number().int().min(1000),
+  originalPriceIdr: _z.number().int().min(1000).nullish(),
   creditsAmount: _z.number().int().min(1),
   bonusLabel: _z.string().trim().max(40).nullish(),
+  isHighlight: _z.boolean().optional(),
+  stock: _z.number().int().min(0).nullish(),
   isActive: _z.boolean().optional(),
   sortOrder: _z.number().int().optional(),
 });

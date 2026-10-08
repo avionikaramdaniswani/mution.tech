@@ -14,12 +14,13 @@ import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { formatCredits, creditColor } from "@/components/layout/shared";
 
 type Model = { id: string; label: string; provider: string };
 type ApiKey = { id: number; name: string; keyPrefix: string; isActive: boolean };
 type MessagePart = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
 type MessageContent = string | MessagePart[];
-type Message = { role: "user" | "assistant" | "system"; content: MessageContent };
+type Message = { role: "user" | "assistant" | "system"; content: MessageContent; metadata?: { model: string; tokens: number; credits: number | null; latencyMs: number } };
 type Result = { content: string; model: string; finishReason: string | null; usage: { inputTokens: number; outputTokens: number; totalTokens: number; credits: number | null }; latencyMs: number };
 type Session = { id: number; title: string; updatedAt: string };
 type SessionDetail = Session & { model: string; systemPrompt: string; temperature: string; maxTokens: string; apiKeyId: number; messages: Message[] };
@@ -244,6 +245,12 @@ export default function PlaygroundPage() {
             setMessages(prev => {
               const next = [...prev];
               next[next.length - 1].content = finalContent;
+              next[next.length - 1].metadata = {
+                model: data.model,
+                tokens: data.usage.totalTokens,
+                credits: data.usage.credits,
+                latencyMs: data.latencyMs
+              };
               return next;
             });
             completed = true; 
@@ -362,9 +369,14 @@ export default function PlaygroundPage() {
           <div className="flex items-center gap-3">
             {/* Balance Badge */}
             {user && (
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-orange-100/80 text-orange-700 dark:bg-orange-950/50 dark:text-orange-400 rounded-full text-xs font-semibold shadow-sm border border-orange-200/50 dark:border-orange-900/50">
-                <Wallet className="h-3.5 w-3.5" />
-                Rp {(Number(user?.credits) || 0).toLocaleString("id-ID")}
+              <div
+                className="hidden sm:flex cursor-pointer items-center gap-1.5 rounded-full border border-[#dbe8f3] bg-[#f8fbff]/90 px-3 py-1.5 transition-colors hover:border-[#c9d8e7] hover:bg-[#eef8ff] dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-muted/40 shadow-sm"
+                title="Kredit kamu"
+              >
+                <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-semibold tabular-nums" style={{ color: creditColor(user?.credits) }}>
+                  {formatCredits(user?.credits)}
+                </span>
               </div>
             )}
             
@@ -477,6 +489,22 @@ export default function PlaygroundPage() {
                           }
                           return null;
                         })}
+                      </div>
+                    )}
+                    
+                    {/* Metadata Footer for AI Message */}
+                    {msg.role === "assistant" && msg.metadata && (
+                      <div className="flex flex-wrap items-center gap-3 mt-1 text-[10px] font-medium text-muted-foreground ml-1">
+                        <span className="flex items-center gap-1">
+                          <Bot className="h-3 w-3" /> {msg.metadata.model}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Coins className="h-3 w-3" /> {msg.metadata.credits ?? 0} cr
+                        </span>
+                        <span>{msg.metadata.tokens} tokens</span>
+                        <span className="flex items-center gap-1">
+                          <Timer className="h-3 w-3" /> {(msg.metadata.latencyMs / 1000).toFixed(1)}s
+                        </span>
                       </div>
                     )}
                   </div>

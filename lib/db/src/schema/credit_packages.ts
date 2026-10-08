@@ -10,6 +10,12 @@ export const creditPackagesTable = pgTable("credit_packages", {
   creditsAmount: integer("credits_amount").notNull(),
   /** Label bonus opsional, misal "+12% bonus" — tampil di UI */
   bonusLabel: text("bonus_label"),
+  /** Harga asli sebelum diskon (untuk efek coret di UI) */
+  originalPriceIdr: integer("original_price_idr"),
+  /** Jika true, paket ini akan dihighlight ala Flash Sale */
+  isHighlight: boolean("is_highlight").notNull().default(false),
+  /** Stok paket. Jika null berarti stok tidak terbatas */
+  stock: integer("stock"),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),

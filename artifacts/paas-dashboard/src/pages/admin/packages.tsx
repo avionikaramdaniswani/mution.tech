@@ -17,6 +17,9 @@ interface CreditPackage {
   priceIdr: number;
   creditsAmount: number;
   bonusLabel: string | null;
+  originalPriceIdr: number | null;
+  isHighlight: boolean;
+  stock: number | null;
   isActive: boolean;
   sortOrder: number;
 }
@@ -36,6 +39,9 @@ const EMPTY: Omit<CreditPackage, "id" | "isActive"> = {
   priceIdr: 25000,
   creditsAmount: 25000,
   bonusLabel: "",
+  originalPriceIdr: null,
+  isHighlight: false,
+  stock: null,
   sortOrder: 0,
 };
 
@@ -77,6 +83,9 @@ function PackageFormDialog({
         priceIdr: form.priceIdr,
         creditsAmount: form.creditsAmount,
         bonusLabel: form.bonusLabel?.trim() || null,
+        originalPriceIdr: form.originalPriceIdr || null,
+        isHighlight: !!form.isHighlight,
+        stock: form.stock || null,
         sortOrder: form.sortOrder,
       });
       onClose();
@@ -143,6 +152,24 @@ function PackageFormDialog({
                 value={form.sortOrder} onChange={e => set("sortOrder", Number.parseInt(e.target.value) || 0)} />
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Harga Asli (Coret)</label>
+              <input className={inputCls} type="number" min={1000} step={1000} placeholder="Opsional"
+                value={form.originalPriceIdr || ""} onChange={e => set("originalPriceIdr", Number.parseInt(e.target.value) || 0)} />
+            </div>
+            <div>
+              <label className={labelCls}>Stok (Flash Sale)</label>
+              <input className={inputCls} type="number" min={1} placeholder="Kosongkan jika unlimited"
+                value={form.stock || ""} onChange={e => set("stock", Number.parseInt(e.target.value) || 0)} />
+            </div>
+          </div>
+          
+          <label className="flex items-center gap-2 mt-2">
+            <input type="checkbox" checked={!!form.isHighlight} onChange={e => set("isHighlight", e.target.checked as any)} className="rounded text-[#f97316] focus:ring-[#f97316]" />
+            <span className="text-sm font-medium text-[#172033]">Jadikan Highlight (Tampil Mencolok)</span>
+          </label>
 
           {error && <p className="text-xs text-red-500">{error}</p>}
         </div>
@@ -256,6 +283,7 @@ export default function AdminPackages() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#526173]">Harga</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#526173]">Kredit</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#526173]">Bonus</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#526173]">Promo/Stok</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#526173]">Status</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#526173]">Aksi</th>
               </tr>
@@ -289,6 +317,10 @@ export default function AdminPackages() {
                       ) : (
                         <span className="text-xs text-[#94a3b8]">—</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {pkg.isHighlight && <span className="mr-2 inline-flex items-center gap-1 rounded bg-orange-100 px-1.5 py-0.5 font-bold text-orange-600">🔥 HOT</span>}
+                      {pkg.stock !== null ? <span className="font-medium text-red-600">Sisa {pkg.stock}</span> : <span className="text-[#94a3b8]">Unlimited</span>}
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={() => handleToggle(pkg)}

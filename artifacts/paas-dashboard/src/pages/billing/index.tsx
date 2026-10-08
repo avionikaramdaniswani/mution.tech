@@ -19,8 +19,11 @@ interface CreditPackage {
   name: string;
   description: string | null;
   priceIdr: number;
+  originalPriceIdr: number | null;
   creditsAmount: number;
   bonusLabel: string | null;
+  isHighlight: boolean;
+  stock: number | null;
 }
 
 function usePackages() {
@@ -422,7 +425,12 @@ function TopupSection() {
                               : "border-border bg-background hover:bg-muted"
                         )}
                       >
-                        {isPopular && !active && (
+                        {pkg.isHighlight && !active && (
+                          <div className="absolute -top-3 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10 animate-pulse">
+                            🔥 FLASH SALE
+                          </div>
+                        )}
+                        {!pkg.isHighlight && isPopular && !active && (
                           <div className="absolute -top-3 bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10">
                             POPULER
                           </div>
@@ -432,10 +440,15 @@ function TopupSection() {
                             {bonusText}
                           </span>
                         )}
-                        <span className={cn("text-sm font-extrabold leading-tight mb-1", active ? "text-primary" : "text-foreground")}>
+                        <span className={cn("text-sm font-extrabold leading-tight mb-1", active ? "text-primary" : "text-foreground", pkg.isHighlight && "text-red-600 dark:text-red-500")}>
                           {pkg.name}
                         </span>
-                        <span className={cn("text-xl font-black mb-1", active ? "text-primary" : "text-foreground")}>
+                        {pkg.originalPriceIdr && (
+                          <span className="text-[10px] font-bold text-muted-foreground line-through decoration-red-500 opacity-60">
+                            {formatRp(pkg.originalPriceIdr)}
+                          </span>
+                        )}
+                        <span className={cn("text-xl font-black mb-1", active ? "text-primary" : "text-foreground", pkg.isHighlight && "text-red-600 dark:text-red-500")}>
                           {formatRp(pkg.priceIdr)}
                         </span>
                         <span className="text-[11px] font-semibold text-muted-foreground/80 bg-muted px-2 py-0.5 rounded-full mt-1">
@@ -443,6 +456,11 @@ function TopupSection() {
                             ? `${(pkg.creditsAmount / 1000).toFixed(0)}rb cr`
                             : `${pkg.creditsAmount} cr`}
                         </span>
+                        {pkg.stock !== null && (
+                          <span className="text-[10px] font-bold text-red-500 mt-2 bg-red-500/10 px-1.5 py-0.5 rounded">
+                            Sisa {pkg.stock}
+                          </span>
+                        )}
                         
                         {active && (
                           <div className="absolute -top-2 -right-2 bg-primary rounded-full p-0.5 shadow-sm">
