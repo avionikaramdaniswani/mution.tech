@@ -444,7 +444,7 @@ export default function PlaygroundPage() {
                       msg.content ? (
                          <div className={cn("px-5 py-3.5 rounded-[1.5rem] text-[15px] leading-relaxed prose prose-sm dark:prose-invert max-w-full shadow-sm", 
                           msg.role === "user" 
-                            ? "bg-muted border border-border/50 text-foreground rounded-tr-sm" 
+                            ? "bg-primary text-primary-foreground border-transparent rounded-tr-sm prose-p:text-current prose-headings:text-current prose-strong:text-current prose-code:text-current" 
                             : "bg-background border border-border text-foreground rounded-tl-sm"
                         )}>
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
@@ -467,7 +467,9 @@ export default function PlaygroundPage() {
                           if (part.type === "text" && part.text) {
                             return (
                               <div key={i} className={cn("px-5 py-3.5 rounded-[1.5rem] text-[15px] leading-relaxed prose prose-sm dark:prose-invert max-w-full shadow-sm", 
-                                msg.role === "user" ? "bg-muted border border-border/50 text-foreground rounded-tr-sm" : "bg-background border border-border text-foreground rounded-tl-sm"
+                                msg.role === "user" 
+                                  ? "bg-primary text-primary-foreground border-transparent rounded-tr-sm prose-p:text-current prose-headings:text-current prose-strong:text-current prose-code:text-current" 
+                                  : "bg-background border border-border text-foreground rounded-tl-sm"
                               )}>
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
                               </div>
