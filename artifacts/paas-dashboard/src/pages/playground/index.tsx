@@ -364,7 +364,7 @@ export default function PlaygroundPage() {
             {user && (
               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-orange-100/80 text-orange-700 dark:bg-orange-950/50 dark:text-orange-400 rounded-full text-xs font-semibold shadow-sm border border-orange-200/50 dark:border-orange-900/50">
                 <Wallet className="h-3.5 w-3.5" />
-                Rp {user.walletBalance.toLocaleString("id-ID")}
+                Rp {(Number(user?.walletBalance) || 0).toLocaleString("id-ID")}
               </div>
             )}
             
