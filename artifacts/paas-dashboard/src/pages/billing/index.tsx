@@ -294,7 +294,7 @@ function TopupSection() {
   const [method, setMethod] = useState("SP");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expandedGroup, setExpandedGroup] = useState<string>("Transfer Bank (Virtual Account)");
+  const [expandedGroup, setExpandedGroup] = useState<string>("");
   
   const { channels, loading: chLoading, error: chError } = usePaymentChannels();
   const packages = usePackages();
