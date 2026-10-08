@@ -45,20 +45,22 @@ interface PaymentChannel {
 
 function usePaymentChannels() {
   const [channels, setChannels] = useState<PaymentChannel[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Override channels completely for Manual QRIS because Duitku is down
-    setChannels([{
-      code: "MANUAL_QRIS",
-      name: "QRIS (1-3 Menit Approve)",
-      group: "E-Wallet & QRIS",
-      icon_url: "/qris-logo.png",
-      minimum_amount: 1000,
-      maximum_amount: 10000000,
-    }]);
-    setLoading(false);
+    fetch("/api/billing/payment-channels", { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Gagal memuat channel pembayaran");
+        return res.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setChannels(data);
+        }
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }, []);
 
   return { channels, loading, error };
@@ -589,12 +591,6 @@ function TopupSection() {
                 });
                 return (
                   <>
-                    <div className="mb-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl flex gap-3 text-orange-600 dark:text-orange-400">
-                      <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-                      <div className="text-sm">
-                        <p className="opacity-90">Sistem pembayaran otomatis sedang dalam perbaikan. Silakan gunakan QRIS ini sementara waktu.</p>
-                      </div>
-                    </div>
                     {qris && (() => {
                       const active = method === qris.code;
                       return (
