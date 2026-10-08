@@ -9,8 +9,8 @@ const router = Router();
 
 router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const { keyId, model, system, prompt, temperature = 0.7, maxTokens = 1024 } = req.body ?? {};
-  if (!Number.isInteger(keyId) || typeof model !== "string" || !model.trim() || typeof prompt !== "string" || !prompt.trim()) {
+  const { keyId, model, messages, temperature = 0.7, maxTokens = 1024 } = req.body ?? {};
+  if (!Number.isInteger(keyId) || typeof model !== "string" || !model.trim() || !Array.isArray(messages) || messages.length === 0) {
     res.status(400).json({ error: "Konfigurasi playground tidak valid" }); return;
   }
   if (typeof temperature !== "number" || temperature < 0 || temperature > 2 || !Number.isInteger(maxTokens) || maxTokens < 1 || maxTokens > 16384) {
@@ -40,10 +40,7 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
       body: JSON.stringify({
         model: model.trim(), temperature, max_tokens: maxTokens,
         stream: true, stream_options: { include_usage: true },
-        messages: [
-          ...(typeof system === "string" && system.trim() ? [{ role: "system", content: system.trim() }] : []),
-          { role: "user", content: prompt.trim() },
-        ],
+        messages,
       }),
       signal: AbortSignal.timeout(120_000),
     });
