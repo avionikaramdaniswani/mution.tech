@@ -41,6 +41,7 @@ interface PaymentChannel {
   icon_url: string;
   minimum_amount: number;
   maximum_amount: number;
+  totalFee?: string;
 }
 
 function usePaymentChannels() {
@@ -293,6 +294,7 @@ function TopupSection() {
   const [method, setMethod] = useState("SP");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedGroup, setExpandedGroup] = useState<string>("Transfer Bank (Virtual Account)");
   
   const { channels, loading: chLoading, error: chError } = usePaymentChannels();
   const packages = usePackages();
@@ -326,7 +328,10 @@ function TopupSection() {
   })();
 
   const canAdvanceStep1 = resolvedAmount != null && !amountError;
-  const selectedMethodLabel = channels.find(c => c.code === method)?.name.replace(" Virtual Account", " VA") ?? method;
+  const selectedChannelObj = channels.find(c => c.code === method);
+  const selectedMethodLabel = selectedChannelObj?.name.replace(" Virtual Account", " VA") ?? method;
+  const adminFee = selectedChannelObj?.totalFee ? parseInt(selectedChannelObj.totalFee) : 0;
+  const totalPayAmount = (resolvedAmount || 0) + adminFee;
 
   function handleCustomInput(raw: string) {
     const digits = raw.replace(/\D/g, "");
@@ -570,94 +575,93 @@ function TopupSection() {
                 <p className="text-sm text-center py-6 text-destructive font-medium bg-destructive/5 rounded-xl border border-destructive/20">{chError}</p>
               )}
               {!chLoading && channels.length > 0 && (() => {
-                const ewallets = ["SP", "DA", "OVO", "SA", "LQ", "QRIS"];
-                const availableChannels = channels.filter(c => {
-                  if (resolvedAmount != null && resolvedAmount < 10000) {
-                    return ewallets.includes(c.code) || c.name.toLowerCase().includes("qris") || c.name.toLowerCase().includes("shopee") || c.name.toLowerCase().includes("dana") || c.name.toLowerCase().includes("ovo") || c.name.toLowerCase().includes("linkaja");
+                const qrisChannels: PaymentChannel[] = [];
+                const ewalletChannels: PaymentChannel[] = [];
+                const bankChannels: PaymentChannel[] = [];
+                const retailChannels: PaymentChannel[] = [];
+
+                channels.forEach(c => {
+                  const name = c.name.toLowerCase();
+                  const ewalletsCode = ["SP", "DA", "OVO", "SA", "LQ"];
+                  if (name.includes("qris") || c.code === "QRIS") {
+                    qrisChannels.push(c);
+                  } else if (ewalletsCode.includes(c.code) || name.includes("shopee") || name.includes("dana") || name.includes("ovo") || name.includes("linkaja") || name.includes("gopay") || name.includes("e-wallet")) {
+                    ewalletChannels.push(c);
+                  } else if (name.includes("virtual account") || name.includes("va") || name.includes("bank") || c.group?.toLowerCase().includes("bank")) {
+                    bankChannels.push(c);
+                  } else {
+                    retailChannels.push(c);
                   }
-                  return true;
                 });
 
-                if (availableChannels.length === 0) {
-                  return <p className="text-sm text-center py-6 text-muted-foreground font-medium border border-dashed rounded-xl bg-muted/30">Tidak ada channel tersedia untuk nominal ini</p>;
-                }
+                const groupList = [
+                  { title: "Transfer Bank (Virtual Account)", items: bankChannels, min: 10000 },
+                  { title: "QRIS", items: qrisChannels, min: 1000 },
+                  { title: "E-Wallet", items: ewalletChannels, min: 1000 },
+                  { title: "Gerai Retail", items: retailChannels, min: 10000 }
+                ].filter(g => g.items.length > 0);
 
-                const qris = availableChannels.find(c => c.code === "MANUAL_QRIS" || c.code === "QRIS");
-                const others = availableChannels.filter(c => c.code !== "MANUAL_QRIS" && c.code !== "QRIS");
-                const groups: Record<string, PaymentChannel[]> = {};
-                others.forEach(c => {
-                  if (!groups[c.group]) groups[c.group] = [];
-                  groups[c.group].push(c);
-                });
                 return (
-                  <>
-                    {qris && (() => {
-                      const active = method === qris.code;
+                  <div className="space-y-4">
+                    {groupList.map(g => {
+                      const isExpanded = expandedGroup === g.title;
                       return (
-                        <div className="mb-6">
-                          <p className="text-[10px] font-bold uppercase tracking-widest mb-2 text-muted-foreground/60 ml-1">Pembayaran Instan</p>
-                          <div className="rounded-xl border border-border bg-background overflow-hidden shadow-sm">
-                            <button
-                              key={qris.code}
-                              onClick={() => setMethod(qris.code)}
-                              className={cn(
-                                "w-full flex items-center justify-between p-4 transition-all text-left hover:bg-muted/50",
-                                active && "bg-primary/5"
-                              )}
-                            >
-                              <div className="flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 bg-white border border-border/50 shadow-sm">
-                                  <img src={qris.icon_url} alt={qris.name} className="h-8 w-8 object-contain"
-                                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className={cn("text-sm font-bold", active ? "text-primary" : "text-foreground")}>{qris.name}</p>
-                                  <p className="text-[11px] text-muted-foreground mt-0.5">GoPay · OVO · Dana · ShopeePay & e-wallet</p>
-                                </div>
-                              </div>
-                              <div className={cn("h-5 w-5 flex-shrink-0 rounded-full border-2 flex items-center justify-center transition-colors", active ? "border-primary" : "border-muted-foreground/30")}>
-                                {active && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
-                              </div>
-                            </button>
-                          </div>
+                        <div key={g.title} className="rounded-xl border border-border bg-background overflow-hidden shadow-sm">
+                          <button
+                            onClick={() => setExpandedGroup(isExpanded ? "" : g.title)}
+                            className="w-full flex items-center justify-between p-4 transition-all text-left hover:bg-muted/30"
+                          >
+                            <p className="text-xs font-bold uppercase tracking-wider text-foreground">{g.title}</p>
+                            <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isExpanded && "rotate-90")} />
+                          </button>
+                          
+                          {isExpanded && (
+                            <div className="divide-y divide-border border-t border-border bg-muted/5">
+                              {g.items.map(c => {
+                                const active = method === c.code;
+                                const isDisabled = resolvedAmount != null && resolvedAmount < g.min;
+                                return (
+                                  <button
+                                    key={c.code}
+                                    disabled={isDisabled}
+                                    onClick={() => setMethod(c.code)}
+                                    className={cn(
+                                      "w-full flex items-center justify-between p-4 transition-all text-left hover:bg-muted/50 relative",
+                                      active && !isDisabled && "bg-primary/5",
+                                      isDisabled && "opacity-60 cursor-not-allowed grayscale-[0.5]"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-4">
+                                      <div className="h-10 w-10 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 bg-white border border-border/50 shadow-sm p-1">
+                                        <img src={c.icon_url} alt={c.name} className="h-full w-full object-contain"
+                                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className={cn("text-sm font-bold truncate", active && !isDisabled ? "text-primary" : "text-foreground")}>
+                                          {c.name.replace(" Virtual Account", " VA")}
+                                        </p>
+                                        {isDisabled && (
+                                          <p className="text-[10px] font-semibold text-destructive mt-0.5">
+                                            Minimal Rp {g.min.toLocaleString("id-ID")}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className={cn("h-5 w-5 flex-shrink-0 rounded-full border-2 flex items-center justify-center transition-colors", 
+                                      active && !isDisabled ? "border-primary" : "border-muted-foreground/30",
+                                      isDisabled && "border-muted-foreground/20"
+                                    )}>
+                                      {active && !isDisabled && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       );
-                    })()}
-
-                    {Object.entries(groups).map(([group, chs]) => (
-                      <div key={group} className="mb-6 last:mb-0">
-                        <p className="text-[10px] font-bold uppercase tracking-widest mb-2 text-muted-foreground/60 ml-1">{group}</p>
-                        <div className="rounded-xl border border-border bg-background overflow-hidden shadow-sm divide-y divide-border">
-                          {chs.map((c) => {
-                            const active = method === c.code;
-                            return (
-                              <button
-                                key={c.code}
-                                onClick={() => setMethod(c.code)}
-                                className={cn(
-                                  "w-full flex items-center justify-between p-4 transition-all text-left hover:bg-muted/50",
-                                  active && "bg-primary/5"
-                                )}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="h-8 w-8 rounded-md overflow-hidden flex items-center justify-center flex-shrink-0 bg-white border border-border/50 p-1">
-                                    <img src={c.icon_url} alt={c.name} className="h-full w-full object-contain"
-                                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                                  </div>
-                                  <span className={cn("text-sm font-semibold truncate", active ? "text-primary" : "text-foreground")}>
-                                    {c.name.replace(" Virtual Account", " VA")}
-                                  </span>
-                                </div>
-                                <div className={cn("h-5 w-5 flex-shrink-0 rounded-full border-2 flex items-center justify-center transition-colors", active ? "border-primary" : "border-muted-foreground/30")}>
-                                  {active && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </>
+                    })}
+                  </div>
                 );
               })()}
             </div>
@@ -715,10 +719,16 @@ function TopupSection() {
                   {selectedMethodLabel}
                 </span>
               </div>
+              <div className="flex items-center justify-between mt-4">
+                <span className="text-sm font-medium text-muted-foreground">Biaya Layanan</span>
+                <span className="text-sm font-bold text-foreground">
+                  {adminFee > 0 ? formatRp(adminFee) : "Gratis"}
+                </span>
+              </div>
               <div className="border-t border-dashed border-border pt-4 mt-2" />
               <div className="flex items-center justify-between">
                 <span className="text-base font-bold text-foreground">Total Bayar</span>
-                <span className="text-2xl font-black text-foreground">{formatRp(resolvedAmount!)}</span>
+                <span className="text-2xl font-black text-foreground">{formatRp(totalPayAmount)}</span>
               </div>
             </div>
 
@@ -737,7 +747,7 @@ function TopupSection() {
               {loading ? (
                 <><Loader2 className="h-5 w-5 animate-spin" /> Memproses Transaksi...</>
               ) : (
-                <>Bayar Sekarang <span className="opacity-60 ml-1">·</span> {formatRp(resolvedAmount!)}</>
+                <>Bayar Sekarang <span className="opacity-60 ml-1">·</span> {formatRp(totalPayAmount)}</>
               )}
             </button>
             <p className="text-[11px] font-medium text-center text-muted-foreground mt-4">
