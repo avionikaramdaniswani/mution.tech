@@ -71,6 +71,18 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   );
 }
 
+function StandaloneProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center bg-background text-foreground">Loading...</div>;
+  }
+
+  if (!user) return <Redirect to="/login" />;
+
+  return <Component />;
+}
+
 function AdminRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
 
@@ -117,7 +129,7 @@ function Router() {
         <Route path="/docs" component={() => <ProtectedRoute component={DocsPage} />} />
         <Route path="/api-usage" component={() => <ProtectedRoute component={ApiUsagePage} />} />
         <Route path="/providers" component={() => <ProtectedRoute component={ProvidersPage} />} />
-        <Route path="/playground" component={() => <ProtectedRoute component={PlaygroundPage} />} />
+        <Route path="/playground" component={() => <StandaloneProtectedRoute component={PlaygroundPage} />} />
         <Route path="/usage" component={() => <ProtectedRoute component={UsagePage} />} />
         <Route path="/github-callback" component={GitHubCallback} />
 

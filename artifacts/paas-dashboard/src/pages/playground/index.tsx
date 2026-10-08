@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bot, FlaskConical, Play, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, ImageIcon } from "lucide-react";
+import { Bot, FlaskConical, Play, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, ImageIcon, PanelLeftClose, PanelLeft, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { csrfFetch } from "@/lib/csrf";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
+import { Link } from "wouter";
 
 type Model = { id: string; label: string; provider: string };
 type ApiKey = { id: number; name: string; keyPrefix: string; isActive: boolean };
@@ -26,6 +28,9 @@ export default function PlaygroundPage() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // UI state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
   // Settings state
   const [keyId, setKeyId] = useState("");
   const [model, setModel] = useState("");
@@ -41,7 +46,6 @@ export default function PlaygroundPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastResult, setLastResult] = useState<Result | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -73,6 +77,8 @@ export default function PlaygroundPage() {
       setKeyId(data.apiKeyId ? String(data.apiKeyId) : "");
       setLastResult(null);
       setSelectedImage(null);
+      // Auto-close sidebar on mobile after selecting chat
+      if (window.innerWidth < 768) setIsSidebarOpen(false);
     } catch {
       toast({ title: "Gagal memuat obrolan", variant: "destructive" });
     } finally {
@@ -118,6 +124,7 @@ export default function PlaygroundPage() {
     setMessages([]);
     setLastResult(null);
     setSelectedImage(null);
+    if (window.innerWidth < 768) setIsSidebarOpen(false);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,7 +185,6 @@ export default function PlaygroundPage() {
         setSessionId(currentId);
       }
 
-      // Build user message content based on whether there's an image
       let userContent: MessageContent = userPrompt;
       if (imageToSend) {
         userContent = [
@@ -247,7 +253,6 @@ export default function PlaygroundPage() {
       
       if (!completed) throw new Error("Koneksi Playground terputus.");
       
-      // Save messages to DB
       if (currentId) {
         await saveMessages(currentId, [...newMessages, { role: "assistant", content: finalContent }]);
       }
@@ -271,15 +276,28 @@ export default function PlaygroundPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex rounded-xl border bg-background shadow-sm overflow-hidden">
-      {/* Left Sidebar: History */}
-      <div className="w-64 border-r bg-muted/20 flex flex-col shrink-0 hidden md:flex">
-        <div className="p-4 border-b">
-          <Button onClick={startNewChat} className="w-full justify-start" variant={sessionId === null ? "default" : "outline"}>
+    <div className="flex h-screen w-screen bg-background overflow-hidden font-sans">
+      
+      {/* Left Sidebar: Collapsible History */}
+      <div className={cn(
+        "flex flex-col border-r bg-muted/10 transition-all duration-300 ease-in-out shrink-0",
+        isSidebarOpen ? "w-72" : "w-0 overflow-hidden border-none"
+      )}>
+        <div className="flex items-center justify-between p-3 border-b shrink-0 min-w-[288px]">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Button onClick={startNewChat} variant="outline" className="flex-1 ml-2 mr-2 bg-background shadow-sm">
             <Plus className="h-4 w-4 mr-2" /> New Chat
           </Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={() => setIsSidebarOpen(false)}>
+            <PanelLeftClose className="h-5 w-5" />
+          </Button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto p-3 space-y-1 min-w-[288px]">
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">Riwayat Percakapan</div>
           {sessions.length === 0 ? (
             <div className="text-center p-4 text-xs text-muted-foreground mt-4">Belum ada riwayat</div>
           ) : (
@@ -288,16 +306,16 @@ export default function PlaygroundPage() {
                 key={s.id} 
                 onClick={() => loadSession(s.id)}
                 className={cn(
-                  "group flex items-center justify-between px-3 py-2 text-sm rounded-md cursor-pointer transition-colors",
+                  "group flex items-center justify-between px-3 py-2.5 text-sm rounded-lg cursor-pointer transition-colors",
                   sessionId === s.id ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"
                 )}
               >
-                <div className="flex items-center gap-2 truncate">
+                <div className="flex items-center gap-3 truncate">
                   <MessageSquare className="h-4 w-4 shrink-0" />
                   <span className="truncate">{s.title}</span>
                 </div>
                 <button onClick={(e) => deleteSession(s.id, e)} className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity">
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             ))
@@ -305,50 +323,127 @@ export default function PlaygroundPage() {
         </div>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex items-center justify-between p-4 border-b">
-          <div>
-            <h1 className="flex items-center gap-2 text-lg font-bold"><FlaskConical className="h-5 w-5 text-primary" /> AI Playground</h1>
-          </div>
-          <Button variant={isSettingsOpen ? "secondary" : "outline"} size="sm" onClick={() => setIsSettingsOpen(!isSettingsOpen)}>
-            <Settings2 className="h-4 w-4 mr-2" /> Settings
-          </Button>
-        </div>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 bg-background relative">
+        
+        {/* Top Navigation / Configuration Bar */}
+        <header className="h-14 border-b flex items-center justify-between px-4 bg-background/95 backdrop-blur z-10 shrink-0">
+          <div className="flex items-center gap-2">
+            {!isSidebarOpen && (
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={() => setIsSidebarOpen(true)}>
+                <PanelLeft className="h-5 w-5" />
+              </Button>
+            )}
+            
+            <div className="hidden sm:flex items-center gap-3">
+              {/* API Key Selector */}
+              <Select value={keyId} onValueChange={setKeyId}>
+                <SelectTrigger className="h-9 w-[180px] bg-muted/50 border-0 focus:ring-0 shadow-none text-sm font-medium">
+                  <SelectValue placeholder="Pilih API Key" />
+                </SelectTrigger>
+                <SelectContent>
+                  {keys.filter(k => k.isActive).map(k => <SelectItem key={k.id} value={String(k.id)}>{k.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
 
-        <div className="flex-1 flex flex-col relative min-h-0">
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+              {/* Model Selector */}
+              <Select value={model} onValueChange={setModel}>
+                <SelectTrigger className="h-9 w-[200px] bg-muted/50 border-0 focus:ring-0 shadow-none text-sm font-medium">
+                  <SelectValue placeholder="Pilih Model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
+                  <Settings2 className="h-5 w-5" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Advanced Settings</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  {/* Mobile overrides for API Key & Model */}
+                  <div className="sm:hidden space-y-2">
+                    <Label className="text-xs">API Key</Label>
+                    <Select value={keyId} onValueChange={setKeyId}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih API key" /></SelectTrigger>
+                      <SelectContent>
+                        {keys.filter(k => k.isActive).map(k => <SelectItem key={k.id} value={String(k.id)}>{k.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="sm:hidden space-y-2">
+                    <Label className="text-xs">Model</Label>
+                    <Select value={model} onValueChange={setModel}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih model" /></SelectTrigger>
+                      <SelectContent>
+                        {models.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">System Prompt</Label>
+                    <Textarea value={system} onChange={e => setSystem(e.target.value)} rows={4} className="text-sm resize-none" placeholder="Instruksi untuk AI..." />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Temperature</Label>
+                      <Input type="number" min="0" max="2" step="0.1" value={temperature} onChange={e => setTemperature(e.target.value)} className="h-9" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Max Tokens</Label>
+                      <Input type="number" min="1" max="16384" value={maxTokens} onChange={e => setMaxTokens(e.target.value)} className="h-9" />
+                    </div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </header>
+
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto scroll-smooth">
+          <div className="max-w-4xl mx-auto px-4 py-8 pb-10 space-y-8 min-h-full flex flex-col justify-end">
             {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-60">
-                <Bot className="h-12 w-12 mb-4 text-primary opacity-50" />
-                <p className="text-lg font-medium">Mulai percakapan baru</p>
-                <p className="text-sm">Pilih model yang punya fitur Vision untuk membaca gambar.</p>
+              <div className="flex flex-col items-center justify-center my-auto text-muted-foreground opacity-60">
+                <FlaskConical className="h-16 w-16 mb-4 text-primary opacity-50" />
+                <h2 className="text-2xl font-bold mb-2">AI Playground</h2>
+                <p className="text-center text-sm">Pilih API key dan model di atas, lalu mulai percakapan.</p>
               </div>
             ) : (
               messages.map((msg, idx) => (
-                <div key={idx} className={cn("flex gap-4 max-w-4xl mx-auto", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
+                <div key={idx} className={cn("flex gap-4 w-full", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
                   <div className={cn("h-8 w-8 shrink-0 rounded-full flex items-center justify-center mt-1", msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-orange-100 text-orange-600 dark:bg-orange-900/30")}>
                     {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                   </div>
                   <div className={cn("flex flex-col gap-1 min-w-0 max-w-[85%]", msg.role === "user" ? "items-end" : "items-start")}>
-                    <div className={cn("px-4 py-3 rounded-2xl text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-full", 
+                    <div className={cn("px-5 py-3.5 rounded-3xl text-[15px] leading-relaxed prose prose-sm dark:prose-invert max-w-full", 
                       msg.role === "user" 
-                        ? "bg-primary text-primary-foreground rounded-tr-sm" 
-                        : "bg-muted rounded-tl-sm border"
+                        ? "bg-muted text-foreground rounded-br-sm" 
+                        : "bg-transparent text-foreground"
                     )}>
                       {typeof msg.content === "string" ? (
                         msg.content ? (
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                         ) : (
-                          <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Berpikir...</span>
+                          <span className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Berpikir...</span>
                         )
                       ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                           {msg.content.map((part, i) => (
                             <div key={i}>
                               {part.type === "text" && <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>}
                               {part.type === "image_url" && (
-                                <img src={part.image_url.url} alt="Uploaded content" className="max-w-[240px] rounded-lg shadow-sm border border-primary/20" />
+                                <img src={part.image_url.url} alt="Uploaded" className="max-w-[280px] rounded-xl shadow-sm border border-primary/20" />
                               )}
                             </div>
                           ))}
@@ -361,132 +456,85 @@ export default function PlaygroundPage() {
             )}
             <div ref={messagesEndRef} />
           </div>
-          
-          <div className="p-4 border-t bg-background/95 backdrop-blur">
-            <div className="max-w-4xl mx-auto flex flex-col gap-2 relative">
-              {/* Image Preview Area */}
-              {selectedImage && (
-                <div className="relative inline-block self-start">
-                  <div className="absolute -top-2 -right-2 z-10 bg-background rounded-full p-0.5 shadow-sm border">
-                    <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-destructive hover:text-destructive-foreground" onClick={removeSelectedImage}>
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <img src={selectedImage} alt="Preview" className="h-20 w-auto rounded-lg border object-cover shadow-sm" />
-                </div>
-              )}
-
-              {isUploading && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground self-start mb-1 bg-muted px-3 py-1.5 rounded-full">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Sedang mengupload gambar...
-                </div>
-              )}
-              
-              {/* Input Wrapper */}
-              <div className="relative flex items-end gap-2 bg-muted/50 rounded-xl p-2 border focus-within:ring-1 focus-within:ring-primary/50 transition-shadow">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  className="hidden" 
-                  ref={fileInputRef} 
-                  onChange={handleFileUpload} 
-                />
-                
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={loading || isUploading}
-                >
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-                
-                <Textarea 
-                  placeholder="Kirim pesan... (Shift+Enter baris baru)" 
-                  className="min-h-[36px] max-h-72 w-full resize-none border-0 bg-transparent p-2 focus-visible:ring-0 shadow-none text-sm leading-relaxed"
-                  rows={1} value={input}
-                  onChange={e => {
-                    setInput(e.target.value);
-                    e.target.style.height = 'auto';
-                    e.target.style.height = `${Math.min(e.target.scrollHeight, 288)}px`;
-                  }}
-                  onKeyDown={handleKeyDown} disabled={loading || isUploading}
-                />
-                
-                <Button 
-                  onClick={runChat} 
-                  disabled={(!input.trim() && !selectedImage) || loading || isUploading} 
-                  size="icon" 
-                  className="h-9 w-9 shrink-0 rounded-lg"
-                >
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
+        </div>
+        
+        {/* Input Area */}
+        <div className="px-4 pb-6 pt-2 bg-gradient-to-t from-background via-background to-transparent shrink-0">
+          <div className="max-w-4xl mx-auto flex flex-col gap-2 relative">
             
-            {lastResult && (
-              <div className="max-w-4xl mx-auto mt-3 flex flex-wrap items-center justify-center gap-4 text-[11px] text-muted-foreground font-medium">
-                <span className="flex items-center gap-1"><Timer className="h-3 w-3" /> {lastResult.latencyMs}ms</span>
-                <span className="flex items-center gap-1"><Coins className="h-3 w-3" /> {lastResult.usage.credits ?? "-"} cr</span>
-                <span>{lastResult.usage.totalTokens} tokens (IN: {lastResult.usage.inputTokens} | OUT: {lastResult.usage.outputTokens})</span>
-                {lastResult.finishReason && <span>Status: {lastResult.finishReason}</span>}
+            {/* Image Preview Area */}
+            {selectedImage && (
+              <div className="relative inline-block self-start ml-4 mb-1">
+                <div className="absolute -top-2 -right-2 z-10 bg-background rounded-full p-0.5 shadow-sm border">
+                  <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-destructive hover:text-destructive-foreground" onClick={removeSelectedImage}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+                <img src={selectedImage} alt="Preview" className="h-24 w-auto rounded-xl border object-cover shadow-sm" />
               </div>
             )}
+
+            {isUploading && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground self-start ml-4 mb-2 bg-muted px-3 py-1.5 rounded-full">
+                <Loader2 className="h-3 w-3 animate-spin" /> Sedang mengupload gambar...
+              </div>
+            )}
+            
+            {/* Main Input Box */}
+            <div className="relative flex items-end gap-2 bg-muted/40 rounded-3xl p-2 pl-4 border shadow-sm focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/50 transition-all">
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+              />
+              
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-10 w-10 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground mb-0.5"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading || isUploading}
+                title="Kirim Gambar"
+              >
+                <Paperclip className="h-5 w-5" />
+              </Button>
+              
+              <Textarea 
+                placeholder="Kirim pesan ke AI... (Shift+Enter baris baru)" 
+                className="min-h-[44px] max-h-72 w-full resize-none border-0 bg-transparent py-3 focus-visible:ring-0 shadow-none text-[15px] leading-relaxed scrollbar-hide"
+                rows={1} value={input}
+                onChange={e => {
+                  setInput(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = `${Math.min(e.target.scrollHeight, 288)}px`;
+                }}
+                onKeyDown={handleKeyDown} disabled={loading || isUploading}
+              />
+              
+              <Button 
+                onClick={runChat} 
+                disabled={(!input.trim() && !selectedImage) || loading || isUploading} 
+                size="icon" 
+                className="h-10 w-10 shrink-0 rounded-full mb-0.5 transition-transform active:scale-95"
+              >
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+              </Button>
+            </div>
           </div>
+          
+          {/* Metadata Footer */}
+          {lastResult && (
+            <div className="max-w-4xl mx-auto mt-4 flex flex-wrap items-center justify-center gap-4 text-[11px] text-muted-foreground font-medium opacity-70">
+              <span className="flex items-center gap-1"><Timer className="h-3 w-3" /> {lastResult.latencyMs}ms</span>
+              <span className="flex items-center gap-1"><Coins className="h-3 w-3" /> {lastResult.usage.credits ?? "-"} cr</span>
+              <span>{lastResult.usage.totalTokens} tokens (IN: {lastResult.usage.inputTokens} | OUT: {lastResult.usage.outputTokens})</span>
+              {lastResult.finishReason && <span>Status: {lastResult.finishReason}</span>}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Right Sidebar: Settings */}
-      {isSettingsOpen && (
-        <div className="w-80 shrink-0 border-l bg-muted/10 overflow-y-auto hidden lg:block">
-          <div className="p-5 space-y-5">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-sm">Konfigurasi Model</h3>
-              <Button variant="ghost" size="icon" className="h-6 w-6 lg:hidden" onClick={() => setIsSettingsOpen(false)}><X className="h-4 w-4" /></Button>
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-xs">API Key</Label>
-              <Select value={keyId} onValueChange={setKeyId}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Pilih API key" /></SelectTrigger>
-                <SelectContent className="max-h-[300px] overflow-y-auto">
-                  {keys.filter(k => k.isActive).map(k => <SelectItem key={k.id} value={String(k.id)} className="text-xs">{k.name} · {k.keyPrefix}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-xs flex items-center justify-between">
-                <span>Model</span>
-                <span className="text-[10px] text-muted-foreground flex items-center gap-1"><ImageIcon className="h-3 w-3" /> Vision support req.</span>
-              </Label>
-              <Select value={model} onValueChange={setModel}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Pilih model" /></SelectTrigger>
-                <SelectContent className="max-h-[300px] overflow-y-auto">
-                  {models.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.label} · {m.provider}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-xs">System Prompt</Label>
-              <Textarea value={system} onChange={e => setSystem(e.target.value)} rows={4} className="text-xs resize-none" placeholder="Instruksi untuk AI..." />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-xs">Temperature</Label>
-                <Input type="number" min="0" max="2" step="0.1" value={temperature} onChange={e => setTemperature(e.target.value)} className="h-9 text-xs" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs">Max Tokens</Label>
-                <Input type="number" min="1" max="16384" value={maxTokens} onChange={e => setMaxTokens(e.target.value)} className="h-9 text-xs" />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
