@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bot, FlaskConical, Play, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, ImageIcon, PanelLeftClose, PanelLeft, ArrowLeft } from "lucide-react";
+import { Bot, FlaskConical, Play, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, ImageIcon, PanelLeftClose, PanelLeft, ArrowLeft, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 
 type Model = { id: string; label: string; provider: string };
 type ApiKey = { id: number; name: string; keyPrefix: string; isActive: boolean };
@@ -27,6 +28,7 @@ export default function PlaygroundPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
   
   // UI state
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -77,7 +79,6 @@ export default function PlaygroundPage() {
       setKeyId(data.apiKeyId ? String(data.apiKeyId) : "");
       setLastResult(null);
       setSelectedImage(null);
-      // Auto-close sidebar on mobile after selecting chat
       if (window.innerWidth < 768) setIsSidebarOpen(false);
     } catch {
       toast({ title: "Gagal memuat obrolan", variant: "destructive" });
@@ -276,12 +277,12 @@ export default function PlaygroundPage() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-background overflow-hidden font-sans">
+    <div className="flex h-screen w-screen bg-muted/20 dark:bg-zinc-950 overflow-hidden font-sans">
       
       {/* Left Sidebar: Collapsible History */}
       <div className={cn(
-        "flex flex-col border-r bg-muted/10 transition-all duration-300 ease-in-out shrink-0",
-        isSidebarOpen ? "w-72" : "w-0 overflow-hidden border-none"
+        "flex flex-col bg-background border-r transition-all duration-300 ease-in-out shrink-0 z-20 shadow-sm",
+        isSidebarOpen ? "w-72" : "w-0 overflow-hidden border-none shadow-none"
       )}>
         <div className="flex items-center justify-between p-3 border-b shrink-0 min-w-[288px]">
           <Link href="/dashboard">
@@ -289,15 +290,15 @@ export default function PlaygroundPage() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <Button onClick={startNewChat} variant="outline" className="flex-1 ml-2 mr-2 bg-background shadow-sm">
-            <Plus className="h-4 w-4 mr-2" /> New Chat
+          <Button onClick={startNewChat} variant="default" className="flex-1 ml-2 mr-2 shadow-sm rounded-full">
+            <Plus className="h-4 w-4 mr-2" /> Chat Baru
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={() => setIsSidebarOpen(false)}>
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:bg-muted rounded-full" onClick={() => setIsSidebarOpen(false)}>
             <PanelLeftClose className="h-5 w-5" />
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto p-3 space-y-1 min-w-[288px]">
-          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">Riwayat Percakapan</div>
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2 mt-2">Riwayat Percakapan</div>
           {sessions.length === 0 ? (
             <div className="text-center p-4 text-xs text-muted-foreground mt-4">Belum ada riwayat</div>
           ) : (
@@ -314,7 +315,7 @@ export default function PlaygroundPage() {
                   <MessageSquare className="h-4 w-4 shrink-0" />
                   <span className="truncate">{s.title}</span>
                 </div>
-                <button onClick={(e) => deleteSession(s.id, e)} className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity">
+                <button onClick={(e) => deleteSession(s.id, e)} className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -324,13 +325,13 @@ export default function PlaygroundPage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-background relative">
+      <div className="flex-1 flex flex-col min-w-0 bg-transparent relative">
         
         {/* Top Navigation / Configuration Bar */}
-        <header className="h-14 border-b flex items-center justify-between px-4 bg-background/95 backdrop-blur z-10 shrink-0">
+        <header className="h-14 border-b flex items-center justify-between px-4 bg-background/80 backdrop-blur-md z-10 shrink-0 shadow-sm">
           <div className="flex items-center gap-2">
             {!isSidebarOpen && (
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={() => setIsSidebarOpen(true)}>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground rounded-full" onClick={() => setIsSidebarOpen(true)}>
                 <PanelLeft className="h-5 w-5" />
               </Button>
             )}
@@ -338,53 +339,60 @@ export default function PlaygroundPage() {
             <div className="hidden sm:flex items-center gap-3">
               {/* API Key Selector */}
               <Select value={keyId} onValueChange={setKeyId}>
-                <SelectTrigger className="h-9 w-[180px] bg-muted/50 border-0 focus:ring-0 shadow-none text-sm font-medium">
+                <SelectTrigger className="h-9 w-[180px] bg-muted/50 border-0 focus:ring-1 focus:ring-primary shadow-none text-sm font-medium rounded-full px-4">
                   <SelectValue placeholder="Pilih API Key" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px] overflow-y-auto">
                   {keys.filter(k => k.isActive).map(k => <SelectItem key={k.id} value={String(k.id)}>{k.name}</SelectItem>)}
                 </SelectContent>
               </Select>
 
               {/* Model Selector */}
               <Select value={model} onValueChange={setModel}>
-                <SelectTrigger className="h-9 w-[200px] bg-muted/50 border-0 focus:ring-0 shadow-none text-sm font-medium">
+                <SelectTrigger className="h-9 w-[200px] bg-muted/50 border-0 focus:ring-1 focus:ring-primary shadow-none text-sm font-medium rounded-full px-4">
                   <SelectValue placeholder="Pilih Model" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px] overflow-y-auto">
                   {models.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* Balance Badge */}
+            {user && (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-orange-100/80 text-orange-700 dark:bg-orange-950/50 dark:text-orange-400 rounded-full text-xs font-semibold shadow-sm border border-orange-200/50 dark:border-orange-900/50">
+                <Wallet className="h-3.5 w-3.5" />
+                Rp {user.walletBalance.toLocaleString("id-ID")}
+              </div>
+            )}
+            
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
-                  <Settings2 className="h-5 w-5" />
+                <Button variant="outline" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground rounded-full shadow-sm">
+                  <Settings2 className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Advanced Settings</DialogTitle>
+                  <DialogTitle>Pengaturan Lanjutan</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                  {/* Mobile overrides for API Key & Model */}
                   <div className="sm:hidden space-y-2">
-                    <Label className="text-xs">API Key</Label>
+                    <Label className="text-xs font-medium">API Key</Label>
                     <Select value={keyId} onValueChange={setKeyId}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih API key" /></SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-[250px] overflow-y-auto">
                         {keys.filter(k => k.isActive).map(k => <SelectItem key={k.id} value={String(k.id)}>{k.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="sm:hidden space-y-2">
-                    <Label className="text-xs">Model</Label>
+                    <Label className="text-xs font-medium">Model</Label>
                     <Select value={model} onValueChange={setModel}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih model" /></SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-[250px] overflow-y-auto">
                         {models.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -392,16 +400,16 @@ export default function PlaygroundPage() {
 
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">System Prompt</Label>
-                    <Textarea value={system} onChange={e => setSystem(e.target.value)} rows={4} className="text-sm resize-none" placeholder="Instruksi untuk AI..." />
+                    <Textarea value={system} onChange={e => setSystem(e.target.value)} rows={4} className="text-sm resize-none rounded-xl" placeholder="Instruksi untuk AI..." />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Temperature</Label>
-                      <Input type="number" min="0" max="2" step="0.1" value={temperature} onChange={e => setTemperature(e.target.value)} className="h-9" />
+                      <Input type="number" min="0" max="2" step="0.1" value={temperature} onChange={e => setTemperature(e.target.value)} className="h-9 rounded-lg" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Max Tokens</Label>
-                      <Input type="number" min="1" max="16384" value={maxTokens} onChange={e => setMaxTokens(e.target.value)} className="h-9" />
+                      <Input type="number" min="1" max="16384" value={maxTokens} onChange={e => setMaxTokens(e.target.value)} className="h-9 rounded-lg" />
                     </div>
                   </div>
                 </div>
@@ -411,45 +419,64 @@ export default function PlaygroundPage() {
         </header>
 
         {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto scroll-smooth">
+        <div className="flex-1 overflow-y-auto scroll-smooth pb-4">
           <div className="max-w-4xl mx-auto px-4 py-8 pb-10 space-y-8 min-h-full flex flex-col justify-end">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center my-auto text-muted-foreground opacity-60">
-                <FlaskConical className="h-16 w-16 mb-4 text-primary opacity-50" />
+                <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                  <FlaskConical className="h-10 w-10 text-primary" />
+                </div>
                 <h2 className="text-2xl font-bold mb-2">AI Playground</h2>
                 <p className="text-center text-sm">Pilih API key dan model di atas, lalu mulai percakapan.</p>
               </div>
             ) : (
               messages.map((msg, idx) => (
                 <div key={idx} className={cn("flex gap-4 w-full", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
-                  <div className={cn("h-8 w-8 shrink-0 rounded-full flex items-center justify-center mt-1", msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-orange-100 text-orange-600 dark:bg-orange-900/30")}>
+                  <div className={cn("h-8 w-8 shrink-0 rounded-full flex items-center justify-center shadow-sm border mt-1", 
+                    msg.role === "user" ? "bg-background text-primary border-primary/20" : "bg-primary text-primary-foreground border-transparent"
+                  )}>
                     {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                   </div>
-                  <div className={cn("flex flex-col gap-1 min-w-0 max-w-[85%]", msg.role === "user" ? "items-end" : "items-start")}>
-                    <div className={cn("px-5 py-3.5 rounded-3xl text-[15px] leading-relaxed prose prose-sm dark:prose-invert max-w-full", 
-                      msg.role === "user" 
-                        ? "bg-muted text-foreground rounded-br-sm" 
-                        : "bg-transparent text-foreground"
-                    )}>
-                      {typeof msg.content === "string" ? (
-                        msg.content ? (
+                  
+                  <div className={cn("flex flex-col gap-2 min-w-0 max-w-[85%]", msg.role === "user" ? "items-end" : "items-start")}>
+                    {/* Render Content Array / String correctly without wrapping images in bubbles */}
+                    {typeof msg.content === "string" ? (
+                      msg.content ? (
+                         <div className={cn("px-5 py-3.5 rounded-[1.5rem] text-[15px] leading-relaxed prose prose-sm dark:prose-invert max-w-full shadow-sm", 
+                          msg.role === "user" 
+                            ? "bg-muted border border-border/50 text-foreground rounded-tr-sm" 
+                            : "bg-background border border-border text-foreground rounded-tl-sm"
+                        )}>
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                        ) : (
-                          <span className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Berpikir...</span>
-                        )
-                      ) : (
-                        <div className="space-y-4">
-                          {msg.content.map((part, i) => (
-                            <div key={i}>
-                              {part.type === "text" && <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>}
-                              {part.type === "image_url" && (
-                                <img src={part.image_url.url} alt="Uploaded" className="max-w-[280px] rounded-xl shadow-sm border border-primary/20" />
-                              )}
-                            </div>
-                          ))}
                         </div>
-                      )}
-                    </div>
+                      ) : (
+                        <div className="px-5 py-3.5 rounded-[1.5rem] bg-background border rounded-tl-sm shadow-sm flex items-center gap-2 text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Berpikir...
+                        </div>
+                      )
+                    ) : (
+                      <div className={cn("flex flex-col gap-2 w-full", msg.role === "user" ? "items-end" : "items-start")}>
+                        {msg.content.map((part, i) => {
+                          if (part.type === "image_url") {
+                            return (
+                              <div key={i} className="relative rounded-2xl overflow-hidden shadow-sm border border-border/50 bg-background p-1">
+                                <img src={part.image_url.url} alt="Uploaded content" className="max-w-[280px] rounded-xl object-cover" />
+                              </div>
+                            );
+                          }
+                          if (part.type === "text" && part.text) {
+                            return (
+                              <div key={i} className={cn("px-5 py-3.5 rounded-[1.5rem] text-[15px] leading-relaxed prose prose-sm dark:prose-invert max-w-full shadow-sm", 
+                                msg.role === "user" ? "bg-muted border border-border/50 text-foreground rounded-tr-sm" : "bg-background border border-border text-foreground rounded-tl-sm"
+                              )}>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))
@@ -459,29 +486,31 @@ export default function PlaygroundPage() {
         </div>
         
         {/* Input Area */}
-        <div className="px-4 pb-6 pt-2 bg-gradient-to-t from-background via-background to-transparent shrink-0">
+        <div className="px-4 pb-6 pt-2 shrink-0">
           <div className="max-w-4xl mx-auto flex flex-col gap-2 relative">
             
             {/* Image Preview Area */}
             {selectedImage && (
-              <div className="relative inline-block self-start ml-4 mb-1">
+              <div className="relative inline-block self-start ml-4 mb-2">
                 <div className="absolute -top-2 -right-2 z-10 bg-background rounded-full p-0.5 shadow-sm border">
-                  <Button variant="ghost" size="icon" className="h-5 w-5 rounded-full hover:bg-destructive hover:text-destructive-foreground" onClick={removeSelectedImage}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-destructive hover:text-destructive-foreground" onClick={removeSelectedImage}>
                     <X className="h-3 w-3" />
                   </Button>
                 </div>
-                <img src={selectedImage} alt="Preview" className="h-24 w-auto rounded-xl border object-cover shadow-sm" />
+                <div className="bg-background p-1 rounded-xl shadow-sm border border-border/50">
+                   <img src={selectedImage} alt="Preview" className="h-24 w-auto rounded-lg object-cover" />
+                </div>
               </div>
             )}
 
             {isUploading && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground self-start ml-4 mb-2 bg-muted px-3 py-1.5 rounded-full">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground self-start ml-4 mb-2 bg-background border px-3 py-1.5 rounded-full shadow-sm">
                 <Loader2 className="h-3 w-3 animate-spin" /> Sedang mengupload gambar...
               </div>
             )}
             
             {/* Main Input Box */}
-            <div className="relative flex items-end gap-2 bg-muted/40 rounded-3xl p-2 pl-4 border shadow-sm focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/50 transition-all">
+            <div className="relative flex items-end gap-2 bg-background rounded-3xl p-2 pl-4 border shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50 transition-all">
               <input 
                 type="file" 
                 accept="image/*" 
@@ -517,7 +546,7 @@ export default function PlaygroundPage() {
                 onClick={runChat} 
                 disabled={(!input.trim() && !selectedImage) || loading || isUploading} 
                 size="icon" 
-                className="h-10 w-10 shrink-0 rounded-full mb-0.5 transition-transform active:scale-95"
+                className="h-10 w-10 shrink-0 rounded-full mb-0.5 transition-transform active:scale-95 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
               >
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
               </Button>
