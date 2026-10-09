@@ -135,6 +135,13 @@ export async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: s
       }
     }
 
+    if (claimed.packageId) {
+      await tx
+        .update(creditPackagesTable)
+        .set({ stock: sql`${creditPackagesTable.stock} - 1` })
+        .where(and(eq(creditPackagesTable.id, claimed.packageId), ne(creditPackagesTable.stock, null)));
+    }
+
     return {
       processed: true,
       userId: claimed.userId,
@@ -453,6 +460,10 @@ router.post("/billing/duitku/create", requireAuth, async (req, res): Promise<voi
       res.status(400).json({ error: "Paket tidak tersedia" });
       return;
     }
+    if (pkg.stock !== null && pkg.stock <= 0) {
+      res.status(400).json({ error: "Stok paket habis" });
+      return;
+    }
     amount = pkg.priceIdr;
     creditsAmount = pkg.creditsAmount;
     itemName = `${pkg.name} — ${pkg.creditsAmount.toLocaleString("id-ID")} Kredit Mution`;
@@ -469,6 +480,7 @@ router.post("/billing/duitku/create", requireAuth, async (req, res): Promise<voi
     .insert(paymentOrdersTable)
     .values({
       userId: user.id,
+      packageId: packageId ?? null,
       invoiceNumber,
       amount,
       creditsAmount,
@@ -656,6 +668,10 @@ router.post("/billing/manual-qris/create", requireAuth, async (req, res): Promis
       res.status(400).json({ error: "Paket tidak tersedia" });
       return;
     }
+    if (pkg.stock !== null && pkg.stock <= 0) {
+      res.status(400).json({ error: "Stok paket habis" });
+      return;
+    }
     baseAmount = pkg.priceIdr;
     creditsAmount = pkg.creditsAmount;
   } else {
@@ -682,6 +698,7 @@ router.post("/billing/manual-qris/create", requireAuth, async (req, res): Promis
     .insert(paymentOrdersTable)
     .values({
       userId: user.id,
+      packageId: packageId ?? null,
       invoiceNumber,
       amount,
       creditsAmount,

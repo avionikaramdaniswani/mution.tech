@@ -53,9 +53,13 @@ export interface Announcement {
   title: string;
   content: string;
   type: string;
+  ctaText: string | null;
+  ctaLink: string | null;
   isActive: boolean;
   expiresAt: string | null;
   createdAt: string;
+  reactions?: Record<string, number>;
+  userReactions?: string[];
 }
 
 function useAnnouncements() {
@@ -200,8 +204,48 @@ import ReactMarkdown from "react-markdown";
 import { Info, AlertTriangle, BellRing, Sparkles } from "lucide-react";
 
 function AnnouncementFeed() {
+  const queryClient = useQueryClient();
   const { data: announcements, isLoading } = useAnnouncements();
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
+
+  const toggleReaction = async (annId: number, emoji: string) => {
+    try {
+      const res = await csrfFetch(`/api/announcements/${annId}/react`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emoji }),
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
+        
+        // Optimistic UI update for selected announcement modal
+        if (selectedAnnouncement && selectedAnnouncement.id === annId) {
+          const action = (await res.json()).action;
+          setSelectedAnnouncement(prev => {
+            if (!prev) return prev;
+            const newReactions = { ...(prev.reactions || {}) };
+            let newUserReactions = [...(prev.userReactions || [])];
+            
+            if (action === "added") {
+              newReactions[emoji] = (newReactions[emoji] || 0) + 1;
+              newUserReactions.push(emoji);
+            } else {
+              newReactions[emoji] = Math.max(0, (newReactions[emoji] || 0) - 1);
+              newUserReactions = newUserReactions.filter(e => e !== emoji);
+            }
+            
+            return {
+              ...prev,
+              reactions: newReactions,
+              userReactions: newUserReactions
+            };
+          });
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   if (isLoading) {
     return <Skeleton className="w-full h-[300px] rounded-xl" />;
@@ -280,6 +324,34 @@ function AnnouncementFeed() {
           <div className="py-4 text-sm text-[#526173] prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-orange-600 hover:prose-a:text-orange-500">
             {selectedAnnouncement && <ReactMarkdown>{selectedAnnouncement.content}</ReactMarkdown>}
           </div>
+
+          <div className="pt-2 flex items-center gap-2 flex-wrap">
+            {['👍', '❤️', '🎉', '🚀'].map(emoji => {
+              const count = selectedAnnouncement?.reactions?.[emoji] || 0;
+              const hasReacted = selectedAnnouncement?.userReactions?.includes(emoji);
+              return (
+                <button
+                  key={emoji}
+                  onClick={() => selectedAnnouncement && toggleReaction(selectedAnnouncement.id, emoji)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    hasReacted 
+                      ? 'bg-orange-100 text-orange-700 border border-orange-200' 
+                      : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                  }`}
+                >
+                  <span className="text-sm">{emoji}</span>
+                  {count > 0 && <span>{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+          {selectedAnnouncement?.ctaText && selectedAnnouncement?.ctaLink && (
+            <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+              <Button asChild className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
+                <Link href={selectedAnnouncement.ctaLink}>{selectedAnnouncement.ctaText}</Link>
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

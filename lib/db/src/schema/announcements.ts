@@ -5,6 +5,8 @@ export const announcementsTable = pgTable("announcements", {
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content").notNull(),
   type: varchar("type", { length: 50 }).notNull().default("info"), // 'info', 'warning', 'urgent', 'promo'
+  ctaText: varchar("cta_text", { length: 255 }),
+  ctaLink: text("cta_link"),
   isActive: boolean("is_active").notNull().default(true),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

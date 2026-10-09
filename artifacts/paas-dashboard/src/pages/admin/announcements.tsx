@@ -21,12 +21,14 @@ export default function AdminAnnouncementsPage() {
   
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Announcement | null>(null);
-  const [formData, setFormData] = useState<{ title: string; content: string; type: string; isActive: boolean; expiresAt: string }>({
+  const [formData, setFormData] = useState<{ title: string; content: string; type: string; isActive: boolean; expiresAt: string; ctaText: string; ctaLink: string }>({
     title: "",
     content: "",
     type: "info",
     isActive: true,
     expiresAt: "",
+    ctaText: "",
+    ctaLink: "",
   });
 
   const { data: announcements, isLoading } = useQuery({
@@ -103,6 +105,8 @@ export default function AdminAnnouncementsPage() {
         type: item.type,
         isActive: item.isActive,
         expiresAt: item.expiresAt ? new Date(item.expiresAt).toISOString().slice(0, 16) : "",
+        ctaText: item.ctaText || "",
+        ctaLink: item.ctaLink || "",
       });
     } else {
       setEditingItem(null);
@@ -112,6 +116,8 @@ export default function AdminAnnouncementsPage() {
         type: "info",
         isActive: true,
         expiresAt: "",
+        ctaText: "",
+        ctaLink: "",
       });
     }
     setIsEditorOpen(true);
@@ -240,6 +246,17 @@ export default function AdminAnnouncementsPage() {
                 placeholder="Tulis detail pengumuman di sini..." 
                 className="min-h-[150px]"
               />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Teks Tombol CTA (Opsional)</Label>
+                <Input value={formData.ctaText} onChange={e => setFormData({...formData, ctaText: e.target.value})} placeholder="Contoh: Beli Sekarang" />
+              </div>
+              <div className="space-y-2">
+                <Label>Link Tombol CTA (Opsional)</Label>
+                <Input value={formData.ctaLink} onChange={e => setFormData({...formData, ctaLink: e.target.value})} placeholder="Contoh: /billing" />
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
