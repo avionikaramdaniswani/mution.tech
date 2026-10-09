@@ -308,6 +308,35 @@ function AnnouncementFeed() {
               <div className="text-xs text-[#526173] prose prose-sm max-w-none prose-p:leading-relaxed prose-a:text-orange-600 hover:prose-a:text-orange-500 line-clamp-3">
                 <ReactMarkdown>{ann.content}</ReactMarkdown>
               </div>
+              
+              {/* Reactions summary on card */}
+              {['👍', '❤️', '🎉', '🚀'].some(e => (ann.reactions?.[e] || 0) > 0) && (
+                <div className="mt-3 pt-3 border-t border-slate-100/50 flex flex-wrap gap-1.5">
+                  {['👍', '❤️', '🎉', '🚀']
+                    .filter(emoji => (ann.reactions?.[emoji] || 0) > 0)
+                    .map(emoji => {
+                      const count = ann.reactions?.[emoji] || 0;
+                      const hasReacted = ann.userReactions?.includes(emoji);
+                      return (
+                        <button
+                          key={emoji}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleReaction(ann.id, emoji);
+                          }}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${
+                            hasReacted 
+                              ? 'bg-orange-100 text-orange-700 border border-orange-200' 
+                              : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <span>{emoji}</span>
+                          <span>{count}</span>
+                        </button>
+                      );
+                    })}
+                </div>
+              )}
             </CardContent>
           </Card>
         );

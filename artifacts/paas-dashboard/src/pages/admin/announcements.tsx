@@ -212,7 +212,7 @@ export default function AdminAnnouncementsPage() {
       </div>
 
       <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingItem ? 'Edit Pengumuman' : 'Pengumuman Baru'}</DialogTitle>
             <DialogDescription>Pengumuman yang aktif akan muncul di dashboard user.</DialogDescription>
