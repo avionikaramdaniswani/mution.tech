@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Highlight, themes } from "prism-react-renderer";
 import { renderAsync } from "docx-preview";
-import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet, FileText, FileCode, Download, Square, ArrowDown, Copy, Check, Code2, Pencil, MoreVertical, FolderOpen, Eye, ZoomIn, ZoomOut, Printer, Sparkles, GraduationCap, ArrowUpRight } from "lucide-react";
+import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet, FileText, FileCode, Download, Square, ArrowDown, Copy, Check, Code2, Pencil, MoreVertical, FolderOpen, Eye, ZoomIn, ZoomOut, Printer, Sparkles, GraduationCap, ArrowUpRight, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -260,91 +260,93 @@ const markdownComponents = {
 function DocxViewer({
   url,
   textFallback,
-  zoom,
 }: {
   url: string;
   textFallback?: string;
-  zoom: number;
+  zoom?: number;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [viewerMode, setViewerMode] = useState<"office" | "google" | "text">("office");
+  const [iframeLoading, setIframeLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(null);
+  // Online viewer URLs
+  const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+  const googleUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
 
-    async function loadDocx() {
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Gagal mengunduh berkas dokumen");
-        const blob = await res.blob();
-        if (!active || !containerRef.current) return;
-
-        containerRef.current.innerHTML = "";
-
-        await renderAsync(blob, containerRef.current, undefined, {
-          inWrapper: true,
-          ignoreWidth: false,
-          ignoreHeight: false,
-          breakPages: true,
-          className: "docx",
-        });
-      } catch (err: any) {
-        console.error("Docx render error:", err);
-        if (active) setError(err?.message || "Gagal menampilkan dokumen docx");
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-
-    loadDocx();
-    return () => {
-      active = false;
-    };
-  }, [url]);
-
-  if (loading) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-12 text-muted-foreground bg-slate-100/70">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm font-medium text-foreground">Menyiapkan lembaran dokumen WPS Office...</p>
-        <p className="text-xs text-muted-foreground">Menata margin, tata letak halaman, font, dan tabel</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex-1 w-full min-h-0 overflow-y-auto bg-slate-200/70 p-4 sm:p-8 flex flex-col items-center printable-document-content">
-        {textFallback ? (
-          <div
-            style={{
-              zoom: `${zoom}%`,
-            }}
-            className="printable-document-sheet bg-white shadow-xl border border-slate-300/80 rounded-sm w-full max-w-[850px] min-h-[950px] my-4 p-8 sm:p-14 text-slate-800 font-serif leading-relaxed text-[15px] whitespace-pre-wrap selection:bg-primary/20"
-          >
-            {textFallback}
-          </div>
-        ) : (
-          <div className="text-center text-muted-foreground py-12">
-            <p className="text-sm text-destructive">{error}</p>
-          </div>
-        )}
-      </div>
-    );
-  }
+  const currentIframeSrc = viewerMode === "office" ? officeUrl : googleUrl;
 
   return (
-    <div className="flex-1 w-full min-h-0 overflow-y-auto bg-slate-200/70 p-4 sm:p-8 flex justify-center scrollbar-thin docx-preview-wrapper printable-document-content">
-      <div
-        ref={containerRef}
-        style={{
-          zoom: `${zoom}%`,
-        }}
-        className="w-full flex flex-col items-center my-4"
-      />
+    <div className="flex-1 w-full h-full min-h-0 flex flex-col bg-slate-100 overflow-hidden relative">
+      {/* Switcher bar: Memudahkan pengguna berpindah engine penampil jika salah satu lambat */}
+      <div className="flex items-center justify-between px-4 py-1.5 bg-slate-200/80 border-b text-xs text-muted-foreground shrink-0">
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-foreground">Penampil Dokumen:</span>
+          <button
+            type="button"
+            onClick={() => { setViewerMode("office"); setIframeLoading(true); }}
+            className={`px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-colors ${
+              viewerMode === "office" ? "bg-white text-primary shadow-2xs font-semibold" : "hover:text-foreground text-muted-foreground"
+            }`}
+          >
+            Microsoft Word Online
+          </button>
+          <button
+            type="button"
+            onClick={() => { setViewerMode("google"); setIframeLoading(true); }}
+            className={`px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-colors ${
+              viewerMode === "google" ? "bg-white text-primary shadow-2xs font-semibold" : "hover:text-foreground text-muted-foreground"
+            }`}
+          >
+            Google Docs
+          </button>
+          {textFallback && (
+            <button
+              type="button"
+              onClick={() => setViewerMode("text")}
+              className={`px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-colors ${
+                viewerMode === "text" ? "bg-white text-primary shadow-2xs font-semibold" : "hover:text-foreground text-muted-foreground"
+              }`}
+            >
+              Mode Lembaran Teks
+            </button>
+          )}
+        </div>
+
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[11px] hover:text-primary transition-colors flex items-center gap-1"
+          title="Buka dokumen di tab terpisah"
+        >
+          <span>Buka di Tab Baru</span>
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      </div>
+
+      {viewerMode === "text" && textFallback ? (
+        <div className="flex-1 w-full min-h-0 overflow-y-auto bg-slate-200/70 p-4 sm:p-8 flex flex-col items-center printable-document-content">
+          <div className="printable-document-sheet bg-white shadow-xl border border-slate-300/80 rounded-sm w-full max-w-[850px] min-h-[950px] my-4 p-8 sm:p-14 text-slate-800 font-serif leading-relaxed text-[15px] whitespace-pre-wrap selection:bg-primary/20">
+            {textFallback}
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 w-full h-full relative overflow-hidden bg-white">
+          {iframeLoading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-50/90 z-10 text-muted-foreground">
+              <Loader2 className="h-7 w-7 animate-spin text-primary" />
+              <p className="text-xs font-medium text-foreground">
+                Menghubungkan ke {viewerMode === "office" ? "Microsoft Word Online" : "Google Docs Viewer"}...
+              </p>
+            </div>
+          )}
+          <iframe
+            src={currentIframeSrc}
+            title="Office Document Preview"
+            className="w-full h-full border-0 bg-white"
+            onLoad={() => setIframeLoading(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
