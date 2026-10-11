@@ -49,7 +49,7 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
   res.flushHeaders();
   res.write(": connected\n\n");
   const heartbeat = setInterval(() => res.write(": heartbeat\n\n"), 10_000);
-  const send = (event: "result" | "error", data: unknown) => {
+  const send = (event: "result" | "error" | "chunk", data: unknown) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
@@ -84,6 +84,11 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
     let finishReason: string | null = null;
     let usage: any = null;
 
+    // Cancel upstream if client disconnects early (e.g. user clicks Stop)
+    req.on("close", () => {
+      try { reader.cancel(); } catch {}
+    });
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -99,7 +104,10 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
           const delta = chunk.choices?.[0]?.delta;
           const message = chunk.choices?.[0]?.message;
           const text = delta?.content ?? message?.content;
-          if (text) content += text;
+          if (text) {
+            content += text;
+            send("chunk", { text });
+          }
           if (chunk.choices?.[0]?.finish_reason) finishReason = chunk.choices[0].finish_reason;
           if (chunk.usage) usage = chunk.usage;
         } catch { /* skip malformed chunk */ }
