@@ -317,10 +317,7 @@ function DocxViewer({
 
   if (error) {
     return (
-      <div className="flex-1 p-6 sm:p-10 overflow-auto bg-slate-200/70 flex flex-col items-center">
-        <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 mb-4 max-w-2xl text-center">
-          Pratinjau visual penuh tidak dapat dimuat. Menampilkan teks isi dokumen dalam lembaran kertas:
-        </div>
+      <div className="flex-1 p-4 sm:p-8 overflow-auto bg-slate-200/70 flex flex-col items-center printable-document-content">
         {textFallback ? (
           <div
             style={{
@@ -328,7 +325,7 @@ function DocxViewer({
               transformOrigin: "top center",
               transition: "transform 0.15s ease-out",
             }}
-            className="bg-white shadow-xl border border-slate-300/80 rounded-sm w-full max-w-[800px] min-h-[950px] p-8 sm:p-14 text-slate-800 font-serif leading-relaxed text-[15px] whitespace-pre-wrap selection:bg-primary/20"
+            className="printable-document-sheet bg-white shadow-xl border border-slate-300/80 rounded-sm w-full max-w-[800px] min-h-[950px] p-8 sm:p-14 text-slate-800 font-serif leading-relaxed text-[15px] whitespace-pre-wrap selection:bg-primary/20"
           >
             {textFallback}
           </div>
@@ -342,7 +339,7 @@ function DocxViewer({
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-slate-200/70 p-4 sm:p-8 flex justify-center scrollbar-thin docx-preview-wrapper">
+    <div className="flex-1 overflow-auto bg-slate-200/70 p-4 sm:p-8 flex justify-center scrollbar-thin docx-preview-wrapper printable-document-content">
       <div
         ref={containerRef}
         style={{
@@ -366,14 +363,14 @@ function DocumentPaperViewer({
   zoom: number;
 }) {
   return (
-    <div className="flex-1 overflow-auto bg-slate-200/70 p-4 sm:p-8 flex justify-center scrollbar-thin">
+    <div className="flex-1 overflow-auto bg-slate-200/70 p-4 sm:p-8 flex justify-center scrollbar-thin printable-document-content">
       <div
         style={{
           transform: `scale(${zoom / 100})`,
           transformOrigin: "top center",
           transition: "transform 0.15s ease-out",
         }}
-        className="bg-white shadow-xl border border-slate-300/80 rounded-sm w-full max-w-[800px] min-h-[950px] p-8 sm:p-14 text-slate-800 font-serif leading-relaxed text-[15px] whitespace-pre-wrap selection:bg-primary/20"
+        className="printable-document-sheet bg-white shadow-xl border border-slate-300/80 rounded-sm w-full max-w-[800px] min-h-[950px] p-8 sm:p-14 text-slate-800 font-serif leading-relaxed text-[15px] whitespace-pre-wrap selection:bg-primary/20"
       >
         <div className="border-b border-slate-200 pb-4 mb-6 not-prose">
           <h2 className="text-xl font-bold font-sans text-slate-900 tracking-tight">{title}</h2>
@@ -462,6 +459,10 @@ export default function PlaygroundPage() {
   const [isFetchingPreviewText, setIsFetchingPreviewText] = useState(false);
   const [copiedPreviewText, setCopiedPreviewText] = useState(false);
   const [zoom, setZoom] = useState(100);
+
+  useEffect(() => {
+    document.title = "Mution Studio | Mution";
+  }, []);
 
   useEffect(() => {
     setZoom(100);
@@ -1780,12 +1781,12 @@ export default function PlaygroundPage() {
 
       {/* Lightbox / In-App File Preview Modal */}
       <Dialog open={Boolean(previewTarget)} onOpenChange={(open) => !open && setPreviewTarget(null)}>
-        <DialogContent className="sm:max-w-5xl max-w-[96vw] w-full h-[88vh] max-h-[88vh] p-0 flex flex-col gap-0 overflow-hidden bg-background border shadow-2xl rounded-2xl">
+        <DialogContent className="preview-modal-content sm:max-w-5xl max-w-[96vw] w-full h-[88vh] max-h-[88vh] p-0 flex flex-col gap-0 overflow-hidden bg-background border shadow-2xl rounded-2xl">
           {previewTarget && (
             <>
               {/* Preview Header / Office Toolbar */}
-              <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 border-b bg-muted/40 shrink-0 pr-12">
-                <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 border-b bg-muted/40 shrink-0">
+                <div className="flex items-center gap-3 min-w-0 pr-2">
                   <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                     {previewTarget.isImage ? (
                       <Eye className="h-4.5 w-4.5" />
@@ -1905,6 +1906,18 @@ export default function PlaygroundPage() {
                     <Download className="h-3.5 w-3.5 text-primary" />
                     <span>Unduh</span>
                   </a>
+
+                  {/* Integrated Close Button (Replaces default absolute X button) */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted ml-0.5"
+                    onClick={() => setPreviewTarget(null)}
+                    title="Tutup Pratinjau (Esc)"
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Tutup</span>
+                  </Button>
                 </div>
               </div>
 

@@ -361,3 +361,72 @@
     margin-bottom: 16px !important;
   }
 }
+
+/* Hide default absolute DialogPrimitive.Close in preview modal to prevent overlapping */
+.preview-modal-content > button:has(.sr-only),
+.preview-modal-content > [data-radix-collection-item],
+.preview-modal-content > button.absolute.right-4.top-4 {
+  display: none !important;
+}
+
+/* Print mode styling: clean page like MS Word, hide everything else */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide app backdrop and anything outside print target */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Only display the printable document container and its children */
+  .printable-document-content,
+  .printable-document-content * {
+    visibility: visible;
+  }
+
+  .printable-document-content {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    transform: none !important;
+    overflow: visible !important;
+  }
+
+  .printable-document-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    transform: none !important;
+  }
+
+  .docx-preview-wrapper .docx-wrapper > section.docx,
+  .docx-preview-wrapper .docx-wrapper > section {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 auto !important;
+    padding: 20mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    page-break-after: always;
+  }
+
+  @page {
+    margin: 15mm;
+    size: auto;
+  }
+}
