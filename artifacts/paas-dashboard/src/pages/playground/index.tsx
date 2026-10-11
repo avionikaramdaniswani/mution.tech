@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Highlight, themes } from "prism-react-renderer";
-import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet, FileText, FileCode, Download, Square, ArrowDown, Copy, Check, Code2, Pencil, MoreVertical, FolderOpen, Eye } from "lucide-react";
+import { renderAsync } from "docx-preview";
+import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet, FileText, FileCode, Download, Square, ArrowDown, Copy, Check, Code2, Pencil, MoreVertical, FolderOpen, Eye, ZoomIn, ZoomOut, Printer, Sparkles, GraduationCap, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,7 @@ type PreviewTarget = {
   textContent?: string;
   isImage: boolean;
   isPdf: boolean;
+  isDocx: boolean;
 };
 
 function formatFileSize(bytes?: number): string {
@@ -61,15 +63,33 @@ function isPdfFile(mimeType?: string, name?: string): boolean {
   return false;
 }
 
-function isCodeFile(name?: string): boolean {
+function isDocxFile(mimeType?: string, name?: string): boolean {
+  if (name && /\.docx$/i.test(name)) return true;
+  if (mimeType && mimeType.includes("wordprocessingml.document")) return true;
+  return false;
+}
+
+function isSourceCodeFile(name?: string): boolean {
   if (!name) return false;
-  return /\.(js|jsx|ts|tsx|py|html|css|json|yaml|yml|sql|sh|php|java|c|cpp|cs|go|rs|rb|vue|svelte)$/i.test(name);
+  return /\.(js|jsx|ts|tsx|py|html|css|json|yaml|yml|sql|sh|php|java|c|cpp|cs|go|rs|rb|vue|svelte|dockerfile|env|bash|zsh)$/i.test(name);
+}
+
+function isTextDocumentFile(name?: string, mimeType?: string): boolean {
+  if (name && /\.(txt|md|rtf|doc|log|csv)$/i.test(name)) return true;
+  if (mimeType && (mimeType === "text/plain" || mimeType === "application/msword")) return true;
+  return false;
+}
+
+function isCodeFile(name?: string): boolean {
+  return isSourceCodeFile(name);
 }
 
 function isTextLikeFileName(name?: string, mimeType?: string): boolean {
-  if (mimeType && (mimeType.startsWith("text/") || mimeType.includes("json") || mimeType.includes("javascript") || mimeType.includes("xml"))) return true;
-  if (!name) return false;
-  return /\.(txt|md|csv|json|yaml|yml|xml|log|js|jsx|ts|tsx|py|html|css|sql|sh|php|java|c|cpp|cs|go|rs|rb|env|conf|ini|lua|rust|dockerfile|svg)$/i.test(name);
+  if (isDocxFile(mimeType, name)) return true;
+  if (isSourceCodeFile(name)) return true;
+  if (isTextDocumentFile(name, mimeType)) return true;
+  if (mimeType && (mimeType.startsWith("text/") || mimeType.includes("json") || mimeType.includes("javascript"))) return true;
+  return false;
 }
 
 function isTextLikeFile(file: File): boolean {
@@ -95,8 +115,8 @@ function getMessageText(content: MessageContent): string {
   return "";
 }
 
-function getSessionFiles(msgs: Message[]): { url: string; name: string; size?: number; mimeType?: string; isImage: boolean; isPdf: boolean; textContent?: string }[] {
-  const files: { url: string; name: string; size?: number; mimeType?: string; isImage: boolean; isPdf: boolean; textContent?: string }[] = [];
+function getSessionFiles(msgs: Message[]): { url: string; name: string; size?: number; mimeType?: string; isImage: boolean; isPdf: boolean; isDocx: boolean; textContent?: string }[] {
+  const files: { url: string; name: string; size?: number; mimeType?: string; isImage: boolean; isPdf: boolean; isDocx: boolean; textContent?: string }[] = [];
   const seenUrls = new Set<string>();
 
   for (const msg of msgs) {
@@ -110,6 +130,7 @@ function getSessionFiles(msgs: Message[]): { url: string; name: string; size?: n
               name: "Gambar Terlampir",
               isImage: true,
               isPdf: false,
+              isDocx: false,
             });
           }
         } else if (part.type === "file" && part.file?.url) {
@@ -122,6 +143,7 @@ function getSessionFiles(msgs: Message[]): { url: string; name: string; size?: n
               mimeType: part.file.mimeType,
               isImage: isImageFile(part.file.mimeType, part.file.name),
               isPdf: isPdfFile(part.file.mimeType, part.file.name),
+              isDocx: isDocxFile(part.file.mimeType, part.file.name),
               textContent: part.file.textContent,
             });
           }
@@ -235,6 +257,169 @@ const markdownComponents = {
   }
 };
 
+function DocxViewer({
+  url,
+  textFallback,
+  zoom,
+}: {
+  url: string;
+  textFallback?: string;
+  zoom: number;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+
+    async function loadDocx() {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Gagal mengunduh berkas dokumen");
+        const blob = await res.blob();
+        if (!active || !containerRef.current) return;
+
+        containerRef.current.innerHTML = "";
+
+        await renderAsync(blob, containerRef.current, undefined, {
+          inWrapper: true,
+          ignoreWidth: false,
+          ignoreHeight: false,
+          breakPages: true,
+          className: "docx",
+        });
+      } catch (err: any) {
+        console.error("Docx render error:", err);
+        if (active) setError(err?.message || "Gagal menampilkan dokumen docx");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadDocx();
+    return () => {
+      active = false;
+    };
+  }, [url]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-12 text-muted-foreground bg-slate-100/70">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm font-medium text-foreground">Menyiapkan lembaran dokumen WPS Office...</p>
+        <p className="text-xs text-muted-foreground">Menata margin, tata letak halaman, font, dan tabel</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 p-6 sm:p-10 overflow-auto bg-slate-200/70 flex flex-col items-center">
+        <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 mb-4 max-w-2xl text-center">
+          Pratinjau visual penuh tidak dapat dimuat. Menampilkan teks isi dokumen dalam lembaran kertas:
+        </div>
+        {textFallback ? (
+          <div
+            style={{
+              transform: `scale(${zoom / 100})`,
+              transformOrigin: "top center",
+              transition: "transform 0.15s ease-out",
+            }}
+            className="bg-white shadow-xl border border-slate-300/80 rounded-sm w-full max-w-[800px] min-h-[950px] p-8 sm:p-14 text-slate-800 font-serif leading-relaxed text-[15px] whitespace-pre-wrap selection:bg-primary/20"
+          >
+            {textFallback}
+          </div>
+        ) : (
+          <div className="text-center text-muted-foreground py-12">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-auto bg-slate-200/70 p-4 sm:p-8 flex justify-center scrollbar-thin docx-preview-wrapper">
+      <div
+        ref={containerRef}
+        style={{
+          transform: `scale(${zoom / 100})`,
+          transformOrigin: "top center",
+          transition: "transform 0.15s ease-out",
+        }}
+        className="w-full flex flex-col items-center"
+      />
+    </div>
+  );
+}
+
+function DocumentPaperViewer({
+  title,
+  content,
+  zoom,
+}: {
+  title: string;
+  content: string;
+  zoom: number;
+}) {
+  return (
+    <div className="flex-1 overflow-auto bg-slate-200/70 p-4 sm:p-8 flex justify-center scrollbar-thin">
+      <div
+        style={{
+          transform: `scale(${zoom / 100})`,
+          transformOrigin: "top center",
+          transition: "transform 0.15s ease-out",
+        }}
+        className="bg-white shadow-xl border border-slate-300/80 rounded-sm w-full max-w-[800px] min-h-[950px] p-8 sm:p-14 text-slate-800 font-serif leading-relaxed text-[15px] whitespace-pre-wrap selection:bg-primary/20"
+      >
+        <div className="border-b border-slate-200 pb-4 mb-6 not-prose">
+          <h2 className="text-xl font-bold font-sans text-slate-900 tracking-tight">{title}</h2>
+          <p className="text-xs text-slate-500 font-sans mt-1">Format Dokumen Baca (WPS Office Paper View)</p>
+        </div>
+        {content}
+      </div>
+    </div>
+  );
+}
+
+const STARTER_PROMPTS = [
+  {
+    icon: FileText,
+    color: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+    badge: "Dokumen",
+    title: "Analisis & Ringkas Dokumen",
+    desc: "Unggah dokumen DOCX/PDF dan minta AI menganalisis poin penting atau intisari data.",
+    prompt: "Tolong analisis dan jelaskan poin-poin penting serta kesimpulan dari topik ini secara terstruktur: ",
+  },
+  {
+    icon: Code2,
+    color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+    badge: "Coding",
+    title: "Tulis & Debug Kode",
+    desc: "Bantu buat fungsi baru, optimasi algoritma, atau pecahkan error TypeScript/Python.",
+    prompt: "Bantu saya membuat fungsi yang bersih, aman, dan efisien untuk kebutuhan berikut: ",
+  },
+  {
+    icon: GraduationCap,
+    color: "text-blue-500 bg-blue-500/10 border-blue-500/20",
+    badge: "Akademik",
+    title: "Bantuan Akademik & Skripsi",
+    desc: "Poles tata bahasa ilmiah, rumuskan hipotesis, atau susun tinjauan literatur.",
+    prompt: "Tolong bantu perbaiki dan poles kalimat paragraf berikut agar sesuai dengan kaidah penulisan ilmiah: ",
+  },
+  {
+    icon: Sparkles,
+    color: "text-purple-500 bg-purple-500/10 border-purple-500/20",
+    badge: "Brainstorm",
+    title: "Brainstorming & Strategi",
+    desc: "Kembangkan ide inovatif, kerangka strategi bisnis, atau rencana peluncuran proyek.",
+    prompt: "Berikan 5 ide kreatif beserta rencana aksi praktis dan sistematis untuk topik ini: ",
+  },
+];
+
 export default function PlaygroundPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -272,9 +457,26 @@ export default function PlaygroundPage() {
   const [isFileSheetOpen, setIsFileSheetOpen] = useState(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [renameDialogTitle, setRenameDialogTitle] = useState("");
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
   const [isFetchingPreviewText, setIsFetchingPreviewText] = useState(false);
   const [copiedPreviewText, setCopiedPreviewText] = useState(false);
+  const [zoom, setZoom] = useState(100);
+
+  useEffect(() => {
+    setZoom(100);
+  }, [previewTarget?.url]);
+
+  const handleSelectStarterPrompt = (promptText: string) => {
+    setInput(promptText);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.selectionStart = textareaRef.current.value.length;
+        textareaRef.current.selectionEnd = textareaRef.current.value.length;
+      }
+    }, 50);
+  };
 
   useEffect(() => {
     if (
@@ -300,9 +502,11 @@ export default function PlaygroundPage() {
     }
   }, [previewTarget?.url]);
 
-  const handleOpenPreview = (file: { url: string; name: string; size?: number; mimeType?: string; isImage?: boolean; isPdf?: boolean; textContent?: string }) => {
+  const handleOpenPreview = (file: { url: string; name: string; size?: number; mimeType?: string; isImage?: boolean; isPdf?: boolean; isDocx?: boolean; textContent?: string }) => {
     const isImg = file.isImage ?? isImageFile(file.mimeType, file.name);
     const isPdf = file.isPdf ?? isPdfFile(file.mimeType, file.name);
+    const isDocx = file.isDocx ?? isDocxFile(file.mimeType, file.name);
+    setZoom(100);
     setPreviewTarget({
       url: file.url,
       name: file.name,
@@ -311,6 +515,7 @@ export default function PlaygroundPage() {
       textContent: file.textContent,
       isImage: isImg,
       isPdf: isPdf,
+      isDocx: isDocx,
     });
   };
 
@@ -323,6 +528,7 @@ export default function PlaygroundPage() {
       mimeType: att.mimeType,
       isImage: isImageFile(att.mimeType, att.name),
       isPdf: isPdfFile(att.mimeType, att.name),
+      isDocx: isDocxFile(att.mimeType, att.name),
       textContent: att.textContent,
     }))
   ].filter((f, idx, arr) => arr.findIndex(x => x.url === f.url) === idx);
@@ -386,6 +592,20 @@ export default function PlaygroundPage() {
   const { data: models = [] } = useQuery<Model[]>({ queryKey: ["catalog"], queryFn: async () => { const r = await fetch("/api/catalog"); if (!r.ok) throw new Error(); return r.json(); } });
   const { data: keys = [] } = useQuery<ApiKey[]>({ queryKey: ["api-keys"], queryFn: async () => { const r = await fetch("/api/api-keys", { credentials: "include" }); if (!r.ok) throw new Error(); return r.json(); } });
   const { data: sessions = [] } = useQuery<Session[]>({ queryKey: ["playground-sessions"], queryFn: async () => { const r = await fetch("/api/playground/sessions", { credentials: "include" }); if (!r.ok) throw new Error(); return r.json(); } });
+
+  // Auto-select active API key and default model if not set
+  useEffect(() => {
+    if (!keyId && keys.length > 0) {
+      const activeKey = keys.find(k => k.isActive) || keys[0];
+      if (activeKey) setKeyId(String(activeKey.id));
+    }
+  }, [keys, keyId]);
+
+  useEffect(() => {
+    if (!model && models.length > 0) {
+      setModel(models[0].id);
+    }
+  }, [models, model]);
 
   const handleScroll = () => {
     const container = scrollContainerRef.current;
@@ -942,6 +1162,7 @@ export default function PlaygroundPage() {
               </Button>
             )}
             
+            {/* Desktop API Key, Model & Settings */}
             <div className="hidden sm:flex items-center gap-3">
               {/* API Key Selector */}
               <Select value={keyId} onValueChange={setKeyId}>
@@ -963,87 +1184,34 @@ export default function PlaygroundPage() {
                 </SelectContent>
               </Select>
 
-              {/* Pengaturan Lanjutan: Tepat di samping pilihan model */}
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted" title="Pengaturan Lanjutan Model (Prompt, Temperature, Tokens)">
-                    <Settings2 className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Pengaturan Lanjutan Model</DialogTitle>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="sm:hidden space-y-2">
-                      <Label className="text-xs font-medium">API Key</Label>
-                      <Select value={keyId} onValueChange={setKeyId}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih API key" /></SelectTrigger>
-                        <SelectContent className="max-h-[250px] overflow-y-auto">
-                          {keys.filter(k => k.isActive).map(k => <SelectItem key={k.id} value={String(k.id)}>{k.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="sm:hidden space-y-2">
-                      <Label className="text-xs font-medium">Model</Label>
-                      <Select value={model} onValueChange={setModel}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih model" /></SelectTrigger>
-                        <SelectContent className="max-h-[250px] overflow-y-auto">
-                          {models.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">System Prompt</Label>
-                      <Textarea value={system} onChange={e => setSystem(e.target.value)} rows={4} className="text-sm resize-none rounded-xl" placeholder="Instruksi untuk AI..." />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Temperature</Label>
-                        <Input 
-                          type="text" 
-                          inputMode="decimal" 
-                          placeholder="0.7" 
-                          value={temperature} 
-                          onChange={e => setTemperature(e.target.value.replace(",", "."))} 
-                          className="h-9 rounded-lg" 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Max Tokens</Label>
-                        <Input 
-                          type="number" 
-                          min="1" 
-                          max="65536" 
-                          placeholder="8192" 
-                          value={maxTokens} 
-                          onChange={e => setMaxTokens(e.target.value)} 
-                          className="h-9 rounded-lg" 
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              {/* Pengaturan Lanjutan (Desktop Icon Button) */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted" 
+                title="Pengaturan Lanjutan Model (Prompt, Temperature, Tokens)"
+                onClick={() => setIsSettingsDialogOpen(true)}
+              >
+                <Settings2 className="h-4 w-4" />
+              </Button>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Balance Badge */}
+            {/* Balance Badge (Visible on Mobile & Desktop) */}
             {user && (
               <div
-                className="hidden sm:flex cursor-pointer items-center gap-1.5 rounded-full border border-[#dbe8f3] bg-[#f8fbff]/90 px-3 py-1.5 transition-colors hover:border-[#c9d8e7] hover:bg-[#eef8ff] dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-muted/40 shadow-sm"
+                className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[#dbe8f3] bg-[#f8fbff]/90 px-2.5 sm:px-3 py-1 sm:py-1.5 transition-colors hover:border-[#c9d8e7] hover:bg-[#eef8ff] dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-muted/40 shadow-sm"
                 title="Kredit kamu"
               >
                 <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-semibold tabular-nums" style={{ color: creditColor(user?.credits) }}>
+                <span className="text-[11px] sm:text-xs font-semibold tabular-nums" style={{ color: creditColor(user?.credits) }}>
                   {formatCredits(user?.credits)}
                 </span>
               </div>
             )}
             
-            {/* 3-Dot More Menu: Rename, View Files, Delete */}
+            {/* 3-Dot More Menu: Settings, Rename, View Files, Delete */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted" title="Pilihan obrolan">
@@ -1051,6 +1219,15 @@ export default function PlaygroundPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl shadow-lg border">
+                {/* Pengaturan Lanjutan di Titik 3 (Khusus Android/Mobile mudah diakses) */}
+                <DropdownMenuItem 
+                  onClick={() => setIsSettingsDialogOpen(true)} 
+                  className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg cursor-pointer"
+                >
+                  <Settings2 className="h-4 w-4 text-muted-foreground" />
+                  <span>Pengaturan Lanjutan</span>
+                </DropdownMenuItem>
+
                 <DropdownMenuItem 
                   onClick={openRenameDialog} 
                   className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg cursor-pointer"
@@ -1088,16 +1265,138 @@ export default function PlaygroundPage() {
           </div>
         </header>
 
+        {/* Mobile Sub-Header: API Key & Model Selectors side-by-side (Android/Mobile) */}
+        <div className="sm:hidden flex items-center gap-2 px-3 py-2 border-b bg-background/95 backdrop-blur-md shrink-0 shadow-2xs">
+          <div className="flex-1 min-w-0">
+            <Select value={keyId} onValueChange={setKeyId}>
+              <SelectTrigger className="h-8 w-full bg-muted/50 border-0 focus:ring-1 focus:ring-primary shadow-none text-xs font-medium rounded-full px-3 truncate">
+                <SelectValue placeholder="Pilih API Key" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px] overflow-y-auto">
+                {keys.filter(k => k.isActive).map(k => <SelectItem key={k.id} value={String(k.id)}>{k.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1 min-w-0">
+            <Select value={model} onValueChange={setModel}>
+              <SelectTrigger className="h-8 w-full bg-muted/50 border-0 focus:ring-1 focus:ring-primary shadow-none text-xs font-medium rounded-full px-3 truncate">
+                <SelectValue placeholder="Pilih Model" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px] overflow-y-auto">
+                {models.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Pengaturan Lanjutan Model Dialog (Desktop & Android) */}
+        <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Pengaturan Lanjutan Model</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">API Key</Label>
+                <Select value={keyId} onValueChange={setKeyId}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih API key" /></SelectTrigger>
+                  <SelectContent className="max-h-[250px] overflow-y-auto">
+                    {keys.filter(k => k.isActive).map(k => <SelectItem key={k.id} value={String(k.id)}>{k.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Model</Label>
+                <Select value={model} onValueChange={setModel}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih model" /></SelectTrigger>
+                  <SelectContent className="max-h-[250px] overflow-y-auto">
+                    {models.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">System Prompt</Label>
+                <Textarea value={system} onChange={e => setSystem(e.target.value)} rows={4} className="text-sm resize-none rounded-xl" placeholder="Instruksi untuk AI..." />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Temperature</Label>
+                  <Input 
+                    type="text" 
+                    inputMode="decimal" 
+                    placeholder="0.7" 
+                    value={temperature} 
+                    onChange={e => setTemperature(e.target.value.replace(",", "."))} 
+                    className="h-9 rounded-lg" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Max Tokens</Label>
+                  <Input 
+                    type="number" 
+                    min="1" 
+                    max="65536" 
+                    placeholder="8192" 
+                    value={maxTokens} 
+                    onChange={e => setMaxTokens(e.target.value)} 
+                    className="h-9 rounded-lg" 
+                  />
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Chat Messages */}
         <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto pb-4">
           <div className="max-w-4xl mx-auto px-4 py-8 pb-10 space-y-8 min-h-full flex flex-col justify-end">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center my-auto text-muted-foreground opacity-60">
-                <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-                  <FlaskConical className="h-10 w-10 text-primary" />
+              <div className="my-auto py-6 sm:py-8 flex flex-col items-center max-w-2xl mx-auto w-full">
+                {/* Hero Greeting */}
+                <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-gradient-to-tr from-primary/20 via-primary/10 to-amber-500/20 border border-primary/25 shadow-sm flex items-center justify-center mb-4 sm:mb-5">
+                  <Sparkles className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
                 </div>
-                <h2 className="text-2xl font-bold mb-2">AI Playground</h2>
-                <p className="text-center text-sm">Pilih API key dan model di atas, lalu mulai percakapan.</p>
+                
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-center text-foreground mb-1.5 sm:mb-2">
+                  {user?.name ? `Halo, ${user.name.split(" ")[0]}!` : "Halo!"} Ada yang bisa saya bantu?
+                </h2>
+                <p className="text-xs sm:text-sm text-center text-muted-foreground max-w-md mb-6 sm:mb-8">
+                  Pilih salah satu kartu ide di bawah ini atau ketik langsung pesan Anda untuk memulai percakapan cerdas.
+                </p>
+
+                {/* Grid Starter Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                  {STARTER_PROMPTS.map((card, idx) => {
+                    const Icon = card.icon;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleSelectStarterPrompt(card.prompt)}
+                        className="group text-left p-3.5 sm:p-4 rounded-xl border border-border/80 bg-card hover:bg-accent/40 hover:border-primary/40 hover:shadow-sm transition-all duration-200 flex flex-col justify-between"
+                      >
+                        <div className="flex items-start justify-between w-full mb-2.5">
+                          <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center border", card.color)}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <span className="text-[11px] font-medium text-muted-foreground/80 flex items-center gap-0.5 group-hover:text-primary transition-colors">
+                            {card.badge}
+                            <ArrowUpRight className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                          </span>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 mb-1">
+                            {card.title}
+                          </h3>
+                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                            {card.desc}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               messages.map((msg, idx) => {
@@ -1481,16 +1780,18 @@ export default function PlaygroundPage() {
 
       {/* Lightbox / In-App File Preview Modal */}
       <Dialog open={Boolean(previewTarget)} onOpenChange={(open) => !open && setPreviewTarget(null)}>
-        <DialogContent className="sm:max-w-4xl max-w-[95vw] w-full h-[85vh] max-h-[85vh] p-0 flex flex-col gap-0 overflow-hidden bg-background border shadow-2xl rounded-2xl">
+        <DialogContent className="sm:max-w-5xl max-w-[96vw] w-full h-[88vh] max-h-[88vh] p-0 flex flex-col gap-0 overflow-hidden bg-background border shadow-2xl rounded-2xl">
           {previewTarget && (
             <>
-              {/* Preview Header */}
-              <div className="flex items-center justify-between px-5 py-3 border-b bg-muted/40 shrink-0 pr-12">
+              {/* Preview Header / Office Toolbar */}
+              <div className="flex items-center justify-between px-4 sm:px-5 py-2.5 border-b bg-muted/40 shrink-0 pr-12">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                     {previewTarget.isImage ? (
                       <Eye className="h-4.5 w-4.5" />
-                    ) : isCodeFile(previewTarget.name) ? (
+                    ) : previewTarget.isDocx ? (
+                      <FileText className="h-4.5 w-4.5 text-blue-600" />
+                    ) : isSourceCodeFile(previewTarget.name) ? (
                       <FileCode className="h-4.5 w-4.5" />
                     ) : (
                       <FileText className="h-4.5 w-4.5" />
@@ -1504,13 +1805,58 @@ export default function PlaygroundPage() {
                       {previewTarget.size ? <span>{formatFileSize(previewTarget.size)}</span> : null}
                       {previewTarget.size ? <span>•</span> : null}
                       <span className="uppercase font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground border">
-                        {previewTarget.isImage ? "GAMBAR" : previewTarget.isPdf ? "PDF" : (previewTarget.name.split('.').pop() || "FILE")}
+                        {previewTarget.isImage ? "GAMBAR" : previewTarget.isDocx ? "DOCX" : previewTarget.isPdf ? "PDF" : (previewTarget.name.split('.').pop() || "FILE")}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  {/* Zoom Controls for Documents */}
+                  {(previewTarget.isDocx || previewTarget.isPdf || isTextDocumentFile(previewTarget.name, previewTarget.mimeType) || isSourceCodeFile(previewTarget.name)) && (
+                    <div className="flex items-center gap-0.5 bg-background border rounded-lg p-0.5 px-1 shadow-2xs mr-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground"
+                        onClick={() => setZoom((z) => Math.max(z - 10, 50))}
+                        title="Perkecil (Zoom Out)"
+                      >
+                        <ZoomOut className="h-3.5 w-3.5" />
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => setZoom(100)}
+                        className="text-[11px] font-mono font-medium px-1.5 py-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        title="Reset Zoom (100%)"
+                      >
+                        {zoom}%
+                      </button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground"
+                        onClick={() => setZoom((z) => Math.min(z + 10, 160))}
+                        title="Perbesar (Zoom In)"
+                      >
+                        <ZoomIn className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Print Document */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs gap-1.5 hidden md:inline-flex"
+                    onClick={() => window.print()}
+                    title="Cetak Dokumen"
+                  >
+                    <Printer className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>Cetak</span>
+                  </Button>
+
+                  {/* Copy Text Button */}
                   {previewTarget.textContent && (
                     <Button
                       variant="outline"
@@ -1541,12 +1887,13 @@ export default function PlaygroundPage() {
                       ) : (
                         <>
                           <Copy className="h-3.5 w-3.5" />
-                          <span>Salin Teks</span>
+                          <span className="hidden sm:inline">Salin Teks</span>
                         </>
                       )}
                     </Button>
                   )}
 
+                  {/* Download Button */}
                   <a
                     href={previewTarget.url}
                     download={previewTarget.name}
@@ -1572,18 +1919,24 @@ export default function PlaygroundPage() {
                     />
                   </div>
                 ) : previewTarget.isPdf ? (
-                  <div className="flex-1 w-full h-full bg-muted/10 overflow-hidden">
+                  <div className="flex-1 w-full h-full bg-slate-100 overflow-hidden">
                     <iframe
                       src={previewTarget.url}
                       title={previewTarget.name}
                       className="w-full h-full border-0 bg-white"
                     />
                   </div>
-                ) : isTextLikeFileName(previewTarget.name, previewTarget.mimeType) ? (
+                ) : previewTarget.isDocx ? (
+                  <DocxViewer
+                    url={previewTarget.url}
+                    textFallback={previewTarget.textContent}
+                    zoom={zoom}
+                  />
+                ) : isSourceCodeFile(previewTarget.name) ? (
                   isFetchingPreviewText ? (
                     <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-muted-foreground">
                       <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                      <p className="text-sm">Memuat isi file...</p>
+                      <p className="text-sm">Memuat kode...</p>
                     </div>
                   ) : previewTarget.textContent ? (
                     <div className="flex-1 overflow-auto bg-muted/20 p-4 font-mono text-[13px] leading-relaxed scrollbar-thin">
@@ -1614,17 +1967,26 @@ export default function PlaygroundPage() {
                     </div>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
+                      <FileCode className="h-10 w-10 opacity-40 mb-2" />
+                      <p className="text-sm font-medium text-foreground">File kode kosong atau tidak dapat dimuat</p>
+                    </div>
+                  )
+                ) : isTextDocumentFile(previewTarget.name, previewTarget.mimeType) || previewTarget.textContent ? (
+                  isFetchingPreviewText ? (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-muted-foreground">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      <p className="text-sm">Memuat dokumen...</p>
+                    </div>
+                  ) : previewTarget.textContent ? (
+                    <DocumentPaperViewer
+                      title={previewTarget.name}
+                      content={previewTarget.textContent}
+                      zoom={zoom}
+                    />
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
                       <FileText className="h-10 w-10 opacity-40 mb-2" />
-                      <p className="text-sm font-medium text-foreground">File teks kosong atau tidak dapat dimuat</p>
-                      <a
-                        href={previewTarget.url}
-                        download={previewTarget.name}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs text-primary underline mt-2"
-                      >
-                        Unduh untuk membaca secara manual
-                      </a>
+                      <p className="text-sm font-medium text-foreground">Dokumen kosong atau tidak dapat dimuat</p>
                     </div>
                   )
                 ) : (
