@@ -317,15 +317,13 @@ function DocxViewer({
 
   if (error) {
     return (
-      <div className="flex-1 p-4 sm:p-8 overflow-auto bg-slate-200/70 flex flex-col items-center printable-document-content">
+      <div className="flex-1 w-full min-h-0 overflow-y-auto bg-slate-200/70 p-4 sm:p-8 flex flex-col items-center printable-document-content">
         {textFallback ? (
           <div
             style={{
-              transform: `scale(${zoom / 100})`,
-              transformOrigin: "top center",
-              transition: "transform 0.15s ease-out",
+              zoom: `${zoom}%`,
             }}
-            className="printable-document-sheet bg-white shadow-xl border border-slate-300/80 rounded-sm w-full max-w-[800px] min-h-[950px] p-8 sm:p-14 text-slate-800 font-serif leading-relaxed text-[15px] whitespace-pre-wrap selection:bg-primary/20"
+            className="printable-document-sheet bg-white shadow-xl border border-slate-300/80 rounded-sm w-full max-w-[850px] min-h-[950px] my-4 p-8 sm:p-14 text-slate-800 font-serif leading-relaxed text-[15px] whitespace-pre-wrap selection:bg-primary/20"
           >
             {textFallback}
           </div>
@@ -339,15 +337,13 @@ function DocxViewer({
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-slate-200/70 p-4 sm:p-8 flex justify-center scrollbar-thin docx-preview-wrapper printable-document-content">
+    <div className="flex-1 w-full min-h-0 overflow-y-auto bg-slate-200/70 p-4 sm:p-8 flex justify-center scrollbar-thin docx-preview-wrapper printable-document-content">
       <div
         ref={containerRef}
         style={{
-          transform: `scale(${zoom / 100})`,
-          transformOrigin: "top center",
-          transition: "transform 0.15s ease-out",
+          zoom: `${zoom}%`,
         }}
-        className="w-full flex flex-col items-center"
+        className="w-full flex flex-col items-center my-4"
       />
     </div>
   );
@@ -363,14 +359,12 @@ function DocumentPaperViewer({
   zoom: number;
 }) {
   return (
-    <div className="flex-1 overflow-auto bg-slate-200/70 p-4 sm:p-8 flex justify-center scrollbar-thin printable-document-content">
+    <div className="flex-1 w-full min-h-0 overflow-y-auto bg-slate-200/70 p-4 sm:p-8 flex justify-center scrollbar-thin printable-document-content">
       <div
         style={{
-          transform: `scale(${zoom / 100})`,
-          transformOrigin: "top center",
-          transition: "transform 0.15s ease-out",
+          zoom: `${zoom}%`,
         }}
-        className="printable-document-sheet bg-white shadow-xl border border-slate-300/80 rounded-sm w-full max-w-[800px] min-h-[950px] p-8 sm:p-14 text-slate-800 font-serif leading-relaxed text-[15px] whitespace-pre-wrap selection:bg-primary/20"
+        className="printable-document-sheet bg-white shadow-xl border border-slate-300/80 rounded-sm w-full max-w-[850px] min-h-[950px] my-4 p-8 sm:p-14 text-slate-800 font-serif leading-relaxed text-[15px] whitespace-pre-wrap selection:bg-primary/20"
       >
         <div className="border-b border-slate-200 pb-4 mb-6 not-prose">
           <h2 className="text-xl font-bold font-sans text-slate-900 tracking-tight">{title}</h2>
