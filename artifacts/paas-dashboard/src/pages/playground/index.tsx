@@ -256,29 +256,7 @@ const markdownComponents = {
   }
 };
 
-function splitIntoPages(text: string, charsPerPage = 2200): string[] {
-  if (!text) return [""];
-  const paragraphs = text.split("\n\n");
-  const pages: string[] = [];
-  let currentPage = "";
-
-  for (const para of paragraphs) {
-    if ((currentPage + "\n\n" + para).length > charsPerPage && currentPage.length > 0) {
-      pages.push(currentPage.trim());
-      currentPage = para;
-    } else {
-      currentPage = currentPage ? currentPage + "\n\n" + para : para;
-    }
-  }
-
-  if (currentPage.trim().length > 0) {
-    pages.push(currentPage.trim());
-  }
-
-  return pages.length > 0 ? pages : [text];
-}
-
-function PaginatedDocumentViewer({
+function ContinuousDocumentViewer({
   title,
   content,
   zoom,
@@ -287,38 +265,36 @@ function PaginatedDocumentViewer({
   content: string;
   zoom: number;
 }) {
-  const pages = useMemo(() => splitIntoPages(content), [content]);
-
   return (
-    <div className="flex-1 w-full min-h-0 overflow-y-auto bg-slate-200/80 p-4 sm:p-8 flex flex-col items-center gap-6 scrollbar-thin printable-document-content">
-      {pages.map((pageText, idx) => (
-        <div
-          key={idx}
-          style={{
-            zoom: `${zoom}%`,
-          }}
-          className="printable-document-sheet bg-white shadow-xl border border-slate-300/80 rounded-xs w-full max-w-[850px] min-h-[1100px] p-10 sm:p-16 flex flex-col justify-between text-slate-800 font-serif leading-relaxed text-[15px] selection:bg-primary/20 relative"
-        >
-          {/* Header Lembaran Dokumen */}
-          <div className="border-b border-slate-200/80 pb-3 mb-6 flex items-center justify-between not-prose text-xs text-slate-400 font-sans">
-            <span className="truncate max-w-[450px] font-medium text-slate-500">{title}</span>
-            <span className="text-[11px] uppercase tracking-wider font-mono">Lembar Kerja</span>
+    <div className="flex-1 w-full min-h-0 overflow-y-auto bg-slate-200/75 p-4 sm:p-8 flex justify-center scrollbar-thin">
+      <div
+        style={{
+          zoom: `${zoom}%`,
+        }}
+        className="bg-white shadow-xl border border-slate-300/80 rounded-xs w-full max-w-[850px] min-h-[900px] h-fit my-2 sm:my-4 p-8 sm:p-16 text-slate-800 font-serif leading-relaxed text-[15px] selection:bg-primary/20 flex flex-col"
+      >
+        {/* Header Lembaran Dokumen */}
+        <div className="border-b border-slate-200/90 pb-4 mb-8 not-prose flex items-center justify-between">
+          <div>
+            <h2 className="text-lg sm:text-xl font-bold font-sans text-slate-900 tracking-tight">{title}</h2>
+            <p className="text-xs text-slate-500 font-sans mt-1">Pratinjau Dokumen Naskah (Continuous Document View)</p>
           </div>
-
-          {/* Isi Dokumen per Halaman */}
-          <div className="flex-1 whitespace-pre-wrap leading-relaxed text-slate-800 text-justify text-[14.5px]">
-            {pageText}
-          </div>
-
-          {/* Footer Lembaran Dokumen dengan Nomor Halaman Asli */}
-          <div className="border-t border-slate-200/80 pt-3 mt-8 flex items-center justify-between not-prose text-xs text-slate-400 font-sans">
-            <span className="text-[11px]">Mution Studio Document</span>
-            <span className="font-mono text-slate-600 font-semibold text-[11px] bg-slate-100 px-2 py-0.5 rounded">
-              Halaman {idx + 1} dari {pages.length}
-            </span>
-          </div>
+          <span className="text-[11px] font-mono text-slate-500 uppercase bg-slate-100 px-2 py-0.5 rounded border border-slate-200/60 shrink-0 hidden sm:inline-block">
+            DOCX / TEXT
+          </span>
         </div>
-      ))}
+
+        {/* Isi Naskah Dokumen - Mengalir penuh secara alami */}
+        <div className="flex-1 whitespace-pre-wrap leading-relaxed text-slate-800 text-justify text-[14.5px] pb-8">
+          {content}
+        </div>
+
+        {/* Footer Lembaran Dokumen */}
+        <div className="border-t border-slate-200/80 pt-4 mt-8 flex items-center justify-between not-prose text-xs text-slate-400 font-sans">
+          <span className="text-[11px]">Mution Studio</span>
+          <span className="text-[11px] font-mono text-slate-500">Akhir Dokumen</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1870,7 +1846,7 @@ export default function PlaygroundPage() {
                   </div>
                 ) : previewTarget.isDocx ? (
                   previewTarget.textContent ? (
-                    <PaginatedDocumentViewer
+                    <ContinuousDocumentViewer
                       title={previewTarget.name}
                       content={previewTarget.textContent}
                       zoom={zoom}
@@ -1943,7 +1919,7 @@ export default function PlaygroundPage() {
                       <p className="text-sm">Memuat dokumen...</p>
                     </div>
                   ) : previewTarget.textContent ? (
-                    <PaginatedDocumentViewer
+                    <ContinuousDocumentViewer
                       title={previewTarget.name}
                       content={previewTarget.textContent}
                       zoom={zoom}
