@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet } from "lucide-react";
+import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet, FileText, FileCode, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,12 +18,39 @@ import { formatCredits, creditColor } from "@/components/layout/shared";
 
 type Model = { id: string; label: string; provider: string };
 type ApiKey = { id: number; name: string; keyPrefix: string; isActive: boolean };
-type MessagePart = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
+type AttachedFile = { url: string; name: string; size: number; mimeType: string; textContent?: string };
+type MessagePart = 
+  | { type: "text"; text: string } 
+  | { type: "image_url"; image_url: { url: string } }
+  | { type: "file"; file: { url: string; name: string; size: number; mimeType: string } };
 type MessageContent = string | MessagePart[];
 type Message = { role: "user" | "assistant" | "system"; content: MessageContent; metadata?: { model: string; tokens: number; credits: number | null; latencyMs: number } };
 type Result = { content: string; model: string; finishReason: string | null; usage: { inputTokens: number; outputTokens: number; totalTokens: number; credits: number | null }; latencyMs: number };
 type Session = { id: number; title: string; updatedAt: string };
 type SessionDetail = Session & { model: string; systemPrompt: string; temperature: string; maxTokens: string; apiKeyId: number; messages: Message[] };
+
+function formatFileSize(bytes?: number): string {
+  if (!bytes || bytes <= 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function isImageFile(mimeType?: string, name?: string): boolean {
+  if (mimeType && mimeType.startsWith("image/")) return true;
+  if (name && /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)$/i.test(name)) return true;
+  return false;
+}
+
+function isCodeFile(name?: string): boolean {
+  if (!name) return false;
+  return /\.(js|jsx|ts|tsx|py|html|css|json|yaml|yml|sql|sh|php|java|c|cpp|cs|go|rs|rb|vue|svelte)$/i.test(name);
+}
+
+function isTextLikeFile(file: File): boolean {
+  if (file.type.startsWith("text/")) return true;
+  return /\.(txt|md|csv|json|yaml|yml|xml|log|js|jsx|ts|tsx|py|html|css|sql|sh|php|java|c|cpp|cs|go|rs|rb|env|conf|ini)$/i.test(file.name);
+}
 
 export default function PlaygroundPage() {
   const { toast } = useToast();
@@ -45,7 +72,7 @@ export default function PlaygroundPage() {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<AttachedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastResult, setLastResult] = useState<Result | null>(null);
@@ -63,7 +90,7 @@ export default function PlaygroundPage() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, loading, selectedImage]);
+  }, [messages, loading, attachments]);
 
   const loadSession = async (id: number) => {
     try {
@@ -79,7 +106,7 @@ export default function PlaygroundPage() {
       setMaxTokens(data.maxTokens || "1024");
       setKeyId(data.apiKeyId ? String(data.apiKeyId) : "");
       setLastResult(null);
-      setSelectedImage(null);
+      setAttachments([]);
       if (window.innerWidth < 768) setIsSidebarOpen(false);
     } catch {
       toast({ title: "Gagal memuat obrolan", variant: "destructive" });
@@ -125,37 +152,60 @@ export default function PlaygroundPage() {
     setSessionId(null);
     setMessages([]);
     setLastResult(null);
-    setSelectedImage(null);
+    setAttachments([]);
     if (window.innerWidth < 768) setIsSidebarOpen(false);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
     
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "Ukuran file terlalu besar", description: "Maksimal 5MB", variant: "destructive" });
-      return;
+    for (const file of files) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ title: "Ukuran file terlalu besar", description: `File ${file.name} melebihi batas 10MB`, variant: "destructive" });
+        return;
+      }
     }
     
     try {
       setIsUploading(true);
-      const formData = new FormData();
-      formData.append("file", file);
-      
-      const r = await csrfFetch("/api/playground/upload", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-      
-      if (!r.ok) {
-        const err = await r.json();
-        throw new Error(err.error || "Gagal upload gambar");
+      const uploaded: AttachedFile[] = [];
+
+      for (const file of files) {
+        let textContent: string | undefined = undefined;
+        if (isTextLikeFile(file) && file.size < 500 * 1024) {
+          try {
+            textContent = await file.text();
+          } catch (err) {
+            console.error("Gagal membaca teks file:", err);
+          }
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const r = await csrfFetch("/api/playground/upload", {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        });
+        
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.error || `Gagal upload file ${file.name}`);
+        }
+        
+        const data = await r.json();
+        uploaded.push({
+          url: data.url,
+          name: data.name || file.name,
+          size: data.size || file.size,
+          mimeType: data.mimeType || file.type,
+          textContent,
+        });
       }
-      
-      const data = await r.json();
-      setSelectedImage(data.url);
+
+      setAttachments(prev => [...prev, ...uploaded]);
     } catch (error: any) {
       toast({ title: "Gagal upload", description: error.message, variant: "destructive" });
     } finally {
@@ -164,45 +214,98 @@ export default function PlaygroundPage() {
     }
   };
 
-  const removeSelectedImage = () => {
-    setSelectedImage(null);
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const runChat = async () => {
     const userPrompt = input.trim();
-    if (!keyId || !model || (!userPrompt && !selectedImage)) { 
-      toast({ title: "Pilih API key, model, dan isi pesan/gambar", variant: "destructive" }); return; 
+    if (!keyId || !model || (!userPrompt && attachments.length === 0)) { 
+      toast({ title: "Pilih API key, model, dan isi pesan atau lampirkan file", variant: "destructive" }); return; 
     }
     
     let currentId = sessionId;
     setInput("");
-    const imageToSend = selectedImage;
-    setSelectedImage(null);
+    const attachmentsToSend = [...attachments];
+    setAttachments([]);
     setLoading(true);
     setLastResult(null);
     
     try {
       if (!currentId) {
-        currentId = await createSession(userPrompt || "Gambar Upload");
+        const titleFallback = attachmentsToSend[0]?.name ? `File: ${attachmentsToSend[0].name}` : "Chat Baru";
+        currentId = await createSession(userPrompt || titleFallback);
         setSessionId(currentId);
       }
 
-      let userContent: MessageContent = userPrompt;
-      if (imageToSend) {
-        userContent = [
-          { type: "image_url", image_url: { url: imageToSend } }
-        ];
-        if (userPrompt) {
-          userContent.push({ type: "text", text: userPrompt });
+      // Build content parts for local display & session storage
+      const userParts: MessagePart[] = [];
+      for (const att of attachmentsToSend) {
+        if (isImageFile(att.mimeType, att.name)) {
+          userParts.push({ type: "image_url", image_url: { url: att.url } });
+        } else {
+          userParts.push({
+            type: "file",
+            file: { url: att.url, name: att.name, size: att.size, mimeType: att.mimeType }
+          });
         }
       }
+
+      // Prepare text prompt with file contents for AI understanding
+      let combinedText = userPrompt;
+      const textFiles = attachmentsToSend.filter(a => a.textContent);
+      const otherFiles = attachmentsToSend.filter(a => !isImageFile(a.mimeType, a.name) && !a.textContent);
+
+      let contextAdditions = "";
+      if (textFiles.length > 0) {
+        contextAdditions += textFiles.map(a => `\n\n[Lampiran File: ${a.name}]\n\`\`\`\n${a.textContent}\n\`\`\``).join("\n");
+      }
+      if (otherFiles.length > 0) {
+        contextAdditions += otherFiles.map(a => `\n\n[Lampiran Dokumen: ${a.name} (${a.url})]`).join("\n");
+      }
+
+      if (contextAdditions) {
+        combinedText = combinedText ? `${combinedText}\n${contextAdditions}` : contextAdditions.trim();
+      }
+
+      if (combinedText) {
+        userParts.push({ type: "text", text: combinedText });
+      }
+
+      const userContent: MessageContent = userParts.length === 1 && userParts[0].type === "text"
+        ? userParts[0].text
+        : userParts;
 
       const newMessages: Message[] = [...messages, { role: "user", content: userContent }];
       setMessages(newMessages);
       
+      // Sanitize messages for OpenAI chat completions API upstream
+      const sanitizedMessages = newMessages.map(m => {
+        if (Array.isArray(m.content)) {
+          const validParts: any[] = [];
+          for (const part of m.content) {
+            if (part.type === "image_url") {
+              validParts.push(part);
+            } else if (part.type === "text") {
+              validParts.push(part);
+            } else if (part.type === "file") {
+              validParts.push({
+                type: "text",
+                text: `[File Lampiran: ${part.file.name} (${part.file.url})]`
+              });
+            }
+          }
+          return {
+            role: m.role,
+            content: validParts.length === 1 && validParts[0].type === "text" ? validParts[0].text : validParts
+          };
+        }
+        return { role: m.role, content: m.content };
+      });
+
       const requestMessages = [];
       if (system.trim()) requestMessages.push({ role: "system", content: system.trim() });
-      requestMessages.push(...newMessages);
+      requestMessages.push(...sanitizedMessages);
       
       const r = await csrfFetch("/api/playground/chat", { 
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, 
@@ -279,7 +382,7 @@ export default function PlaygroundPage() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if ((input.trim() || selectedImage) && !loading && !isUploading) runChat();
+      if ((input.trim() || attachments.length > 0) && !loading && !isUploading) runChat();
     }
   };
 
@@ -467,13 +570,42 @@ export default function PlaygroundPage() {
                         </div>
                       )
                     ) : (
-                      <div className={cn("flex flex-col gap-2 w-full", msg.role === "user" ? "items-end" : "items-start")}>
+                      <div className={cn("flex flex-col gap-2.5 w-full", msg.role === "user" ? "items-end" : "items-start")}>
                         {msg.content.map((part, i) => {
                           if (part.type === "image_url") {
                             return (
-                              <div key={i} className="relative rounded-2xl overflow-hidden shadow-sm border border-border/50 bg-background p-1">
-                                <img src={part.image_url.url} alt="Uploaded content" className="max-w-[280px] rounded-xl object-cover" />
+                              <div key={i} className="relative rounded-2xl overflow-hidden shadow-sm border border-border/50 bg-background p-1 max-w-[320px]">
+                                <a href={part.image_url.url} target="_blank" rel="noreferrer" title="Buka gambar penuh">
+                                  <img src={part.image_url.url} alt="Lampiran gambar" className="rounded-xl object-cover hover:opacity-95 transition-opacity" />
+                                </a>
                               </div>
+                            );
+                          }
+                          if (part.type === "file") {
+                            return (
+                              <a
+                                key={i}
+                                href={part.file.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-3 p-3 rounded-2xl border bg-background/95 hover:bg-muted/60 transition-colors shadow-sm max-w-sm group text-foreground"
+                              >
+                                <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                  {isCodeFile(part.file.name) ? <FileCode className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                                    {part.file.name}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <span>{formatFileSize(part.file.size)}</span>
+                                    <span>•</span>
+                                    <span className="flex items-center gap-1 text-[11px] text-primary/80 group-hover:underline">
+                                      <Download className="h-3 w-3" /> Unduh
+                                    </span>
+                                  </div>
+                                </div>
+                              </a>
                             );
                           }
                           if (part.type === "text" && part.text) {
@@ -519,23 +651,44 @@ export default function PlaygroundPage() {
         <div className="px-4 pb-6 pt-2 shrink-0">
           <div className="max-w-4xl mx-auto flex flex-col gap-2 relative">
             
-            {/* Image Preview Area */}
-            {selectedImage && (
-              <div className="relative inline-block self-start ml-4 mb-2">
-                <div className="absolute -top-2 -right-2 z-10 bg-background rounded-full p-0.5 shadow-sm border">
-                  <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-destructive hover:text-destructive-foreground" onClick={removeSelectedImage}>
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-                <div className="bg-background p-1 rounded-xl shadow-sm border border-border/50">
-                   <img src={selectedImage} alt="Preview" className="h-24 w-auto rounded-lg object-cover" />
-                </div>
+            {/* Attachments Preview Area */}
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 ml-3 mb-2">
+                {attachments.map((att, idx) => (
+                  <div key={idx} className="relative group">
+                    <div className="absolute -top-2 -right-2 z-10 bg-background rounded-full p-0.5 shadow-md border">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 rounded-full hover:bg-destructive hover:text-destructive-foreground p-0"
+                        onClick={() => removeAttachment(idx)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    {isImageFile(att.mimeType, att.name) ? (
+                      <div className="bg-background p-1 rounded-xl shadow-sm border border-border/60">
+                        <img src={att.url} alt={att.name} className="h-20 w-20 rounded-lg object-cover" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2.5 px-3 py-2 bg-background rounded-xl border border-border/60 shadow-sm max-w-[220px]">
+                        <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          {isCodeFile(att.name) ? <FileCode className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate">{att.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{formatFileSize(att.size)}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 
             {isUploading && (
               <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground self-start ml-4 mb-2 bg-background border px-3 py-1.5 rounded-full shadow-sm">
-                <Loader2 className="h-3 w-3 animate-spin" /> Sedang mengupload gambar...
+                <Loader2 className="h-3 w-3 animate-spin" /> Sedang mengunggah file...
               </div>
             )}
             
@@ -543,7 +696,8 @@ export default function PlaygroundPage() {
             <div className="relative flex items-end gap-2 bg-background rounded-3xl p-2 pl-4 border shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50 transition-all">
               <input 
                 type="file" 
-                accept="image/*" 
+                multiple
+                accept="image/*,.pdf,.txt,.md,.json,.csv,.py,.js,.ts,.tsx,.jsx,.html,.css,.doc,.docx,.yaml,.yml,.sql,.log" 
                 className="hidden" 
                 ref={fileInputRef} 
                 onChange={handleFileUpload} 
@@ -555,7 +709,7 @@ export default function PlaygroundPage() {
                 className="h-10 w-10 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground mb-0.5"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={loading || isUploading}
-                title="Kirim Gambar"
+                title="Lampirkan File (Gambar, PDF, Dokumen, Kode)"
               >
                 <Paperclip className="h-5 w-5" />
               </Button>
@@ -574,7 +728,7 @@ export default function PlaygroundPage() {
               
               <Button 
                 onClick={runChat} 
-                disabled={(!input.trim() && !selectedImage) || loading || isUploading} 
+                disabled={(!input.trim() && attachments.length === 0) || loading || isUploading} 
                 size="icon" 
                 className="h-10 w-10 shrink-0 rounded-full mb-0.5 transition-transform active:scale-95 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
               >

@@ -7,7 +7,7 @@ import { getConfiguredPublicModelCatalog } from "./v1-proxy";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 
 const router = Router();
@@ -218,7 +218,7 @@ router.delete("/playground/sessions/:id", requireAuth, async (req, res): Promise
   }
 });
 
-// Upload image
+// Upload file / attachment
 router.post("/playground/upload", requireAuth, upload.single("file"), async (req, res): Promise<void> => {
   if (!req.file) { res.status(400).json({ error: "File tidak ditemukan" }); return; }
   const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
@@ -238,9 +238,14 @@ router.post("/playground/upload", requireAuth, upload.single("file"), async (req
     if (error) throw error;
     
     const { data: publicData } = supabase.storage.from("playground").getPublicUrl(fileName);
-    res.json({ url: publicData.publicUrl });
+    res.json({ 
+      url: publicData.publicUrl,
+      name: req.file.originalname,
+      size: req.file.size,
+      mimeType: req.file.mimetype,
+    });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || "Gagal upload gambar" });
+    res.status(500).json({ error: error.message || "Gagal upload file" });
   }
 });
 
