@@ -540,19 +540,32 @@ export default function PlaygroundPage() {
       )}>
         <div className="flex items-center justify-between p-3 border-b shrink-0 min-w-[288px]">
           <Link href="/dashboard">
-            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-muted-foreground hover:text-foreground text-xs font-medium rounded-lg">
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Dashboard</span>
             </Button>
           </Link>
-          <Button onClick={startNewChat} variant="default" className="flex-1 ml-2 mr-2 shadow-sm rounded-full">
-            <Plus className="h-4 w-4 mr-2" /> Chat Baru
-          </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:bg-muted rounded-full" onClick={() => setIsSidebarOpen(false)}>
-            <PanelLeftClose className="h-5 w-5" />
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={() => setIsSidebarOpen(false)} title="Tutup sidebar">
+            <PanelLeftClose className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-1 min-w-[288px]">
-          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2 mt-2">Riwayat Percakapan</div>
+
+        {/* New Chat Button: Model ChatGPT / Claude di atas riwayat chat */}
+        <div className="p-3 pb-1 shrink-0 min-w-[288px]">
+          <Button 
+            onClick={startNewChat} 
+            variant="outline" 
+            className="w-full justify-start gap-2.5 h-10 px-3 rounded-xl border border-border/70 hover:bg-muted text-foreground font-medium text-sm shadow-none transition-colors group"
+          >
+            <div className="h-5 w-5 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+              <Plus className="h-3.5 w-3.5" />
+            </div>
+            <span>Chat Baru</span>
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1 min-w-[288px]">
+          <div className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-2 px-2 mt-1">Riwayat Percakapan</div>
           {sessions.length === 0 ? (
             <div className="text-center p-4 text-xs text-muted-foreground mt-4">Belum ada riwayat</div>
           ) : (
@@ -561,16 +574,18 @@ export default function PlaygroundPage() {
                 key={s.id} 
                 onClick={() => loadSession(s.id)}
                 className={cn(
-                  "group flex items-center justify-between px-3 py-2.5 text-sm rounded-lg cursor-pointer transition-colors",
-                  sessionId === s.id ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"
+                  "group flex items-center justify-between px-3 py-2 text-sm rounded-xl cursor-pointer transition-colors",
+                  sessionId === s.id 
+                    ? "bg-primary/10 text-primary font-medium border border-primary/20" 
+                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
                 )}
               >
-                <div className="flex items-center gap-3 truncate">
-                  <MessageSquare className="h-4 w-4 shrink-0" />
+                <div className="flex items-center gap-2.5 truncate">
+                  <MessageSquare className="h-4 w-4 shrink-0 opacity-70 group-hover:opacity-100" />
                   <span className="truncate">{s.title}</span>
                 </div>
-                <button onClick={(e) => deleteSession(s.id, e)} className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all">
-                  <Trash2 className="h-4 w-4" />
+                <button onClick={(e) => deleteSession(s.id, e)} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all">
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
             ))
@@ -709,7 +724,7 @@ export default function PlaygroundPage() {
                 return (
                   <div key={idx} className={cn("flex gap-4 w-full group", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
                     <div className={cn("h-8 w-8 shrink-0 rounded-full flex items-center justify-center shadow-sm border mt-1", 
-                      msg.role === "user" ? "bg-background text-primary border-primary/20" : "bg-primary text-primary-foreground border-transparent"
+                      msg.role === "user" ? "bg-muted text-muted-foreground border-border" : "bg-primary/10 text-primary border-primary/25"
                     )}>
                       {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                     </div>
@@ -720,7 +735,7 @@ export default function PlaygroundPage() {
                         msg.content ? (
                            <div className={cn("px-5 py-3.5 rounded-[1.5rem] text-[15px] leading-relaxed prose prose-sm dark:prose-invert max-w-full shadow-sm", 
                             msg.role === "user" 
-                              ? "bg-primary text-primary-foreground border-transparent rounded-tr-sm prose-p:text-current prose-headings:text-current prose-strong:text-current prose-code:text-current" 
+                              ? "bg-primary/[0.08] dark:bg-primary/[0.14] border border-primary/20 dark:border-primary/25 text-foreground rounded-tr-sm prose-p:text-foreground prose-headings:text-foreground prose-strong:text-foreground prose-code:text-primary" 
                               : "bg-background border border-border text-foreground rounded-tl-sm"
                           )}>
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
@@ -773,7 +788,7 @@ export default function PlaygroundPage() {
                               return (
                                 <div key={i} className={cn("px-5 py-3.5 rounded-[1.5rem] text-[15px] leading-relaxed prose prose-sm dark:prose-invert max-w-full shadow-sm", 
                                   msg.role === "user" 
-                                    ? "bg-primary text-primary-foreground border-transparent rounded-tr-sm prose-p:text-current prose-headings:text-current prose-strong:text-current prose-code:text-current" 
+                                    ? "bg-primary/[0.08] dark:bg-primary/[0.14] border border-primary/20 dark:border-primary/25 text-foreground rounded-tr-sm prose-p:text-foreground prose-headings:text-foreground prose-strong:text-foreground prose-code:text-primary" 
                                     : "bg-background border border-border text-foreground rounded-tl-sm"
                                 )}>
                                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
@@ -943,7 +958,12 @@ export default function PlaygroundPage() {
                   onClick={runChat} 
                   disabled={(!input.trim() && attachments.length === 0) || isUploading} 
                   size="icon" 
-                  className="h-10 w-10 shrink-0 rounded-full mb-0.5 transition-transform active:scale-95 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                  className={cn(
+                    "h-10 w-10 shrink-0 rounded-full mb-0.5 transition-all active:scale-95 shadow-sm",
+                    input.trim() || attachments.length > 0 
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+                      : "bg-muted text-muted-foreground opacity-60 hover:bg-muted"
+                  )}
                   title="Kirim pesan"
                 >
                   <Send className="h-5 w-5" />
