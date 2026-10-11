@@ -13,9 +13,52 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 
 const router = Router();
 
+function decodeBingUrl(rawUrl: string): string {
+  try {
+    const uMatch = /u=a1([a-zA-Z0-9+/=_-]+)/.exec(rawUrl);
+    if (uMatch) {
+      let b64 = uMatch[1].replace(/-/g, "+").replace(/_/g, "/");
+      while (b64.length % 4 !== 0) b64 += "=";
+      const decoded = Buffer.from(b64, "base64").toString("utf8");
+      if (decoded.startsWith("http")) return decoded;
+    }
+  } catch {}
+  return rawUrl;
+}
+
+async function searchWebBing(query: string): Promise<Array<{ title: string; snippet: string; url: string }>> {
+  try {
+    const res = await fetch(`https://www.bing.com/search?q=${encodeURIComponent(query.trim())}`, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+      },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    const items: Array<{ title: string; snippet: string; url: string }> = [];
+    const regex = /<li class="b_algo"[\s\S]*?<h2><a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a><\/h2>[\s\S]*?<div class="b_caption">([\s\S]*?)<\/div>/g;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(html)) !== null && items.length < 5) {
+      const rawUrl = match[1];
+      const title = match[2].replace(/<[^>]+>/g, "").trim();
+      const snippet = match[3].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+      const url = decodeBingUrl(rawUrl);
+      if (url && (title || snippet)) {
+        items.push({ title, snippet, url });
+      }
+    }
+    return items;
+  } catch (err) {
+    console.error("[Playground] Gagal melakukan web search:", err);
+    return [];
+  }
+}
+
 router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const { keyId, model, messages } = req.body ?? {};
+  const { keyId, model, messages, webSearch } = req.body ?? {};
   if (!Number.isInteger(keyId) || typeof model !== "string" || !model.trim() || !Array.isArray(messages) || messages.length === 0) {
     res.status(400).json({ error: "Konfigurasi playground tidak valid" }); return;
   }
@@ -52,14 +95,51 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
   const send = (event: "result" | "error", data: unknown) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
+
   try {
+    let finalMessages = [...messages];
+    if (webSearch) {
+      // Find latest user query
+      const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+      let queryText = "";
+      if (typeof lastUserMsg?.content === "string") {
+        queryText = lastUserMsg.content;
+      } else if (Array.isArray(lastUserMsg?.content)) {
+        const textPart = lastUserMsg.content.find((p: any) => p.type === "text");
+        queryText = textPart?.text || "";
+      }
+
+      if (queryText.trim()) {
+        const searchResults = await searchWebBing(queryText);
+        if (searchResults.length > 0) {
+          const searchContext = [
+            `[HASIL PENCARIAN WEB REAL-TIME UNTUK QUERY: "${queryText}"]`,
+            ...searchResults.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\nRingkasan: ${r.snippet}`),
+            `\nInstruksi: Gunakan informasi pencarian web di atas untuk menjawab pertanyaan pengguna dengan informasi terkini dan akurat. Sertakan referensi link/sumber jika relevan.`
+          ].join("\n\n");
+
+          if (finalMessages.length > 0 && finalMessages[0].role === "system") {
+            finalMessages[0] = {
+              ...finalMessages[0],
+              content: `${finalMessages[0].content}\n\n${searchContext}`
+            };
+          } else {
+            finalMessages = [
+              { role: "system", content: searchContext },
+              ...finalMessages
+            ];
+          }
+        }
+      }
+    }
+
     const upstream = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${fullKey}` },
       body: JSON.stringify({
         model: model.trim(), temperature: tempVal, max_tokens: tokensVal,
         stream: true, stream_options: { include_usage: true },
-        messages,
+        messages: finalMessages,
       }),
       signal: AbortSignal.timeout(120_000),
     });
@@ -159,6 +239,40 @@ router.get("/playground/sessions/:id", requireAuth, async (req, res): Promise<vo
   }
 });
 
+function extractStorageFileNames(messages: any): string[] {
+  if (!messages) return [];
+  const text = typeof messages === "string" ? messages : JSON.stringify(messages);
+  const regex = /\/playground\/([^/?#\s"'\\]+)/g;
+  const files = new Set<string>();
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    if (match[1]) {
+      try {
+        files.add(decodeURIComponent(match[1]));
+      } catch {
+        files.add(match[1]);
+      }
+    }
+  }
+  return Array.from(files);
+}
+
+async function deleteFilesFromStorage(fileNames: string[]): Promise<void> {
+  const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || fileNames.length === 0) return;
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { error } = await supabase.storage.from("playground").remove(fileNames);
+    if (error) {
+      console.error("[Playground] Gagal menghapus file dari storage:", error);
+    } else {
+      console.log(`[Playground] Berhasil menghapus ${fileNames.length} file dari storage:`, fileNames);
+    }
+  } catch (err) {
+    console.error("[Playground] Error saat menghapus file storage:", err);
+  }
+}
+
 // Create new session
 router.post("/playground/sessions", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
@@ -169,10 +283,19 @@ router.post("/playground/sessions", requireAuth, async (req, res): Promise<void>
     const countRes = await db.select({ count: sql`count(*)` }).from(playgroundSessionsTable).where(eq(playgroundSessionsTable.userId, user.id));
     const count = Number(countRes[0].count);
     if (count >= 5) {
-      // Find the oldest sessions to delete
-      const oldest = await db.select({ id: playgroundSessionsTable.id }).from(playgroundSessionsTable).where(eq(playgroundSessionsTable.userId, user.id)).orderBy(asc(playgroundSessionsTable.updatedAt)).limit(count - 4);
-      if (oldest.length > 0) {
-        await db.delete(playgroundSessionsTable).where(and(eq(playgroundSessionsTable.userId, user.id), eq(playgroundSessionsTable.id, oldest[0].id)));
+      // Find the oldest sessions to delete and clean up storage files
+      const oldest = await db
+        .select({ id: playgroundSessionsTable.id, messages: playgroundSessionsTable.messages })
+        .from(playgroundSessionsTable)
+        .where(eq(playgroundSessionsTable.userId, user.id))
+        .orderBy(asc(playgroundSessionsTable.updatedAt))
+        .limit(count - 4);
+      for (const oldSession of oldest) {
+        const fileNames = extractStorageFileNames(oldSession.messages);
+        if (fileNames.length > 0) {
+          await deleteFilesFromStorage(fileNames);
+        }
+        await db.delete(playgroundSessionsTable).where(and(eq(playgroundSessionsTable.userId, user.id), eq(playgroundSessionsTable.id, oldSession.id)));
       }
     }
 
@@ -220,16 +343,39 @@ router.put("/playground/sessions/:id", requireAuth, async (req, res): Promise<vo
   }
 });
 
-// Delete session
+// Delete session (and any uploaded files in Supabase storage for this session)
 router.delete("/playground/sessions/:id", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
   try {
-    await db.delete(playgroundSessionsTable)
+    const [session] = await db
+      .select({ id: playgroundSessionsTable.id, messages: playgroundSessionsTable.messages })
+      .from(playgroundSessionsTable)
       .where(and(eq(playgroundSessionsTable.id, Number(req.params.id)), eq(playgroundSessionsTable.userId, user.id)));
+
+    if (session) {
+      const fileNames = extractStorageFileNames(session.messages);
+      if (fileNames.length > 0) {
+        await deleteFilesFromStorage(fileNames);
+      }
+      await db.delete(playgroundSessionsTable)
+        .where(and(eq(playgroundSessionsTable.id, Number(req.params.id)), eq(playgroundSessionsTable.userId, user.id)));
+    }
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Gagal menghapus sesi" });
   }
+});
+
+// Delete single file from storage (e.g. cancelled attachment before send)
+router.delete("/playground/files", requireAuth, async (req, res): Promise<void> => {
+  const { url } = req.body ?? {};
+  if (typeof url === "string" && url.trim()) {
+    const fileNames = extractStorageFileNames([url]);
+    if (fileNames.length > 0) {
+      await deleteFilesFromStorage(fileNames);
+    }
+  }
+  res.json({ success: true });
 });
 
 function extractTextFromDocx(buf: Buffer): string {
