@@ -6,6 +6,7 @@ import { decryptSecret } from "../lib/secret-box";
 import { getConfiguredPublicModelCatalog } from "./v1-proxy";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
+import zlib from "zlib";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -14,12 +15,25 @@ const router = Router();
 
 router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const { keyId, model, messages, temperature = 0.7, maxTokens = 1024 } = req.body ?? {};
+  const { keyId, model, messages } = req.body ?? {};
   if (!Number.isInteger(keyId) || typeof model !== "string" || !model.trim() || !Array.isArray(messages) || messages.length === 0) {
     res.status(400).json({ error: "Konfigurasi playground tidak valid" }); return;
   }
-  if (typeof temperature !== "number" || temperature < 0 || temperature > 2 || !Number.isInteger(maxTokens) || maxTokens < 1 || maxTokens > 16384) {
-    res.status(400).json({ error: "Parameter model tidak valid" }); return;
+
+  // Parse and normalize temperature (tolerant to comma or string)
+  let rawTemp = req.body?.temperature;
+  let tempVal = typeof rawTemp === "number" ? rawTemp : parseFloat(String(rawTemp ?? "").replace(",", "."));
+  if (isNaN(tempVal)) tempVal = 0.7;
+  if (tempVal < 0 || tempVal > 2) {
+    res.status(400).json({ error: "Parameter temperature harus antara 0 dan 2" }); return;
+  }
+
+  // Parse and normalize maxTokens (tolerant to string or null, default 8192, up to 65536)
+  let rawTokens = req.body?.maxTokens;
+  let tokensVal = typeof rawTokens === "number" ? Math.floor(rawTokens) : parseInt(String(rawTokens ?? ""), 10);
+  if (isNaN(tokensVal) || tokensVal <= 0) tokensVal = 8192;
+  if (tokensVal < 1 || tokensVal > 65536) {
+    res.status(400).json({ error: "Parameter maxTokens harus antara 1 dan 65536" }); return;
   }
 
   const [key] = await db.select().from(apiKeysTable).where(and(eq(apiKeysTable.id, keyId), eq(apiKeysTable.userId, user.id), eq(apiKeysTable.isActive, true)));
@@ -43,7 +57,7 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${fullKey}` },
       body: JSON.stringify({
-        model: model.trim(), temperature, max_tokens: maxTokens,
+        model: model.trim(), temperature: tempVal, max_tokens: tokensVal,
         stream: true, stream_options: { include_usage: true },
         messages,
       }),
@@ -148,7 +162,7 @@ router.get("/playground/sessions/:id", requireAuth, async (req, res): Promise<vo
 // Create new session
 router.post("/playground/sessions", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
-  const { title = "Obrolan Baru", model, systemPrompt, temperature = "0.7", maxTokens = "1024", keyId } = req.body;
+  const { title = "Obrolan Baru", model, systemPrompt, temperature = "0.7", maxTokens = "8192", keyId } = req.body;
   
   try {
     // Limit to 5 sessions max per user
@@ -218,6 +232,141 @@ router.delete("/playground/sessions/:id", requireAuth, async (req, res): Promise
   }
 });
 
+function extractTextFromDocx(buf: Buffer): string {
+  try {
+    let offset = 0;
+    while (offset < buf.length - 4) {
+      if (buf.readUInt32LE(offset) === 0x04034b50) {
+        const compMethod = buf.readUInt16LE(offset + 8);
+        const compSize = buf.readUInt32LE(offset + 18);
+        const fnLen = buf.readUInt16LE(offset + 26);
+        const extraLen = buf.readUInt16LE(offset + 28);
+        const fn = buf.toString("utf8", offset + 30, offset + 30 + fnLen);
+        const dataStart = offset + 30 + fnLen + extraLen;
+        if (fn === "word/document.xml") {
+          const compData = buf.subarray(dataStart, dataStart + compSize);
+          const xml = (compMethod === 8 ? zlib.inflateRawSync(compData) : compData).toString("utf8");
+
+          const paragraphs: string[] = [];
+          const pRegex = /<w:p(?: [^>]*)?>(.*?)<\/w:p>/gs;
+          let match: RegExpExecArray | null;
+          while ((match = pRegex.exec(xml)) !== null) {
+            const pXml = match[1];
+            const tRegex = /<w:t(?: [^>]*)?>([^<]*)<\/w:t>/g;
+            let pText = "";
+            let tMatch: RegExpExecArray | null;
+            while ((tMatch = tRegex.exec(pXml)) !== null) {
+              pText += tMatch[1];
+            }
+            if (pText.trim()) {
+              paragraphs.push(pText.trim());
+            }
+          }
+
+          return paragraphs.join("\n\n")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&amp;/g, "&")
+            .replace(/&quot;/g, '"');
+        }
+        offset = dataStart + compSize;
+      } else {
+        offset++;
+      }
+    }
+  } catch (err) {
+    console.error("Gagal ekstrak docx:", err);
+  }
+  return "";
+}
+
+function extractTextFromPdf(buf: Buffer): string {
+  try {
+    const content = buf.toString("latin1");
+    const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+    let match: RegExpExecArray | null;
+    let fullText = "";
+
+    while ((match = streamRegex.exec(content)) !== null) {
+      const rawStream = Buffer.from(match[1], "latin1");
+      let uncompressed: Buffer;
+      try {
+        uncompressed = zlib.inflateSync(rawStream);
+      } catch {
+        try {
+          uncompressed = zlib.inflateRawSync(rawStream);
+        } catch {
+          uncompressed = rawStream;
+        }
+      }
+
+      const textStream = uncompressed.toString("latin1");
+      const btRegex = /BT[\s\S]*?ET/g;
+      let btMatch: RegExpExecArray | null;
+      while ((btMatch = btRegex.exec(textStream)) !== null) {
+        const block = btMatch[0];
+        const tjRegex = /\(([^)]*)\)\s*(?:Tj|'|")/g;
+        let tjMatch: RegExpExecArray | null;
+        while ((tjMatch = tjRegex.exec(block)) !== null) {
+          fullText += tjMatch[1] + " ";
+        }
+
+        const tjArrayRegex = /\[([\s\S]*?)\]\s*TJ/g;
+        let arrMatch: RegExpExecArray | null;
+        while ((arrMatch = tjArrayRegex.exec(block)) !== null) {
+          const inner = arrMatch[1];
+          const innerStrings = /\(([^)]*)\)/g;
+          let sMatch: RegExpExecArray | null;
+          let line = "";
+          while ((sMatch = innerStrings.exec(inner)) !== null) {
+            line += sMatch[1];
+          }
+          fullText += line + " ";
+        }
+        fullText += "\n";
+      }
+    }
+
+    return fullText
+      .replace(/\\([()\\])/g, "$1")
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "")
+      .replace(/\\t/g, "\t")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n\s*\n+/g, "\n\n")
+      .trim();
+  } catch (err) {
+    console.error("Gagal ekstrak pdf:", err);
+    return "";
+  }
+}
+
+function extractFileText(buf: Buffer, originalName: string, mimeType: string): string | undefined {
+  const ext = (originalName.split(".").pop() ?? "").toLowerCase();
+
+  if (ext === "docx" || mimeType.includes("wordprocessingml")) {
+    const text = extractTextFromDocx(buf);
+    if (text) return text.slice(0, 300_000);
+  }
+
+  if (ext === "pdf" || mimeType.includes("pdf")) {
+    const text = extractTextFromPdf(buf);
+    if (text) return text.slice(0, 300_000);
+  }
+
+  const textExts = ["txt", "md", "csv", "json", "yaml", "yml", "xml", "log", "sql", "py", "js", "ts", "tsx", "jsx", "html", "css", "sh", "env", "ini", "conf", "java", "c", "cpp", "cs", "go", "rs", "php", "rb"];
+  if (textExts.includes(ext) || mimeType.startsWith("text/") || mimeType.includes("json") || mimeType.includes("javascript")) {
+    try {
+      const text = buf.toString("utf8");
+      return text.slice(0, 300_000);
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}
+
 // Upload file / attachment
 router.post("/playground/upload", requireAuth, upload.single("file"), async (req, res): Promise<void> => {
   if (!req.file) { res.status(400).json({ error: "File tidak ditemukan" }); return; }
@@ -238,11 +387,14 @@ router.post("/playground/upload", requireAuth, upload.single("file"), async (req
     if (error) throw error;
     
     const { data: publicData } = supabase.storage.from("playground").getPublicUrl(fileName);
+    const textContent = extractFileText(req.file.buffer, req.file.originalname, req.file.mimetype);
+
     res.json({ 
       url: publicData.publicUrl,
       name: req.file.originalname,
       size: req.file.size,
       mimeType: req.file.mimetype,
+      textContent: textContent || undefined,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message || "Gagal upload file" });

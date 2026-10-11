@@ -22,7 +22,7 @@ type AttachedFile = { url: string; name: string; size: number; mimeType: string;
 type MessagePart = 
   | { type: "text"; text: string } 
   | { type: "image_url"; image_url: { url: string } }
-  | { type: "file"; file: { url: string; name: string; size: number; mimeType: string } };
+  | { type: "file"; file: { url: string; name: string; size: number; mimeType: string; textContent?: string } };
 type MessageContent = string | MessagePart[];
 type Message = { role: "user" | "assistant" | "system"; content: MessageContent; metadata?: { model: string; tokens: number; credits: number | null; latencyMs: number } };
 type Result = { content: string; model: string; finishReason: string | null; usage: { inputTokens: number; outputTokens: number; totalTokens: number; credits: number | null }; latencyMs: number };
@@ -66,7 +66,7 @@ export default function PlaygroundPage() {
   const [model, setModel] = useState("");
   const [system, setSystem] = useState("You are a helpful assistant.");
   const [temperature, setTemperature] = useState("0.7");
-  const [maxTokens, setMaxTokens] = useState("1024");
+  const [maxTokens, setMaxTokens] = useState("8192");
   
   // Chat state
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -102,8 +102,8 @@ export default function PlaygroundPage() {
       setMessages(data.messages || []);
       setModel(data.model || "");
       setSystem(data.systemPrompt || "");
-      setTemperature(data.temperature || "0.7");
-      setMaxTokens(data.maxTokens || "1024");
+      setTemperature(data.temperature ? String(data.temperature).replace(",", ".") : "0.7");
+      setMaxTokens(data.maxTokens ? String(data.maxTokens) : "8192");
       setKeyId(data.apiKeyId ? String(data.apiKeyId) : "");
       setLastResult(null);
       setAttachments([]);
@@ -120,7 +120,7 @@ export default function PlaygroundPage() {
       method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
         title: userMsg.slice(0, 30) + (userMsg.length > 30 ? "..." : ""),
-        model, systemPrompt: system, temperature, maxTokens, keyId: Number(keyId)
+        model, systemPrompt: system, temperature: String(temperature).replace(",", "."), maxTokens: String(maxTokens), keyId: Number(keyId)
       })
     });
     if (!r.ok) throw new Error("Gagal membuat sesi");
@@ -201,7 +201,7 @@ export default function PlaygroundPage() {
           name: data.name || file.name,
           size: data.size || file.size,
           mimeType: data.mimeType || file.type,
-          textContent,
+          textContent: data.textContent || textContent,
         });
       }
 
@@ -246,30 +246,20 @@ export default function PlaygroundPage() {
         } else {
           userParts.push({
             type: "file",
-            file: { url: att.url, name: att.name, size: att.size, mimeType: att.mimeType }
+            file: { 
+              url: att.url, 
+              name: att.name, 
+              size: att.size, 
+              mimeType: att.mimeType,
+              textContent: att.textContent,
+            }
           });
         }
       }
 
-      // Prepare text prompt with file contents for AI understanding
-      let combinedText = userPrompt;
-      const textFiles = attachmentsToSend.filter(a => a.textContent);
-      const otherFiles = attachmentsToSend.filter(a => !isImageFile(a.mimeType, a.name) && !a.textContent);
-
-      let contextAdditions = "";
-      if (textFiles.length > 0) {
-        contextAdditions += textFiles.map(a => `\n\n[Lampiran File: ${a.name}]\n\`\`\`\n${a.textContent}\n\`\`\``).join("\n");
-      }
-      if (otherFiles.length > 0) {
-        contextAdditions += otherFiles.map(a => `\n\n[Lampiran Dokumen: ${a.name} (${a.url})]`).join("\n");
-      }
-
-      if (contextAdditions) {
-        combinedText = combinedText ? `${combinedText}\n${contextAdditions}` : contextAdditions.trim();
-      }
-
-      if (combinedText) {
-        userParts.push({ type: "text", text: combinedText });
+      // Only add text part if the user actually typed a prompt (keeps chat bubbles visually clean)
+      if (userPrompt) {
+        userParts.push({ type: "text", text: userPrompt });
       }
 
       const userContent: MessageContent = userParts.length === 1 && userParts[0].type === "text"
@@ -280,21 +270,39 @@ export default function PlaygroundPage() {
       setMessages(newMessages);
       
       // Sanitize messages for OpenAI chat completions API upstream
+      // Injects the extracted document text into AI context so the model actually reads it
       const sanitizedMessages = newMessages.map(m => {
         if (Array.isArray(m.content)) {
           const validParts: any[] = [];
+          let docTextAccumulator = "";
+
           for (const part of m.content) {
             if (part.type === "image_url") {
               validParts.push(part);
-            } else if (part.type === "text") {
-              validParts.push(part);
             } else if (part.type === "file") {
+              if (part.file.textContent) {
+                docTextAccumulator += `\n\n--- [DOKUMEN TERLAMPIR: ${part.file.name}] ---\n${part.file.textContent}\n--- [AKHIR DOKUMEN: ${part.file.name}] ---`;
+              }
+            } else if (part.type === "text" && part.text) {
+              validParts.push(part);
+            }
+          }
+
+          if (docTextAccumulator) {
+            const existingTextIdx = validParts.findIndex(p => p.type === "text");
+            if (existingTextIdx >= 0) {
+              validParts[existingTextIdx] = {
+                type: "text",
+                text: `${docTextAccumulator.trim()}\n\n${validParts[existingTextIdx].text}`
+              };
+            } else {
               validParts.push({
                 type: "text",
-                text: `[File Lampiran: ${part.file.name} (${part.file.url})]`
+                text: `${docTextAccumulator.trim()}\n\nTolong baca, pahami, dan analisis isi dokumen di atas.`
               });
             }
           }
+
           return {
             role: m.role,
             content: validParts.length === 1 && validParts[0].type === "text" ? validParts[0].text : validParts
@@ -307,9 +315,14 @@ export default function PlaygroundPage() {
       if (system.trim()) requestMessages.push({ role: "system", content: system.trim() });
       requestMessages.push(...sanitizedMessages);
       
+      const parsedTemp = parseFloat(String(temperature).replace(",", "."));
+      const safeTemp = isNaN(parsedTemp) ? 0.7 : Math.min(2, Math.max(0, parsedTemp));
+      const parsedTokens = parseInt(String(maxTokens), 10);
+      const safeTokens = isNaN(parsedTokens) || parsedTokens <= 0 ? 8192 : Math.min(65536, Math.max(1, parsedTokens));
+
       const r = await csrfFetch("/api/playground/chat", { 
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ keyId: Number(keyId), model, messages: requestMessages, temperature: Number(temperature), maxTokens: Number(maxTokens) }) 
+        body: JSON.stringify({ keyId: Number(keyId), model, messages: requestMessages, temperature: safeTemp, maxTokens: safeTokens }) 
       });
       
       const contentType = r.headers.get("content-type") ?? "";
@@ -520,11 +533,26 @@ export default function PlaygroundPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Temperature</Label>
-                      <Input type="number" min="0" max="2" step="0.1" value={temperature} onChange={e => setTemperature(e.target.value)} className="h-9 rounded-lg" />
+                      <Input 
+                        type="text" 
+                        inputMode="decimal" 
+                        placeholder="0.7" 
+                        value={temperature} 
+                        onChange={e => setTemperature(e.target.value.replace(",", "."))} 
+                        className="h-9 rounded-lg" 
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Max Tokens</Label>
-                      <Input type="number" min="1" max="16384" value={maxTokens} onChange={e => setMaxTokens(e.target.value)} className="h-9 rounded-lg" />
+                      <Input 
+                        type="number" 
+                        min="1" 
+                        max="65536" 
+                        placeholder="8192" 
+                        value={maxTokens} 
+                        onChange={e => setMaxTokens(e.target.value)} 
+                        className="h-9 rounded-lg" 
+                      />
                     </div>
                   </div>
                 </div>
