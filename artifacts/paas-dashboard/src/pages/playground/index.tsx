@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet, FileText, FileCode, Download, Square, ArrowDown, Copy, Check } from "lucide-react";
+import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet, FileText, FileCode, Download, Square, ArrowDown, Copy, Check, Code2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,6 +63,83 @@ function getMessageText(content: MessageContent): string {
   return "";
 }
 
+function CodeBlock({ className, children }: { className?: string; children: React.ReactNode }) {
+  const [copied, setCopied] = useState(false);
+  const match = /language-(\w+)/.exec(className || "");
+  const language = match ? match[1] : "";
+  const codeString = String(children).replace(/\n$/, "");
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(codeString);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = codeString;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
+  return (
+    <div className="not-prose my-3.5 rounded-2xl overflow-hidden border border-border/70 bg-muted/40 dark:bg-zinc-900/90 shadow-2xs">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-muted/70 dark:bg-zinc-800/60 text-xs text-muted-foreground select-none">
+        <div className="flex items-center gap-1.5 font-mono lowercase">
+          <Code2 className="h-3.5 w-3.5 text-primary" />
+          <span>{language || "code"}</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded-md hover:bg-background/80 hover:text-foreground text-muted-foreground transition-all duration-150 font-sans text-xs cursor-pointer"
+          title="Salin kode"
+        >
+          {copied ? (
+            <>
+              <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">Tersalin!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="h-3.5 w-3.5" />
+              <span>Salin kode</span>
+            </>
+          )}
+        </button>
+      </div>
+      <pre className="p-4 overflow-x-auto text-[13px] leading-relaxed font-mono text-foreground dark:text-zinc-100 bg-transparent m-0 scrollbar-thin">
+        <code>{children}</code>
+      </pre>
+    </div>
+  );
+}
+
+const markdownComponents = {
+  pre({ children }: any) {
+    return <>{children}</>;
+  },
+  code({ node, inline, className, children, ...props }: any) {
+    const isInline = inline || (!className && !String(children).includes("\n"));
+    if (isInline) {
+      return (
+        <code className="bg-primary/[0.08] dark:bg-primary/[0.15] text-primary border border-primary/20 px-1.5 py-0.5 rounded-md text-[13px] font-mono font-medium mx-0.5" {...props}>
+          {children}
+        </code>
+      );
+    }
+    return <CodeBlock className={className}>{children}</CodeBlock>;
+  }
+};
+
 export default function PlaygroundPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -95,6 +172,8 @@ export default function PlaygroundPage() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState("");
 
   const handleCopyMessage = async (idx: number, text: string) => {
     if (!text) return;
@@ -212,6 +291,35 @@ export default function PlaygroundPage() {
       toast({ title: "Obrolan dihapus" });
     } catch {
       toast({ title: "Gagal menghapus", variant: "destructive" });
+    }
+  };
+
+  const startRenaming = (s: Session, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingSessionId(s.id);
+    setEditTitle(s.title);
+  };
+
+  const saveRename = async (id: number, e?: React.MouseEvent | React.FormEvent) => {
+    if (e) e.stopPropagation();
+    const trimmed = editTitle.trim();
+    if (!trimmed) {
+      setEditingSessionId(null);
+      return;
+    }
+    try {
+      await csrfFetch(`/api/playground/sessions/${id}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmed }),
+      });
+      queryClient.invalidateQueries({ queryKey: ["playground-sessions"] });
+      toast({ title: "Judul berhasil diubah" });
+    } catch {
+      toast({ title: "Gagal mengubah judul", variant: "destructive" });
+    } finally {
+      setEditingSessionId(null);
     }
   };
 
@@ -572,7 +680,9 @@ export default function PlaygroundPage() {
             sessions.map(s => (
               <div 
                 key={s.id} 
-                onClick={() => loadSession(s.id)}
+                onClick={() => {
+                  if (editingSessionId !== s.id) loadSession(s.id);
+                }}
                 className={cn(
                   "group flex items-center justify-between px-3 py-2 text-sm rounded-xl cursor-pointer transition-colors",
                   sessionId === s.id 
@@ -580,13 +690,59 @@ export default function PlaygroundPage() {
                     : "hover:bg-muted text-muted-foreground hover:text-foreground"
                 )}
               >
-                <div className="flex items-center gap-2.5 truncate">
-                  <MessageSquare className="h-4 w-4 shrink-0 opacity-70 group-hover:opacity-100" />
-                  <span className="truncate">{s.title}</span>
-                </div>
-                <button onClick={(e) => deleteSession(s.id, e)} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {editingSessionId === s.id ? (
+                  <div className="flex items-center gap-1.5 w-full py-0.5" onClick={e => e.stopPropagation()}>
+                    <Input
+                      value={editTitle}
+                      onChange={e => setEditTitle(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") saveRename(s.id, e);
+                        if (e.key === "Escape") setEditingSessionId(null);
+                      }}
+                      autoFocus
+                      className="h-7 text-xs px-2 py-0 rounded-lg bg-background border-primary/50 focus-visible:ring-1 flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={e => saveRename(s.id, e)}
+                      className="h-6 w-6 rounded-md hover:bg-primary/10 text-primary flex items-center justify-center shrink-0 cursor-pointer"
+                      title="Simpan"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); setEditingSessionId(null); }}
+                      className="h-6 w-6 rounded-md hover:bg-muted text-muted-foreground flex items-center justify-center shrink-0 cursor-pointer"
+                      title="Batal"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2.5 truncate flex-1 min-w-0 mr-1">
+                      <MessageSquare className="h-4 w-4 shrink-0 opacity-70 group-hover:opacity-100" />
+                      <span className="truncate">{s.title}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0 transition-opacity">
+                      <button 
+                        onClick={(e) => startRenaming(s, e)} 
+                        className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded-md transition-all cursor-pointer"
+                        title="Ubah nama"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button 
+                        onClick={(e) => deleteSession(s.id, e)} 
+                        className="p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-md transition-all cursor-pointer"
+                        title="Hapus obrolan"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))
           )}
@@ -738,7 +894,7 @@ export default function PlaygroundPage() {
                               ? "bg-primary/[0.08] dark:bg-primary/[0.14] border border-primary/20 dark:border-primary/25 text-foreground rounded-tr-sm prose-p:text-foreground prose-headings:text-foreground prose-strong:text-foreground prose-code:text-primary" 
                               : "bg-background border border-border text-foreground rounded-tl-sm"
                           )}>
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
                           </div>
                         ) : (
                           <div className="px-5 py-3.5 rounded-[1.5rem] bg-background border rounded-tl-sm shadow-sm flex items-center gap-2 text-muted-foreground">
@@ -791,7 +947,7 @@ export default function PlaygroundPage() {
                                     ? "bg-primary/[0.08] dark:bg-primary/[0.14] border border-primary/20 dark:border-primary/25 text-foreground rounded-tr-sm prose-p:text-foreground prose-headings:text-foreground prose-strong:text-foreground prose-code:text-primary" 
                                     : "bg-background border border-border text-foreground rounded-tl-sm"
                                 )}>
-                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown>
+                                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{part.text}</ReactMarkdown>
                                 </div>
                               );
                             }
@@ -859,10 +1015,10 @@ export default function PlaygroundPage() {
               <button
                 type="button"
                 onClick={() => scrollToBottom("smooth")}
-                className="absolute -top-11 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/95 backdrop-blur border border-border shadow-md text-xs font-medium text-foreground hover:bg-muted transition-all duration-200 animate-in fade-in slide-in-from-bottom-2 cursor-pointer"
+                className="absolute -top-10 left-1/2 -translate-x-1/2 z-30 h-8 w-8 rounded-full bg-background/90 backdrop-blur border border-border shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-200 animate-in fade-in slide-in-from-bottom-2 cursor-pointer"
+                title="Scroll ke bawah"
               >
-                <ArrowDown className="h-3.5 w-3.5" />
-                <span>Scroll ke bawah</span>
+                <ArrowDown className="h-4 w-4" />
               </button>
             )}
             
