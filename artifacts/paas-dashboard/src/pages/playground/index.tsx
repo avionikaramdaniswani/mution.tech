@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet, FileText, FileCode, Download, Globe } from "lucide-react";
+import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet, FileText, FileCode, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,7 +74,6 @@ export default function PlaygroundPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
-  const [webSearch, setWebSearch] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastResult, setLastResult] = useState<Result | null>(null);
@@ -335,7 +334,7 @@ export default function PlaygroundPage() {
 
       const r = await csrfFetch("/api/playground/chat", { 
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ keyId: Number(keyId), model, messages: requestMessages, temperature: safeTemp, maxTokens: safeTokens, webSearch }) 
+        body: JSON.stringify({ keyId: Number(keyId), model, messages: requestMessages, temperature: safeTemp, maxTokens: safeTokens }) 
       });
       
       const contentType = r.headers.get("content-type") ?? "";
@@ -744,29 +743,6 @@ export default function PlaygroundPage() {
                 onChange={handleFileUpload} 
               />
               
-              <Button 
-                type="button"
-                variant={webSearch ? "secondary" : "ghost"}
-                size="icon" 
-                className={cn(
-                  "h-10 w-10 shrink-0 rounded-full mb-0.5 transition-all",
-                  webSearch 
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm ring-2 ring-primary/20" 
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-                onClick={() => {
-                  setWebSearch(!webSearch);
-                  toast({
-                    title: !webSearch ? "Web Search Diaktifkan 🌐" : "Web Search Dinonaktifkan",
-                    description: !webSearch ? "AI akan mencari data web real-time untuk menjawab prompt kamu." : "AI akan menjawab tanpa pencarian web.",
-                  });
-                }}
-                disabled={loading || isUploading}
-                title={webSearch ? "Web Search Aktif (Internet Real-time)" : "Aktifkan Web Search"}
-              >
-                <Globe className="h-5 w-5" />
-              </Button>
-
               <Button 
                 variant="ghost" 
                 size="icon" 
