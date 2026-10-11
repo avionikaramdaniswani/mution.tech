@@ -26,6 +26,53 @@ function decodeBingUrl(rawUrl: string): string {
   return rawUrl;
 }
 
+async function searchCrossref(query: string): Promise<Array<{ title: string; snippet: string; url: string }>> {
+  try {
+    const res = await fetch(`https://api.crossref.org/works?query=${encodeURIComponent(query.trim())}&rows=4`, {
+      headers: { "User-Agent": "MutionApp/1.0 (mailto:admin@mution.tech)" },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as any;
+    const items = data.message?.items || [];
+    return items.map((it: any) => {
+      const title = it.title?.[0] || "Publikasi Ilmiah";
+      const doi = it.DOI;
+      const url = it.URL || (doi ? `https://doi.org/${doi}` : "");
+      const journal = it["container-title"]?.[0] || it.publisher || "";
+      const year = it.issued?.["date-parts"]?.[0]?.[0] || it.created?.["date-parts"]?.[0]?.[0] || "";
+      const snippet = `Jurnal: ${journal}${year ? ` (${year})` : ""}${doi ? ` | DOI: ${doi}` : ""}`;
+      return { title, snippet, url };
+    }).filter((it: any) => it.url);
+  } catch (err) {
+    console.error("[Playground] Crossref search error:", err);
+    return [];
+  }
+}
+
+async function searchOpenAlex(query: string): Promise<Array<{ title: string; snippet: string; url: string }>> {
+  try {
+    const res = await fetch(`https://api.openalex.org/works?search=${encodeURIComponent(query.trim())}&per-page=4`, {
+      headers: { "User-Agent": "MutionApp/1.0 (mailto:admin@mution.tech)" },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as any;
+    const results = data.results || [];
+    return results.map((it: any) => {
+      const title = it.title || "Karya Ilmiah";
+      const url = it.doi || it.primary_location?.landing_page_url || "";
+      const venue = it.primary_location?.source?.display_name || "";
+      const year = it.publication_year ? ` (${it.publication_year})` : "";
+      const snippet = `Sumber: ${venue}${year}${it.doi ? ` | DOI: ${it.doi}` : ""}`;
+      return { title, snippet, url };
+    }).filter((it: any) => it.url);
+  } catch (err) {
+    console.error("[Playground] OpenAlex search error:", err);
+    return [];
+  }
+}
+
 async function searchWebBing(query: string): Promise<Array<{ title: string; snippet: string; url: string }>> {
   try {
     const res = await fetch(`https://www.bing.com/search?q=${encodeURIComponent(query.trim())}`, {
@@ -54,6 +101,86 @@ async function searchWebBing(query: string): Promise<Array<{ title: string; snip
     console.error("[Playground] Gagal melakukan web search:", err);
     return [];
   }
+}
+
+async function extractSearchIntent(
+  userText: string,
+  port: number,
+  authKey: string,
+  model: string
+): Promise<{ query: string; isAcademic: boolean; shouldSearch: boolean }> {
+  const academicKeywords = /\b(jurnal|journal|paper|artikel ilmiah|skripsi|tesis|penelitian|referensi|doi|buku|ebook|daftar pustaka)\b/i;
+  const isAcademicHeuristic = academicKeywords.test(userText);
+
+  // Fast check for greetings or short conversational text
+  const trimmed = userText.trim();
+  if (/^(halo|hai|p|tes|test|pagi|siang|malam|apa kabar|assalamualaikum)\b/i.test(trimmed)) {
+    return { query: "", isAcademic: false, shouldSearch: false };
+  }
+  if (trimmed.length < 40 && /\b(bisa|mampu|bisa gak|bisa ga)\b/i.test(trimmed) && !trimmed.toLowerCase().includes("ini")) {
+    return { query: "", isAcademic: false, shouldSearch: false };
+  }
+
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${authKey}` },
+      body: JSON.stringify({
+        model: model.trim(),
+        temperature: 0.1,
+        max_tokens: 80,
+        stream: false,
+        messages: [
+          {
+            role: "system",
+            content: `Kamu adalah asisten pengoptimal query pencarian.
+Analisis pesan pengguna berikut.
+Format balasanmu HANYA JSON satu baris:
+{"query": "kata kunci pencarian", "isAcademic": true/false, "shouldSearch": true/false}
+Aturan:
+1. Buang semua kata percakapan seperti 'kamu bisa cariin', 'tolong carikan', 'kalo', 'buat skripsi saya', dll.
+2. Buat kata kunci bersih 2-6 kata spesifik yang paling relevan.
+3. Set isAcademic=true jika pengguna mencari jurnal, penelitian terdahulu, artikel ilmiah, buku ilmiah, atau referensi skripsi.
+4. Set shouldSearch=false jika pengguna hanya menyapa, basa-basi, atau bertanya apakah kamu bisa melakukan sesuatu tanpa meminta data nyata.`
+          },
+          { role: "user", content: userText.slice(0, 500) }
+        ]
+      }),
+      signal: AbortSignal.timeout(3500)
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      const raw = data?.choices?.[0]?.message?.content?.trim() || "";
+      const jsonMatch = raw.match(/\{[\s\S]*?\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (typeof parsed.query === "string" && parsed.query.trim()) {
+          return {
+            query: parsed.query.trim(),
+            isAcademic: Boolean(parsed.isAcademic ?? isAcademicHeuristic),
+            shouldSearch: parsed.shouldSearch !== false
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[Playground] AI query extractor fallback:", err);
+  }
+
+  // Heuristic cleanup fallback
+  let cleaned = userText
+    .replace(/^(halo|hai|tolong|coba|bisa|bisakah|kamu|mohon|kalo|kalau|saya|mau|minta|cariin|carikan|tolong carikan|bisa carikan)\s+/gi, "")
+    .replace(/\b(sumber|ebook|buku|untuk|yg|yang|berdekatan|dengan|judul|skripsiku|skripsi|ga|gak|nggak|dong|ya|yah|sih|deh|kah|nih|tuh|kan|sebagai|penelitian|terdahulu|referensi)\b/gi, " ")
+    .replace(/[?!,.:;()"]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return {
+    query: cleaned.slice(0, 100) || userText.slice(0, 100),
+    isAcademic: isAcademicHeuristic,
+    shouldSearch: true
+  };
 }
 
 router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => {
@@ -101,33 +228,53 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
     if (webSearch) {
       // Find latest user query
       const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
-      let queryText = "";
+      let rawQueryText = "";
       if (typeof lastUserMsg?.content === "string") {
-        queryText = lastUserMsg.content;
+        rawQueryText = lastUserMsg.content;
       } else if (Array.isArray(lastUserMsg?.content)) {
         const textPart = lastUserMsg.content.find((p: any) => p.type === "text");
-        queryText = textPart?.text || "";
+        rawQueryText = textPart?.text || "";
       }
 
-      if (queryText.trim()) {
-        const searchResults = await searchWebBing(queryText);
-        if (searchResults.length > 0) {
-          const searchContext = [
-            `[HASIL PENCARIAN WEB REAL-TIME UNTUK QUERY: "${queryText}"]`,
-            ...searchResults.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\nRingkasan: ${r.snippet}`),
-            `\nInstruksi: Gunakan informasi pencarian web di atas untuk menjawab pertanyaan pengguna dengan informasi terkini dan akurat. Sertakan referensi link/sumber jika relevan.`
-          ].join("\n\n");
+      if (rawQueryText.trim()) {
+        const intent = await extractSearchIntent(rawQueryText, port, fullKey, model);
 
-          if (finalMessages.length > 0 && finalMessages[0].role === "system") {
-            finalMessages[0] = {
-              ...finalMessages[0],
-              content: `${finalMessages[0].content}\n\n${searchContext}`
-            };
+        if (intent.shouldSearch && intent.query.trim()) {
+          console.log(`[Playground Search] Query: "${intent.query}", Academic: ${intent.isAcademic}`);
+          let searchItems: Array<{ title: string; snippet: string; url: string }> = [];
+
+          if (intent.isAcademic) {
+            // Search academic databases (OpenAlex + Crossref + Bing Scholar) in parallel
+            const [openAlexItems, crossrefItems, bingItems] = await Promise.all([
+              searchOpenAlex(intent.query),
+              searchCrossref(intent.query),
+              searchWebBing(`jurnal ${intent.query}`),
+            ]);
+            searchItems = [...openAlexItems, ...crossrefItems, ...bingItems.slice(0, 3)];
           } else {
-            finalMessages = [
-              { role: "system", content: searchContext },
-              ...finalMessages
-            ];
+            // General web search via Bing
+            searchItems = await searchWebBing(intent.query);
+          }
+
+          if (searchItems.length > 0) {
+            const label = intent.isAcademic ? "DATABASE JURNAL & REFERENSI ILMIAH RESMI" : "HASIL PENCARIAN WEB REAL-TIME";
+            const searchContext = [
+              `[${label} UNTUK: "${intent.query}"]`,
+              ...searchItems.map((r, i) => `[${i + 1}] Judul/Sumber: ${r.title}\nURL / DOI: ${r.url}\nKeterangan: ${r.snippet}`),
+              `\nInstruksi Penting: Gunakan data di atas untuk menjawab pengguna secara akurat dan up-to-date. WAJIB cantumkan tautan/link URL atau DOI yang valid dari data di atas (format markdown link: [Nama Sumber/Judul](URL)) agar pengguna dapat langsung mengklik dan membuka sumbernya.`
+            ].join("\n\n");
+
+            if (finalMessages.length > 0 && finalMessages[0].role === "system") {
+              finalMessages[0] = {
+                ...finalMessages[0],
+                content: `${finalMessages[0].content}\n\n${searchContext}`
+              };
+            } else {
+              finalMessages = [
+                { role: "system", content: searchContext },
+                ...finalMessages
+              ];
+            }
           }
         }
       }
