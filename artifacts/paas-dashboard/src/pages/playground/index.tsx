@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet, FileText, FileCode, Download, Square, ArrowDown, Copy, Check, Code2, Pencil } from "lucide-react";
+import { Highlight, themes } from "prism-react-renderer";
+import { Bot, FlaskConical, Timer, Coins, Settings2, User, Loader2, Send, Plus, MessageSquare, Trash2, X, Paperclip, PanelLeftClose, PanelLeft, ArrowLeft, Wallet, FileText, FileCode, Download, Square, ArrowDown, Copy, Check, Code2, Pencil, MoreVertical, FolderOpen, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { csrfFetch } from "@/lib/csrf";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
@@ -29,6 +32,16 @@ type Result = { content: string; model: string; finishReason: string | null; usa
 type Session = { id: number; title: string; updatedAt: string };
 type SessionDetail = Session & { model: string; systemPrompt: string; temperature: string; maxTokens: string; apiKeyId: number; messages: Message[] };
 
+type PreviewTarget = {
+  url: string;
+  name: string;
+  size?: number;
+  mimeType?: string;
+  textContent?: string;
+  isImage: boolean;
+  isPdf: boolean;
+};
+
 function formatFileSize(bytes?: number): string {
   if (!bytes || bytes <= 0) return "";
   if (bytes < 1024) return `${bytes} B`;
@@ -42,14 +55,33 @@ function isImageFile(mimeType?: string, name?: string): boolean {
   return false;
 }
 
+function isPdfFile(mimeType?: string, name?: string): boolean {
+  if (mimeType === "application/pdf") return true;
+  if (name && /\.pdf$/i.test(name)) return true;
+  return false;
+}
+
 function isCodeFile(name?: string): boolean {
   if (!name) return false;
   return /\.(js|jsx|ts|tsx|py|html|css|json|yaml|yml|sql|sh|php|java|c|cpp|cs|go|rs|rb|vue|svelte)$/i.test(name);
 }
 
+function isTextLikeFileName(name?: string, mimeType?: string): boolean {
+  if (mimeType && (mimeType.startsWith("text/") || mimeType.includes("json") || mimeType.includes("javascript") || mimeType.includes("xml"))) return true;
+  if (!name) return false;
+  return /\.(txt|md|csv|json|yaml|yml|xml|log|js|jsx|ts|tsx|py|html|css|sql|sh|php|java|c|cpp|cs|go|rs|rb|env|conf|ini|lua|rust|dockerfile|svg)$/i.test(name);
+}
+
 function isTextLikeFile(file: File): boolean {
   if (file.type.startsWith("text/")) return true;
-  return /\.(txt|md|csv|json|yaml|yml|xml|log|js|jsx|ts|tsx|py|html|css|sql|sh|php|java|c|cpp|cs|go|rs|rb|env|conf|ini)$/i.test(file.name);
+  return isTextLikeFileName(file.name, file.type);
+}
+
+function detectLanguageFromName(name?: string): string {
+  if (!name) return "text";
+  const extMatch = /\.([a-zA-Z0-9]+)$/.exec(name);
+  if (!extMatch) return "text";
+  return normalizeLang(extMatch[1]);
 }
 
 function getMessageText(content: MessageContent): string {
@@ -63,11 +95,61 @@ function getMessageText(content: MessageContent): string {
   return "";
 }
 
+function getSessionFiles(msgs: Message[]): { url: string; name: string; size?: number; mimeType?: string; isImage: boolean; isPdf: boolean; textContent?: string }[] {
+  const files: { url: string; name: string; size?: number; mimeType?: string; isImage: boolean; isPdf: boolean; textContent?: string }[] = [];
+  const seenUrls = new Set<string>();
+
+  for (const msg of msgs) {
+    if (Array.isArray(msg.content)) {
+      for (const part of msg.content) {
+        if (part.type === "image_url" && part.image_url?.url) {
+          if (!seenUrls.has(part.image_url.url)) {
+            seenUrls.add(part.image_url.url);
+            files.push({
+              url: part.image_url.url,
+              name: "Gambar Terlampir",
+              isImage: true,
+              isPdf: false,
+            });
+          }
+        } else if (part.type === "file" && part.file?.url) {
+          if (!seenUrls.has(part.file.url)) {
+            seenUrls.add(part.file.url);
+            files.push({
+              url: part.file.url,
+              name: part.file.name || "File Dokumen",
+              size: part.file.size,
+              mimeType: part.file.mimeType,
+              isImage: isImageFile(part.file.mimeType, part.file.name),
+              isPdf: isPdfFile(part.file.mimeType, part.file.name),
+              textContent: part.file.textContent,
+            });
+          }
+        }
+      }
+    }
+  }
+  return files;
+}
+
+function normalizeLang(lang: string): string {
+  const l = (lang || "").toLowerCase().trim();
+  if (l === "js") return "javascript";
+  if (l === "ts") return "typescript";
+  if (l === "py") return "python";
+  if (l === "sh" || l === "shell" || l === "powershell" || l === "ps1") return "bash";
+  if (l === "yml") return "yaml";
+  if (l === "md") return "markdown";
+  if (l === "htm") return "html";
+  return l || "text";
+}
+
 function CodeBlock({ className, children }: { className?: string; children: React.ReactNode }) {
   const [copied, setCopied] = useState(false);
   const match = /language-(\w+)/.exec(className || "");
-  const language = match ? match[1] : "";
+  const rawLang = match ? match[1] : "";
   const codeString = String(children).replace(/\n$/, "");
+  const language = normalizeLang(rawLang);
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -91,11 +173,11 @@ function CodeBlock({ className, children }: { className?: string; children: Reac
   };
 
   return (
-    <div className="not-prose my-3.5 rounded-2xl overflow-hidden border border-border/70 bg-muted/40 dark:bg-zinc-900/90 shadow-2xs">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-muted/70 dark:bg-zinc-800/60 text-xs text-muted-foreground select-none">
-        <div className="flex items-center gap-1.5 font-mono lowercase">
+    <div className="not-prose my-3.5 rounded-2xl overflow-hidden border border-border/70 bg-muted/30 shadow-2xs">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-muted/60 text-xs text-muted-foreground select-none">
+        <div className="flex items-center gap-1.5 font-mono lowercase font-medium">
           <Code2 className="h-3.5 w-3.5 text-primary" />
-          <span>{language || "code"}</span>
+          <span>{rawLang || "code"}</span>
         </div>
         <button
           type="button"
@@ -105,8 +187,8 @@ function CodeBlock({ className, children }: { className?: string; children: Reac
         >
           {copied ? (
             <>
-              <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-emerald-600 dark:text-emerald-400 font-medium">Tersalin!</span>
+              <Check className="h-3.5 w-3.5 text-emerald-600 font-semibold" />
+              <span className="text-emerald-600 font-semibold">Tersalin!</span>
             </>
           ) : (
             <>
@@ -116,9 +198,22 @@ function CodeBlock({ className, children }: { className?: string; children: Reac
           )}
         </button>
       </div>
-      <pre className="p-4 overflow-x-auto text-[13px] leading-relaxed font-mono text-foreground dark:text-zinc-100 bg-transparent m-0 scrollbar-thin">
-        <code>{children}</code>
-      </pre>
+
+      <Highlight theme={themes.github} code={codeString} language={language}>
+        {({ tokens, getLineProps, getTokenProps }) => (
+          <pre className="p-4 overflow-x-auto text-[13px] leading-relaxed font-mono bg-transparent m-0 scrollbar-thin">
+            <code>
+              {tokens.map((line, i) => (
+                <div key={i} {...getLineProps({ line })}>
+                  {line.map((token, key) => (
+                    <span key={key} {...getTokenProps({ token })} />
+                  ))}
+                </div>
+              ))}
+            </code>
+          </pre>
+        )}
+      </Highlight>
     </div>
   );
 }
@@ -174,6 +269,92 @@ export default function PlaygroundPage() {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [isFileSheetOpen, setIsFileSheetOpen] = useState(false);
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [renameDialogTitle, setRenameDialogTitle] = useState("");
+  const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
+  const [isFetchingPreviewText, setIsFetchingPreviewText] = useState(false);
+  const [copiedPreviewText, setCopiedPreviewText] = useState(false);
+
+  useEffect(() => {
+    if (
+      previewTarget &&
+      !previewTarget.isImage &&
+      !previewTarget.isPdf &&
+      !previewTarget.textContent &&
+      previewTarget.url &&
+      isTextLikeFileName(previewTarget.name, previewTarget.mimeType)
+    ) {
+      setIsFetchingPreviewText(true);
+      fetch(previewTarget.url)
+        .then((res) => res.text())
+        .then((text) => {
+          setPreviewTarget((prev) => (prev && prev.url === previewTarget.url ? { ...prev, textContent: text } : prev));
+        })
+        .catch((err) => {
+          console.error("Gagal memuat isi file:", err);
+        })
+        .finally(() => {
+          setIsFetchingPreviewText(false);
+        });
+    }
+  }, [previewTarget?.url]);
+
+  const handleOpenPreview = (file: { url: string; name: string; size?: number; mimeType?: string; isImage?: boolean; isPdf?: boolean; textContent?: string }) => {
+    const isImg = file.isImage ?? isImageFile(file.mimeType, file.name);
+    const isPdf = file.isPdf ?? isPdfFile(file.mimeType, file.name);
+    setPreviewTarget({
+      url: file.url,
+      name: file.name,
+      size: file.size,
+      mimeType: file.mimeType,
+      textContent: file.textContent,
+      isImage: isImg,
+      isPdf: isPdf,
+    });
+  };
+
+  const sessionFiles = [
+    ...getSessionFiles(messages),
+    ...attachments.map(att => ({
+      url: att.url,
+      name: att.name,
+      size: att.size,
+      mimeType: att.mimeType,
+      isImage: isImageFile(att.mimeType, att.name),
+      isPdf: isPdfFile(att.mimeType, att.name),
+      textContent: att.textContent,
+    }))
+  ].filter((f, idx, arr) => arr.findIndex(x => x.url === f.url) === idx);
+
+  const openRenameDialog = () => {
+    const cur = sessions.find(s => s.id === sessionId);
+    setRenameDialogTitle(cur?.title || "");
+    setIsRenameDialogOpen(true);
+  };
+
+  const handleSaveHeaderRename = async () => {
+    if (!sessionId) return;
+    const trimmed = renameDialogTitle.trim();
+    if (!trimmed) {
+      setIsRenameDialogOpen(false);
+      return;
+    }
+    try {
+      await csrfFetch(`/api/playground/sessions/${sessionId}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmed }),
+      });
+      queryClient.invalidateQueries({ queryKey: ["playground-sessions"] });
+      toast({ title: "Judul berhasil diubah" });
+    } catch {
+      toast({ title: "Gagal mengubah judul", variant: "destructive" });
+    } finally {
+      setIsRenameDialogOpen(false);
+    }
+  };
 
   const handleCopyMessage = async (idx: number, text: string) => {
     if (!text) return;
@@ -781,10 +962,74 @@ export default function PlaygroundPage() {
                   {models.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
                 </SelectContent>
               </Select>
+
+              {/* Pengaturan Lanjutan: Tepat di samping pilihan model */}
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted" title="Pengaturan Lanjutan Model (Prompt, Temperature, Tokens)">
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Pengaturan Lanjutan Model</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="sm:hidden space-y-2">
+                      <Label className="text-xs font-medium">API Key</Label>
+                      <Select value={keyId} onValueChange={setKeyId}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih API key" /></SelectTrigger>
+                        <SelectContent className="max-h-[250px] overflow-y-auto">
+                          {keys.filter(k => k.isActive).map(k => <SelectItem key={k.id} value={String(k.id)}>{k.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="sm:hidden space-y-2">
+                      <Label className="text-xs font-medium">Model</Label>
+                      <Select value={model} onValueChange={setModel}>
+                        <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih model" /></SelectTrigger>
+                        <SelectContent className="max-h-[250px] overflow-y-auto">
+                          {models.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">System Prompt</Label>
+                      <Textarea value={system} onChange={e => setSystem(e.target.value)} rows={4} className="text-sm resize-none rounded-xl" placeholder="Instruksi untuk AI..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Temperature</Label>
+                        <Input 
+                          type="text" 
+                          inputMode="decimal" 
+                          placeholder="0.7" 
+                          value={temperature} 
+                          onChange={e => setTemperature(e.target.value.replace(",", "."))} 
+                          className="h-9 rounded-lg" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Max Tokens</Label>
+                        <Input 
+                          type="number" 
+                          min="1" 
+                          max="65536" 
+                          placeholder="8192" 
+                          value={maxTokens} 
+                          onChange={e => setMaxTokens(e.target.value)} 
+                          className="h-9 rounded-lg" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* Balance Badge */}
             {user && (
               <div
@@ -798,68 +1043,48 @@ export default function PlaygroundPage() {
               </div>
             )}
             
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground rounded-full shadow-sm">
-                  <Settings2 className="h-4 w-4" />
+            {/* 3-Dot More Menu: Rename, View Files, Delete */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted" title="Pilihan obrolan">
+                  <MoreVertical className="h-4 w-4" />
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Pengaturan Lanjutan</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="sm:hidden space-y-2">
-                    <Label className="text-xs font-medium">API Key</Label>
-                    <Select value={keyId} onValueChange={setKeyId}>
-                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih API key" /></SelectTrigger>
-                      <SelectContent className="max-h-[250px] overflow-y-auto">
-                        {keys.filter(k => k.isActive).map(k => <SelectItem key={k.id} value={String(k.id)}>{k.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="sm:hidden space-y-2">
-                    <Label className="text-xs font-medium">Model</Label>
-                    <Select value={model} onValueChange={setModel}>
-                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih model" /></SelectTrigger>
-                      <SelectContent className="max-h-[250px] overflow-y-auto">
-                        {models.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl shadow-lg border">
+                <DropdownMenuItem 
+                  onClick={openRenameDialog} 
+                  className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg cursor-pointer"
+                  disabled={!sessionId}
+                >
+                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                  <span>Ubah Nama</span>
+                </DropdownMenuItem>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">System Prompt</Label>
-                    <Textarea value={system} onChange={e => setSystem(e.target.value)} rows={4} className="text-sm resize-none rounded-xl" placeholder="Instruksi untuk AI..." />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Temperature</Label>
-                      <Input 
-                        type="text" 
-                        inputMode="decimal" 
-                        placeholder="0.7" 
-                        value={temperature} 
-                        onChange={e => setTemperature(e.target.value.replace(",", "."))} 
-                        className="h-9 rounded-lg" 
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Max Tokens</Label>
-                      <Input 
-                        type="number" 
-                        min="1" 
-                        max="65536" 
-                        placeholder="8192" 
-                        value={maxTokens} 
-                        onChange={e => setMaxTokens(e.target.value)} 
-                        className="h-9 rounded-lg" 
-                      />
-                    </div>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+                <DropdownMenuItem 
+                  onClick={() => setIsFileSheetOpen(true)} 
+                  className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg cursor-pointer"
+                >
+                  <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                  <span>Lihat File di Chat</span>
+                  {sessionFiles.length > 0 && (
+                    <span className="ml-auto text-[10px] bg-muted px-1.5 py-0.5 rounded-full font-semibold text-muted-foreground">
+                      {sessionFiles.length}
+                    </span>
+                  )}
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                <DropdownMenuItem 
+                  onClick={() => sessionId && deleteSession(sessionId, { stopPropagation: () => {} } as any)} 
+                  className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+                  disabled={!sessionId}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Hapus Obrolan</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -906,21 +1131,28 @@ export default function PlaygroundPage() {
                           {msg.content.map((part, i) => {
                             if (part.type === "image_url") {
                               return (
-                                <div key={i} className="relative rounded-2xl overflow-hidden shadow-sm border border-border/50 bg-background p-1 max-w-[320px]">
-                                  <a href={part.image_url.url} target="_blank" rel="noreferrer" title="Buka gambar penuh">
-                                    <img src={part.image_url.url} alt="Lampiran gambar" className="rounded-xl object-cover hover:opacity-95 transition-opacity" />
-                                  </a>
+                                <div
+                                  key={i}
+                                  onClick={() => handleOpenPreview({ url: part.image_url.url, name: "Gambar Terlampir", isImage: true })}
+                                  className="relative rounded-2xl overflow-hidden shadow-sm border border-border/50 bg-background p-1 max-w-[320px] group cursor-pointer"
+                                  title="Klik untuk melihat pratinjau gambar"
+                                >
+                                  <div className="relative overflow-hidden rounded-xl">
+                                    <img src={part.image_url.url} alt="Lampiran gambar" className="rounded-xl object-cover hover:opacity-90 transition-opacity" />
+                                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center text-white backdrop-blur-[1px]">
+                                      <Eye className="h-6 w-6 drop-shadow-md" />
+                                    </div>
+                                  </div>
                                 </div>
                               );
                             }
                             if (part.type === "file") {
                               return (
-                                <a
+                                <div
                                   key={i}
-                                  href={part.file.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="flex items-center gap-3 p-3 rounded-2xl border bg-background/95 hover:bg-muted/60 transition-colors shadow-sm max-w-sm group text-foreground"
+                                  onClick={() => handleOpenPreview(part.file)}
+                                  className="flex items-center gap-3 p-3 rounded-2xl border bg-background/95 hover:bg-muted/60 transition-colors shadow-sm max-w-sm group text-foreground cursor-pointer select-none text-left"
+                                  title="Klik untuk melihat pratinjau file"
                                 >
                                   <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                                     {isCodeFile(part.file.name) ? <FileCode className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
@@ -932,12 +1164,12 @@ export default function PlaygroundPage() {
                                     <div className="text-xs text-muted-foreground flex items-center gap-2">
                                       <span>{formatFileSize(part.file.size)}</span>
                                       <span>•</span>
-                                      <span className="flex items-center gap-1 text-[11px] text-primary/80 group-hover:underline">
-                                        <Download className="h-3 w-3" /> Unduh
+                                      <span className="flex items-center gap-1 text-[11px] text-primary/80 group-hover:text-primary font-medium">
+                                        <Eye className="h-3 w-3" /> Lihat File
                                       </span>
                                     </div>
                                   </div>
-                                </a>
+                                </div>
                               );
                             }
                             if (part.type === "text" && part.text) {
@@ -1032,17 +1264,28 @@ export default function PlaygroundPage() {
                         variant="ghost"
                         size="icon"
                         className="h-5 w-5 rounded-full hover:bg-destructive hover:text-destructive-foreground p-0"
-                        onClick={() => removeAttachment(idx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeAttachment(idx);
+                        }}
                       >
                         <X className="h-3 w-3" />
                       </Button>
                     </div>
                     {isImageFile(att.mimeType, att.name) ? (
-                      <div className="bg-background p-1 rounded-xl shadow-sm border border-border/60">
+                      <div
+                        onClick={() => handleOpenPreview(att)}
+                        className="bg-background p-1 rounded-xl shadow-sm border border-border/60 cursor-pointer hover:border-primary/50 transition-colors"
+                        title="Klik untuk pratinjau gambar"
+                      >
                         <img src={att.url} alt={att.name} className="h-20 w-20 rounded-lg object-cover" />
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2.5 px-3 py-2 bg-background rounded-xl border border-border/60 shadow-sm max-w-[220px]">
+                      <div
+                        onClick={() => handleOpenPreview(att)}
+                        className="flex items-center gap-2.5 px-3 py-2 bg-background rounded-xl border border-border/60 shadow-sm max-w-[220px] cursor-pointer hover:border-primary/50 transition-colors"
+                        title="Klik untuk pratinjau file"
+                      >
                         <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
                           {isCodeFile(att.name) ? <FileCode className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                         </div>
@@ -1129,6 +1372,288 @@ export default function PlaygroundPage() {
           </div>
         </div>
       </div>
+      {/* Right Drawer / Sheet: View Files in Chat */}
+      <Sheet open={isFileSheetOpen} onOpenChange={setIsFileSheetOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0 bg-background border-l shadow-2xl">
+          <SheetHeader className="p-4 px-6 border-b shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <FolderOpen className="h-4 w-4" />
+              </div>
+              <div>
+                <SheetTitle className="text-base font-semibold">File di Sesi Ini</SheetTitle>
+                <SheetDescription className="text-xs text-muted-foreground">
+                  {sessionFiles.length} file terlampir dalam obrolan ini
+                </SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto p-4 px-6 space-y-3">
+            {sessionFiles.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+                <div className="h-16 w-16 rounded-full bg-muted/60 flex items-center justify-center mb-4">
+                  <FileText className="h-8 w-8 text-muted-foreground/40" />
+                </div>
+                <p className="text-sm font-medium text-foreground">Belum ada file terlampir</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
+                  Semua gambar, PDF, atau dokumen yang kamu upload di chat ini akan otomatis terkumpul di sini.
+                </p>
+              </div>
+            ) : (
+              sessionFiles.map((f, i) => (
+                <div
+                  key={i}
+                  onClick={() => handleOpenPreview(f)}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-border/70 bg-card hover:bg-muted/50 transition-colors shadow-2xs group cursor-pointer"
+                  title="Klik untuk melihat pratinjau"
+                >
+                  {f.isImage ? (
+                    <div className="h-12 w-12 rounded-lg overflow-hidden border shrink-0 bg-muted">
+                      <img src={f.url} alt={f.name} className="h-full w-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="h-12 w-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      {isCodeFile(f.name) ? <FileCode className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate text-foreground group-hover:text-primary transition-colors">
+                      {f.name}
+                    </p>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                      {f.size ? <span>{formatFileSize(f.size)}</span> : null}
+                      {f.size ? <span>•</span> : null}
+                      <span className="uppercase font-mono text-[10px]">{f.isImage ? "Gambar" : f.isPdf ? "PDF" : (f.name.split('.').pop() || "File")}</span>
+                    </div>
+                  </div>
+
+                  <a
+                    href={f.url}
+                    download={f.name}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-8 w-8 rounded-lg border flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted transition-colors shrink-0"
+                    title="Unduh file langsung"
+                  >
+                    <Download className="h-4 w-4" />
+                  </a>
+                </div>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Rename Dialog from 3-dot menu */}
+      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Ubah Nama Obrolan</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Judul Obrolan</Label>
+              <Input
+                value={renameDialogTitle}
+                onChange={e => setRenameDialogTitle(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") handleSaveHeaderRename();
+                }}
+                placeholder="Masukkan judul obrolan..."
+                className="h-9"
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setIsRenameDialogOpen(false)}>
+                Batal
+              </Button>
+              <Button size="sm" onClick={handleSaveHeaderRename} disabled={!renameDialogTitle.trim()}>
+                Simpan
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lightbox / In-App File Preview Modal */}
+      <Dialog open={Boolean(previewTarget)} onOpenChange={(open) => !open && setPreviewTarget(null)}>
+        <DialogContent className="sm:max-w-4xl max-w-[95vw] w-full h-[85vh] max-h-[85vh] p-0 flex flex-col gap-0 overflow-hidden bg-background border shadow-2xl rounded-2xl">
+          {previewTarget && (
+            <>
+              {/* Preview Header */}
+              <div className="flex items-center justify-between px-5 py-3 border-b bg-muted/40 shrink-0 pr-12">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    {previewTarget.isImage ? (
+                      <Eye className="h-4.5 w-4.5" />
+                    ) : isCodeFile(previewTarget.name) ? (
+                      <FileCode className="h-4.5 w-4.5" />
+                    ) : (
+                      <FileText className="h-4.5 w-4.5" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <DialogTitle className="text-sm font-semibold truncate text-foreground leading-tight" title={previewTarget.name}>
+                      {previewTarget.name}
+                    </DialogTitle>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                      {previewTarget.size ? <span>{formatFileSize(previewTarget.size)}</span> : null}
+                      {previewTarget.size ? <span>•</span> : null}
+                      <span className="uppercase font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground border">
+                        {previewTarget.isImage ? "GAMBAR" : previewTarget.isPdf ? "PDF" : (previewTarget.name.split('.').pop() || "FILE")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {previewTarget.textContent && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5"
+                      onClick={async () => {
+                        try {
+                          if (navigator?.clipboard?.writeText) {
+                            await navigator.clipboard.writeText(previewTarget.textContent || "");
+                          } else {
+                            const ta = document.createElement("textarea");
+                            ta.value = previewTarget.textContent || "";
+                            document.body.appendChild(ta);
+                            ta.select();
+                            document.execCommand("copy");
+                            document.body.removeChild(ta);
+                          }
+                          setCopiedPreviewText(true);
+                          setTimeout(() => setCopiedPreviewText(false), 2000);
+                        } catch {}
+                      }}
+                    >
+                      {copiedPreviewText ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-emerald-600 font-semibold" />
+                          <span className="text-emerald-600 font-semibold">Tersalin</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          <span>Salin Teks</span>
+                        </>
+                      )}
+                    </Button>
+                  )}
+
+                  <a
+                    href={previewTarget.url}
+                    download={previewTarget.name}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-md border border-input bg-background hover:bg-muted text-foreground transition-colors gap-1.5 shadow-2xs"
+                    title="Unduh file ke perangkat"
+                  >
+                    <Download className="h-3.5 w-3.5 text-primary" />
+                    <span>Unduh</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Preview Body */}
+              <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col bg-background">
+                {previewTarget.isImage ? (
+                  <div className="flex-1 bg-muted/20 flex items-center justify-center p-4 overflow-auto">
+                    <img
+                      src={previewTarget.url}
+                      alt={previewTarget.name}
+                      className="max-h-full max-w-full object-contain rounded-lg shadow-sm"
+                    />
+                  </div>
+                ) : previewTarget.isPdf ? (
+                  <div className="flex-1 w-full h-full bg-muted/10 overflow-hidden">
+                    <iframe
+                      src={previewTarget.url}
+                      title={previewTarget.name}
+                      className="w-full h-full border-0 bg-white"
+                    />
+                  </div>
+                ) : isTextLikeFileName(previewTarget.name, previewTarget.mimeType) ? (
+                  isFetchingPreviewText ? (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-muted-foreground">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      <p className="text-sm">Memuat isi file...</p>
+                    </div>
+                  ) : previewTarget.textContent ? (
+                    <div className="flex-1 overflow-auto bg-muted/20 p-4 font-mono text-[13px] leading-relaxed scrollbar-thin">
+                      <Highlight
+                        theme={themes.github}
+                        code={previewTarget.textContent}
+                        language={detectLanguageFromName(previewTarget.name)}
+                      >
+                        {({ tokens, getLineProps, getTokenProps }) => (
+                          <pre className="m-0 bg-transparent p-0">
+                            <code>
+                              {tokens.map((line, i) => (
+                                <div key={i} {...getLineProps({ line })} className="table-row">
+                                  <span className="table-cell pr-4 text-right select-none text-muted-foreground/40 font-mono text-xs w-10">
+                                    {i + 1}
+                                  </span>
+                                  <span className="table-cell">
+                                    {line.map((token, key) => (
+                                      <span key={key} {...getTokenProps({ token })} />
+                                    ))}
+                                  </span>
+                                </div>
+                              ))}
+                            </code>
+                          </pre>
+                        )}
+                      </Highlight>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-2 p-8 text-center text-muted-foreground">
+                      <FileText className="h-10 w-10 opacity-40 mb-2" />
+                      <p className="text-sm font-medium text-foreground">File teks kosong atau tidak dapat dimuat</p>
+                      <a
+                        href={previewTarget.url}
+                        download={previewTarget.name}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-primary underline mt-2"
+                      >
+                        Unduh untuk membaca secara manual
+                      </a>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-muted/10">
+                    <div className="h-16 w-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4 shadow-2xs">
+                      <FileText className="h-8 w-8" />
+                    </div>
+                    <h4 className="text-base font-semibold text-foreground max-w-md truncate">
+                      {previewTarget.name}
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1 mb-6 max-w-sm">
+                      Pratinjau langsung tidak tersedia untuk format file ini ({previewTarget.name.split('.').pop()?.toUpperCase() || "Dokumen"}). Anda dapat mengunduhnya untuk membukanya langsung.
+                    </p>
+                    <a
+                      href={previewTarget.url}
+                      download={previewTarget.name}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-primary text-primary-foreground font-medium text-xs shadow-sm hover:opacity-95 transition-opacity gap-2"
+                    >
+                      <Download className="h-4 w-4" /> Unduh File {previewTarget.size ? `(${formatFileSize(previewTarget.size)})` : ""}
+                    </a>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
