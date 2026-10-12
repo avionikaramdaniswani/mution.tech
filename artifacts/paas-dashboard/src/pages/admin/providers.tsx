@@ -182,7 +182,13 @@ export default function AdminProviders() {
         method: "POST",
         credentials: "include"
       });
-      const data = await res.json();
+      const text = await res.text().catch(() => "");
+      let data: any = {};
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(res.status >= 500 ? `Gateway/Server error (${res.status}). Server sedang sibuk atau timeout.` : "Respon server tidak valid.");
+      }
       if (!res.ok || !data.ok) throw new Error(data.error || "Gagal menguji model");
       toast({ title: "Test Berhasil", description: `Model merespons dengan baik.`, className: "border-green-500 bg-green-50 text-green-900" });
     } catch (err: any) {

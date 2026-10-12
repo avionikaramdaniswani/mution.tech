@@ -56,6 +56,8 @@ app.use("/api", csrfOriginGuard);
 
 app.use("/api", router);
 app.use("/v1", v1Router);
+// Also support clients (e.g. Anthropic SDK / Claude Code / 9router) that append /v1/* to base URLs ending in /v1
+app.use("/v1/v1", v1Router);
 // Also serve AI proxy routes at root level (no /v1 prefix) for clients like
 // Codex CLI that use base_url without a path and append e.g. /responses directly.
 app.use("/", v1Router);

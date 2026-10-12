@@ -475,32 +475,56 @@ export async function adminTestProviderModel(providerId: string, modelId: string
   }
   fetchUrl += "/chat/completions";
 
-  const res = await fetch(fetchUrl, {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: model.upstreamModelId,
-      messages: [{ role: "user", content: "hi" }],
-      max_tokens: 32
-    }),
-    signal: AbortSignal.timeout(30000) // 30 second timeout
-  });
-  
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    try {
-      const errJson = JSON.parse(errText);
-      return { ok: false, error: errJson.error?.message || errJson.message || `HTTP ${res.status}: ${errText.slice(0, 100)}` };
-    } catch (e) {
-      return { ok: false, error: `HTTP ${res.status}: ${errText.slice(0, 100)}` };
+  let res: globalThis.Response;
+  try {
+    res = await fetch(fetchUrl, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model.upstreamModelId,
+        messages: [{ role: "user", content: "hi" }],
+        max_tokens: 64
+      }),
+      signal: AbortSignal.timeout(30000) // 30 second timeout
+    });
+  } catch (fetchErr: any) {
+    if (fetchErr.name === "TimeoutError") {
+      return { ok: false, error: "Timeout (30s): Server upstream tidak merespons tepat waktu. Upstream mungkin sedang lambat atau kelebihan beban." };
     }
+    return { ok: false, error: `Network error: ${fetchErr.message}` };
   }
   
-  const data = await res.json();
-  return { ok: true, data };
+  const text = await res.text().catch(() => "");
+
+  if (!res.ok) {
+    try {
+      const errJson = JSON.parse(text);
+      return { ok: false, error: errJson.error?.message || errJson.message || `HTTP ${res.status}: ${text.slice(0, 150)}` };
+    } catch {
+      if (text.includes("<!DOCTYPE") || text.includes("<html")) {
+        return { ok: false, error: `Upstream error (HTTP ${res.status}): Server upstream mengembalikan halaman HTML/error, bukan JSON.` };
+      }
+      return { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 150)}` };
+    }
+  }
+
+  // Response 200 OK — parse safely
+  try {
+    const data = JSON.parse(text);
+    if (data.error) {
+      const errMsg = typeof data.error === "string" ? data.error : data.error?.message || JSON.stringify(data.error);
+      return { ok: false, error: errMsg };
+    }
+    return { ok: true, data };
+  } catch {
+    if (text.includes("<!DOCTYPE") || text.includes("<html")) {
+      return { ok: false, error: "Upstream mengembalikan halaman HTML web/challenge, bukan respons JSON AI." };
+    }
+    return { ok: false, error: `Respon upstream tidak valid: ${text.slice(0, 150)}` };
+  }
 }
 
 export async function adminTestRawModel(providerId: string, upstreamModelId: string, retryCount = 0): Promise<{ ok: boolean; error?: string; data?: any }> {
