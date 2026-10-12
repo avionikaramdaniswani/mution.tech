@@ -484,7 +484,7 @@ export async function adminTestProviderModel(providerId: string, modelId: string
     body: JSON.stringify({
       model: model.upstreamModelId,
       messages: [{ role: "user", content: "hi" }],
-      max_tokens: 1
+      max_tokens: 32
     }),
     signal: AbortSignal.timeout(30000) // 30 second timeout
   });
@@ -530,7 +530,7 @@ export async function adminTestRawModel(providerId: string, upstreamModelId: str
       body: JSON.stringify({
         model: upstreamModelId,
         messages: [{ role: "user", content: "hi" }],
-        max_tokens: 1
+        max_tokens: 32
       }),
       signal: AbortSignal.timeout(30000) // 30 second timeout
     });
