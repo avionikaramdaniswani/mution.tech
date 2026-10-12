@@ -467,22 +467,30 @@ export async function adminTestProviderModel(providerId: string, modelId: string
 
   const apiKey = decryptSecret(provider.apiKeyEncrypted);
   if (!apiKey) throw new Error("Failed to decrypt API key");
-  
+
+  const isConduit = provider.type === "conduit";
+
   // Normalize base URL: remove trailing slashes, ensure /v1 suffix
   let fetchUrl = provider.baseUrl.replace(/\/$/, "");
   if (!fetchUrl.endsWith('/v1') && !fetchUrl.match(/\/v\d/)) {
     fetchUrl += '/v1';
   }
-  fetchUrl += "/chat/completions";
+  fetchUrl += isConduit ? "/messages" : "/chat/completions";
 
   let res: globalThis.Response;
   try {
     res = await fetch(fetchUrl, {
       method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
+      headers: isConduit
+        ? {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          }
+        : {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
       body: JSON.stringify({
         model: model.upstreamModelId,
         messages: [{ role: "user", content: "hi" }],
@@ -535,22 +543,30 @@ export async function adminTestRawModel(providerId: string, upstreamModelId: str
   
   const apiKey = decryptSecret(provider.apiKeyEncrypted);
   if (!apiKey) throw new Error("Failed to decrypt API key");
-  
+
+  const isConduit = provider.type === "conduit";
+
   // Normalize base URL: remove trailing slashes, ensure /v1 suffix
   let fetchUrl = provider.baseUrl.replace(/\/$/, "");
   if (!fetchUrl.endsWith('/v1') && !fetchUrl.match(/\/v\d/)) {
     fetchUrl += '/v1';
   }
-  fetchUrl += "/chat/completions";
+  fetchUrl += isConduit ? "/messages" : "/chat/completions";
 
   let res: globalThis.Response;
   try {
     res = await fetch(fetchUrl, {
       method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
+      headers: isConduit
+        ? {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          }
+        : {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
       body: JSON.stringify({
         model: upstreamModelId,
         messages: [{ role: "user", content: "hi" }],
@@ -2175,6 +2191,27 @@ function flattenResponsesTools(tools: any[]): { chatTools: any[]; namespaceMap: 
       chatTools.push(responsesToolToChatTool(tool));
       continue;
     }
+    if (tool.type === "local_shell") {
+      chatTools.push({
+        type: "function",
+        function: {
+          name: "local_shell",
+          description: "Execute a command in the user's local terminal/shell to inspect directory contents, read files, run scripts, or execute tools.",
+          parameters: {
+            type: "object",
+            properties: {
+              command: {
+                type: "array",
+                items: { type: "string" },
+                description: "The command line array to execute, e.g. [\"powershell\", \"-Command\", \"Get-ChildItem\"] or [\"cat\", \"package.json\"]",
+              },
+            },
+            required: ["command"],
+          },
+        },
+      });
+      continue;
+    }
     if (tool.type === "namespace" && Array.isArray(tool.tools)) {
       for (const nested of tool.tools) {
         if (!nested || nested.type !== "function" || !nested.name) continue;
@@ -2206,6 +2243,48 @@ function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMap: Name
   } else if (Array.isArray(body.input)) {
     for (const item of body.input) {
       if (!item || typeof item !== "object") continue;
+
+      // Local shell call from assistant replayed by client
+      if (item.type === "local_shell_call") {
+        const cmd = item.action?.command ?? item.command ?? [];
+        messages.push({
+          role: "assistant",
+          content: null,
+          tool_calls: [{
+            id: item.call_id ?? item.id,
+            type: "function",
+            function: {
+              name: "local_shell",
+              arguments: JSON.stringify({ command: Array.isArray(cmd) ? cmd : [String(cmd)] }),
+            },
+          }],
+        });
+        continue;
+      }
+
+      // Local shell execution output sent back by client
+      if (item.type === "local_shell_call_output") {
+        let textOutput = "";
+        if (typeof item.output === "string") {
+          textOutput = item.output;
+        } else if (item.output && typeof item.output === "object") {
+          if (Array.isArray(item.output)) {
+            textOutput = item.output
+              .map((o: any) => (typeof o === "string" ? o : [o.stdout, o.stderr].filter(Boolean).join("\n")))
+              .join("\n");
+          } else if ("stdout" in item.output || "stderr" in item.output) {
+            textOutput = [item.output.stdout, item.output.stderr].filter(Boolean).join("\n") || `[exit code: ${item.output.exit_code ?? 0}]`;
+          } else {
+            textOutput = JSON.stringify(item.output);
+          }
+        }
+        messages.push({
+          role: "tool",
+          tool_call_id: item.call_id ?? item.id,
+          content: textOutput,
+        });
+        continue;
+      }
 
       // A previous assistant tool call the client is replaying back to us
       if (item.type === "function_call") {
@@ -2281,12 +2360,35 @@ function splitNamespacedName(flatName: string, namespaceMap: NamespaceMap): { na
   return split ? { namespace: split.namespace, name: split.name } : { namespace: null, name: flatName };
 }
 
+function parseLocalShellCommand(argsStr: string): string[] {
+  try {
+    const parsed = JSON.parse(argsStr || "{}");
+    if (Array.isArray(parsed.command)) return parsed.command;
+    if (typeof parsed.command === "string") return [parsed.command];
+    if (Array.isArray(parsed.action?.command)) return parsed.action.command;
+  } catch {}
+  return [];
+}
+
 /** Build Responses API output items from a Chat Completions message (text and/or tool calls). */
 function chatMessageToResponsesOutput(message: any, msgId: string, namespaceMap: NamespaceMap): any[] {
   const output: any[] = [];
   const toolCalls = message?.tool_calls;
   if (Array.isArray(toolCalls) && toolCalls.length > 0) {
     for (const call of toolCalls) {
+      if (call.function?.name === "local_shell") {
+        output.push({
+          type: "local_shell_call",
+          id: `lsc_${call.id ?? crypto.randomUUID().replace(/-/g, "")}`,
+          call_id: call.id,
+          status: "completed",
+          action: {
+            type: "exec",
+            command: parseLocalShellCommand(call.function?.arguments ?? "{}"),
+          },
+        });
+        continue;
+      }
       const { namespace, name } = splitNamespacedName(call.function?.name ?? "", namespaceMap);
       output.push({
         type: "function_call",
@@ -2430,21 +2532,31 @@ async function streamChatToResponses(
             if (!call) {
               call = { outputIndex: nextOutputIndex++, id: tc.id ?? `call_${idx}`, name: tc.function?.name ?? "", arguments: "" };
               pendingCalls.set(idx, call);
-              const added = splitNamespacedName(call.name, namespaceMap);
-              res.write(responsesSseEvent("response.output_item.added", {
-                type: "response.output_item.added",
-                output_index: call.outputIndex,
-                item: { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: added.name, ...(added.namespace != null ? { namespace: added.namespace } : {}), arguments: "", status: "in_progress" },
-              }));
+              if (call.name === "local_shell") {
+                res.write(responsesSseEvent("response.output_item.added", {
+                  type: "response.output_item.added",
+                  output_index: call.outputIndex,
+                  item: { type: "local_shell_call", id: `lsc_${call.id}`, call_id: call.id, status: "in_progress", action: { type: "exec", command: [] } },
+                }));
+              } else {
+                const added = splitNamespacedName(call.name, namespaceMap);
+                res.write(responsesSseEvent("response.output_item.added", {
+                  type: "response.output_item.added",
+                  output_index: call.outputIndex,
+                  item: { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: added.name, ...(added.namespace != null ? { namespace: added.namespace } : {}), arguments: "", status: "in_progress" },
+                }));
+              }
             }
             if (tc.function?.name) call.name = tc.function.name;
             const argDelta = tc.function?.arguments;
             if (typeof argDelta === "string" && argDelta) {
               call.arguments += argDelta;
-              res.write(responsesSseEvent("response.function_call_arguments.delta", {
-                type: "response.function_call_arguments.delta",
-                item_id: `fc_${call.id}`, output_index: call.outputIndex, delta: argDelta,
-              }));
+              if (call.name !== "local_shell") {
+                res.write(responsesSseEvent("response.function_call_arguments.delta", {
+                  type: "response.function_call_arguments.delta",
+                  item_id: `fc_${call.id}`, output_index: call.outputIndex, delta: argDelta,
+                }));
+              }
             }
           }
         }
@@ -2476,14 +2588,29 @@ async function streamChatToResponses(
   }
 
   for (const call of pendingCalls.values()) {
-    res.write(responsesSseEvent("response.function_call_arguments.done", {
-      type: "response.function_call_arguments.done",
-      item_id: `fc_${call.id}`, output_index: call.outputIndex, arguments: call.arguments,
-    }));
-    const split = splitNamespacedName(call.name, namespaceMap);
-    const callItem = { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: split.name, ...(split.namespace != null ? { namespace: split.namespace } : {}), arguments: call.arguments, status: "completed" };
-    res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: call.outputIndex, item: callItem }));
-    output.push(callItem);
+    if (call.name === "local_shell") {
+      const callItem = {
+        type: "local_shell_call",
+        id: `lsc_${call.id}`,
+        call_id: call.id,
+        status: "completed",
+        action: {
+          type: "exec",
+          command: parseLocalShellCommand(call.arguments),
+        },
+      };
+      res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: call.outputIndex, item: callItem }));
+      output.push(callItem);
+    } else {
+      res.write(responsesSseEvent("response.function_call_arguments.done", {
+        type: "response.function_call_arguments.done",
+        item_id: `fc_${call.id}`, output_index: call.outputIndex, arguments: call.arguments,
+      }));
+      const split = splitNamespacedName(call.name, namespaceMap);
+      const callItem = { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: split.name, ...(split.namespace != null ? { namespace: split.namespace } : {}), arguments: call.arguments, status: "completed" };
+      res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: call.outputIndex, item: callItem }));
+      output.push(callItem);
+    }
   }
 
   res.write(responsesSseEvent("response.completed", {
