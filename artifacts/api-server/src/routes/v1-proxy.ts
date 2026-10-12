@@ -2210,6 +2210,23 @@ function flattenResponsesTools(tools: any[]): { chatTools: any[]; namespaceMap: 
           },
         },
       });
+      chatTools.push({
+        type: "function",
+        function: {
+          name: "exec_command",
+          description: "Runs a command in the user's local terminal/shell.",
+          parameters: {
+            type: "object",
+            properties: {
+              cmd: {
+                type: "string",
+                description: "The shell command to run in powershell or terminal",
+              },
+            },
+            required: ["cmd"],
+          },
+        },
+      });
       continue;
     }
     if (tool.type === "namespace" && Array.isArray(tool.tools)) {
@@ -2247,6 +2264,11 @@ function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMap: Name
       // Local shell call from assistant replayed by client
       if (item.type === "local_shell_call") {
         const cmd = item.action?.command ?? item.command ?? [];
+        const cmdArray = Array.isArray(cmd) ? cmd : [String(cmd)];
+        let rawCmd = cmdArray.join(" ");
+        if (cmdArray.length >= 4 && cmdArray[0].toLowerCase().includes("powershell") && cmdArray[2].toLowerCase() === "-command") {
+          rawCmd = cmdArray.slice(3).join(" ");
+        }
         messages.push({
           role: "assistant",
           content: null,
@@ -2254,8 +2276,8 @@ function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMap: Name
             id: item.call_id ?? item.id,
             type: "function",
             function: {
-              name: "local_shell",
-              arguments: JSON.stringify({ command: Array.isArray(cmd) ? cmd : [String(cmd)] }),
+              name: "exec_command",
+              arguments: JSON.stringify({ cmd: rawCmd, command: cmdArray }),
             },
           }],
         });
@@ -2360,14 +2382,54 @@ function splitNamespacedName(flatName: string, namespaceMap: NamespaceMap): { na
   return split ? { namespace: split.namespace, name: split.name } : { namespace: null, name: flatName };
 }
 
-function parseLocalShellCommand(argsStr: string): string[] {
+function parseLocalShellCommand(argsStr: string, name?: string): string[] {
   try {
     const parsed = JSON.parse(argsStr || "{}");
+    if (typeof parsed.cmd === "string" && parsed.cmd.trim()) {
+      return ["powershell", "-NoProfile", "-Command", parsed.cmd.trim()];
+    }
+    if (Array.isArray(parsed.cmd)) return parsed.cmd;
     if (Array.isArray(parsed.command)) return parsed.command;
-    if (typeof parsed.command === "string") return [parsed.command];
+    if (typeof parsed.command === "string" && parsed.command.trim()) {
+      return ["powershell", "-NoProfile", "-Command", parsed.command.trim()];
+    }
     if (Array.isArray(parsed.action?.command)) return parsed.action.command;
   } catch {}
   return [];
+}
+
+/** Fallback extractor if a model outputs `to=functions.exec code: {"cmd": "..."}` as plain text instead of a tool call. */
+function extractEmbeddedExecCommand(t: string): string | null {
+  const marker = t.indexOf("to=functions.exec");
+  const marker2 = t.indexOf("to=exec_command");
+  const startIdx = marker !== -1 ? marker : marker2;
+  if (startIdx === -1) return null;
+  const jsonStart = t.indexOf("{", startIdx);
+  if (jsonStart === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = jsonStart; i < t.length; i++) {
+    const ch = t[i];
+    if (escape) { escape = false; continue; }
+    if (ch === "\\") { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (!inString) {
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          const raw = t.slice(jsonStart, i + 1);
+          try {
+            const parsed = JSON.parse(raw);
+            if (typeof parsed.cmd === "string" && parsed.cmd.trim()) return parsed.cmd.trim();
+          } catch {}
+          break;
+        }
+      }
+    }
+  }
+  return null;
 }
 
 /** Build Responses API output items from a Chat Completions message (text and/or tool calls). */
@@ -2376,7 +2438,7 @@ function chatMessageToResponsesOutput(message: any, msgId: string, namespaceMap:
   const toolCalls = message?.tool_calls;
   if (Array.isArray(toolCalls) && toolCalls.length > 0) {
     for (const call of toolCalls) {
-      if (call.function?.name === "local_shell") {
+      if (call.function?.name === "local_shell" || call.function?.name === "exec_command") {
         output.push({
           type: "local_shell_call",
           id: `lsc_${call.id ?? crypto.randomUUID().replace(/-/g, "")}`,
@@ -2384,7 +2446,7 @@ function chatMessageToResponsesOutput(message: any, msgId: string, namespaceMap:
           status: "completed",
           action: {
             type: "exec",
-            command: parseLocalShellCommand(call.function?.arguments ?? "{}"),
+            command: parseLocalShellCommand(call.function?.arguments ?? "{}", call.function?.name),
           },
         });
         continue;
@@ -2403,13 +2465,27 @@ function chatMessageToResponsesOutput(message: any, msgId: string, namespaceMap:
   }
   const text = message?.content;
   if (typeof text === "string" && text.length > 0) {
-    output.push({
-      type: "message",
-      id: msgId,
-      status: "completed",
-      role: "assistant",
-      content: [{ type: "output_text", text, annotations: [] }],
-    });
+    const embeddedCmd = output.length === 0 ? extractEmbeddedExecCommand(text) : null;
+    if (embeddedCmd) {
+      output.push({
+        type: "local_shell_call",
+        id: `lsc_${crypto.randomUUID().replace(/-/g, "")}`,
+        call_id: `call_${crypto.randomUUID().replace(/-/g, "")}`,
+        status: "completed",
+        action: {
+          type: "exec",
+          command: ["powershell", "-NoProfile", "-Command", embeddedCmd],
+        },
+      });
+    } else {
+      output.push({
+        type: "message",
+        id: msgId,
+        status: "completed",
+        role: "assistant",
+        content: [{ type: "output_text", text, annotations: [] }],
+      });
+    }
   }
   return output;
 }
@@ -2501,7 +2577,7 @@ async function streamChatToResponses(
   let cachedTokens = 0;
 
   // Tool calls stream incrementally by index; accumulate arguments per index.
-  type PendingCall = { outputIndex: number; id: string; name: string; arguments: string };
+  type PendingCall = { outputIndex: number; id: string; name: string; arguments: string; addedSent?: boolean };
   const pendingCalls = new Map<number, PendingCall>();
   let nextOutputIndex = 1; // 0 is reserved for the text message item
 
@@ -2530,9 +2606,15 @@ async function streamChatToResponses(
             const idx = tc.index ?? 0;
             let call = pendingCalls.get(idx);
             if (!call) {
-              call = { outputIndex: nextOutputIndex++, id: tc.id ?? `call_${idx}`, name: tc.function?.name ?? "", arguments: "" };
+              call = { outputIndex: nextOutputIndex++, id: tc.id ?? `call_${idx}`, name: tc.function?.name ?? "", arguments: "", addedSent: false };
               pendingCalls.set(idx, call);
-              if (call.name === "local_shell") {
+            }
+            if (tc.function?.name) call.name = tc.function.name;
+            if (tc.id) call.id = tc.id;
+
+            if (!call.addedSent && call.name) {
+              call.addedSent = true;
+              if (call.name === "local_shell" || call.name === "exec_command") {
                 res.write(responsesSseEvent("response.output_item.added", {
                   type: "response.output_item.added",
                   output_index: call.outputIndex,
@@ -2547,11 +2629,11 @@ async function streamChatToResponses(
                 }));
               }
             }
-            if (tc.function?.name) call.name = tc.function.name;
+
             const argDelta = tc.function?.arguments;
             if (typeof argDelta === "string" && argDelta) {
               call.arguments += argDelta;
-              if (call.name !== "local_shell") {
+              if (call.name !== "local_shell" && call.name !== "exec_command") {
                 res.write(responsesSseEvent("response.function_call_arguments.delta", {
                   type: "response.function_call_arguments.delta",
                   item_id: `fc_${call.id}`, output_index: call.outputIndex, delta: argDelta,
@@ -2572,6 +2654,12 @@ async function streamChatToResponses(
   // ── Closing events ────────────────────────────────────────────────────────
   const output: any[] = [];
 
+  // Check if we have an embedded command in fullText when no native tool calls were received
+  let embeddedExecCmd: string | null = null;
+  if (pendingCalls.size === 0 && fullText) {
+    embeddedExecCmd = extractEmbeddedExecCommand(fullText);
+  }
+
   if (fullText) {
     res.write(responsesSseEvent("response.output_text.done", {
       type: "response.output_text.done",
@@ -2587,8 +2675,50 @@ async function streamChatToResponses(
     output.push(messageItem);
   }
 
+  if (embeddedExecCmd) {
+    const callId = `call_${crypto.randomUUID().replace(/-/g, "")}`;
+    const callItem = {
+      type: "local_shell_call",
+      id: `lsc_${callId}`,
+      call_id: callId,
+      status: "completed",
+      action: {
+        type: "exec",
+        command: ["powershell", "-NoProfile", "-Command", embeddedExecCmd],
+      },
+    };
+    res.write(responsesSseEvent("response.output_item.added", {
+      type: "response.output_item.added",
+      output_index: nextOutputIndex,
+      item: { ...callItem, status: "in_progress" },
+    }));
+    res.write(responsesSseEvent("response.output_item.done", {
+      type: "response.output_item.done",
+      output_index: nextOutputIndex++,
+      item: callItem,
+    }));
+    output.push(callItem);
+  }
+
   for (const call of pendingCalls.values()) {
-    if (call.name === "local_shell") {
+    if (!call.addedSent) {
+      if (call.name === "local_shell" || call.name === "exec_command") {
+        res.write(responsesSseEvent("response.output_item.added", {
+          type: "response.output_item.added",
+          output_index: call.outputIndex,
+          item: { type: "local_shell_call", id: `lsc_${call.id}`, call_id: call.id, status: "in_progress", action: { type: "exec", command: [] } },
+        }));
+      } else {
+        const added = splitNamespacedName(call.name, namespaceMap);
+        res.write(responsesSseEvent("response.output_item.added", {
+          type: "response.output_item.added",
+          output_index: call.outputIndex,
+          item: { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: added.name, ...(added.namespace != null ? { namespace: added.namespace } : {}), arguments: "", status: "in_progress" },
+        }));
+      }
+    }
+
+    if (call.name === "local_shell" || call.name === "exec_command") {
       const callItem = {
         type: "local_shell_call",
         id: `lsc_${call.id}`,
@@ -2596,7 +2726,7 @@ async function streamChatToResponses(
         status: "completed",
         action: {
           type: "exec",
-          command: parseLocalShellCommand(call.arguments),
+          command: parseLocalShellCommand(call.arguments, call.name),
         },
       };
       res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: call.outputIndex, item: callItem }));
