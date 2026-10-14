@@ -2222,6 +2222,8 @@ type NamespaceMap = Map<string, { namespace: string; name: string }>;
 function flattenResponsesTools(tools: any[]): { chatTools: any[]; namespaceMap: NamespaceMap } {
   const chatTools: any[] = [];
   const namespaceMap: NamespaceMap = new Map();
+  let hasShellTool = false;
+
   for (const tool of tools) {
     if (!tool || typeof tool !== "object") continue;
     if (tool.type === "function") {
@@ -2229,57 +2231,87 @@ function flattenResponsesTools(tools: any[]): { chatTools: any[]; namespaceMap: 
       continue;
     }
     if (tool.type === "local_shell") {
-      chatTools.push({
-        type: "function",
-        function: {
-          name: "local_shell",
-          description: "Execute a command in the user's local terminal/shell to inspect directory contents, read files, run scripts, or execute tools.",
-          parameters: {
-            type: "object",
-            properties: {
-              command: {
-                type: "array",
-                items: { type: "string" },
-                description: "The command line array to execute, e.g. [\"powershell\", \"-Command\", \"Get-ChildItem\"] or [\"cat\", \"package.json\"]",
-              },
-            },
-            required: ["command"],
-          },
-        },
-      });
-      chatTools.push({
-        type: "function",
-        function: {
-          name: "exec_command",
-          description: "Runs a command in the user's local terminal/shell.",
-          parameters: {
-            type: "object",
-            properties: {
-              cmd: {
-                type: "string",
-                description: "The shell command to run in powershell or terminal",
-              },
-            },
-            required: ["cmd"],
-          },
-        },
-      });
+      hasShellTool = true;
       continue;
     }
     if (tool.type === "namespace" && Array.isArray(tool.tools)) {
       for (const nested of tool.tools) {
-        if (!nested || nested.type !== "function" || !nested.name) continue;
+        if (!nested || !nested.name) continue;
+        if (nested.type !== "function" && nested.type !== "custom") continue;
         const flatName = `${tool.name ?? ""}${nested.name}`;
         namespaceMap.set(flatName, { namespace: tool.name ?? "", name: nested.name });
+
+        let parameters = nested.parameters;
+        let description = nested.description;
+        if (nested.name === "exec" && (!parameters || parameters.format)) {
+          hasShellTool = true;
+          parameters = {
+            type: "object",
+            properties: {
+              cmd: {
+                type: "string",
+                description: "The shell command to run in powershell or bash terminal (e.g. Get-ChildItem, dir, ls, cat)",
+              },
+              command: {
+                type: "array",
+                items: { type: "string" },
+                description: "Command line arguments array",
+              },
+            },
+            required: ["cmd"],
+          };
+          description = description || "Execute a command in the user's local terminal/shell.";
+        }
+
         chatTools.push({
           type: "function",
-          function: { name: flatName, description: nested.description, parameters: nested.parameters },
+          function: { name: flatName, description, parameters },
         });
       }
       continue;
     }
     logger.warn({ toolType: tool.type }, "Dropping unsupported Responses API tool type for generic provider");
   }
+
+  // Ensure local_shell and exec_command are always registered if any shell/exec capability is present
+  if (hasShellTool) {
+    chatTools.push({
+      type: "function",
+      function: {
+        name: "local_shell",
+        description: "Execute a command in the user's local terminal/shell to inspect directory contents, read files, run scripts, or execute tools.",
+        parameters: {
+          type: "object",
+          properties: {
+            command: {
+              type: "array",
+              items: { type: "string" },
+              description: "The command line array to execute, e.g. [\"powershell\", \"-Command\", \"Get-ChildItem\"] or [\"cat\", \"package.json\"]",
+            },
+          },
+          required: ["command"],
+        },
+      },
+    });
+    chatTools.push({
+      type: "function",
+      function: {
+        name: "exec_command",
+        description: "Runs a command in the user's local terminal/shell.",
+        parameters: {
+          type: "object",
+          properties: {
+            cmd: {
+              type: "string",
+              description: "The shell command to run in powershell or terminal",
+            },
+          },
+          required: ["cmd"],
+        },
+      },
+    });
+  }
+
   return { chatTools, namespaceMap };
 }
 
@@ -2297,6 +2329,11 @@ function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMap: Name
   } else if (Array.isArray(body.input)) {
     for (const item of body.input) {
       if (!item || typeof item !== "object") continue;
+
+      // Ignore additional_tools in message list as it's tool declarations, not a chat message
+      if (item.type === "additional_tools") {
+        continue;
+      }
 
       // Local shell call from assistant replayed by client
       if (item.type === "local_shell_call") {
@@ -2386,10 +2423,23 @@ function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMap: Name
     }
   }
 
+  // Extract tools from body.tools OR body.input[...].tools (Codex CLI sends tools in additional_tools)
+  const rawTools: any[] = [];
+  if (Array.isArray(body.tools) && body.tools.length > 0) {
+    rawTools.push(...body.tools);
+  }
+  if (Array.isArray(body.input)) {
+    for (const item of body.input) {
+      if (item && item.type === "additional_tools" && Array.isArray(item.tools)) {
+        rawTools.push(...item.tools);
+      }
+    }
+  }
+
   let chatTools: any[] = [];
   let namespaceMap: NamespaceMap = new Map();
-  if (Array.isArray(body.tools) && body.tools.length > 0) {
-    const flattened = flattenResponsesTools(body.tools);
+  if (rawTools.length > 0) {
+    const flattened = flattenResponsesTools(rawTools);
     chatTools = flattened.chatTools;
     namespaceMap = flattened.namespaceMap;
   }
@@ -2419,11 +2469,23 @@ function splitNamespacedName(flatName: string, namespaceMap: NamespaceMap): { na
   return split ? { namespace: split.namespace, name: split.name } : { namespace: null, name: flatName };
 }
 
+function isShellCallName(name: string, namespaceMap?: NamespaceMap): boolean {
+  if (name === "local_shell" || name === "exec_command" || name === "functionsexec" || name === "exec") return true;
+  if (namespaceMap) {
+    const split = namespaceMap.get(name);
+    if (split && (split.name === "exec" || (split.namespace === "functions" && split.name === "exec"))) return true;
+  }
+  return false;
+}
+
 function parseLocalShellCommand(argsStr: string, name?: string): string[] {
   try {
     const parsed = JSON.parse(argsStr || "{}");
     if (typeof parsed.cmd === "string" && parsed.cmd.trim()) {
       return ["powershell", "-NoProfile", "-Command", parsed.cmd.trim()];
+    }
+    if (typeof parsed.code === "string" && parsed.code.trim()) {
+      return ["powershell", "-NoProfile", "-Command", parsed.code.trim()];
     }
     if (Array.isArray(parsed.cmd)) return parsed.cmd;
     if (Array.isArray(parsed.command)) return parsed.command;
@@ -2475,7 +2537,7 @@ function chatMessageToResponsesOutput(message: any, msgId: string, namespaceMap:
   const toolCalls = message?.tool_calls;
   if (Array.isArray(toolCalls) && toolCalls.length > 0) {
     for (const call of toolCalls) {
-      if (call.function?.name === "local_shell" || call.function?.name === "exec_command") {
+      if (call.function?.name === "local_shell" || call.function?.name === "exec_command" || isShellCallName(call.function?.name ?? "", namespaceMap)) {
         output.push({
           type: "local_shell_call",
           id: `lsc_${call.id ?? crypto.randomUUID().replace(/-/g, "")}`,
@@ -2651,7 +2713,7 @@ async function streamChatToResponses(
 
             if (!call.addedSent && call.name) {
               call.addedSent = true;
-              if (call.name === "local_shell" || call.name === "exec_command") {
+              if (call.name === "local_shell" || call.name === "exec_command" || isShellCallName(call.name, namespaceMap)) {
                 res.write(responsesSseEvent("response.output_item.added", {
                   type: "response.output_item.added",
                   output_index: call.outputIndex,
@@ -2670,7 +2732,7 @@ async function streamChatToResponses(
             const argDelta = tc.function?.arguments;
             if (typeof argDelta === "string" && argDelta) {
               call.arguments += argDelta;
-              if (call.name !== "local_shell" && call.name !== "exec_command") {
+              if (!isShellCallName(call.name, namespaceMap)) {
                 res.write(responsesSseEvent("response.function_call_arguments.delta", {
                   type: "response.function_call_arguments.delta",
                   item_id: `fc_${call.id}`, output_index: call.outputIndex, delta: argDelta,
@@ -2739,7 +2801,7 @@ async function streamChatToResponses(
 
   for (const call of pendingCalls.values()) {
     if (!call.addedSent) {
-      if (call.name === "local_shell" || call.name === "exec_command") {
+      if (call.name === "local_shell" || call.name === "exec_command" || isShellCallName(call.name, namespaceMap)) {
         res.write(responsesSseEvent("response.output_item.added", {
           type: "response.output_item.added",
           output_index: call.outputIndex,
@@ -2755,7 +2817,7 @@ async function streamChatToResponses(
       }
     }
 
-    if (call.name === "local_shell" || call.name === "exec_command") {
+    if (call.name === "local_shell" || call.name === "exec_command" || isShellCallName(call.name, namespaceMap)) {
       const callItem = {
         type: "local_shell_call",
         id: `lsc_${call.id}`,
