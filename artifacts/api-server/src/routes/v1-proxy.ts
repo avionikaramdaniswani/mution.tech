@@ -2837,10 +2837,19 @@ async function streamChatToResponses(
               call.arguments += argDelta;
               const target = resolveTargetTool(call.name, namespaceMap);
               if (target.toolType === "custom") {
-                res.write(responsesSseEvent("response.custom_tool_call_input.delta", {
-                  type: "response.custom_tool_call_input.delta",
-                  item_id: `ctc_${call.id}`, output_index: call.outputIndex, delta: argDelta,
-                }));
+                // Codex Code Mode evaluates custom-tool input as JavaScript. The
+                // upstream arguments arrive as JSON fragments, so forwarding
+                // them as deltas would make the V8 runner evaluate e.g.
+                // `{"cmd":"Get-ChildItem"}` and fail on the colon. Buffer
+                // `functions.exec` until the complete call is available; the
+                // formatted script is emitted in the corresponding `.done`
+                // event below.
+                if (target.name !== "exec") {
+                  res.write(responsesSseEvent("response.custom_tool_call_input.delta", {
+                    type: "response.custom_tool_call_input.delta",
+                    item_id: `ctc_${call.id}`, output_index: call.outputIndex, delta: argDelta,
+                  }));
+                }
               } else if (target.toolType === "function") {
                 res.write(responsesSseEvent("response.function_call_arguments.delta", {
                   type: "response.function_call_arguments.delta",
