@@ -2206,8 +2206,8 @@ function responsesToolChoiceToChat(toolChoice: any): any {
   return toolChoice;
 }
 
-/** Maps a flattened Chat Completions function name back to its Responses API {namespace, name}. */
-type NamespaceMap = Map<string, { namespace: string; name: string }>;
+/** Maps a flattened Chat Completions function name back to its Responses API {namespace, name, toolType}. */
+type NamespaceMap = Map<string, { namespace: string; name: string; toolType?: "function" | "custom" }>;
 
 /**
  * Codex sends several Responses API tool shapes that generic (non-OpenAI) Chat Completions
@@ -2239,7 +2239,11 @@ function flattenResponsesTools(tools: any[]): { chatTools: any[]; namespaceMap: 
         if (!nested || !nested.name) continue;
         if (nested.type !== "function" && nested.type !== "custom") continue;
         const flatName = `${tool.name ?? ""}${nested.name}`;
-        namespaceMap.set(flatName, { namespace: tool.name ?? "", name: nested.name });
+        const toolType: "function" | "custom" = nested.type === "custom" ? "custom" : "function";
+        namespaceMap.set(flatName, { namespace: tool.name ?? "", name: nested.name, toolType });
+        if (tool.name && nested.name) {
+          namespaceMap.set(nested.name, { namespace: tool.name, name: nested.name, toolType });
+        }
 
         let parameters = nested.parameters;
         let description = nested.description;
@@ -2406,6 +2410,34 @@ function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMap: Name
         continue;
       }
 
+      // Custom tool call replayed by client (Codex Code Mode)
+      if (item.type === "custom_tool_call") {
+        const flatName = item.namespace ? `${item.namespace}${item.name}` : item.name;
+        messages.push({
+          role: "assistant",
+          content: null,
+          tool_calls: [{
+            id: item.call_id ?? item.id,
+            type: "function",
+            function: {
+              name: flatName,
+              arguments: typeof item.input === "string" ? item.input : JSON.stringify(item.input ?? {}),
+            },
+          }],
+        });
+        continue;
+      }
+
+      // Custom tool call output sent back by client
+      if (item.type === "custom_tool_call_output") {
+        messages.push({
+          role: "tool",
+          tool_call_id: item.call_id ?? item.id,
+          content: typeof item.output === "string" ? item.output : JSON.stringify(item.output ?? ""),
+        });
+        continue;
+      }
+
       // Content may be a string or an array of content parts
       let content: any = item.content;
       if (Array.isArray(content)) {
@@ -2463,19 +2495,48 @@ function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMap: Name
   return { chatBody, namespaceMap };
 }
 
-/** Splits a flattened function name back into {namespace, name} if it came from a namespace tool. */
-function splitNamespacedName(flatName: string, namespaceMap: NamespaceMap): { namespace: string | null; name: string } {
-  const split = namespaceMap.get(flatName);
-  return split ? { namespace: split.namespace, name: split.name } : { namespace: null, name: flatName };
+/** Resolves a Chat Completions tool name back to its Responses API representation. */
+function resolveTargetTool(name: string, namespaceMap: NamespaceMap): { namespace: string | null; name: string; toolType: "custom" | "function" | "local_shell" } {
+  const direct = namespaceMap.get(name);
+  if (direct) {
+    return { namespace: direct.namespace, name: direct.name, toolType: direct.toolType ?? "function" };
+  }
+  // If Codex Code Mode is active (functions.exec is in namespaceMap) and model called exec_command/local_shell/exec:
+  const execTool = namespaceMap.get("functionsexec") || namespaceMap.get("exec");
+  if (execTool && (name === "local_shell" || name === "exec_command" || name === "functionsexec" || name === "exec")) {
+    return { namespace: execTool.namespace, name: execTool.name, toolType: "custom" };
+  }
+  if (name === "local_shell") {
+    return { namespace: null, name: "local_shell", toolType: "local_shell" };
+  }
+  return { namespace: null, name, toolType: "function" };
 }
 
-function isShellCallName(name: string, namespaceMap?: NamespaceMap): boolean {
-  if (name === "local_shell" || name === "exec_command" || name === "functionsexec" || name === "exec") return true;
-  if (namespaceMap) {
-    const split = namespaceMap.get(name);
-    if (split && (split.name === "exec" || (split.namespace === "functions" && split.name === "exec"))) return true;
+function formatExecScript(argsStr: string): string {
+  const trimmed = (argsStr || "").trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("await ") || trimmed.startsWith("tools.") || trimmed.startsWith("//") || trimmed.includes(";")) {
+    return trimmed;
   }
-  return false;
+  try {
+    const parsed = JSON.parse(trimmed);
+    let cmd = "";
+    if (typeof parsed.cmd === "string" && parsed.cmd.trim()) {
+      cmd = parsed.cmd.trim();
+    } else if (typeof parsed.code === "string" && parsed.code.trim()) {
+      cmd = parsed.code.trim();
+    } else if (typeof parsed.command === "string" && parsed.command.trim()) {
+      cmd = parsed.command.trim();
+    } else if (Array.isArray(parsed.command)) {
+      cmd = parsed.command.join(" ");
+    } else if (Array.isArray(parsed.cmd)) {
+      cmd = parsed.cmd.join(" ");
+    }
+    if (cmd) {
+      return `await tools.exec_command(${JSON.stringify({ cmd })});`;
+    }
+  } catch {}
+  return trimmed;
 }
 
 function parseLocalShellCommand(argsStr: string, name?: string): string[] {
@@ -2537,7 +2598,22 @@ function chatMessageToResponsesOutput(message: any, msgId: string, namespaceMap:
   const toolCalls = message?.tool_calls;
   if (Array.isArray(toolCalls) && toolCalls.length > 0) {
     for (const call of toolCalls) {
-      if (call.function?.name === "local_shell" || call.function?.name === "exec_command" || isShellCallName(call.function?.name ?? "", namespaceMap)) {
+      const callName = call.function?.name ?? "";
+      const rawArgs = call.function?.arguments ?? "{}";
+      const target = resolveTargetTool(callName, namespaceMap);
+
+      if (target.toolType === "custom") {
+        const input = target.name === "exec" ? formatExecScript(rawArgs) : rawArgs;
+        output.push({
+          type: "custom_tool_call",
+          id: `ctc_${call.id ?? crypto.randomUUID().replace(/-/g, "")}`,
+          call_id: call.id,
+          name: target.name,
+          ...(target.namespace != null ? { namespace: target.namespace } : {}),
+          input,
+          status: "completed",
+        });
+      } else if (target.toolType === "local_shell") {
         output.push({
           type: "local_shell_call",
           id: `lsc_${call.id ?? crypto.randomUUID().replace(/-/g, "")}`,
@@ -2545,37 +2621,50 @@ function chatMessageToResponsesOutput(message: any, msgId: string, namespaceMap:
           status: "completed",
           action: {
             type: "exec",
-            command: parseLocalShellCommand(call.function?.arguments ?? "{}", call.function?.name),
+            command: parseLocalShellCommand(rawArgs, callName),
           },
         });
-        continue;
+      } else {
+        output.push({
+          type: "function_call",
+          id: `fc_${call.id ?? crypto.randomUUID().replace(/-/g, "")}`,
+          call_id: call.id,
+          name: target.name,
+          ...(target.namespace != null ? { namespace: target.namespace } : {}),
+          arguments: rawArgs,
+          status: "completed",
+        });
       }
-      const { namespace, name } = splitNamespacedName(call.function?.name ?? "", namespaceMap);
-      output.push({
-        type: "function_call",
-        id: `fc_${call.id ?? crypto.randomUUID().replace(/-/g, "")}`,
-        call_id: call.id,
-        name,
-        ...(namespace != null ? { namespace } : {}),
-        arguments: call.function?.arguments ?? "{}",
-        status: "completed",
-      });
     }
   }
   const text = message?.content;
   if (typeof text === "string" && text.length > 0) {
     const embeddedCmd = output.length === 0 ? extractEmbeddedExecCommand(text) : null;
     if (embeddedCmd) {
-      output.push({
-        type: "local_shell_call",
-        id: `lsc_${crypto.randomUUID().replace(/-/g, "")}`,
-        call_id: `call_${crypto.randomUUID().replace(/-/g, "")}`,
-        status: "completed",
-        action: {
-          type: "exec",
-          command: ["powershell", "-NoProfile", "-Command", embeddedCmd],
-        },
-      });
+      const hasExec = namespaceMap.get("functionsexec") || namespaceMap.get("exec");
+      const callId = `call_${crypto.randomUUID().replace(/-/g, "")}`;
+      if (hasExec) {
+        output.push({
+          type: "custom_tool_call",
+          id: `ctc_${callId}`,
+          call_id: callId,
+          name: "exec",
+          namespace: "functions",
+          input: `await tools.exec_command(${JSON.stringify({ cmd: embeddedCmd })});`,
+          status: "completed",
+        });
+      } else {
+        output.push({
+          type: "local_shell_call",
+          id: `lsc_${callId}`,
+          call_id: callId,
+          status: "completed",
+          action: {
+            type: "exec",
+            command: ["powershell", "-NoProfile", "-Command", embeddedCmd],
+          },
+        });
+      }
     } else {
       output.push({
         type: "message",
@@ -2713,18 +2802,32 @@ async function streamChatToResponses(
 
             if (!call.addedSent && call.name) {
               call.addedSent = true;
-              if (call.name === "local_shell" || call.name === "exec_command" || isShellCallName(call.name, namespaceMap)) {
+              const target = resolveTargetTool(call.name, namespaceMap);
+              if (target.toolType === "custom") {
+                res.write(responsesSseEvent("response.output_item.added", {
+                  type: "response.output_item.added",
+                  output_index: call.outputIndex,
+                  item: {
+                    type: "custom_tool_call",
+                    id: `ctc_${call.id}`,
+                    call_id: call.id,
+                    name: target.name,
+                    ...(target.namespace != null ? { namespace: target.namespace } : {}),
+                    input: "",
+                    status: "in_progress",
+                  },
+                }));
+              } else if (target.toolType === "local_shell") {
                 res.write(responsesSseEvent("response.output_item.added", {
                   type: "response.output_item.added",
                   output_index: call.outputIndex,
                   item: { type: "local_shell_call", id: `lsc_${call.id}`, call_id: call.id, status: "in_progress", action: { type: "exec", command: [] } },
                 }));
               } else {
-                const added = splitNamespacedName(call.name, namespaceMap);
                 res.write(responsesSseEvent("response.output_item.added", {
                   type: "response.output_item.added",
                   output_index: call.outputIndex,
-                  item: { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: added.name, ...(added.namespace != null ? { namespace: added.namespace } : {}), arguments: "", status: "in_progress" },
+                  item: { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: target.name, ...(target.namespace != null ? { namespace: target.namespace } : {}), arguments: "", status: "in_progress" },
                 }));
               }
             }
@@ -2732,7 +2835,13 @@ async function streamChatToResponses(
             const argDelta = tc.function?.arguments;
             if (typeof argDelta === "string" && argDelta) {
               call.arguments += argDelta;
-              if (!isShellCallName(call.name, namespaceMap)) {
+              const target = resolveTargetTool(call.name, namespaceMap);
+              if (target.toolType === "custom") {
+                res.write(responsesSseEvent("response.custom_tool_call_input.delta", {
+                  type: "response.custom_tool_call_input.delta",
+                  item_id: `ctc_${call.id}`, output_index: call.outputIndex, delta: argDelta,
+                }));
+              } else if (target.toolType === "function") {
                 res.write(responsesSseEvent("response.function_call_arguments.delta", {
                   type: "response.function_call_arguments.delta",
                   item_id: `fc_${call.id}`, output_index: call.outputIndex, delta: argDelta,
@@ -2775,49 +2884,104 @@ async function streamChatToResponses(
   }
 
   if (embeddedExecCmd) {
+    const hasExec = namespaceMap.get("functionsexec") || namespaceMap.get("exec");
     const callId = `call_${crypto.randomUUID().replace(/-/g, "")}`;
-    const callItem = {
-      type: "local_shell_call",
-      id: `lsc_${callId}`,
-      call_id: callId,
-      status: "completed",
-      action: {
-        type: "exec",
-        command: ["powershell", "-NoProfile", "-Command", embeddedExecCmd],
-      },
-    };
-    res.write(responsesSseEvent("response.output_item.added", {
-      type: "response.output_item.added",
-      output_index: nextOutputIndex,
-      item: { ...callItem, status: "in_progress" },
-    }));
-    res.write(responsesSseEvent("response.output_item.done", {
-      type: "response.output_item.done",
-      output_index: nextOutputIndex++,
-      item: callItem,
-    }));
-    output.push(callItem);
+    if (hasExec) {
+      const input = `await tools.exec_command(${JSON.stringify({ cmd: embeddedExecCmd })});`;
+      const callItem = {
+        type: "custom_tool_call",
+        id: `ctc_${callId}`,
+        call_id: callId,
+        name: "exec",
+        namespace: "functions",
+        input,
+        status: "completed",
+      };
+      res.write(responsesSseEvent("response.output_item.added", {
+        type: "response.output_item.added",
+        output_index: nextOutputIndex,
+        item: { ...callItem, status: "in_progress", input: "" },
+      }));
+      res.write(responsesSseEvent("response.custom_tool_call_input.done", {
+        type: "response.custom_tool_call_input.done",
+        item_id: `ctc_${callId}`,
+        output_index: nextOutputIndex,
+        input,
+      }));
+      res.write(responsesSseEvent("response.output_item.done", {
+        type: "response.output_item.done",
+        output_index: nextOutputIndex++,
+        item: callItem,
+      }));
+      output.push(callItem);
+    } else {
+      const callItem = {
+        type: "local_shell_call",
+        id: `lsc_${callId}`,
+        call_id: callId,
+        status: "completed",
+        action: {
+          type: "exec",
+          command: ["powershell", "-NoProfile", "-Command", embeddedExecCmd],
+        },
+      };
+      res.write(responsesSseEvent("response.output_item.added", {
+        type: "response.output_item.added",
+        output_index: nextOutputIndex,
+        item: { ...callItem, status: "in_progress" },
+      }));
+      res.write(responsesSseEvent("response.output_item.done", {
+        type: "response.output_item.done",
+        output_index: nextOutputIndex++,
+        item: callItem,
+      }));
+      output.push(callItem);
+    }
   }
 
   for (const call of pendingCalls.values()) {
+    const target = resolveTargetTool(call.name, namespaceMap);
+
     if (!call.addedSent) {
-      if (call.name === "local_shell" || call.name === "exec_command" || isShellCallName(call.name, namespaceMap)) {
+      if (target.toolType === "custom") {
+        res.write(responsesSseEvent("response.output_item.added", {
+          type: "response.output_item.added",
+          output_index: call.outputIndex,
+          item: { type: "custom_tool_call", id: `ctc_${call.id}`, call_id: call.id, name: target.name, ...(target.namespace != null ? { namespace: target.namespace } : {}), input: "", status: "in_progress" },
+        }));
+      } else if (target.toolType === "local_shell") {
         res.write(responsesSseEvent("response.output_item.added", {
           type: "response.output_item.added",
           output_index: call.outputIndex,
           item: { type: "local_shell_call", id: `lsc_${call.id}`, call_id: call.id, status: "in_progress", action: { type: "exec", command: [] } },
         }));
       } else {
-        const added = splitNamespacedName(call.name, namespaceMap);
         res.write(responsesSseEvent("response.output_item.added", {
           type: "response.output_item.added",
           output_index: call.outputIndex,
-          item: { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: added.name, ...(added.namespace != null ? { namespace: added.namespace } : {}), arguments: "", status: "in_progress" },
+          item: { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: target.name, ...(target.namespace != null ? { namespace: target.namespace } : {}), arguments: "", status: "in_progress" },
         }));
       }
     }
 
-    if (call.name === "local_shell" || call.name === "exec_command" || isShellCallName(call.name, namespaceMap)) {
+    if (target.toolType === "custom") {
+      const finalInput = target.name === "exec" ? formatExecScript(call.arguments) : call.arguments;
+      res.write(responsesSseEvent("response.custom_tool_call_input.done", {
+        type: "response.custom_tool_call_input.done",
+        item_id: `ctc_${call.id}`, output_index: call.outputIndex, input: finalInput,
+      }));
+      const callItem = {
+        type: "custom_tool_call",
+        id: `ctc_${call.id}`,
+        call_id: call.id,
+        name: target.name,
+        ...(target.namespace != null ? { namespace: target.namespace } : {}),
+        input: finalInput,
+        status: "completed",
+      };
+      res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: call.outputIndex, item: callItem }));
+      output.push(callItem);
+    } else if (target.toolType === "local_shell") {
       const callItem = {
         type: "local_shell_call",
         id: `lsc_${call.id}`,
@@ -2835,8 +2999,7 @@ async function streamChatToResponses(
         type: "response.function_call_arguments.done",
         item_id: `fc_${call.id}`, output_index: call.outputIndex, arguments: call.arguments,
       }));
-      const split = splitNamespacedName(call.name, namespaceMap);
-      const callItem = { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: split.name, ...(split.namespace != null ? { namespace: split.namespace } : {}), arguments: call.arguments, status: "completed" };
+      const callItem = { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: target.name, ...(target.namespace != null ? { namespace: target.namespace } : {}), arguments: call.arguments, status: "completed" };
       res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: call.outputIndex, item: callItem }));
       output.push(callItem);
     }
