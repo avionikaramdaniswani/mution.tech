@@ -1555,10 +1555,10 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
     return;
   }
   let reservationClosed = false;
-  const streamSession = isStream ? startMessagesStream(res) : null;
+  let streamSession: { close: () => void; sendError: (message: string) => void } | null = null;
 
   try {
-    // Try providers with fallback on non-streaming failures
+    // Try providers with fallback on failures
     for (let attempt = 0; attempt < providers.length; attempt++) {
     const provider = providers[attempt];
     const providerBody = { ...req.body, model: upstreamModelFor(provider, originalModel) };
@@ -1586,19 +1586,28 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
             markCooldown(provider);
             if (attempt < providers.length - 1) continue;
           }
-          if (!isStream) {
-            const data = await upstream.json().catch(() => ({}));
-            updateApiRequestLog(res, { errorType: classifyErrorType(status) });
-            res.status(status).json(data);
-            return;
+          const text = await upstream.text().catch(() => "");
+          updateApiRequestLog(res, { errorType: classifyErrorType(status) });
+          if (!res.headersSent) {
+            let data: any;
+            try { data = JSON.parse(text); } catch { }
+            res.status(status).json(data?.error ? data : {
+              type: "error",
+              error: { type: classifyErrorType(status), message: data?.message || data?.error || `Upstream error (${status})` },
+            });
           }
+          return;
         }
 
-        if (isStream && (!upstream.ok || !upstream.headers.get("content-type")?.includes("text/event-stream"))) {
+        if (isStream && !upstream.headers.get("content-type")?.includes("text/event-stream")) {
           const body = await upstream.text().catch(() => "");
           logger.error({ provider: provider.id, status: upstream.status, contentType: upstream.headers.get("content-type"), body: body.slice(0, 500) }, "Conduit returned an invalid streaming response");
-          updateApiRequestLog(res, { errorType: upstream.ok ? "upstream_non_sse" : classifyErrorType(upstream.status) });
-          streamSession?.sendError(upstream.ok ? "Upstream provider did not return a streaming response" : `Upstream provider error (${upstream.status})`);
+          updateApiRequestLog(res, { errorType: "upstream_non_sse" });
+          if (!res.headersSent) {
+            res.status(502).json({ type: "error", error: { type: "api_error", message: "Upstream provider did not return a streaming response" } });
+          } else {
+            streamSession?.sendError("Upstream provider did not return a streaming response");
+          }
           return;
         }
 
@@ -1606,9 +1615,14 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           const reader = upstream.body?.getReader();
           if (!reader) {
             updateApiRequestLog(res, { errorType: "upstream_non_sse" });
-            streamSession?.sendError("Upstream provider returned an empty streaming response");
+            if (!res.headersSent) {
+              res.status(502).json({ type: "error", error: { type: "api_error", message: "Upstream provider returned an empty streaming response" } });
+            } else {
+              streamSession?.sendError("Upstream provider returned an empty streaming response");
+            }
             return;
           }
+          streamSession = startMessagesStream(res);
           let totalInputTokens = 0;
           let totalOutputTokens = 0;
           let totalCachedTokens = 0;
@@ -1693,13 +1707,28 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
             markCooldown(provider);
             if (attempt < providers.length - 1) continue;
           }
+          const text = await upstream.text().catch(() => "");
+          updateApiRequestLog(res, { errorType: classifyErrorType(status) });
+          if (!res.headersSent) {
+            let data: any;
+            try { data = JSON.parse(text); } catch { }
+            res.status(status).json(data?.error ? data : {
+              type: "error",
+              error: { type: classifyErrorType(status), message: data?.message || data?.error || `Upstream error (${status})` },
+            });
+          }
+          return;
         }
 
-        if (isStream && (!upstream.ok || !upstream.headers.get("content-type")?.includes("text/event-stream"))) {
+        if (isStream && !upstream.headers.get("content-type")?.includes("text/event-stream")) {
           const body = await upstream.text().catch(() => "");
           logger.error({ provider: provider.id, status: upstream.status, contentType: upstream.headers.get("content-type"), body: body.slice(0, 500) }, "Generic provider returned an invalid streaming response");
-          updateApiRequestLog(res, { errorType: upstream.ok ? "upstream_non_sse" : classifyErrorType(upstream.status) });
-          streamSession?.sendError(upstream.ok ? "Upstream provider did not return a streaming response" : `Upstream provider error (${upstream.status})`);
+          updateApiRequestLog(res, { errorType: "upstream_non_sse" });
+          if (!res.headersSent) {
+            res.status(502).json({ type: "error", error: { type: "api_error", message: "Upstream provider did not return a streaming response" } });
+          } else {
+            streamSession?.sendError("Upstream provider did not return a streaming response");
+          }
           return;
         }
 
@@ -1707,9 +1736,15 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           const reader = upstream.body?.getReader();
           if (!reader) {
             updateApiRequestLog(res, { errorType: "upstream_non_sse" });
-            streamSession?.sendError("Upstream provider returned an empty streaming response");
+            if (!res.headersSent) {
+              res.status(502).json({ type: "error", error: { type: "api_error", message: "Upstream provider returned an empty streaming response" } });
+            } else {
+              streamSession?.sendError("Upstream provider returned an empty streaming response");
+            }
             return;
           }
+
+          streamSession = startMessagesStream(res);
 
           const msgId = `msg_${Date.now()}`;
           res.write(sseEvent("message_start", {
@@ -1755,8 +1790,9 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
 
                 // Handle text content delta
                 if (choiceDelta?.content) {
-                  if (!hasTextBlock) {
+                  if (!hasTextBlock || textBlockClosed) {
                     hasTextBlock = true;
+                    textBlockClosed = false;
                     const textIdx = nextBlockIndex++;
                     textBlockIndex = textIdx;
                     res.write(sseEvent("content_block_start", { type: "content_block_start", index: textIdx, content_block: { type: "text", text: "" } }));
@@ -1771,8 +1807,8 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
                 // Handle tool_calls delta (OpenAI → Anthropic tool_use)
                 if (choiceDelta?.tool_calls && Array.isArray(choiceDelta.tool_calls)) {
                   // Close text block first if it was open
-                  if (hasTextBlock && !textBlockClosed) {
-                    res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: textBlockIndex! }));
+                  if (hasTextBlock && !textBlockClosed && textBlockIndex !== null) {
+                    res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: textBlockIndex }));
                     textBlockClosed = true;
                   }
 
@@ -1785,7 +1821,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
                       toolCallState.set(tcIdx, { id: tc.id, name: tc.function?.name ?? "", argsBuffer: tc.function?.arguments ?? "", blockIndex });
                       res.write(sseEvent("content_block_start", {
                         type: "content_block_start", index: blockIndex,
-                        content_block: { type: "tool_use", id: tc.id, name: tc.function?.name ?? "", input: "" },
+                        content_block: { type: "tool_use", id: tc.id, name: tc.function?.name ?? "", input: {} },
                       }));
                       if (tc.function?.arguments) {
                         res.write(sseEvent("content_block_delta", {
@@ -1833,8 +1869,9 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           const finalOutput = actualOutputTokens || Math.min(Math.ceil(estimatedOutputChars / 4), FALLBACK_MAX_TOKENS);
 
           // Close text block if it was opened but not yet closed
-          if (hasTextBlock && !textBlockClosed) {
-            res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: textBlockIndex! }));
+          if (hasTextBlock && !textBlockClosed && textBlockIndex !== null) {
+            res.write(sseEvent("content_block_stop", { type: "content_block_stop", index: textBlockIndex }));
+            textBlockClosed = true;
           }
           // If no text block was ever opened (pure tool call response), nothing to close for text
 
@@ -1899,10 +1936,10 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
         markCooldown(provider);
         if (attempt >= providers.length - 1) {
           updateApiRequestLog(res, { errorType: errorCode === "UND_ERR_HEADERS_TIMEOUT" ? "upstream_headers_timeout" : "upstream_error" });
-          if (isStream) {
-            try { res.write(sseEvent("error", { type: "error", error: { type: "api_error", message: "All upstream providers failed or timed out" } })); } catch { /* ignore */ }
-          } else if (!res.headersSent) {
+          if (!res.headersSent) {
             res.status(502).json({ type: "error", error: { type: "api_error", message: "All upstream providers failed" } });
+          } else if (isStream) {
+            try { res.write(sseEvent("error", { type: "error", error: { type: "api_error", message: "All upstream providers failed or timed out" } })); } catch { /* ignore */ }
           }
           return;
         }
