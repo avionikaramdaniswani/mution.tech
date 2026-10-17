@@ -5,7 +5,7 @@ import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
 import { logger } from "../lib/logger";
 import { addAdminClient, removeAdminClient, broadcastAdmin, broadcastToUser, addUserClient, removeUserClient } from "../lib/events";
-import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminFetchRemoteModels, adminTestProviderModel, adminTestRawModel, adminUpsertProviderModel, adminDeleteProviderModel, adminPruneProviderModels, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds } from "./v1-proxy";
+import { adminGetProviderStatuses, adminEnableProvider, adminDisableProvider, adminCreateProvider, adminUpdateProvider, adminDeleteProvider, adminFetchRemoteModels, adminTestProviderModel, adminTestRawModel, adminUpsertProviderModel, adminDeleteProviderModel, adminPruneProviderModels, adminGetModelPricingOverrides, adminSetModelPricingOverride, adminDeleteModelPricingOverride, adminGetActiveProviderIds, refreshProviderSettings } from "./v1-proxy";
 import { getModelById, getModelPricing, MODEL_CATALOG } from "@workspace/model-catalog";
 import { sendBroadcastEmail } from "../lib/email";
 import { creditPaidOrderOnce } from "./billing";
@@ -1013,12 +1013,24 @@ router.get("/admin/model-pricing", async (_req, res) => {
 router.patch("/admin/model-pricing/:modelId", async (req, res) => {
   try {
     const modelId = decodeURIComponent(req.params.modelId);
-    const { mode, discountPercent, inputPriceOverride, outputPriceOverride } = req.body;
+    const { mode, discountPercent, inputPriceOverride, outputPriceOverride, basePriceInput, basePriceOutput } = req.body;
 
     const validModes = ["default", "discount_percent", "fixed_price", "free"];
     if (!validModes.includes(mode)) {
       res.status(400).json({ error: "Mode tidak valid" });
       return;
+    }
+
+    if (basePriceInput !== undefined || basePriceOutput !== undefined) {
+      const updateData: Record<string, any> = { updatedAt: new Date() };
+      if (basePriceInput !== undefined) {
+        updateData.basePriceInput = basePriceInput !== null && basePriceInput !== "" ? Math.max(0, Math.round(Number(basePriceInput))) : null;
+      }
+      if (basePriceOutput !== undefined) {
+        updateData.basePriceOutput = basePriceOutput !== null && basePriceOutput !== "" ? Math.max(0, Math.round(Number(basePriceOutput))) : null;
+      }
+      await db.update(aiProviderModelsTable).set(updateData).where(eq(aiProviderModelsTable.modelId, modelId));
+      await refreshProviderSettings(true);
     }
 
     const admin = (req as any).user;

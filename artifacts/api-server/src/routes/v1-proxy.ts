@@ -264,7 +264,7 @@ async function refreshModelPricingOverrides(force = false): Promise<void> {
   await _pricingOverridesRefresh;
 }
 
-async function refreshProviderSettings(force = false): Promise<void> {
+export async function refreshProviderSettings(force = false): Promise<void> {
   const now = Date.now();
   if (!force && now - _providerSettingsLoadedAt < PROVIDER_SETTINGS_REFRESH_MS) return;
 

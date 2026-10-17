@@ -58,6 +58,8 @@ async function updateModelPricing(
     discountPercent?: number | null;
     inputPriceOverride?: string | null;
     outputPriceOverride?: string | null;
+    basePriceInput?: number | null;
+    basePriceOutput?: number | null;
   },
 ) {
   const res = await csrfFetch(`/api/admin/model-pricing/${encodeURIComponent(modelId)}`, {
@@ -134,6 +136,13 @@ function EditDialog({ entry, open, onClose }: EditDialogProps) {
     initial?.outputPriceOverride ?? entry.basePricingOutput.toString(),
   );
 
+  const [basePriceInput, setBasePriceInput] = useState<string>(
+    entry.basePricingInput.toString(),
+  );
+  const [basePriceOutput, setBasePriceOutput] = useState<string>(
+    entry.basePricingOutput.toString(),
+  );
+
   const mutation = useMutation({
     mutationFn: () =>
       updateModelPricing(entry.modelId, {
@@ -141,9 +150,12 @@ function EditDialog({ entry, open, onClose }: EditDialogProps) {
         discountPercent: mode === "discount_percent" ? Number(discountPercent) : null,
         inputPriceOverride: mode === "fixed_price" ? inputPrice : null,
         outputPriceOverride: mode === "fixed_price" ? outputPrice : null,
+        basePriceInput: basePriceInput.trim() !== "" ? Number(basePriceInput) : null,
+        basePriceOutput: basePriceOutput.trim() !== "" ? Number(basePriceOutput) : null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "model-pricing"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "providers"] });
       toast({ title: `Harga "${entry.label}" berhasil disimpan` });
       onClose();
     },
@@ -176,8 +188,51 @@ function EditDialog({ entry, open, onClose }: EditDialogProps) {
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Base Price Section */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold uppercase tracking-wider text-[#1e293b]">
+                Harga Dasar (Base Price)
+              </Label>
+              <span className="text-[11px] text-muted-foreground">Kredit / 1M token</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="baseInput" className="text-[11px] font-medium text-[#475569]">
+                  Base Input / 1M
+                </Label>
+                <Input
+                  id="baseInput"
+                  type="number"
+                  min={0}
+                  value={basePriceInput}
+                  onChange={(e) => setBasePriceInput(e.target.value)}
+                  className="bg-white text-xs h-9"
+                  placeholder="cth: 4700"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="baseOutput" className="text-[11px] font-medium text-[#475569]">
+                  Base Output / 1M
+                </Label>
+                <Input
+                  id="baseOutput"
+                  type="number"
+                  min={0}
+                  value={basePriceOutput}
+                  onChange={(e) => setBasePriceOutput(e.target.value)}
+                  className="bg-white text-xs h-9"
+                  placeholder="cth: 15000"
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-[#64748b]">
+              Harga dasar acuan model ini di database. Berlaku untuk seluruh provider yang menyediakan model ini.
+            </p>
+          </div>
+
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-[#526173]">Mode Harga</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wide text-[#526173]">Mode Harga / Promo</Label>
             <Select value={mode} onValueChange={(v) => setMode(v as PricingMode)}>
               <SelectTrigger className="w-full">
                 <SelectValue />
@@ -208,9 +263,9 @@ function EditDialog({ entry, open, onClose }: EditDialogProps) {
               {discountPercent && (
                 <p className="text-xs text-muted-foreground">
                   Harga efektif:{" "}
-                  <strong>{formatCredits(Math.ceil(entry.basePricingInput * (1 - Number(discountPercent) / 100)))}</strong>
+                  <strong>{formatCredits(Math.ceil((Number(basePriceInput) || entry.basePricingInput) * (1 - Number(discountPercent) / 100)))}</strong>
                   {" "}input ·{" "}
-                  <strong>{formatCredits(Math.ceil(entry.basePricingOutput * (1 - Number(discountPercent) / 100)))}</strong>
+                  <strong>{formatCredits(Math.ceil((Number(basePriceOutput) || entry.basePricingOutput) * (1 - Number(discountPercent) / 100)))}</strong>
                   {" "}output kredit/1M token
                 </p>
               )}
