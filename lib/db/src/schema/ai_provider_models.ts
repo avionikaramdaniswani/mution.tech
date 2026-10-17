@@ -1,4 +1,4 @@
-import { boolean, pgTable, text, timestamp, primaryKey } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, text, timestamp, primaryKey } from "drizzle-orm/pg-core";
 
 export const aiProviderModelsTable = pgTable("ai_provider_models", {
   providerId: text("provider_id").notNull(),
@@ -7,6 +7,8 @@ export const aiProviderModelsTable = pgTable("ai_provider_models", {
   brandProvider: text("brand_provider").notNull(),
   upstreamModelId: text("upstream_model_id").notNull(),
   enabled: boolean("enabled").notNull().default(true),
+  basePriceInput: integer("base_price_input"),
+  basePriceOutput: integer("base_price_output"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.providerId, table.modelId] }),

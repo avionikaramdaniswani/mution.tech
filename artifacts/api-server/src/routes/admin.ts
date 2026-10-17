@@ -859,20 +859,40 @@ router.get("/admin/providers/:id/models/sync", async (req, res): Promise<void> =
 
 router.post("/admin/providers/:id/models", async (req, res): Promise<void> => {
   const providerId = decodeURIComponent(req.params.id);
-  const { modelId, displayName, brandProvider, upstreamModelId, enabled = true } = req.body ?? {};
+  const { modelId, displayName, brandProvider, upstreamModelId, enabled = true, basePriceInput, basePriceOutput } = req.body ?? {};
   if (![modelId, displayName, upstreamModelId].every((v) => typeof v === "string" && v.trim()) || typeof enabled !== "boolean") { res.status(400).json({ error: "Data model tidak valid" }); return; }
+  const parsedBasePriceInput = basePriceInput !== undefined && basePriceInput !== null && basePriceInput !== "" ? Math.max(0, Math.round(Number(basePriceInput))) : null;
+  const parsedBasePriceOutput = basePriceOutput !== undefined && basePriceOutput !== null && basePriceOutput !== "" ? Math.max(0, Math.round(Number(basePriceOutput))) : null;
   try {
-    await adminUpsertProviderModel(providerId, modelId.trim(), { displayName: displayName.trim(), brandProvider: typeof brandProvider === "string" && brandProvider.trim() ? brandProvider.trim() : inferModelBrand(modelId, displayName), upstreamModelId: upstreamModelId.trim(), enabled });
+    await adminUpsertProviderModel(providerId, modelId.trim(), {
+      displayName: displayName.trim(),
+      brandProvider: typeof brandProvider === "string" && brandProvider.trim() ? brandProvider.trim() : inferModelBrand(modelId, displayName),
+      upstreamModelId: upstreamModelId.trim(),
+      enabled,
+      basePriceInput: parsedBasePriceInput,
+      basePriceOutput: parsedBasePriceOutput,
+    });
     res.status(201).json({ ok: true });
   } catch (error) { console.error("Failed to create provider model:", error); res.status(500).json({ error: "Gagal menambahkan model" }); }
 });
 
 router.put("/admin/providers/:id/models/:modelId", async (req, res): Promise<void> => {
   const providerId = decodeURIComponent(req.params.id); const oldModelId = decodeURIComponent(req.params.modelId);
-  const { modelId, displayName, brandProvider, upstreamModelId, enabled } = req.body ?? {};
+  const { modelId, displayName, brandProvider, upstreamModelId, enabled, basePriceInput, basePriceOutput } = req.body ?? {};
   if (![modelId, displayName, upstreamModelId].every((v) => typeof v === "string" && v.trim()) || typeof enabled !== "boolean") { res.status(400).json({ error: "Data model tidak valid" }); return; }
-  try { await adminUpsertProviderModel(providerId, modelId.trim(), { displayName: displayName.trim(), brandProvider: typeof brandProvider === "string" && brandProvider.trim() ? brandProvider.trim() : inferModelBrand(modelId, displayName), upstreamModelId: upstreamModelId.trim(), enabled }, oldModelId); res.json({ ok: true }); }
-  catch (error) { console.error("Failed to update provider model:", error); res.status(500).json({ error: "Gagal mengubah model" }); }
+  const parsedBasePriceInput = basePriceInput !== undefined && basePriceInput !== null && basePriceInput !== "" ? Math.max(0, Math.round(Number(basePriceInput))) : null;
+  const parsedBasePriceOutput = basePriceOutput !== undefined && basePriceOutput !== null && basePriceOutput !== "" ? Math.max(0, Math.round(Number(basePriceOutput))) : null;
+  try {
+    await adminUpsertProviderModel(providerId, modelId.trim(), {
+      displayName: displayName.trim(),
+      brandProvider: typeof brandProvider === "string" && brandProvider.trim() ? brandProvider.trim() : inferModelBrand(modelId, displayName),
+      upstreamModelId: upstreamModelId.trim(),
+      enabled,
+      basePriceInput: parsedBasePriceInput,
+      basePriceOutput: parsedBasePriceOutput,
+    }, oldModelId);
+    res.json({ ok: true });
+  } catch (error) { console.error("Failed to update provider model:", error); res.status(500).json({ error: "Gagal mengubah model" }); }
 });
 
 router.post("/admin/providers/:id/models/:modelId/test", async (req, res): Promise<void> => {
@@ -949,14 +969,17 @@ router.get("/admin/model-pricing", async (_req, res) => {
 
     const result = Array.from(modelsById.entries()).map(([modelId, configured]) => {
       const catalog = getModelById(modelId);
-      const pricing = getModelPricing(modelId);
+      const catalogPricing = getModelPricing(modelId);
+      const pmWithPrice = providerModels.find(pm => pm.modelId === modelId && (pm.basePriceInput != null || pm.basePriceOutput != null));
+      const basePricingInput = pmWithPrice?.basePriceInput ?? catalogPricing.input;
+      const basePricingOutput = pmWithPrice?.basePriceOutput ?? catalogPricing.output;
       const ov = overrideMap.get(modelId);
       return {
         modelId,
         label: catalog?.label ?? configured.label,
         provider: Array.from(configured.providers).sort().join(", "),
-        basePricingInput: pricing.input,
-        basePricingOutput: pricing.output,
+        basePricingInput,
+        basePricingOutput,
         context: catalog?.context ?? "-",
         catalogMatched: Boolean(catalog),
         override: ov

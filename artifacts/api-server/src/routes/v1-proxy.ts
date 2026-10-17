@@ -223,7 +223,7 @@ const _cooldowns = new Map<string, number>();
 
 // Admin toggle state is persisted in DB and cached briefly for request routing.
 const _disabledProviders = new Set<string>();
-type ProviderModelConfig = { modelId: string; displayName: string; brandProvider: string; upstreamModelId: string; enabled: boolean };
+type ProviderModelConfig = { modelId: string; displayName: string; brandProvider: string; upstreamModelId: string; enabled: boolean; basePriceInput?: number | null; basePriceOutput?: number | null };
 const _providerModels = new Map<string, Map<string, ProviderModelConfig>>();
 let _providerSettingsLoadedAt = 0;
 let _providerSettingsRefresh: Promise<void> | null = null;
@@ -311,7 +311,15 @@ async function refreshProviderSettings(force = false): Promise<void> {
     _providerModels.clear();
     for (const row of modelRows) {
       const models = _providerModels.get(row.providerId) ?? new Map<string, ProviderModelConfig>();
-      models.set(row.modelId, { modelId: row.modelId, displayName: row.displayName, brandProvider: row.brandProvider, upstreamModelId: row.upstreamModelId, enabled: row.enabled });
+      models.set(row.modelId, {
+        modelId: row.modelId,
+        displayName: row.displayName,
+        brandProvider: row.brandProvider,
+        upstreamModelId: row.upstreamModelId,
+        enabled: row.enabled,
+        basePriceInput: row.basePriceInput ?? null,
+        basePriceOutput: row.basePriceOutput ?? null,
+      });
       _providerModels.set(row.providerId, models);
     }
     _providerSettingsLoadedAt = Date.now();
@@ -633,7 +641,19 @@ export async function adminDeleteProvider(id: string) {
   await refreshProviderSettings(true);
 }
 
-export async function adminUpsertProviderModel(providerId: string, modelId: string, payload: { displayName: string; brandProvider: string; upstreamModelId: string; enabled: boolean }, oldModelId?: string) {
+export async function adminUpsertProviderModel(
+  providerId: string,
+  modelId: string,
+  payload: {
+    displayName: string;
+    brandProvider: string;
+    upstreamModelId: string;
+    enabled: boolean;
+    basePriceInput?: number | null;
+    basePriceOutput?: number | null;
+  },
+  oldModelId?: string
+) {
   const now = new Date();
   if (oldModelId && oldModelId !== modelId) await db.delete(aiProviderModelsTable).where(and(eq(aiProviderModelsTable.providerId, providerId), eq(aiProviderModelsTable.modelId, oldModelId)));
   await db.insert(aiProviderModelsTable).values({ providerId, modelId, ...payload, updatedAt: now }).onConflictDoUpdate({
@@ -919,6 +939,30 @@ export function adminGetActiveProviderIds(): string[] {
   }
 }
 
+export function getModelBasePricing(modelId: string): { input: number; output: number } {
+  const catalog = getCatalogModelPricing(modelId);
+  for (const [providerId, models] of _providerModels.entries()) {
+    if (_disabledProviders.has(providerId)) continue;
+    const model = models.get(modelId);
+    if (model && model.enabled && (model.basePriceInput != null || model.basePriceOutput != null)) {
+      return {
+        input: model.basePriceInput != null ? model.basePriceInput : catalog.input,
+        output: model.basePriceOutput != null ? model.basePriceOutput : catalog.output,
+      };
+    }
+  }
+  for (const [, models] of _providerModels.entries()) {
+    const model = models.get(modelId);
+    if (model && (model.basePriceInput != null || model.basePriceOutput != null)) {
+      return {
+        input: model.basePriceInput != null ? model.basePriceInput : catalog.input,
+        output: model.basePriceOutput != null ? model.basePriceOutput : catalog.output,
+      };
+    }
+  }
+  return catalog;
+}
+
 export async function getConfiguredPublicModelCatalog() {
   await refreshProviderSettingsForProxy();
   const activeProviderIds = new Set(adminGetActiveProviderIds());
@@ -938,7 +982,7 @@ export async function getConfiguredPublicModelCatalog() {
   return Array.from(configured.entries()).map(([modelId, entry]) => {
     const cleanModelId = modelId.includes('/') ? modelId.split('/').pop()! : modelId;
     const catalog = MODEL_CATALOG.find((model) => model.id === modelId || model.aliases?.includes(modelId) || model.id === cleanModelId || model.aliases?.includes(cleanModelId));
-    const basePricing = getCatalogModelPricing(modelId);
+    const basePricing = getModelBasePricing(modelId);
     const override = _modelPricingOverrides.get(modelId);
     let pricing = basePricing;
     if (override?.mode === "free") pricing = { input: 0, output: 0 };
@@ -1073,7 +1117,7 @@ function calculateCredits(tokensUsed: number, model: string, breakdown?: CreditB
   // Mode "free" → 0 credit, tetap tercatat di log usage (transparan)
   if (override?.mode === "free") return 0;
 
-  const basePricing = getCatalogModelPricing(model);
+  const basePricing = getModelBasePricing(model);
   let inputPrice = basePricing.input;
   let outputPrice = basePricing.output;
 
