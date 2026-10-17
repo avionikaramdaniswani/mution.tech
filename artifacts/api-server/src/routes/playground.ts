@@ -4,6 +4,7 @@ import { apiKeysTable, playgroundSessionsTable, db } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { decryptSecret } from "../lib/secret-box";
 import { getConfiguredPublicModelCatalog } from "./v1-proxy";
+import { enrichMessagesWithWebSearchIfNeeded } from "../lib/web-search";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import zlib from "zlib";
@@ -54,13 +55,15 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
   };
 
   try {
+    const { messages: effectiveMessages } = await enrichMessagesWithWebSearchIfNeeded(messages);
+
     const upstream = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${fullKey}` },
       body: JSON.stringify({
         model: model.trim(), temperature: tempVal, max_tokens: tokensVal,
         stream: true, stream_options: { include_usage: true },
-        messages,
+        messages: effectiveMessages,
       }),
       signal: AbortSignal.timeout(120_000),
     });
