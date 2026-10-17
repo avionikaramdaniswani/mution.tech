@@ -84,6 +84,8 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
     const decoder = new TextDecoder();
     let sseBuf = "";
     let content = "";
+    let reasoningContent = "";
+    const accumulatedToolCalls: Array<{ name: string; arguments: string }> = [];
     let finishReason: string | null = null;
     let usage: any = null;
 
@@ -111,9 +113,32 @@ router.post("/playground/chat", requireAuth, async (req, res): Promise<void> => 
             content += text;
             send("chunk", { text });
           }
+          const reasoning = delta?.reasoning_content ?? message?.reasoning_content;
+          if (reasoning) {
+            reasoningContent += reasoning;
+          }
+          const toolCalls = delta?.tool_calls ?? message?.tool_calls;
+          if (Array.isArray(toolCalls)) {
+            for (const tc of toolCalls) {
+              const idx = tc.index ?? 0;
+              accumulatedToolCalls[idx] ??= { name: "", arguments: "" };
+              if (tc.function?.name) accumulatedToolCalls[idx].name += tc.function.name;
+              if (tc.function?.arguments) accumulatedToolCalls[idx].arguments += tc.function.arguments;
+            }
+          }
           if (chunk.choices?.[0]?.finish_reason) finishReason = chunk.choices[0].finish_reason;
           if (chunk.usage) usage = chunk.usage;
         } catch { /* skip malformed chunk */ }
+      }
+    }
+
+    if (!content.trim()) {
+      if (reasoningContent.trim()) {
+        content = reasoningContent.trim();
+        send("chunk", { text: content });
+      } else if (accumulatedToolCalls.length > 0) {
+        content = "Informasi telah diproses oleh model.";
+        send("chunk", { text: content });
       }
     }
 

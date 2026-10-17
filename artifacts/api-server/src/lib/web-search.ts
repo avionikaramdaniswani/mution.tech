@@ -26,8 +26,19 @@ export function shouldPerformWebSearch(prompt: string): boolean {
 
 export function extractSearchQuery(prompt: string): string {
   let cleaned = prompt.trim();
-  cleaned = cleaned.replace(/^(tolong|coba|bisakah kamu|bisa|mohon|dong|plis)\s+/i, "");
-  cleaned = cleaned.replace(/^(kamu\s+)?(cari|carikan|search|browsing|browse|cek|lihat)\s+(dong\s+|tentang\s+|mengenai\s+|soal\s+)?/i, "");
+  // Strip instructions and suffixes
+  cleaned = cleaned.replace(/sertakan\s+(link|tautan|sumber|url|web).*$/i, "");
+  cleaned = cleaned.replace(/beserta\s+(link|tautan|sumber|url|web).*$/i, "");
+  cleaned = cleaned.replace(/(dilain|selain)\s+itu.*$/i, "");
+  cleaned = cleaned.replace(/(jangan|ga usah|tidak usah)\s+.*$/i, "");
+  cleaned = cleaned.replace(/(coba\s+)?per\s+hari\s+ini.*$/i, "");
+  cleaned = cleaned.replace(/tgl\s+\d+.*$/i, "");
+  cleaned = cleaned.replace(/tanggal\s+\d+.*$/i, "");
+
+  // Strip filler prefixes
+  cleaned = cleaned.replace(/^(tolong|coba|bisakah kamu|bisakah|bisa|mohon|dong|plis)\s+/i, "");
+  cleaned = cleaned.replace(/^(kamu\s+)?(cariin|carikan|cari|search|browsing|browse|cek|lihat)\s+(aku|saya|kami)?\s*(dong\s+|tentang\s+|mengenai\s+|soal\s+)?/i, "");
+  cleaned = cleaned.replace(/^(informasi|info|berita|kabar)\s+(terbaru|terkini|hari ini|update)\s+(tentang|mengenai|soal)?\s*/i, "");
   cleaned = cleaned.replace(/\s+(dong|ya|yah|deh|nih|sih)\??$/i, "");
   cleaned = cleaned.trim();
 
@@ -42,6 +53,11 @@ export function extractSearchQuery(prompt: string): string {
     lower === "berita"
   ) {
     return "berita terkini hari ini";
+  }
+
+  // If very short keyword like "politik" or "gempa", append "terkini hari ini"
+  if (cleaned.split(/\s+/).length <= 2 && !lower.includes("hari ini") && !lower.includes("terkini")) {
+    return `${cleaned} terkini hari ini`;
   }
 
   return cleaned;
@@ -135,7 +151,12 @@ export async function executeWebSearch(query: string): Promise<SearchResult[]> {
       if (tavilyRes.length > 0) return tavilyRes;
     }
 
-    const newsResults = await searchGoogleNewsRSS(query);
+    let newsResults = await searchGoogleNewsRSS(query);
+    if (newsResults.length === 0 && query.split(/\s+/).length > 2) {
+      // Fallback with broader keywords
+      const firstTwo = query.split(/\s+/).slice(0, 2).join(" ");
+      newsResults = await searchGoogleNewsRSS(`${firstTwo} terkini hari ini`);
+    }
     if (newsResults.length > 0) return newsResults;
 
     const wikiResults = await searchWikipedia(query);
