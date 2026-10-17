@@ -2,13 +2,21 @@ import { useState, useMemo, useEffect } from "react";
 import { useAdminListOrders, useAdminGetRevenue, getAdminListOrdersQueryKey, getAdminGetRevenueQueryKey } from "@workspace/api-client-react";
 import type { PaymentOrderWithUser } from "@workspace/api-client-react";
 import {
-  Wallet, TrendingUp, Calendar, CheckCircle2, Clock, XCircle, Receipt, Search
+  Wallet, TrendingUp, Calendar, CheckCircle2, Clock, XCircle, Receipt, Search, RotateCcw
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDistanceToNow } from "date-fns";
+import {
+  formatDistanceToNow,
+  startOfDay,
+  endOfDay,
+  subDays,
+  startOfMonth,
+  endOfMonth,
+  subMonths
+} from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
 function formatRupiah(n: number) {
@@ -93,12 +101,112 @@ export default function AdminPayments() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const filteredOrders = useMemo(() => {
+  // 1. Filter orders based on date range
+  const dateFilteredOrders = useMemo(() => {
     if (!orders) return [];
-    let list = orders;
+    if (dateFilter === "all") return orders;
+
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+
+    return orders.filter(o => {
+      const created = new Date(o.createdAt);
+      if (isNaN(created.getTime())) return true;
+
+      switch (dateFilter) {
+        case "today":
+          return created >= todayStart && created <= todayEnd;
+        case "yesterday": {
+          const yStart = startOfDay(subDays(now, 1));
+          const yEnd = endOfDay(subDays(now, 1));
+          return created >= yStart && created <= yEnd;
+        }
+        case "7d": {
+          const start7 = startOfDay(subDays(now, 6));
+          return created >= start7 && created <= todayEnd;
+        }
+        case "30d": {
+          const start30 = startOfDay(subDays(now, 29));
+          return created >= start30 && created <= todayEnd;
+        }
+        case "this_month": {
+          const mStart = startOfMonth(now);
+          const mEnd = endOfMonth(now);
+          return created >= mStart && created <= mEnd;
+        }
+        case "last_month": {
+          const lm = subMonths(now, 1);
+          const lmStart = startOfMonth(lm);
+          const lmEnd = endOfMonth(lm);
+          return created >= lmStart && created <= lmEnd;
+        }
+        case "custom": {
+          let match = true;
+          if (customStart) {
+            match = match && created >= startOfDay(new Date(customStart));
+          }
+          if (customEnd) {
+            match = match && created <= endOfDay(new Date(customEnd));
+          }
+          return match;
+        }
+        default:
+          return true;
+      }
+    });
+  }, [orders, dateFilter, customStart, customEnd]);
+
+  // 2. Compute dynamic stats for the selected date range
+  const dynamicStats = useMemo(() => {
+    const list = dateFilteredOrders;
+    const paidList = list.filter(o => o.status === "paid");
+    const pendingList = list.filter(o => o.status === "pending");
+    const failedList = list.filter(o => ["failed", "cancelled", "expired"].includes(o.status));
+
+    const totalRevenue = paidList.reduce((acc, o) => acc + (o.amount || 0), 0);
+    const averageOrder = paidList.length > 0 ? Math.round(totalRevenue / paidList.length) : 0;
+    const successRate = list.length > 0 ? Math.round((paidList.length / list.length) * 100) : 0;
+
+    return {
+      totalRevenue,
+      paidCount: paidList.length,
+      pendingCount: pendingList.length,
+      failedCount: failedList.length,
+      totalCount: list.length,
+      averageOrder,
+      successRate,
+    };
+  }, [dateFilteredOrders]);
+
+  // 3. Human-readable label for the active date filter
+  const dateFilterLabel = useMemo(() => {
+    switch (dateFilter) {
+      case "today": return "Hari Ini";
+      case "yesterday": return "Kemarin";
+      case "7d": return "7 Hari Terakhir";
+      case "30d": return "30 Hari Terakhir";
+      case "this_month": return "Bulan Ini";
+      case "last_month": return "Bulan Lalu";
+      case "custom": {
+        if (customStart && customEnd) return `${customStart} s/d ${customEnd}`;
+        if (customStart) return `Sejak ${customStart}`;
+        if (customEnd) return `Hingga ${customEnd}`;
+        return "Rentang Kustom";
+      }
+      default: return "Semua Waktu";
+    }
+  }, [dateFilter, customStart, customEnd]);
+
+  // 4. Final filtered list for the table (date + search + status)
+  const filteredOrders = useMemo(() => {
+    let list = dateFilteredOrders;
 
     if (search) {
       const lower = search.toLowerCase();
@@ -110,14 +218,24 @@ export default function AdminPayments() {
     }
 
     return list;
-  }, [orders, search, statusFilter]);
+  }, [dateFilteredOrders, search, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / itemsPerPage));
   const paginatedOrders = filteredOrders.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
+  const isFilterActive = dateFilter !== "all" || statusFilter !== "all" || Boolean(search.trim()) || Boolean(customStart) || Boolean(customEnd);
+
+  const handleResetFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setDateFilter("all");
+    setCustomStart("");
+    setCustomEnd("");
+  };
+
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, itemsPerPage]);
+  }, [search, statusFilter, dateFilter, customStart, customEnd, itemsPerPage]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
@@ -128,153 +246,261 @@ export default function AdminPayments() {
         <p className="mt-1 text-sm text-[#526173]">Ringkasan pendapatan dan seluruh transaksi topup pengguna.</p>
       </div>
 
-      {/* Revenue cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard
-          label="Pendapatan Hari Ini"
-          value={revenueLoading ? undefined : formatRupiah(revenue?.todayRevenue ?? 0)}
-          icon={Calendar}
-          color="rgb(99,102,241)"
-          sub="Dari order lunas"
-        />
-        <StatCard
-          label="Pendapatan Bulan Ini"
-          value={revenueLoading ? undefined : formatRupiah(revenue?.monthRevenue ?? 0)}
-          icon={TrendingUp}
-          color="rgb(249,115,22)"
-          sub="Sejak awal bulan"
-        />
-        <StatCard
-          label="Total Pendapatan"
-          value={revenueLoading ? undefined : formatRupiah(revenue?.totalRevenue ?? 0)}
-          icon={Wallet}
-          color="rgb(34,197,94)"
-          sub="Sepanjang waktu"
-        />
+      {/* Revenue cards - adapts to filter */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {dateFilter === "all" ? (
+          <>
+            <StatCard
+              label="Pendapatan Hari Ini"
+              value={revenueLoading ? undefined : formatRupiah(revenue?.todayRevenue ?? 0)}
+              icon={Calendar}
+              color="rgb(99,102,241)"
+              sub="Dari order lunas"
+            />
+            <StatCard
+              label="Pendapatan Bulan Ini"
+              value={revenueLoading ? undefined : formatRupiah(revenue?.monthRevenue ?? 0)}
+              icon={TrendingUp}
+              color="rgb(249,115,22)"
+              sub="Sejak awal bulan"
+            />
+            <StatCard
+              label="Total Pendapatan"
+              value={revenueLoading ? undefined : formatRupiah(revenue?.totalRevenue ?? 0)}
+              icon={Wallet}
+              color="rgb(34,197,94)"
+              sub="Sepanjang waktu"
+            />
+          </>
+        ) : (
+          <>
+            <StatCard
+              label={`Pendapatan (${dateFilterLabel})`}
+              value={ordersLoading ? undefined : formatRupiah(dynamicStats.totalRevenue)}
+              icon={Calendar}
+              color="rgb(99,102,241)"
+              sub={`Dari ${dynamicStats.paidCount} order lunas`}
+            />
+            <StatCard
+              label="Rata-rata Order"
+              value={ordersLoading ? undefined : formatRupiah(dynamicStats.averageOrder)}
+              icon={TrendingUp}
+              color="rgb(249,115,22)"
+              sub={`Per transaksi lunas (${dateFilterLabel})`}
+            />
+            <StatCard
+              label="Tingkat Sukses"
+              value={ordersLoading ? undefined : `${dynamicStats.successRate}%`}
+              icon={Wallet}
+              color="rgb(34,197,94)"
+              sub={`${dynamicStats.paidCount} lunas dari ${dynamicStats.totalCount} order`}
+            />
+          </>
+        )}
       </div>
 
-      {/* Status counts */}
-      {!revenueLoading && revenue && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ border: "1px solid rgba(34,197,94,0.18)", background: "rgba(34,197,94,0.05)" }}>
+      {/* Status counts - adapts to filter */}
+      {(!revenueLoading || !ordersLoading) && (
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          <div className="rounded-xl px-3 sm:px-4 py-3 flex items-center gap-2 sm:gap-3" style={{ border: "1px solid rgba(34,197,94,0.18)", background: "rgba(34,197,94,0.05)" }}>
             <CheckCircle2 className="h-4 w-4 flex-shrink-0" style={{ color: "rgb(34,197,94)" }} />
             <div>
-              <p className="text-lg font-bold tabular-nums leading-none">{revenue.paidCount}</p>
-              <p className="text-[11px] text-muted-foreground mt-1">Lunas</p>
+              <p className="text-base sm:text-lg font-bold tabular-nums leading-none">
+                {dateFilter === "all" ? (revenue?.paidCount ?? dynamicStats.paidCount) : dynamicStats.paidCount}
+              </p>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1">Lunas</p>
             </div>
           </div>
-          <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ border: "1px solid rgba(234,179,8,0.18)", background: "rgba(234,179,8,0.05)" }}>
+          <div className="rounded-xl px-3 sm:px-4 py-3 flex items-center gap-2 sm:gap-3" style={{ border: "1px solid rgba(234,179,8,0.18)", background: "rgba(234,179,8,0.05)" }}>
             <Clock className="h-4 w-4 flex-shrink-0" style={{ color: "rgb(234,179,8)" }} />
             <div>
-              <p className="text-lg font-bold tabular-nums leading-none">{revenue.pendingCount}</p>
-              <p className="text-[11px] text-muted-foreground mt-1">Pending</p>
+              <p className="text-base sm:text-lg font-bold tabular-nums leading-none">
+                {dateFilter === "all" ? (revenue?.pendingCount ?? dynamicStats.pendingCount) : dynamicStats.pendingCount}
+              </p>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1">Pending</p>
             </div>
           </div>
-          <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ border: "1px solid rgba(239,68,68,0.18)", background: "rgba(239,68,68,0.05)" }}>
+          <div className="rounded-xl px-3 sm:px-4 py-3 flex items-center gap-2 sm:gap-3" style={{ border: "1px solid rgba(239,68,68,0.18)", background: "rgba(239,68,68,0.05)" }}>
             <XCircle className="h-4 w-4 flex-shrink-0" style={{ color: "rgb(239,68,68)" }} />
             <div>
-              <p className="text-lg font-bold tabular-nums leading-none">{revenue.failedCount}</p>
-              <p className="text-[11px] text-muted-foreground mt-1">Gagal / batal</p>
+              <p className="text-base sm:text-lg font-bold tabular-nums leading-none">
+                {dateFilter === "all" ? (revenue?.failedCount ?? dynamicStats.failedCount) : dynamicStats.failedCount}
+              </p>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1">Gagal / batal</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Orders table */}
+      {/* Orders table with responsive filters */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-[#172033]">Transaksi Terbaru</h2>
-            {orders && <span className="text-xs text-[#526173]">({orders.length} total)</span>}
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <div className="relative w-full sm:w-64">
-              <Input 
-                placeholder="Cari nama atau email..." 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-9 border-[#dbe8f3] text-sm"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-[#172033]">Transaksi Terbaru</h2>
+              {orders && (
+                <span className="text-xs text-[#526173]">
+                  ({filteredOrders.length} {filteredOrders.length !== orders.length ? `dari ${orders.length}` : "total"})
+                </span>
+              )}
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[140px] h-9 border-[#dbe8f3] text-sm">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="paid">Lunas</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Gagal</SelectItem>
-                <SelectItem value="cancelled">Dibatalkan</SelectItem>
-                <SelectItem value="expired">Kedaluwarsa</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Search input */}
+              <div className="relative w-full sm:w-60 min-w-[180px]">
+                <Input 
+                  placeholder="Cari nama atau email..." 
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 h-9 border-[#dbe8f3] text-sm bg-white"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+
+              {/* Date Filter */}
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger className="w-full sm:w-[160px] h-9 border-[#dbe8f3] text-sm bg-white">
+                  <Calendar className="mr-1.5 h-3.5 w-3.5 text-[#526173]" />
+                  <SelectValue placeholder="Pilih Periode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Waktu</SelectItem>
+                  <SelectItem value="today">Hari Ini</SelectItem>
+                  <SelectItem value="yesterday">Kemarin</SelectItem>
+                  <SelectItem value="7d">7 Hari Terakhir</SelectItem>
+                  <SelectItem value="30d">30 Hari Terakhir</SelectItem>
+                  <SelectItem value="this_month">Bulan Ini</SelectItem>
+                  <SelectItem value="last_month">Bulan Lalu</SelectItem>
+                  <SelectItem value="custom">Kustom Tanggal...</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Status Filter */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[135px] h-9 border-[#dbe8f3] text-sm bg-white">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="paid">Lunas</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="failed">Gagal</SelectItem>
+                  <SelectItem value="cancelled">Dibatalkan</SelectItem>
+                  <SelectItem value="expired">Kedaluwarsa</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Reset button */}
+              {isFilterActive && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleResetFilters}
+                  className="h-9 px-2.5 text-xs text-[#526173] hover:text-[#172033]"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                  Reset
+                </Button>
+              )}
+            </div>
           </div>
+
+          {/* Custom Date Inputs */}
+          {dateFilter === "custom" && (
+            <div className="flex flex-wrap items-center gap-2.5 p-3 rounded-lg border border-[#dbe8f3] bg-[#f8fbff]">
+              <span className="text-xs font-semibold text-[#526173]">Dari:</span>
+              <Input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="h-8 w-full sm:w-auto border-[#dbe8f3] text-xs bg-white"
+              />
+              <span className="text-xs font-semibold text-[#526173]">Sampai:</span>
+              <Input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="h-8 w-full sm:w-auto border-[#dbe8f3] text-xs bg-white"
+              />
+              {(customStart || customEnd) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setCustomStart(""); setCustomEnd(""); }}
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Hapus Tanggal
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_16px_44px_rgba(23,32,51,0.07)]">
-          {/* Table header */}
-          <div
-            className="grid border-b border-[#dbe8f3] bg-[#f8fbff] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#526173]"
-            style={{ gridTemplateColumns: "1fr 120px 110px 130px" }}
-          >
-            <div>Pengguna</div>
-            <div className="text-right">Nominal</div>
-            <div className="text-center">Status</div>
-            <div className="text-right">Waktu</div>
-          </div>
+          <div className="overflow-x-auto">
+            <div className="min-w-[520px]">
+              {/* Table header */}
+              <div
+                className="grid border-b border-[#dbe8f3] bg-[#f8fbff] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#526173]"
+                style={{ gridTemplateColumns: "1fr 120px 110px 130px" }}
+              >
+                <div>Pengguna</div>
+                <div className="text-right">Nominal</div>
+                <div className="text-center">Status</div>
+                <div className="text-right">Waktu</div>
+              </div>
 
-          {ordersLoading ? (
-            <div className="space-y-px">
-              {Array(6).fill(0).map((_, i) => (
-                <div key={i} className="px-5 py-4"><Skeleton className="h-8 w-full" /></div>
-              ))}
-            </div>
-          ) : paginatedOrders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <Receipt className="h-10 w-10 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">Belum ada transaksi.</p>
-            </div>
-          ) : (
-            <div>
-              {paginatedOrders.map((order: PaymentOrderWithUser) => (
-                <div
-                  key={order.id}
-                  className="grid items-center border-b border-[#edf4fb] px-5 py-3.5 transition-colors last:border-b-0 hover:bg-[#f8fbff]"
-                  style={{
-                    gridTemplateColumns: "1fr 120px 110px 130px",
-                  }}
-                >
-                  {/* User */}
-                  <div className="flex items-center gap-3 min-w-0">
-                    <UserAvatar name={order.ownerName} />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[#172033]">{order.ownerName}</p>
-                      <p className="truncate text-xs text-[#526173]">{order.ownerEmail}</p>
-                    </div>
-                  </div>
-
-                  {/* Amount */}
-                  <div className="text-right">
-                    <span className="text-sm font-semibold tabular-nums text-[#172033]">{formatRupiah(order.amount)}</span>
-                  </div>
-
-                  {/* Status */}
-                  <div className="flex justify-center">
-                    <StatusBadge status={order.status} />
-                  </div>
-
-                  {/* Time */}
-                  <div className="text-right">
-                    <span className="text-xs text-[#526173]">
-                      {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: idLocale })}
-                    </span>
-                  </div>
+              {ordersLoading ? (
+                <div className="space-y-px">
+                  {Array(6).fill(0).map((_, i) => (
+                    <div key={i} className="px-5 py-4"><Skeleton className="h-8 w-full" /></div>
+                  ))}
                 </div>
-              ))}
+              ) : paginatedOrders.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <Receipt className="h-10 w-10 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">Belum ada transaksi.</p>
+                </div>
+              ) : (
+                <div>
+                  {paginatedOrders.map((order: PaymentOrderWithUser) => (
+                    <div
+                      key={order.id}
+                      className="grid items-center border-b border-[#edf4fb] px-5 py-3.5 transition-colors last:border-b-0 hover:bg-[#f8fbff]"
+                      style={{
+                        gridTemplateColumns: "1fr 120px 110px 130px",
+                      }}
+                    >
+                      {/* User */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <UserAvatar name={order.ownerName} />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[#172033]">{order.ownerName}</p>
+                          <p className="truncate text-xs text-[#526173]">{order.ownerEmail}</p>
+                        </div>
+                      </div>
+
+                      {/* Amount */}
+                      <div className="text-right">
+                        <span className="text-sm font-semibold tabular-nums text-[#172033]">{formatRupiah(order.amount)}</span>
+                      </div>
+
+                      {/* Status */}
+                      <div className="flex justify-center">
+                        <StatusBadge status={order.status} />
+                      </div>
+
+                      {/* Time */}
+                      <div className="text-right">
+                        <span className="text-xs text-[#526173]">
+                          {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: idLocale })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Pagination Controls */}
