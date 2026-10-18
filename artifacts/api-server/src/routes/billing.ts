@@ -791,4 +791,109 @@ router.get("/billing/user/token-packages", requireAuth, async (req, res): Promis
   res.json(activePackages);
 });
 
+router.post("/billing/token-packages/purchase-with-balance", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const { tokenPackageId } = req.body ?? {};
+
+  if (!tokenPackageId || typeof tokenPackageId !== "number") {
+    res.status(400).json({ error: "Parameter tokenPackageId tidak valid" });
+    return;
+  }
+
+  const [pkg] = await db
+    .select()
+    .from(tokenPackagesTable)
+    .where(eq(tokenPackagesTable.id, tokenPackageId))
+    .limit(1);
+
+  if (!pkg || !pkg.isActive) {
+    res.status(400).json({ error: "Paket token tidak tersedia atau sudah dinonaktifkan" });
+    return;
+  }
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [freshUser] = await tx
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, user.id))
+        .limit(1);
+
+      if (!freshUser) {
+        throw new Error("User tidak ditemukan");
+      }
+
+      if (freshUser.credits < pkg.priceIdr) {
+        throw new Error(`Saldo kredit Anda tidak mencukupi. Saldo saat ini: Rp ${Math.floor(freshUser.credits).toLocaleString("id-ID")}, Dibutuhkan: Rp ${pkg.priceIdr.toLocaleString("id-ID")}`);
+      }
+
+      const newCredits = freshUser.credits - pkg.priceIdr;
+
+      await tx
+        .update(usersTable)
+        .set({ credits: newCredits })
+        .where(eq(usersTable.id, user.id));
+
+      await tx.insert(creditTransactionsTable).values({
+        userId: user.id,
+        type: "usage",
+        amount: -pkg.priceIdr,
+        note: `Beli Paket Token: ${pkg.name} (${pkg.category.toUpperCase()})`,
+      });
+
+      const invoiceNumber = `TOKEN-BAL-${Date.now()}-${user.id}`;
+      const [order] = await tx
+        .insert(paymentOrdersTable)
+        .values({
+          userId: user.id,
+          tokenPackageId: pkg.id,
+          invoiceNumber,
+          amount: pkg.priceIdr,
+          creditsAmount: 0,
+          provider: "balance",
+          status: "paid",
+          paidAt: new Date(),
+        })
+        .returning();
+
+      const durationDays = pkg.durationDays || 30;
+      const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+
+      await tx.insert(userTokenPackagesTable).values({
+        userId: user.id,
+        packageId: pkg.id,
+        orderId: order.id,
+        category: pkg.category,
+        totalTokens: pkg.tokensAmount,
+        remainingTokens: pkg.tokensAmount,
+        expiresAt,
+        isActive: true,
+      });
+
+      return { order, newCredits, expiresAt };
+    });
+
+    broadcastToUser(user.id, {
+      type: "token_package.purchased",
+      category: pkg.category,
+      tokensAmount: pkg.tokensAmount,
+      expiresAt: result.expiresAt.toISOString(),
+    });
+
+    await logActivity(user.id, "billing.token_package_paid_balance", result.order.id, {
+      packageId: pkg.id,
+      packageName: pkg.name,
+      amount: pkg.priceIdr,
+    });
+
+    res.json({
+      success: true,
+      orderId: result.order.id,
+      newCredits: result.newCredits,
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Gagal memproses transaksi dengan saldo" });
+  }
+});
+
 export default router;

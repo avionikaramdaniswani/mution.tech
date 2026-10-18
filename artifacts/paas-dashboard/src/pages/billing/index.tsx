@@ -413,6 +413,10 @@ function RecentOrders() {
 }
 
 function TopupSection() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const userBalance = user?.credits ?? 0;
+
   const [step, setStep] = useState(1); // 1 = Nominal, 2 = Metode, 3 = Konfirmasi
   const [billingType, setBillingType] = useState<"credit" | "token">("credit");
   const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null);
@@ -435,6 +439,7 @@ function TopupSection() {
     setIsCustom(true);
     setSelectedPackage(null);
     setSelectedTokenPackage(null);
+    if (method === "BALANCE") setMethod("SP");
     setError(null);
   }
 
@@ -460,9 +465,12 @@ function TopupSection() {
   })();
 
   const canAdvanceStep1 = resolvedAmount != null && !amountError;
+  const isBalanceMethod = method === "BALANCE";
   const selectedChannelObj = channels.find(c => c.code === method);
-  const selectedMethodLabel = selectedChannelObj?.name.replace(" Virtual Account", " VA") ?? method;
-  const adminFee = selectedChannelObj?.totalFee ? parseInt(selectedChannelObj.totalFee) : 0;
+  const selectedMethodLabel = isBalanceMethod
+    ? "Saldo Akun (Kredit Mution)"
+    : selectedChannelObj?.name.replace(" Virtual Account", " VA") ?? method;
+  const adminFee = isBalanceMethod ? 0 : (selectedChannelObj?.totalFee ? parseInt(selectedChannelObj.totalFee) : 0);
   const totalPayAmount = (resolvedAmount || 0) + adminFee;
 
   function handleCustomInput(raw: string) {
@@ -470,6 +478,7 @@ function TopupSection() {
     setCustomRaw(digits);
     setSelectedPackage(null);
     setSelectedTokenPackage(null);
+    if (method === "BALANCE") setMethod("SP");
     setError(null);
   }
 
@@ -478,6 +487,7 @@ function TopupSection() {
     setSelectedTokenPackage(null);
     setIsCustom(false);
     setCustomRaw("");
+    if (method === "BALANCE") setMethod("SP");
     setError(null);
   }
 
@@ -486,6 +496,28 @@ function TopupSection() {
     setLoading(true);
     setError(null);
     try {
+      if (method === "BALANCE") {
+        if (!selectedTokenPackage) {
+          setError("Pembayaran dengan saldo hanya berlaku untuk pembelian paket token");
+          setLoading(false);
+          return;
+        }
+        const res = await csrfFetch("/api/billing/token-packages/purchase-with-balance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ tokenPackageId: selectedTokenPackage.id }),
+        });
+        const data = await res.json() as { success?: boolean; error?: string; orderId?: number };
+        if (!res.ok || !data.success) {
+          setError(data.error ?? "Gagal memproses pembelian dengan saldo");
+          return;
+        }
+        queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+        window.location.href = `/billing/riwayat/${data.orderId}`;
+        return;
+      }
+
       const body = selectedTokenPackage
         ? { tokenPackageId: selectedTokenPackage.id, method }
         : selectedPackage
@@ -537,7 +569,11 @@ function TopupSection() {
             <div className="flex rounded-xl bg-muted p-1 gap-1">
               <button
                 type="button"
-                onClick={() => { setBillingType("credit"); setSelectedTokenPackage(null); }}
+                onClick={() => {
+                  setBillingType("credit");
+                  setSelectedTokenPackage(null);
+                  if (method === "BALANCE") setMethod("SP");
+                }}
                 className={cn(
                   "flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
                   billingType === "credit" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
@@ -582,6 +618,11 @@ function TopupSection() {
                             setIsCustom(false);
                             setCustomRaw("");
                             setError(null);
+                            if (userBalance >= tp.priceIdr) {
+                              setMethod("BALANCE");
+                            } else if (method === "BALANCE") {
+                              setMethod("SP");
+                            }
                           }}
                           className={cn(
                             "relative flex flex-col text-left rounded-2xl p-4 transition-all border-2",
@@ -824,6 +865,67 @@ function TopupSection() {
         
         {step === 2 && (
           <div className="p-5">
+            {/* Opsi Bayar dengan Saldo Akun (Khusus Paket Token) */}
+            {selectedTokenPackage && (
+              <div className="mb-5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2.5">
+                  Metode Rekomendasi (Instan Tanpa Transfer)
+                </p>
+                <button
+                  type="button"
+                  disabled={userBalance < (selectedTokenPackage.priceIdr || 0)}
+                  onClick={() => setMethod("BALANCE")}
+                  className={cn(
+                    "w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left",
+                    method === "BALANCE"
+                      ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30"
+                      : userBalance < (selectedTokenPackage.priceIdr || 0)
+                      ? "border-border bg-muted/40 opacity-60 cursor-not-allowed"
+                      : "border-border bg-background hover:bg-muted/40 hover:border-primary/40"
+                  )}
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className={cn(
+                      "h-11 w-11 rounded-xl flex items-center justify-center font-bold transition-all",
+                      method === "BALANCE" ? "bg-primary text-primary-foreground shadow-sm" : "bg-primary/15 text-primary"
+                    )}>
+                      <Wallet className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-foreground">Saldo Akun (Kredit Mution)</span>
+                        <span className="text-[10px] font-extrabold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                          Langsung Aktif
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Saldo Anda: <span className="font-bold text-foreground">Rp {Math.floor(userBalance).toLocaleString("id-ID")}</span>
+                        {userBalance < (selectedTokenPackage.priceIdr || 0) ? (
+                          <span className="text-destructive font-semibold ml-1.5">(Kurang Rp {((selectedTokenPackage.priceIdr || 0) - Math.floor(userBalance)).toLocaleString("id-ID")})</span>
+                        ) : (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold ml-1.5">(Saldo mencukupi)</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {method === "BALANCE" ? (
+                      <div className="h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      </div>
+                    ) : (
+                      <div className="h-5 w-5 rounded-full border border-muted-foreground/30" />
+                    )}
+                  </div>
+                </button>
+                <div className="relative my-5">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+                  <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
+                    <span className="bg-card px-3 text-muted-foreground">atau bayar via Payment Gateway</span>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 hide-scrollbar">
               {chLoading && (
                 <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
@@ -1017,6 +1119,14 @@ function TopupSection() {
                 <span className="text-base font-bold text-foreground">Total Bayar</span>
                 <span className="text-2xl font-black text-foreground">{formatRp(totalPayAmount)}</span>
               </div>
+              {method === "BALANCE" && (
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/50">
+                  <span>Sisa Saldo Setelah Transaksi</span>
+                  <span className="font-bold text-foreground">
+                    {formatRp(Math.max(0, userBalance - (resolvedAmount || 0)))}
+                  </span>
+                </div>
+              )}
             </div>
 
             {error && <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 text-destructive text-sm font-bold rounded-xl text-center">{error}</div>}
@@ -1033,12 +1143,18 @@ function TopupSection() {
             >
               {loading ? (
                 <><Loader2 className="h-5 w-5 animate-spin" /> Memproses Transaksi...</>
+              ) : method === "BALANCE" ? (
+                <>Bayar dengan Saldo <span className="opacity-60 ml-1">·</span> {formatRp(totalPayAmount)}</>
               ) : (
                 <>Bayar Sekarang <span className="opacity-60 ml-1">·</span> {formatRp(totalPayAmount)}</>
               )}
             </button>
             <p className="text-[11px] font-medium text-center text-muted-foreground mt-4">
-              {selectedTokenPackage ? "Kuota paket token akan langsung aktif setelah pembayaran dikonfirmasi sistem." : "Kredit akan otomatis ditambahkan setelah pembayaran berhasil dikonfirmasi oleh sistem."}
+              {method === "BALANCE"
+                ? "Saldo kredit akan otomatis terpotong dan kuota paket token langsung aktif seketika."
+                : selectedTokenPackage
+                ? "Kuota paket token akan langsung aktif setelah pembayaran dikonfirmasi sistem."
+                : "Kredit akan otomatis ditambahkan setelah pembayaran berhasil dikonfirmasi oleh sistem."}
             </p>
           </div>
         )}
