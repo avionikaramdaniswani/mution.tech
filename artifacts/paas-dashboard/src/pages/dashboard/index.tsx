@@ -28,6 +28,8 @@ import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { Link } from "wouter";
 import { csrfFetch } from "@/lib/csrf";
+import { cn } from "@/lib/utils";
+import { useUserTokenPackages } from "@/hooks/use-user-token-packages";
 import type { Project, ActivityLog } from "@workspace/api-client-react";
 
 interface ApiKey {
@@ -453,6 +455,88 @@ function ApiTrafficPulse({ daily }: { daily: ApiUsageDaily[] }) {
   );
 }
 
+function DashboardTokenPassCard() {
+  const { data: passes = [] } = useUserTokenPackages();
+  if (!passes || passes.length === 0) return null;
+
+  return (
+    <Card className="overflow-hidden rounded-xl border border-amber-500/25 bg-gradient-to-r from-amber-500/[0.05] via-white to-emerald-500/[0.05] shadow-[0_10px_30px_rgba(23,32,51,0.04)] dark:from-amber-500/[0.08] dark:via-card dark:to-emerald-500/[0.08]">
+      <CardContent className="p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#dbe8f3] dark:border-border">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold flex-shrink-0">
+              <Sparkles className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-[#172033] dark:text-foreground">Token Pass Aktif</h3>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  {passes.length} Paket Aktif
+                </span>
+              </div>
+              <p className="text-xs text-[#526173] dark:text-muted-foreground mt-0.5">
+                Penggunaan model AI otomatis memotong kuota paket ini tanpa memotong saldo kredit Rupiah Anda.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/billing"
+            className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 self-start sm:self-auto transition-colors"
+          >
+            Beli / Kelola <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3">
+          {passes.map((pass) => {
+            const isClaude = pass.category === "claude";
+            const pct = Math.max(0, Math.min(100, Math.round((pass.remainingTokens / pass.totalTokens) * 100)));
+            const daysLeft = Math.max(0, Math.ceil((new Date(pass.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+
+            return (
+              <div
+                key={pass.id}
+                className="p-3.5 rounded-xl border border-[#dbe8f3] dark:border-border bg-white/80 dark:bg-card/80 shadow-xs flex flex-col justify-between space-y-2.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className={cn(
+                    "text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border",
+                    isClaude 
+                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" 
+                      : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                  )}>
+                    {isClaude ? "Claude Pass" : "GPT Pass"}
+                  </span>
+                  <span className="text-[11px] font-medium text-[#526173] dark:text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Sisa {daysLeft} hari
+                  </span>
+                </div>
+
+                <div>
+                  <div className="flex items-baseline justify-between text-xs">
+                    <span className="font-extrabold text-[#172033] dark:text-foreground">
+                      {pass.remainingTokens.toLocaleString("id-ID")}
+                      <span className="text-[10px] font-normal text-[#526173] dark:text-muted-foreground ml-1">/ {pass.totalTokens.toLocaleString("id-ID")} Token</span>
+                    </span>
+                    <span className="text-xs font-bold text-[#172033] dark:text-foreground">{pct}%</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-[#f1f5f9] dark:bg-muted mt-1.5 overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full transition-all", isClaude ? "bg-amber-500" : "bg-emerald-500")}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { data: projects, isLoading: projectsLoading } = useListProjects();
@@ -497,6 +581,9 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+
+      {/* Token Pass Widget (Hanya tampil jika ada paket aktif) */}
+      <DashboardTokenPassCard />
 
       {/* Announcements */}
       <section>

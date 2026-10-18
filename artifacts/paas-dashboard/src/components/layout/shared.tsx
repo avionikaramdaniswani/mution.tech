@@ -8,13 +8,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   LogOut,
   User,
   CreditCard,
   Wallet,
   ChevronDown,
   Receipt,
+  Sparkles,
+  Clock,
+  ChevronRight,
 } from "lucide-react";
+import { useUserTokenPackages } from "@/hooks/use-user-token-packages";
+import { cn } from "@/lib/utils";
 
 export function formatCredits(credits?: number) {
   if (credits === undefined || credits === null) return "Rp 0";
@@ -72,6 +82,97 @@ export interface TopNavbarProps {
   /** Elemen tambahan di kiri, setelah logo (mis. badge "Admin"). */
   leftExtra?: React.ReactNode;
   onLogout: () => void;
+}
+
+export function NavbarTokenPassPill() {
+  const { data: passes = [] } = useUserTokenPackages();
+  if (!passes || passes.length === 0) return null;
+
+  const totalRemaining = passes.reduce((sum, p) => sum + p.remainingTokens, 0);
+  const totalTokensFormatted = totalRemaining >= 1_000_000
+    ? `${(totalRemaining / 1_000_000).toFixed(1)}M`
+    : totalRemaining >= 1_000
+    ? `${(totalRemaining / 1_000).toFixed(0)}k`
+    : `${totalRemaining}`;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex cursor-pointer items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 px-2.5 sm:px-3 py-1.5 transition-all text-amber-700 dark:text-amber-400 font-bold text-xs shadow-sm active:scale-95"
+          title="Klik untuk detail Paket Token aktif"
+        >
+          <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+          <span className="tabular-nums font-extrabold">{totalTokensFormatted}</span>
+          <span className="hidden sm:inline text-[11px] font-semibold opacity-80">Token</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="bottom" align="end" className="w-80 p-4 space-y-3 shadow-xl rounded-2xl border-border bg-card">
+        <div className="flex items-center justify-between pb-2.5 border-b border-border">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="font-extrabold text-xs uppercase tracking-wider text-foreground">Paket Token Aktif</span>
+          </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            {passes.length} Aktif
+          </span>
+        </div>
+
+        <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-0.5">
+          {passes.map((pass) => {
+            const isClaude = pass.category === "claude";
+            const pct = Math.max(0, Math.min(100, Math.round((pass.remainingTokens / pass.totalTokens) * 100)));
+            const daysLeft = Math.max(0, Math.ceil((new Date(pass.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+
+            return (
+              <div key={pass.id} className="p-3 rounded-xl border border-border/80 bg-muted/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className={cn(
+                    "text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border",
+                    isClaude 
+                      ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20" 
+                      : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                  )}>
+                    {isClaude ? "Claude Pass" : "GPT Pass"}
+                  </span>
+                  <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Sisa {daysLeft} hari
+                  </span>
+                </div>
+                <div>
+                  <div className="flex items-baseline justify-between text-xs">
+                    <span className="font-bold text-foreground">
+                      {pass.remainingTokens.toLocaleString("id-ID")}
+                      <span className="text-[10px] font-normal text-muted-foreground ml-1">/ {pass.totalTokens.toLocaleString("id-ID")}</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-primary">{pct}%</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-muted mt-1.5 overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full transition-all", isClaude ? "bg-amber-500" : "bg-emerald-500")}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="pt-1">
+          <Link
+            href="/billing"
+            className="w-full py-2 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity shadow-sm"
+          >
+            <span>Beli / Kelola Paket</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 /** Navbar fixed full-width yang dipakai baik panel user maupun admin. */
@@ -133,6 +234,9 @@ export function TopNavbar({
           title={healthOk ? "Platform beroperasi normal" : "Platform mengalami gangguan"}
           aria-label={healthOk ? "Platform beroperasi normal" : "Platform mengalami gangguan"}
         />
+
+        {/* Token Pass Pill (Hanya muncul jika ada paket aktif) */}
+        <NavbarTokenPassPill />
 
         {/* Saldo */}
         <Link href="/billing">

@@ -10,6 +10,7 @@ import {
 import { Link } from "wouter";
 import { csrfFetch } from "@/lib/csrf";
 import { cn } from "@/lib/utils";
+import { useUserTokenPackages, type UserTokenPackage } from "@/hooks/use-user-token-packages";
 
 const MIN = 1_000;
 const MAX = 10_000_000;
@@ -39,18 +40,6 @@ interface TokenPackage {
   isHighlight: boolean;
 }
 
-interface UserTokenPackage {
-  id: number;
-  userId: number;
-  packageId: number | null;
-  category: "claude" | "gpt";
-  totalTokens: number;
-  remainingTokens: number;
-  expiresAt: string;
-  isActive: boolean;
-  createdAt: string;
-}
-
 function usePackages() {
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   useEffect(() => {
@@ -71,19 +60,6 @@ function useTokenPackages() {
       .catch(() => undefined);
   }, []);
   return tokenPackages;
-}
-
-function useUserTokenPackages() {
-  const [passes, setPasses] = useState<UserTokenPackage[]>([]);
-  const reload = useCallback(() => {
-    fetch("/api/billing/user/token-packages", { credentials: "include" })
-      .then(r => r.ok ? r.json() : [])
-      .then((data: UserTokenPackage[]) => { if (Array.isArray(data)) setPasses(data); })
-      .catch(() => undefined);
-  }, []);
-
-  useEffect(() => { reload(); }, [reload]);
-  return { passes, reload };
 }
 
 function ActiveTokenPassesCard({ passes }: { passes: UserTokenPackage[] }) {
@@ -1280,7 +1256,7 @@ export default function BillingPage() {
   const [, setLocation] = useLocation();
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [pollDone, setPollDone] = useState(false);
-  const { passes } = useUserTokenPackages();
+  const { data: passes = [] } = useUserTokenPackages();
 
   // Detect return from Duitku via orderId=xx URL param
   useEffect(() => {

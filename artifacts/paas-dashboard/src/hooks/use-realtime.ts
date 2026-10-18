@@ -33,6 +33,7 @@ export function useRealtimeEvents(path: string, admin = false) {
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });          // saldo di navbar
       queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/user/token-packages"] });
     };
 
     const invalidateAdminScope = () => {
