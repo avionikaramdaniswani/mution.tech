@@ -1,6 +1,6 @@
 import { Router, type NextFunction, type Request, type Response } from "express";
-import { db, apiKeysTable, usersTable, creditTransactionsTable, apiUsageTable, aiProviderSettingsTable, aiProviderModelsTable, apiRequestsTable, modelPricingOverridesTable, apiUsageDailyTable } from "@workspace/db";
-import { and, asc, eq, sql, ne, notInArray } from "drizzle-orm";
+import { db, apiKeysTable, usersTable, creditTransactionsTable, apiUsageTable, aiProviderSettingsTable, aiProviderModelsTable, apiRequestsTable, modelPricingOverridesTable, apiUsageDailyTable, userTokenPackagesTable } from "@workspace/db";
+import { and, asc, eq, sql, ne, notInArray, gt } from "drizzle-orm";
 import { encryptSecret, decryptSecret } from "../lib/secret-box";
 import crypto from "crypto";
 import { logger } from "../lib/logger";
@@ -1104,7 +1104,35 @@ type CreditReservation = {
   userId: number;
   keyId: number;
   credits: number;
+  tokenPackageId?: number;
+  tokenCategory?: "claude" | "gpt";
 };
+
+function detectModelTokenCategory(model: string): "claude" | "gpt" | null {
+  const m = model.toLowerCase();
+  if (m.includes("claude")) return "claude";
+  if (m.includes("gpt") || m.startsWith("o1") || m.startsWith("o3") || m.includes("/o1") || m.includes("/o3")) return "gpt";
+  return null;
+}
+
+async function getActiveTokenPackage(userId: number, category: "claude" | "gpt") {
+  const now = new Date();
+  const [pkg] = await db
+    .select()
+    .from(userTokenPackagesTable)
+    .where(
+      and(
+        eq(userTokenPackagesTable.userId, userId),
+        eq(userTokenPackagesTable.category, category),
+        eq(userTokenPackagesTable.isActive, true),
+        gt(userTokenPackagesTable.remainingTokens, 0),
+        gt(userTokenPackagesTable.expiresAt, now),
+      ),
+    )
+    .orderBy(asc(userTokenPackagesTable.expiresAt))
+    .limit(1);
+  return pkg ?? null;
+}
 
 const MODEL_PRICING_TOKEN_UNIT = 1_000_000;
 
@@ -1140,6 +1168,7 @@ function updateApiRequestUsageLog(
   tokensUsed: number,
   model: string,
   breakdown?: CreditBreakdown,
+  isTokenPackage = false,
 ): void {
   const inputTokens = breakdown?.inputTokens ?? 0;
   const outputTokens = breakdown?.outputTokens ?? (inputTokens === 0 ? tokensUsed : 0);
@@ -1150,7 +1179,7 @@ function updateApiRequestUsageLog(
     completionTokens: outputTokens,
     totalTokens: tokensUsed,
     cachedTokens,
-    credits: calculateCredits(tokensUsed, model, { inputTokens, outputTokens }),
+    credits: isTokenPackage ? 0 : calculateCredits(tokensUsed, model, { inputTokens, outputTokens }),
   });
 }
 
@@ -1162,7 +1191,21 @@ function estimateReserveCredits(reqBody: any, model: string, requestedOutputToke
   });
 }
 
-async function reserveCredits(userId: number, keyId: number, credits: number): Promise<CreditReservation | null> {
+async function reserveCredits(userId: number, keyId: number, credits: number, model?: string): Promise<CreditReservation | null> {
+  const category = model ? detectModelTokenCategory(model) : null;
+  if (category) {
+    const tokenPkg = await getActiveTokenPackage(userId, category);
+    if (tokenPkg) {
+      return {
+        userId,
+        keyId,
+        credits: 0,
+        tokenPackageId: tokenPkg.id,
+        tokenCategory: category,
+      };
+    }
+  }
+
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(${keyId})`);
 
@@ -1188,6 +1231,9 @@ async function reserveCredits(userId: number, keyId: number, credits: number): P
 }
 
 async function refundReservation(reservation: CreditReservation): Promise<void> {
+  if (reservation.tokenPackageId) {
+    return;
+  }
   await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(${reservation.keyId})`);
     await tx
@@ -1210,6 +1256,60 @@ async function finalizeCredits(
   const inputTokens = breakdown?.inputTokens ?? 0;
   const outputTokens = breakdown?.outputTokens ?? (inputTokens === 0 ? tokensUsed : 0);
   const cachedTokens = Math.min(breakdown?.cachedTokens ?? 0, inputTokens);
+
+  if (reservation.tokenPackageId) {
+    let remainingAfter = 0;
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(${reservation.tokenPackageId!})`);
+      const [pkg] = await tx
+        .select()
+        .from(userTokenPackagesTable)
+        .where(eq(userTokenPackagesTable.id, reservation.tokenPackageId!))
+        .limit(1);
+
+      if (pkg) {
+        remainingAfter = Math.max(0, pkg.remainingTokens - tokensUsed);
+        const isActive = remainingAfter > 0 && pkg.expiresAt > new Date();
+        await tx
+          .update(userTokenPackagesTable)
+          .set({
+            remainingTokens: remainingAfter,
+            isActive,
+            updatedAt: new Date(),
+          })
+          .where(eq(userTokenPackagesTable.id, pkg.id));
+      }
+
+      await tx.insert(apiUsageTable).values({
+        userId: reservation.userId,
+        keyId: reservation.keyId,
+        model,
+        promptTokens: inputTokens,
+        completionTokens: outputTokens,
+        totalTokens: tokensUsed,
+        cachedTokens,
+        credits: 0,
+      });
+
+      await tx
+        .update(apiKeysTable)
+        .set({
+          lastUsedAt: new Date(),
+          totalTokensUsed: sql`${apiKeysTable.totalTokensUsed} + ${tokensUsed}`,
+          totalRequestsCount: sql`${apiKeysTable.totalRequestsCount} + 1`,
+        })
+        .where(eq(apiKeysTable.id, reservation.keyId));
+    });
+
+    broadcastToUser(reservation.userId, {
+      type: "token_package.used",
+      packageId: reservation.tokenPackageId,
+      remainingTokens: remainingAfter,
+      category: reservation.tokenCategory,
+    });
+    return;
+  }
+
   const credits = calculateCredits(tokensUsed, model, { inputTokens, outputTokens });
   const adjustment = reservation.credits - credits;
 
@@ -1592,6 +1692,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
     user.id,
     key.id,
     estimateReserveCredits(req.body, originalModel, requestedOutputTokens),
+    originalModel,
   );
   if (!reservation) {
     updateApiRequestLog(res, { errorType: "insufficient_quota" });
@@ -1710,7 +1811,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           const breakdown = (totalInputTokens + totalOutputTokens > 0)
             ? { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, cachedTokens: totalCachedTokens }
             : undefined;
-          updateApiRequestUsageLog(res, tokens, originalModel, breakdown);
+          updateApiRequestUsageLog(res, tokens, originalModel, breakdown, !!reservation?.tokenPackageId);
           reservationClosed = await finalizeReservation(reservation, tokens, originalModel, breakdown);
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         } else {
@@ -1726,7 +1827,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           const breakdown = (inputTokens + outputTokens > 0)
             ? { inputTokens, outputTokens, cachedTokens }
             : undefined;
-          updateApiRequestUsageLog(res, tokens, originalModel, breakdown);
+          updateApiRequestUsageLog(res, tokens, originalModel, breakdown, !!reservation?.tokenPackageId);
           reservationClosed = await finalizeReservation(reservation, tokens, originalModel, breakdown);
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         }
@@ -1940,7 +2041,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           const breakdown = (finalInput + finalOutput > 0)
             ? { inputTokens: finalInput, outputTokens: finalOutput, cachedTokens: actualCachedTokens }
             : undefined;
-          updateApiRequestUsageLog(res, tokens, originalModel, breakdown);
+          updateApiRequestUsageLog(res, tokens, originalModel, breakdown, !!reservation?.tokenPackageId);
           reservationClosed = await finalizeReservation(reservation, tokens, originalModel, breakdown);
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         } else {
@@ -1968,7 +2069,7 @@ async function proxyMessages(req: Request, res: Response): Promise<void> {
           const breakdown = (inputTokens + outputTokens > 0)
             ? { inputTokens, outputTokens, cachedTokens }
             : undefined;
-          updateApiRequestUsageLog(res, tokens, originalModel, breakdown);
+          updateApiRequestUsageLog(res, tokens, originalModel, breakdown, !!reservation?.tokenPackageId);
           reservationClosed = await finalizeReservation(reservation, tokens, originalModel, breakdown);
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         }
@@ -2086,6 +2187,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
       user.id,
       key.id,
       estimateReserveCredits(req.body, originalModel, requestedOutputTokens),
+      originalModel,
     );
     if (!reservation) {
       updateApiRequestLog(res, { errorType: "insufficient_quota" });
@@ -2159,7 +2261,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
           const breakdown = (streamInputTokens + streamOutputTokens > 0)
             ? { inputTokens: streamInputTokens, outputTokens: streamOutputTokens, cachedTokens: streamCachedTokens }
             : undefined;
-          updateApiRequestUsageLog(res, tokens, originalModel, breakdown);
+          updateApiRequestUsageLog(res, tokens, originalModel, breakdown, !!reservation?.tokenPackageId);
           reservationClosed = await finalizeReservation(reservation, tokens, originalModel, breakdown);
           if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         }
@@ -2184,7 +2286,7 @@ async function proxyOpenAI(req: Request, res: Response, path: string): Promise<v
             const breakdown = (inputTokens + outputTokens > 0)
               ? { inputTokens, outputTokens, cachedTokens }
               : undefined;
-            updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, breakdown);
+            updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, breakdown, !!reservation?.tokenPackageId);
             reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, breakdown);
             if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
           }
@@ -3118,6 +3220,7 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
   const reservation = await reserveCredits(
     user.id, key.id,
     estimateReserveCredits(chatBody, originalModel, requestedOutputTokens),
+    originalModel,
   );
   if (!reservation) {
     updateApiRequestLog(res, { errorType: "insufficient_quota" });
@@ -3160,7 +3263,7 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
         const breakdown = (inputTokens + outputTokens > 0)
           ? { inputTokens, outputTokens, cachedTokens }
           : undefined;
-        updateApiRequestUsageLog(res, tokens, originalModel, breakdown);
+        updateApiRequestUsageLog(res, tokens, originalModel, breakdown, !!reservation?.tokenPackageId);
         reservationClosed = await finalizeReservation(reservation, tokens, originalModel, breakdown);
         if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         return;
@@ -3185,7 +3288,7 @@ async function proxyResponses(req: Request, res: Response): Promise<void> {
         const breakdown = (inputTokens + outputTokens > 0)
           ? { inputTokens, outputTokens, cachedTokens }
           : undefined;
-        updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, breakdown);
+        updateApiRequestUsageLog(res, tokens, data.model ?? originalModel, breakdown, !!reservation?.tokenPackageId);
         reservationClosed = await finalizeReservation(reservation, tokens, data.model ?? originalModel, breakdown);
         if (!reservationClosed) updateApiRequestLog(res, { errorType: "billing_finalize_failed" });
         return;

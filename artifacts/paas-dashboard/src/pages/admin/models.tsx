@@ -238,9 +238,9 @@ function EditDialog({ entry, open, onClose }: EditDialogProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="default">Default — gunakan harga katalog</SelectItem>
+                <SelectItem value="default">Default — gunakan harga dasar</SelectItem>
                 <SelectItem value="free">Gratis — 0 kredit (tetap dicatat)</SelectItem>
-                <SelectItem value="discount_percent">Diskon % — kurangi % dari harga default</SelectItem>
+                <SelectItem value="discount_percent">Diskon % — kurangi % dari harga dasar</SelectItem>
                 <SelectItem value="fixed_price">Harga Custom — isi sendiri per 1M token</SelectItem>
               </SelectContent>
             </Select>

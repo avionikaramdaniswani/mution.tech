@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable, aiProviderModelsTable, activityLogsTable, sessionsTable, apiUsageDailyTable } from "@workspace/db";
+import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable, tokenPackagesTable, aiProviderModelsTable, activityLogsTable, sessionsTable, apiUsageDailyTable } from "@workspace/db";
 import { eq, desc, sql, count, and, gte, asc, notInArray } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
@@ -981,7 +981,7 @@ router.get("/admin/model-pricing", async (_req, res) => {
         basePricingInput,
         basePricingOutput,
         context: catalog?.context ?? "-",
-        catalogMatched: Boolean(catalog),
+        catalogMatched: Boolean(pmWithPrice || catalog),
         override: ov
           ? {
               mode: ov.mode,
@@ -1110,6 +1110,61 @@ router.delete("/admin/packages/:id", async (req, res): Promise<void> => {
   const id = Number.parseInt(req.params.id, 10);
   if (Number.isNaN(id)) { res.status(400).json({ error: "ID tidak valid" }); return; }
   await db.delete(creditPackagesTable).where(eq(creditPackagesTable.id, id));
+  res.json({ ok: true });
+});
+
+// ─── Token Packages (Claude & GPT) Admin CRUD ────────────────────────────────
+
+const TokenPackageAdminBody = _z.object({
+  name: _z.string().trim().min(1).max(80),
+  category: _z.enum(["claude", "gpt"]),
+  description: _z.string().trim().max(200).nullish(),
+  tokensAmount: _z.number().int().min(1),
+  priceIdr: _z.number().int().min(1000),
+  originalPriceIdr: _z.number().int().min(1000).nullish(),
+  durationDays: _z.number().int().min(1).default(30),
+  bonusLabel: _z.string().trim().max(40).nullish(),
+  isHighlight: _z.boolean().optional(),
+  isActive: _z.boolean().optional(),
+  sortOrder: _z.number().int().optional(),
+});
+
+router.get("/admin/token-packages", async (_req, res): Promise<void> => {
+  const rows = await db
+    .select()
+    .from(tokenPackagesTable)
+    .orderBy(asc(tokenPackagesTable.sortOrder), asc(tokenPackagesTable.id));
+  res.json(rows);
+});
+
+router.post("/admin/token-packages", async (req, res): Promise<void> => {
+  const parsed = TokenPackageAdminBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Data tidak valid" }); return; }
+  const [row] = await db.insert(tokenPackagesTable).values({
+    ...parsed.data,
+    updatedAt: new Date(),
+  }).returning();
+  res.json(row);
+});
+
+router.patch("/admin/token-packages/:id", async (req, res): Promise<void> => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "ID tidak valid" }); return; }
+  const parsed = TokenPackageAdminBody.partial().safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Data tidak valid" }); return; }
+  const [row] = await db
+    .update(tokenPackagesTable)
+    .set({ ...parsed.data, updatedAt: new Date() })
+    .where(eq(tokenPackagesTable.id, id))
+    .returning();
+  if (!row) { res.status(404).json({ error: "Paket token tidak ditemukan" }); return; }
+  res.json(row);
+});
+
+router.delete("/admin/token-packages/:id", async (req, res): Promise<void> => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "ID tidak valid" }); return; }
+  await db.delete(tokenPackagesTable).where(eq(tokenPackagesTable.id, id));
   res.json({ ok: true });
 });
 

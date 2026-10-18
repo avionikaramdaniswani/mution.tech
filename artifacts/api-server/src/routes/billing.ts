@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, usersTable, creditTransactionsTable, paymentOrdersTable, creditPackagesTable, referralsTable } from "@workspace/db";
-import { and, count, desc, eq, ne, sql } from "drizzle-orm";
+import { db, usersTable, creditTransactionsTable, paymentOrdersTable, creditPackagesTable, referralsTable, tokenPackagesTable, userTokenPackagesTable } from "@workspace/db";
+import { and, asc, count, desc, eq, gt, isNotNull, ne, sql } from "drizzle-orm";
 import { REFERRER_REWARD } from "./referral";
 import { requireAuth } from "../lib/auth";
 import { logger } from "../lib/logger";
@@ -26,10 +26,11 @@ type PaymentOrderRow = typeof paymentOrdersTable.$inferSelect;
 
 const CreateDuitkuBody = z.object({
   packageId: z.number().int().optional(),
+  tokenPackageId: z.number().int().optional(),
   amount: z.number().int().min(MIN_TOPUP_IDR).max(MAX_TOPUP_IDR).optional(),
   method: z.string().trim().regex(/^[A-Z0-9_-]{2,32}$/).default("SP"),
-}).refine((d) => d.packageId != null || d.amount != null, {
-  message: "Harus ada packageId atau amount",
+}).refine((d) => d.packageId != null || d.amount != null || d.tokenPackageId != null, {
+  message: "Harus ada packageId, tokenPackageId, atau amount",
 });
 
 function cleanPaymentName(value: string): string {
@@ -69,77 +70,108 @@ export async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: s
       };
     }
 
-    const [freshUser] = await tx
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, claimed.userId))
-      .limit(1);
-
-    if (!freshUser) {
-      throw new Error(`User ${claimed.userId} not found for paid order ${claimed.id}`);
-    }
-
-    const newCredits = freshUser.credits + claimed.creditsAmount;
-
-    await tx
-      .update(usersTable)
-      .set({ credits: newCredits })
-      .where(eq(usersTable.id, claimed.userId));
-
-    await tx.insert(creditTransactionsTable).values({
-      userId: claimed.userId,
-      type: "topup",
-      amount: claimed.creditsAmount,
-      note: `Topup via Duitku (${cleanPaymentName(paymentName)}) - ${claimed.invoiceNumber}`,
-    });
-
-    // Check if this is the user's first topup → reward referrer if applicable
-    const [{ priorPaid }] = await tx
-      .select({ priorPaid: count() })
-      .from(paymentOrdersTable)
-      .where(and(eq(paymentOrdersTable.userId, claimed.userId), eq(paymentOrdersTable.status, "paid"), ne(paymentOrdersTable.id, claimed.id)));
-
-    if (Number(priorPaid) === 0) {
-      const [pendingReferral] = await tx
+    if (claimed.tokenPackageId) {
+      const [tokenPkg] = await tx
         .select()
-        .from(referralsTable)
-        .where(and(eq(referralsTable.refereeId, claimed.userId), eq(referralsTable.status, "pending")))
+        .from(tokenPackagesTable)
+        .where(eq(tokenPackagesTable.id, claimed.tokenPackageId))
         .limit(1);
 
-      if (pendingReferral) {
-        const [referrer] = await tx
+      if (tokenPkg) {
+        const durationDays = tokenPkg.durationDays || 30;
+        const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+
+        await tx.insert(userTokenPackagesTable).values({
+          userId: claimed.userId,
+          packageId: tokenPkg.id,
+          orderId: claimed.id,
+          category: tokenPkg.category,
+          totalTokens: tokenPkg.tokensAmount,
+          remainingTokens: tokenPkg.tokensAmount,
+          expiresAt,
+          isActive: true,
+        });
+
+        broadcastToUser(claimed.userId, {
+          type: "token_package.purchased",
+          category: tokenPkg.category,
+          tokensAmount: tokenPkg.tokensAmount,
+          expiresAt: expiresAt.toISOString(),
+        });
+      }
+    } else {
+      const [freshUser] = await tx
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, claimed.userId))
+        .limit(1);
+
+      if (!freshUser) {
+        throw new Error(`User ${claimed.userId} not found for paid order ${claimed.id}`);
+      }
+
+      const newCredits = freshUser.credits + claimed.creditsAmount;
+
+      await tx
+        .update(usersTable)
+        .set({ credits: newCredits })
+        .where(eq(usersTable.id, claimed.userId));
+
+      await tx.insert(creditTransactionsTable).values({
+        userId: claimed.userId,
+        type: "topup",
+        amount: claimed.creditsAmount,
+        note: `Topup via Duitku (${cleanPaymentName(paymentName)}) - ${claimed.invoiceNumber}`,
+      });
+
+      // Check if this is the user's first topup → reward referrer if applicable
+      const [{ priorPaid }] = await tx
+        .select({ priorPaid: count() })
+        .from(paymentOrdersTable)
+        .where(and(eq(paymentOrdersTable.userId, claimed.userId), eq(paymentOrdersTable.status, "paid"), ne(paymentOrdersTable.id, claimed.id)));
+
+      if (Number(priorPaid) === 0) {
+        const [pendingReferral] = await tx
           .select()
-          .from(usersTable)
-          .where(eq(usersTable.id, pendingReferral.referrerId))
+          .from(referralsTable)
+          .where(and(eq(referralsTable.refereeId, claimed.userId), eq(referralsTable.status, "pending")))
           .limit(1);
 
-        if (referrer) {
-          const newReferrerCredits = referrer.credits + REFERRER_REWARD;
-          await tx
-            .update(usersTable)
-            .set({ credits: newReferrerCredits })
-            .where(eq(usersTable.id, referrer.id));
+        if (pendingReferral) {
+          const [referrer] = await tx
+            .select()
+            .from(usersTable)
+            .where(eq(usersTable.id, pendingReferral.referrerId))
+            .limit(1);
 
-          await tx.insert(creditTransactionsTable).values({
-            userId: referrer.id,
-            type: "topup",
-            amount: REFERRER_REWARD,
-            note: `Reward referral — teman kamu (ID ${claimed.userId}) berhasil topup pertama`,
-          });
+          if (referrer) {
+            const newReferrerCredits = referrer.credits + REFERRER_REWARD;
+            await tx
+              .update(usersTable)
+              .set({ credits: newReferrerCredits })
+              .where(eq(usersTable.id, referrer.id));
 
-          await tx
-            .update(referralsTable)
-            .set({ status: "rewarded", rewardedAt: new Date() })
-            .where(eq(referralsTable.id, pendingReferral.id));
+            await tx.insert(creditTransactionsTable).values({
+              userId: referrer.id,
+              type: "topup",
+              amount: REFERRER_REWARD,
+              note: `Reward referral — teman kamu (ID ${claimed.userId}) berhasil topup pertama`,
+            });
+
+            await tx
+              .update(referralsTable)
+              .set({ status: "rewarded", rewardedAt: new Date() })
+              .where(eq(referralsTable.id, pendingReferral.id));
+          }
         }
       }
-    }
 
-    if (claimed.packageId) {
-      await tx
-        .update(creditPackagesTable)
-        .set({ stock: sql`${creditPackagesTable.stock} - 1` })
-        .where(and(eq(creditPackagesTable.id, claimed.packageId), ne(creditPackagesTable.stock, null)));
+      if (claimed.packageId) {
+        await tx
+          .update(creditPackagesTable)
+          .set({ stock: sql`${creditPackagesTable.stock} - 1` })
+          .where(and(eq(creditPackagesTable.id, claimed.packageId), isNotNull(creditPackagesTable.stock)));
+      }
     }
 
     return {
@@ -447,14 +479,23 @@ router.post("/billing/duitku/create", requireAuth, async (req, res): Promise<voi
     res.status(400).json({ error: "Nominal tidak valid" });
     return;
   }
-  const { packageId, method } = parsed.data;
+  const { packageId, tokenPackageId, method } = parsed.data;
 
-  // Resolve amount + creditsAmount dari paket atau custom
+  // Resolve amount + creditsAmount dari paket token, paket kredit, atau custom
   let amount: number;
   let creditsAmount: number;
   let itemName: string;
 
-  if (packageId != null) {
+  if (tokenPackageId != null) {
+    const [tokenPkg] = await db.select().from(tokenPackagesTable).where(eq(tokenPackagesTable.id, tokenPackageId));
+    if (!tokenPkg || !tokenPkg.isActive) {
+      res.status(400).json({ error: "Paket token tidak tersedia" });
+      return;
+    }
+    amount = tokenPkg.priceIdr;
+    creditsAmount = 0;
+    itemName = `${tokenPkg.name} — ${tokenPkg.tokensAmount.toLocaleString("id-ID")} Token (${tokenPkg.category.toUpperCase()})`;
+  } else if (packageId != null) {
     const [pkg] = await db.select().from(creditPackagesTable).where(eq(creditPackagesTable.id, packageId));
     if (!pkg || !pkg.isActive) {
       res.status(400).json({ error: "Paket tidak tersedia" });
@@ -481,6 +522,7 @@ router.post("/billing/duitku/create", requireAuth, async (req, res): Promise<voi
     .values({
       userId: user.id,
       packageId: packageId ?? null,
+      tokenPackageId: tokenPackageId ?? null,
       invoiceNumber,
       amount,
       creditsAmount,
@@ -719,6 +761,34 @@ router.post("/billing/manual-qris/create", requireAuth, async (req, res): Promis
     amount,
     credits: creditsAmount,
   });
+});
+
+router.get("/billing/token-packages", async (_req, res): Promise<void> => {
+  const packages = await db
+    .select()
+    .from(tokenPackagesTable)
+    .where(eq(tokenPackagesTable.isActive, true))
+    .orderBy(asc(tokenPackagesTable.sortOrder), desc(tokenPackagesTable.createdAt));
+  res.json(packages);
+});
+
+router.get("/billing/user/token-packages", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const now = new Date();
+  const activePackages = await db
+    .select()
+    .from(userTokenPackagesTable)
+    .where(
+      and(
+        eq(userTokenPackagesTable.userId, user.id),
+        eq(userTokenPackagesTable.isActive, true),
+        gt(userTokenPackagesTable.remainingTokens, 0),
+        gt(userTokenPackagesTable.expiresAt, now),
+      )
+    )
+    .orderBy(asc(userTokenPackagesTable.expiresAt));
+
+  res.json(activePackages);
 });
 
 export default router;

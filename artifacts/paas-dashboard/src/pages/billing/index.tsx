@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
   Loader2, X, CheckCircle2, AlertCircle, RefreshCw, ChevronRight,
-  Clock, AlertTriangle, Ban, XCircle, Wallet, History
+  Clock, AlertTriangle, Ban, XCircle, Wallet, History, Sparkles
 } from "lucide-react";
 import { Link } from "wouter";
 import { csrfFetch } from "@/lib/csrf";
@@ -26,6 +26,31 @@ interface CreditPackage {
   stock: number | null;
 }
 
+interface TokenPackage {
+  id: number;
+  name: string;
+  category: "claude" | "gpt";
+  description: string | null;
+  tokensAmount: number;
+  priceIdr: number;
+  originalPriceIdr: number | null;
+  durationDays: number;
+  bonusLabel: string | null;
+  isHighlight: boolean;
+}
+
+interface UserTokenPackage {
+  id: number;
+  userId: number;
+  packageId: number | null;
+  category: "claude" | "gpt";
+  totalTokens: number;
+  remainingTokens: number;
+  expiresAt: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 function usePackages() {
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   useEffect(() => {
@@ -35,6 +60,104 @@ function usePackages() {
       .catch(() => undefined);
   }, []);
   return packages;
+}
+
+function useTokenPackages() {
+  const [tokenPackages, setTokenPackages] = useState<TokenPackage[]>([]);
+  useEffect(() => {
+    fetch("/api/billing/token-packages")
+      .then(r => r.json())
+      .then((data: TokenPackage[]) => { if (Array.isArray(data)) setTokenPackages(data); })
+      .catch(() => undefined);
+  }, []);
+  return tokenPackages;
+}
+
+function useUserTokenPackages() {
+  const [passes, setPasses] = useState<UserTokenPackage[]>([]);
+  const reload = useCallback(() => {
+    fetch("/api/billing/user/token-packages", { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: UserTokenPackage[]) => { if (Array.isArray(data)) setPasses(data); })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => { reload(); }, [reload]);
+  return { passes, reload };
+}
+
+function ActiveTokenPassesCard({ passes }: { passes: UserTokenPackage[] }) {
+  if (passes.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card/60 p-4 text-center">
+        <Sparkles className="h-6 w-6 text-muted-foreground/40 mx-auto mb-2" />
+        <p className="text-xs font-bold text-foreground">Belum Ada Paket Token Aktif</p>
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Beli paket token Claude atau GPT untuk akses model AI tanpa khawatir saldo Rupiah terpotong.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-3 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Paket Token Aktif</h4>
+        </div>
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
+          {passes.length} Aktif
+        </span>
+      </div>
+
+      <div className="space-y-2.5">
+        {passes.map((pass) => {
+          const isClaude = pass.category === "claude";
+          const pct = Math.max(0, Math.min(100, Math.round((pass.remainingTokens / pass.totalTokens) * 100)));
+          const daysLeft = Math.max(0, Math.ceil((new Date(pass.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+
+          return (
+            <div key={pass.id} className="p-3 rounded-xl border border-border/80 bg-background/50 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className={cn(
+                  "text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border",
+                  isClaude 
+                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" 
+                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                )}>
+                  {isClaude ? "Claude Pass" : "GPT Pass"}
+                </span>
+                <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Sisa {daysLeft} hari
+                </span>
+              </div>
+
+              <div>
+                <div className="flex items-baseline justify-between text-xs">
+                  <span className="font-extrabold text-foreground">
+                    {pass.remainingTokens.toLocaleString("id-ID")}
+                    <span className="text-[10px] font-normal text-muted-foreground ml-1">/ {pass.totalTokens.toLocaleString("id-ID")} Token</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-primary">{pct}%</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted mt-1.5 overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      isClaude ? "bg-amber-500" : "bg-emerald-500"
+                    )}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 interface PaymentChannel {
@@ -291,7 +414,9 @@ function RecentOrders() {
 
 function TopupSection() {
   const [step, setStep] = useState(1); // 1 = Nominal, 2 = Metode, 3 = Konfirmasi
+  const [billingType, setBillingType] = useState<"credit" | "token">("credit");
   const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null);
+  const [selectedTokenPackage, setSelectedTokenPackage] = useState<TokenPackage | null>(null);
   const [customRaw, setCustomRaw] = useState("");
   const [isCustom, setIsCustom] = useState(false);
   const [method, setMethod] = useState("SP");
@@ -301,6 +426,7 @@ function TopupSection() {
   
   const { channels, loading: chLoading, error: chError } = usePaymentChannels();
   const packages = usePackages();
+  const tokenPackages = useTokenPackages();
 
   const PRESETS = [5_000, 10_000, 20_000, 50_000, 100_000, 200_000];
 
@@ -308,10 +434,12 @@ function TopupSection() {
     setCustomRaw(String(amount));
     setIsCustom(true);
     setSelectedPackage(null);
+    setSelectedTokenPackage(null);
     setError(null);
   }
 
   const resolvedAmount = (() => {
+    if (selectedTokenPackage) return selectedTokenPackage.priceIdr;
     if (selectedPackage) return selectedPackage.priceIdr;
     if (isCustom) {
       const n = Number.parseInt(customRaw.replace(/\D/g, ""), 10);
@@ -320,9 +448,10 @@ function TopupSection() {
     return null;
   })();
 
-  const resolvedCredits = selectedPackage ? selectedPackage.creditsAmount : resolvedAmount;
+  const resolvedCredits = selectedPackage ? selectedPackage.creditsAmount : isCustom ? resolvedAmount : 0;
 
   const amountError = (() => {
+    if (selectedTokenPackage) return null;
     if (!isCustom) return null;
     if (resolvedAmount == null) return null;
     if (resolvedAmount < MIN) return `Minimal ${formatRp(MIN)}`;
@@ -340,11 +469,13 @@ function TopupSection() {
     const digits = raw.replace(/\D/g, "");
     setCustomRaw(digits);
     setSelectedPackage(null);
+    setSelectedTokenPackage(null);
     setError(null);
   }
 
   function pickPackage(pkg: CreditPackage) {
     setSelectedPackage(pkg);
+    setSelectedTokenPackage(null);
     setIsCustom(false);
     setCustomRaw("");
     setError(null);
@@ -355,9 +486,11 @@ function TopupSection() {
     setLoading(true);
     setError(null);
     try {
-      const body = selectedPackage
-        ? { packageId: selectedPackage.id, method }
-        : { amount: resolvedAmount, method };
+      const body = selectedTokenPackage
+        ? { tokenPackageId: selectedTokenPackage.id, method }
+        : selectedPackage
+          ? { packageId: selectedPackage.id, method }
+          : { amount: resolvedAmount, method };
       
       const endpoint = method === "MANUAL_QRIS" 
         ? "/api/billing/manual-qris/create" 
@@ -400,8 +533,117 @@ function TopupSection() {
         
         {step === 1 && (
           <div className="p-5 space-y-6">
-            {/* Packages */}
-            {packages.length > 0 && (
+            {/* Tipe Pembelian Switcher */}
+            <div className="flex rounded-xl bg-muted p-1 gap-1">
+              <button
+                type="button"
+                onClick={() => { setBillingType("credit"); setSelectedTokenPackage(null); }}
+                className={cn(
+                  "flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                  billingType === "credit" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Wallet className="h-3.5 w-3.5" />
+                Kredit Saldo (IDR)
+              </button>
+              <button
+                type="button"
+                onClick={() => { setBillingType("token"); setSelectedPackage(null); setIsCustom(false); }}
+                className={cn(
+                  "flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                  billingType === "token" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                Paket Token (Claude & GPT)
+              </button>
+            </div>
+
+            {/* Token Packages View */}
+            {billingType === "token" && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Pilih Kuota Token Pass (Masa Aktif 30 Hari)</p>
+                {tokenPackages.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground text-xs">
+                    Belum ada paket token aktif.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {tokenPackages.map((tp) => {
+                      const active = selectedTokenPackage?.id === tp.id;
+                      const isClaude = tp.category === "claude";
+                      return (
+                        <button
+                          key={tp.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTokenPackage(tp);
+                            setSelectedPackage(null);
+                            setIsCustom(false);
+                            setCustomRaw("");
+                            setError(null);
+                          }}
+                          className={cn(
+                            "relative flex flex-col text-left rounded-2xl p-4 transition-all border-2",
+                            active 
+                              ? "border-primary bg-primary/5 shadow-sm" 
+                              : "border-border bg-background hover:bg-muted/40 hover:border-primary/30"
+                          )}
+                        >
+                          {tp.isHighlight && (
+                            <div className="absolute -top-2.5 right-3 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                              🔥 FLASH SALE
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={cn(
+                              "text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border",
+                              isClaude 
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" 
+                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                            )}>
+                              {isClaude ? "Claude Pass" : "GPT Pass"}
+                            </span>
+                            {tp.bonusLabel && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
+                                {tp.bonusLabel}
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-sm font-extrabold text-foreground">{tp.name}</p>
+                          {tp.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{tp.description}</p>
+                          )}
+
+                          <div className="mt-3 pt-3 border-t border-border/60 flex items-baseline justify-between">
+                            <div>
+                              <span className="text-xs text-muted-foreground font-medium">Kuota: </span>
+                              <span className="text-sm font-black text-foreground">
+                                {(tp.tokensAmount / 1_000_000).toFixed(1)}M Token
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              {tp.originalPriceIdr && (
+                                <span className="text-[10px] text-muted-foreground line-through block opacity-70">
+                                  {formatRp(tp.originalPriceIdr)}
+                                </span>
+                              )}
+                              <span className="text-sm font-extrabold text-primary">
+                                {formatRp(tp.priceIdr)}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Credit Packages View */}
+            {billingType === "credit" && packages.length > 0 && (
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Paket Pilihan</p>
                 <div className="flex sm:grid sm:grid-cols-3 gap-3 overflow-x-auto pt-3 pb-4 sm:pb-1 snap-x hide-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0">
@@ -709,27 +951,54 @@ function TopupSection() {
         {step === 3 && (
           <div className="p-5">
             <div className="rounded-xl border border-dashed bg-muted/30 p-5 space-y-4 mb-6">
-              {selectedPackage && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">Paket</span>
-                  <span className="text-sm font-bold text-foreground">{selectedPackage.name}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Nominal</span>
-                <span className="text-sm font-bold text-foreground">{formatRp(resolvedAmount!)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Kredit didapat</span>
-                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">+{resolvedCredits!.toLocaleString("id-ID")} cr</span>
-              </div>
-              {resolvedCredits !== resolvedAmount && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">Bonus kredit</span>
-                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                    +{(resolvedCredits! - resolvedAmount!).toLocaleString("id-ID")}
-                  </span>
-                </div>
+              {selectedTokenPackage ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Paket Token</span>
+                    <span className="text-sm font-bold text-foreground">{selectedTokenPackage.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Kategori Model</span>
+                    <span className="text-xs font-extrabold uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                      {selectedTokenPackage.category === "claude" ? "Anthropic Claude" : "OpenAI GPT"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Total Kuota Token</span>
+                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                      {(selectedTokenPackage.tokensAmount / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} Juta Token
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Masa Aktif</span>
+                    <span className="text-sm font-bold text-foreground">{selectedTokenPackage.durationDays} Hari</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {selectedPackage && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">Paket</span>
+                      <span className="text-sm font-bold text-foreground">{selectedPackage.name}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Nominal</span>
+                    <span className="text-sm font-bold text-foreground">{formatRp(resolvedAmount!)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Kredit didapat</span>
+                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">+{resolvedCredits!.toLocaleString("id-ID")} cr</span>
+                  </div>
+                  {resolvedCredits !== resolvedAmount && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">Bonus kredit</span>
+                      <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                        +{(resolvedCredits! - resolvedAmount!).toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">Metode</span>
@@ -769,7 +1038,7 @@ function TopupSection() {
               )}
             </button>
             <p className="text-[11px] font-medium text-center text-muted-foreground mt-4">
-              Kredit akan otomatis ditambahkan setelah pembayaran berhasil dikonfirmasi oleh sistem.
+              {selectedTokenPackage ? "Kuota paket token akan langsung aktif setelah pembayaran dikonfirmasi sistem." : "Kredit akan otomatis ditambahkan setelah pembayaran berhasil dikonfirmasi oleh sistem."}
             </p>
           </div>
         )}
@@ -895,6 +1164,7 @@ export default function BillingPage() {
   const [, setLocation] = useLocation();
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [pollDone, setPollDone] = useState(false);
+  const { passes } = useUserTokenPackages();
 
   // Detect return from Duitku via orderId=xx URL param
   useEffect(() => {
@@ -917,7 +1187,7 @@ export default function BillingPage() {
       {/* Header Halaman */}
       <div className="mb-8">
         <h1 className="text-3xl font-black text-foreground tracking-tight">Kredit & Topup</h1>
-        <p className="text-sm font-medium text-muted-foreground mt-2">Isi ulang saldo kredit untuk menggunakan layanan hosting dan AI.</p>
+        <p className="text-sm font-medium text-muted-foreground mt-2">Isi ulang saldo kredit atau beli paket token pass untuk Claude & GPT.</p>
       </div>
 
       {/* Status Banner */}
@@ -942,6 +1212,12 @@ export default function BillingPage() {
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-foreground px-1">Saldo Anda</h3>
             <CreditCard credits={credits} userName={user?.name} />
+          </div>
+
+          {/* Kartu Paket Token Aktif */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-foreground px-1">Paket Token Anda</h3>
+            <ActiveTokenPassesCard passes={passes} />
           </div>
 
           {/* Riwayat Transaksi Ringkas */}

@@ -1,6 +1,7 @@
 import { pgTable, serial, integer, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 import { creditPackagesTable } from "./credit_packages";
+import { tokenPackagesTable } from "./token_packages";
 
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "expired", "failed", "cancelled"]);
 
@@ -9,6 +10,7 @@ export const paymentOrdersTable = pgTable("payment_orders", {
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   invoiceNumber: text("invoice_number").notNull().unique(),
   packageId: integer("package_id").references(() => creditPackagesTable.id, { onDelete: "set null" }),
+  tokenPackageId: integer("token_package_id").references(() => tokenPackagesTable.id, { onDelete: "set null" }),
   amount: integer("amount").notNull(),
   creditsAmount: integer("credits_amount").notNull().default(0),
   provider: text("provider").notNull().default("duitku"),
