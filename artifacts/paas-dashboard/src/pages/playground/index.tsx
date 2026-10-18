@@ -17,7 +17,8 @@ import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { formatCredits, creditColor } from "@/components/layout/shared";
+import { formatCredits, creditColor, TopNavbar, type TopNavLink } from "@/components/layout/shared";
+import { useLogout, useHealthCheck, getHealthCheckQueryKey } from "@workspace/api-client-react";
 
 type Model = { id: string; label: string; provider: string };
 type ApiKey = { id: number; name: string; keyPrefix: string; isActive: boolean };
@@ -339,7 +340,13 @@ export default function PlaygroundPage() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const logoutMutation = useLogout();
+  const { data: health } = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), refetchInterval: 30000 } });
+
+  const handleLogout = () => {
+    logoutMutation.mutate(undefined, { onSuccess: () => logout() });
+  };
   
   // UI state
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -958,24 +965,40 @@ export default function PlaygroundPage() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-muted/20 dark:bg-zinc-950 overflow-hidden font-sans">
-      
-      {/* Left Sidebar: Collapsible History */}
-      <div className={cn(
-        "flex flex-col bg-background border-r transition-all duration-300 ease-in-out shrink-0 z-20 shadow-sm",
-        isSidebarOpen ? "w-72" : "w-0 overflow-hidden border-none shadow-none"
-      )}>
-        <div className="flex items-center justify-between p-3 border-b shrink-0 min-w-[288px]">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-muted-foreground hover:text-foreground text-xs font-medium rounded-lg">
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Dashboard</span>
+    <div className="flex flex-col h-screen w-screen bg-muted/20 dark:bg-zinc-950 overflow-hidden font-sans">
+      {/* ── Top Navbar Utama Mution (Sama seperti Dashboard User & Admin) ── */}
+      <TopNavbar
+        user={user}
+        location="/playground"
+        navLinks={[
+          { label: "Home", href: "/" },
+          { label: "Pricing", href: "/harga" },
+          { label: "Docs", href: "/docs" },
+          { label: "Changelog", href: "/changelog" },
+          { label: "Support", href: "/support" },
+        ]}
+        logoHref="/dashboard"
+        healthOk={health?.status === "ok"}
+        hideSidebarTrigger={true}
+        onLogout={handleLogout}
+      />
+
+      {/* ── Area Workspace Studio (Di bawah TopNavbar) ── */}
+      <div className="flex flex-1 pt-16 min-h-0 overflow-hidden">
+        {/* Left Sidebar: Collapsible History */}
+        <div className={cn(
+          "flex flex-col bg-background border-r transition-all duration-300 ease-in-out shrink-0 z-20 shadow-sm",
+          isSidebarOpen ? "w-72" : "w-0 overflow-hidden border-none shadow-none"
+        )}>
+          <div className="flex items-center justify-between p-3 border-b shrink-0 min-w-[288px]">
+            <div className="flex items-center gap-2">
+              <FlaskConical className="h-4 w-4 text-primary" />
+              <span className="text-xs font-bold text-foreground">Mution Studio</span>
+            </div>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={() => setIsSidebarOpen(false)} title="Tutup sidebar">
+              <PanelLeftClose className="h-4 w-4" />
             </Button>
-          </Link>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg" onClick={() => setIsSidebarOpen(false)} title="Tutup sidebar">
-            <PanelLeftClose className="h-4 w-4" />
-          </Button>
-        </div>
+          </div>
 
         {/* New Chat Button: Model ChatGPT / Claude di atas riwayat chat */}
         <div className="p-3 pb-1 shrink-0 min-w-[288px]">
@@ -1116,19 +1139,6 @@ export default function PlaygroundPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Balance Badge (Visible on Mobile & Desktop) */}
-            {user && (
-              <div
-                className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[#dbe8f3] bg-[#f8fbff]/90 px-2.5 sm:px-3 py-1 sm:py-1.5 transition-colors hover:border-[#c9d8e7] hover:bg-[#eef8ff] dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-muted/40 shadow-sm"
-                title="Kredit kamu"
-              >
-                <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[11px] sm:text-xs font-semibold tabular-nums" style={{ color: creditColor(user?.credits) }}>
-                  {formatCredits(user?.credits)}
-                </span>
-              </div>
-            )}
-            
             {/* 3-Dot More Menu: Settings, Rename, View Files, Delete */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1589,6 +1599,8 @@ export default function PlaygroundPage() {
           </div>
         </div>
       </div>
+      </div>
+
       {/* Right Drawer / Sheet: View Files in Chat */}
       <Sheet open={isFileSheetOpen} onOpenChange={setIsFileSheetOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0 bg-background border-l shadow-2xl">

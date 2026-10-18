@@ -81,6 +81,7 @@ export interface TopNavbarProps {
   healthOk: boolean;
   /** Elemen tambahan di kiri, setelah logo (mis. badge "Admin"). */
   leftExtra?: React.ReactNode;
+  hideSidebarTrigger?: boolean;
   onLogout: () => void;
 }
 
@@ -183,6 +184,7 @@ export function TopNavbar({
   logoHref,
   healthOk,
   leftExtra,
+  hideSidebarTrigger,
   onLogout,
 }: TopNavbarProps) {
   return (
@@ -190,10 +192,12 @@ export function TopNavbar({
 
       {/* Kiri: toggle + logo + extra + nav links */}
       <div className="flex items-center gap-2">
-        <SidebarTrigger
-          className="flex-shrink-0 text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033] dark:text-muted-foreground dark:hover:bg-muted/30 dark:hover:text-foreground"
-          aria-label="Buka/tutup menu samping"
-        />
+        {!hideSidebarTrigger && (
+          <SidebarTrigger
+            className="flex-shrink-0 text-[#526173] hover:bg-[#eef8ff] hover:text-[#172033] dark:text-muted-foreground dark:hover:bg-muted/30 dark:hover:text-foreground"
+            aria-label="Buka/tutup menu samping"
+          />
+        )}
 
         <Link href={logoHref} className="flex items-center gap-2 flex-shrink-0 ml-1">
           <img src="/mution-logo.png" alt="Mution" className="h-7 w-auto" />

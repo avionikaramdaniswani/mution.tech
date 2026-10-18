@@ -14,11 +14,34 @@ import {
   Server,
   ShieldCheck,
   Zap,
+  Sparkles,
 } from "lucide-react";
 import { PublicNavbar } from "@/components/public-navbar";
 import { PageFooter } from "@/components/page-footer";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+
+export type PublicTokenPackage = {
+  id: number;
+  name: string;
+  category: "claude" | "gpt";
+  description?: string | null;
+  tokensAmount: number;
+  priceIdr: number;
+  originalPriceIdr?: number | null;
+  durationDays: number;
+  bonusLabel?: string | null;
+  isHighlight: boolean;
+  sortOrder: number;
+};
+
+async function fetchTokenPackages(): Promise<PublicTokenPackage[]> {
+  const res = await fetch("/api/billing/token-packages");
+  if (!res.ok) return [];
+  return res.json();
+}
+
 type EffectiveCatalogEntry = {
   id: string;
   label: string;
@@ -49,8 +72,8 @@ const hostingRates = [
 
 const pricingSignals = [
   { label: "Hosting", value: "per menit aktif", Icon: Clock3 },
-  { label: "AI Gateway", value: "per 1K atau 1M token", Icon: Brain },
-  { label: "Kontrol", value: "saldo kredit", Icon: CreditCard },
+  { label: "AI Gateway", value: "Pay-as-you-go / Saldo", Icon: Brain },
+  { label: "Paket Token", value: "Claude & GPT Pass 30 hari", Icon: Sparkles },
 ] as const;
 
 const billingPrinciples = [
@@ -243,6 +266,11 @@ export default function HargaPage() {
     queryKey: ["catalog"],
     queryFn: fetchCatalog,
     staleTime: 30_000,
+  });
+  const { data: tokenPackages = [], isLoading: tokenPackagesLoading } = useQuery<PublicTokenPackage[]>({
+    queryKey: ["public", "token-packages"],
+    queryFn: fetchTokenPackages,
+    staleTime: 60_000,
   });
   const grouped = useMemo(() => catalog.reduce<Record<string, EffectiveCatalogEntry[]>>((groups, model) => { (groups[model.provider] ??= []).push(model); return groups; }, {}), [catalog]);
   const [selectedRam, setSelectedRam] = useState("1 GB");
@@ -509,17 +537,183 @@ export default function HargaPage() {
               </div>
             </div>
 
-            <Tabs defaultValue="hosting">
-              <TabsList className="grid h-auto w-full max-w-md grid-cols-2 rounded-lg border border-[#dbe8f3] bg-[#f8fbff] p-1">
-                <TabsTrigger value="hosting" className="gap-2 rounded-md py-3 data-[state=active]:bg-[#f97316] data-[state=active]:text-white">
-                  <Cpu className="h-4 w-4" />
-                  Hosting
+            <Tabs defaultValue="token_packages">
+              <TabsList className="grid h-auto w-full max-w-xl grid-cols-3 rounded-lg border border-[#dbe8f3] bg-[#f8fbff] p-1">
+                <TabsTrigger value="token_packages" className="gap-2 rounded-md py-3 text-xs sm:text-sm font-bold data-[state=active]:bg-[#f97316] data-[state=active]:text-white">
+                  <Sparkles className="h-4 w-4" />
+                  Paket Token
                 </TabsTrigger>
-                <TabsTrigger value="ai" className="gap-2 rounded-md py-3 data-[state=active]:bg-[#f97316] data-[state=active]:text-white">
+                <TabsTrigger value="ai" className="gap-2 rounded-md py-3 text-xs sm:text-sm font-bold data-[state=active]:bg-[#f97316] data-[state=active]:text-white">
                   <KeyRound className="h-4 w-4" />
                   API Models
                 </TabsTrigger>
+                <TabsTrigger value="hosting" className="gap-2 rounded-md py-3 text-xs sm:text-sm font-bold data-[state=active]:bg-[#f97316] data-[state=active]:text-white">
+                  <Cpu className="h-4 w-4" />
+                  Hosting
+                </TabsTrigger>
               </TabsList>
+
+              <TabsContent value="token_packages" className="mt-6 focus:outline-none">
+                <div className="space-y-6">
+                  {/* Banner Info */}
+                  <div className="rounded-xl border border-orange-500/20 bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-transparent p-5 sm:p-6 shadow-[0_12px_36px_rgba(249,115,22,0.06)]">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#f97316] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
+                            <Sparkles className="h-3 w-3" /> Baru & Hemat
+                          </span>
+                          <span className="text-xs font-bold text-[#f97316]">Masa Aktif 30 Hari</span>
+                        </div>
+                        <h3 className="mt-2 text-xl sm:text-2xl font-black text-[#172033]">
+                          Claude Pass & GPT Pass
+                        </h3>
+                        <p className="mt-1 text-sm text-[#526173] max-w-2xl leading-relaxed">
+                          Akses model flagship Claude 3.5 Sonnet & GPT-4o dengan kuota token berlimpah. Tanpa perlu kartu kredit luar negeri, tanpa biaya langganan bulanan mahal per provider, dan langsung pakai dari satu API Gateway Mution.
+                        </p>
+                      </div>
+                      <Link
+                        href="/register"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#f97316] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#ea580c] flex-shrink-0"
+                      >
+                        Mulai Sekarang
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Grid Packages */}
+                  {tokenPackagesLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-72 rounded-xl border border-[#dbe8f3] bg-white p-5 animate-pulse" />
+                      ))}
+                    </div>
+                  ) : tokenPackages.length === 0 ? (
+                    <div className="rounded-xl border border-[#dbe8f3] bg-white p-12 text-center text-sm text-[#526173]">
+                      Paket token sedang disiapkan. Silakan cek kembali nanti atau gunakan metode saldo kredit reguler.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {tokenPackages.map((pkg) => {
+                        const isClaude = pkg.category === "claude";
+                        const discountPct = pkg.originalPriceIdr && pkg.originalPriceIdr > pkg.priceIdr
+                          ? Math.round(((pkg.originalPriceIdr - pkg.priceIdr) / pkg.originalPriceIdr) * 100)
+                          : null;
+
+                        return (
+                          <div
+                            key={pkg.id}
+                            className={cn(
+                              "relative flex flex-col justify-between rounded-xl border bg-white p-6 shadow-[0_18px_50px_rgba(23,32,51,0.06)] transition-all hover:shadow-[0_22px_60px_rgba(23,32,51,0.10)]",
+                              pkg.isHighlight
+                                ? "border-orange-500 ring-2 ring-orange-500/20"
+                                : "border-[#dbe8f3]"
+                            )}
+                          >
+                            {pkg.isHighlight && (
+                              <div className="absolute -top-3 left-6 z-10 rounded-full bg-red-500 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
+                                🔥 FLASH SALE
+                              </div>
+                            )}
+
+                            <div>
+                              <div className="flex items-center justify-between gap-2">
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                                    isClaude
+                                      ? "border-amber-500/20 bg-amber-500/10 text-amber-600"
+                                      : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
+                                  )}
+                                >
+                                  <Sparkles className="h-2.5 w-2.5" />
+                                  {isClaude ? "Claude Pass" : "GPT Pass"}
+                                </span>
+
+                                {pkg.bonusLabel && (
+                                  <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                                    {pkg.bonusLabel}
+                                  </span>
+                                )}
+                              </div>
+
+                              <h4 className="mt-3 text-lg font-extrabold text-[#172033]">{pkg.name}</h4>
+                              <p className="mt-1 text-xs text-[#64748b] leading-relaxed">
+                                {pkg.description || (isClaude ? "Akses model Claude 3.5 Sonnet, Haiku, dan Opus" : "Akses model GPT-4o, GPT-4o-mini, dan seri OpenAI")}
+                              </p>
+
+                              {/* Kuota Token */}
+                              <div className="mt-5 rounded-lg border border-[#edf4fb] bg-[#f8fbff] p-3 text-center">
+                                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">Kuota Token</p>
+                                <p className="mt-0.5 text-2xl font-black text-[#172033]">
+                                  {(pkg.tokensAmount / 1_000_000).toFixed(1)}M
+                                  <span className="ml-1 text-xs font-semibold text-[#64748b]">Token</span>
+                                </p>
+                                <p className="text-[10px] text-emerald-600 font-bold mt-0.5">
+                                  Masa aktif {pkg.durationDays || 30} hari
+                                </p>
+                              </div>
+
+                              {/* Price */}
+                              <div className="mt-5 flex items-baseline justify-between border-t border-[#edf4fb] pt-4">
+                                <div>
+                                  <p className="text-2xl font-black text-[#f97316]">
+                                    {formatRupiah(pkg.priceIdr)}
+                                  </p>
+                                  {pkg.originalPriceIdr && (
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-xs text-[#94a3b8] line-through font-mono">
+                                        {formatRupiah(pkg.originalPriceIdr)}
+                                      </span>
+                                      {discountPct && (
+                                        <span className="rounded bg-red-50 text-red-600 text-[10px] font-bold px-1.5 py-0.2">
+                                          Hemat {discountPct}%
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Features checklist */}
+                              <ul className="mt-4 space-y-2 border-t border-[#edf4fb] pt-3 text-xs text-[#526173]">
+                                <li className="flex items-center gap-2">
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                                  <span>Tercakup input & output token</span>
+                                </li>
+                                <li className="flex items-center gap-2">
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                                  <span>Langsung pakai via OpenAI Compatible API</span>
+                                </li>
+                                <li className="flex items-center gap-2">
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                                  <span>Dapat dibeli via QRIS atau Saldo Mution</span>
+                                </li>
+                              </ul>
+                            </div>
+
+                            <div className="mt-6 pt-2">
+                              <Link
+                                href="/billing"
+                                className={cn(
+                                  "flex h-10 w-full items-center justify-center gap-2 rounded-md text-xs font-bold transition-all",
+                                  pkg.isHighlight
+                                    ? "bg-[#f97316] text-white hover:bg-[#ea580c] shadow-sm"
+                                    : "border border-[#c9d8e7] bg-[#f8fbff] text-[#172033] hover:bg-white hover:border-[#f97316]"
+                                )}
+                              >
+                                Beli Paket Ini
+                                <ArrowRight className="h-3.5 w-3.5" />
+                              </Link>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
 
               <TabsContent value="hosting" className="mt-6 focus:outline-none">
                 <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_18px_50px_rgba(23,32,51,0.07)]">
