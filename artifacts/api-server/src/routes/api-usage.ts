@@ -147,6 +147,9 @@ router.get("/api-usage", requireAuth, async (req, res): Promise<void> => {
         completion_tokens: row.completionTokens,
         total_tokens: row.totalTokens,
         credits: row.credits,
+        payment_source: row.credits === 0 && row.totalTokens > 0
+          ? (row.model?.toLowerCase().includes("claude") ? "claude_pass" : "gpt_pass")
+          : "credits_balance",
       }))));
       return;
     }

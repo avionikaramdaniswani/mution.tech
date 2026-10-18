@@ -1,12 +1,21 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Activity, AlertTriangle, CheckCircle2, DollarSign, Download, Filter, Hash, Loader2, RotateCcw } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, DollarSign, Download, Filter, Hash, Loader2, RotateCcw, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { getModelById } from "@workspace/model-catalog";
+import { getModelById, getModelPricing } from "@workspace/model-catalog";
+import { cn } from "@/lib/utils";
+
+function detectTokenPassCategory(model: string | null): "claude" | "gpt" | null {
+  if (!model) return null;
+  const m = model.toLowerCase();
+  if (m.includes("claude")) return "claude";
+  if (m.startsWith("gpt-") || m.includes("gpt-4") || m.includes("gpt-3") || m.startsWith("o1") || m.startsWith("o3") || m.includes("chatgpt")) return "gpt";
+  return null;
+}
 
 interface ApiUsageItem {
   id: number;
@@ -241,31 +250,58 @@ export default function ApiUsagePage() {
         </Button>
       </div>
 
-      {data && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <SummaryCard
-            title="Total Requests"
-            value={(data.summary.totalRequests ?? 0).toLocaleString("id-ID")}
-            icon={Activity}
-            accent="border-sky-100 bg-sky-50 text-sky-600"
-            description={`${(data.summary.successfulRequests || 0).toLocaleString("id-ID")} berhasil - ${(data.summary.failedRequests || 0).toLocaleString("id-ID")} error`}
-          />
-          <SummaryCard
-            title="Total Tokens"
-            value={(data.summary.totalTokens ?? 0).toLocaleString("id-ID")}
-            icon={Hash}
-            accent="border-orange-100 bg-orange-50 text-primary"
-            description={`${Math.max(0, (data.summary.promptTokens || 0) - (data.summary.cachedTokens || 0)).toLocaleString("id-ID")} input - ${(data.summary.completionTokens || 0).toLocaleString("id-ID")} output - ${(data.summary.cachedTokens || 0).toLocaleString("id-ID")} cached`}
-          />
-          <SummaryCard
-            title="Total Cost"
-            value={`Rp ${(data.summary.totalCredits ?? 0).toLocaleString("id-ID")}`}
-            icon={DollarSign}
-            accent="border-emerald-100 bg-emerald-50 text-emerald-600"
-            description="Total kredit terpakai pada filter aktif"
-          />
-        </div>
-      )}
+      {data && (() => {
+        const tokenPassStats = (data.data || []).reduce(
+          (acc, item) => {
+            const category = detectTokenPassCategory(item.model);
+            if (item.credits === 0 && item.totalTokens > 0 && category && item.success) {
+              acc.coveredTokens += item.totalTokens;
+              const pricing = getModelPricing(item.model || "");
+              const est = Math.ceil(
+                (item.promptTokens * pricing.input) / 1_000_000 +
+                (item.completionTokens * pricing.output) / 1_000_000
+              );
+              acc.savedCredits += est;
+              acc.requestCount += 1;
+            }
+            return acc;
+          },
+          { coveredTokens: 0, savedCredits: 0, requestCount: 0 }
+        );
+
+        return (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <SummaryCard
+              title="Total Requests"
+              value={(data.summary.totalRequests ?? 0).toLocaleString("id-ID")}
+              icon={Activity}
+              accent="border-sky-100 bg-sky-50 text-sky-600"
+              description={`${(data.summary.successfulRequests || 0).toLocaleString("id-ID")} berhasil · ${(data.summary.failedRequests || 0).toLocaleString("id-ID")} error`}
+            />
+            <SummaryCard
+              title="Total Tokens"
+              value={(data.summary.totalTokens ?? 0).toLocaleString("id-ID")}
+              icon={Hash}
+              accent="border-orange-100 bg-orange-50 text-primary"
+              description={`${Math.max(0, (data.summary.promptTokens || 0) - (data.summary.cachedTokens || 0)).toLocaleString("id-ID")} in · ${(data.summary.completionTokens || 0).toLocaleString("id-ID")} out · ${(data.summary.cachedTokens || 0).toLocaleString("id-ID")} cached`}
+            />
+            <SummaryCard
+              title="Total Spend (IDR)"
+              value={`Rp ${(data.summary.totalCredits ?? 0).toLocaleString("id-ID")}`}
+              icon={DollarSign}
+              accent="border-emerald-100 bg-emerald-50 text-emerald-600"
+              description="Potongan saldo Rupiah langsung"
+            />
+            <SummaryCard
+              title="Hemat via Token Pass"
+              value={tokenPassStats.savedCredits > 0 ? `Rp ${tokenPassStats.savedCredits.toLocaleString("id-ID")}` : "Rp 0"}
+              icon={Sparkles}
+              accent="border-amber-100 bg-amber-50 text-amber-600 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400"
+              description={`${tokenPassStats.requestCount} request (${tokenPassStats.coveredTokens.toLocaleString("id-ID")} token)`}
+            />
+          </div>
+        );
+      })()}
 
       <div className="rounded-lg border border-border bg-card p-4 shadow-[0_12px_34px_rgba(23,32,51,0.05)]">
         <div className="mb-4 flex items-center gap-2">
@@ -432,8 +468,55 @@ export default function ApiUsagePage() {
                         <td className="px-6 py-4 text-right tabular-nums text-muted-foreground">
                           {item.latencyMs.toLocaleString("id-ID")} ms
                         </td>
-                        <td className="px-6 py-4 text-right tabular-nums font-semibold text-primary">
-                          Rp {item.credits.toLocaleString("id-ID")}
+                        <td className="px-6 py-4 text-right tabular-nums">
+                          {(() => {
+                            const category = detectTokenPassCategory(item.model);
+                            const isTokenPass = item.credits === 0 && item.totalTokens > 0 && category && item.success;
+
+                            if (isTokenPass) {
+                              const pricing = getModelPricing(item.model || "");
+                              const estCost = Math.ceil(
+                                (item.promptTokens * pricing.input) / 1_000_000 +
+                                (item.completionTokens * pricing.output) / 1_000_000
+                              );
+
+                              return (
+                                <div className="flex flex-col items-end gap-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "font-bold text-[10px] uppercase px-1.5 py-0.5 rounded shadow-2xs flex items-center gap-1",
+                                        category === "claude"
+                                          ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
+                                          : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
+                                      )}
+                                    >
+                                      <Sparkles className="h-3 w-3" />
+                                      {category === "claude" ? "Claude Pass" : "GPT Pass"}
+                                    </Badge>
+                                    <span className="font-extrabold text-foreground text-xs">Rp 0</span>
+                                  </div>
+                                  {estCost > 0 && (
+                                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                      <span className="line-through opacity-70">Rp {estCost.toLocaleString("id-ID")}</span>
+                                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">(Hemat)</span>
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            }
+
+                            if (item.credits > 0) {
+                              return (
+                                <span className="font-semibold text-primary">
+                                  Rp {item.credits.toLocaleString("id-ID")}
+                                </span>
+                              );
+                            }
+
+                            return <span className="text-muted-foreground font-medium">Rp 0</span>;
+                          })()}
                         </td>
                       </tr>
                     ))

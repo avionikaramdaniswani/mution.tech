@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable, tokenPackagesTable, aiProviderModelsTable, activityLogsTable, sessionsTable, apiUsageDailyTable } from "@workspace/db";
+import { db, usersTable, projectsTable, deploymentsTable, paymentOrdersTable, creditTransactionsTable, apiUsageTable, creditPackagesTable, tokenPackagesTable, userTokenPackagesTable, aiProviderModelsTable, activityLogsTable, sessionsTable, apiUsageDailyTable } from "@workspace/db";
 import { eq, desc, sql, count, and, gte, asc, notInArray } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { logActivity } from "../lib/activity";
@@ -229,6 +229,36 @@ router.get("/admin/users/:id/model-stats", async (req, res): Promise<void> => {
   } catch (error) {
     console.error("Failed to fetch user model stats:", error);
     res.status(500).json({ error: "Gagal mengambil statistik model" });
+  }
+});
+
+// Get user token packages
+router.get("/admin/users/:id/token-packages", async (req, res): Promise<void> => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  try {
+    const packages = await db
+      .select({
+        id: userTokenPackagesTable.id,
+        packageId: userTokenPackagesTable.packageId,
+        packageName: sql<string>`coalesce(${tokenPackagesTable.name}, concat(upper(${userTokenPackagesTable.category}), ' Pass'))`,
+        category: userTokenPackagesTable.category,
+        totalTokens: userTokenPackagesTable.totalTokens,
+        remainingTokens: userTokenPackagesTable.remainingTokens,
+        expiresAt: userTokenPackagesTable.expiresAt,
+        isActive: userTokenPackagesTable.isActive,
+        createdAt: userTokenPackagesTable.createdAt,
+      })
+      .from(userTokenPackagesTable)
+      .leftJoin(tokenPackagesTable, eq(userTokenPackagesTable.packageId, tokenPackagesTable.id))
+      .where(eq(userTokenPackagesTable.userId, id))
+      .orderBy(desc(userTokenPackagesTable.createdAt));
+
+    res.json(packages);
+  } catch (error) {
+    console.error("Failed to fetch user token packages:", error);
+    res.status(500).json({ error: "Gagal mengambil paket token pengguna" });
   }
 });
 
@@ -564,6 +594,7 @@ router.get("/admin/orders", async (_req, res): Promise<void> => {
     .select({
       id: paymentOrdersTable.id,
       userId: paymentOrdersTable.userId,
+      tokenPackageId: paymentOrdersTable.tokenPackageId,
       invoiceNumber: paymentOrdersTable.invoiceNumber,
       amount: paymentOrdersTable.amount,
       creditsAmount: paymentOrdersTable.creditsAmount,
@@ -573,9 +604,12 @@ router.get("/admin/orders", async (_req, res): Promise<void> => {
       paidAt: paymentOrdersTable.paidAt,
       ownerEmail: usersTable.email,
       ownerName: usersTable.name,
+      tokenPackageName: tokenPackagesTable.name,
+      tokenPackageCategory: tokenPackagesTable.category,
     })
     .from(paymentOrdersTable)
     .innerJoin(usersTable, eq(paymentOrdersTable.userId, usersTable.id))
+    .leftJoin(tokenPackagesTable, eq(paymentOrdersTable.tokenPackageId, tokenPackagesTable.id))
     .orderBy(desc(paymentOrdersTable.createdAt))
     .limit(200);
 
@@ -583,6 +617,7 @@ router.get("/admin/orders", async (_req, res): Promise<void> => {
     orders.map((o) => ({
       id: o.id,
       userId: o.userId,
+      tokenPackageId: o.tokenPackageId,
       invoiceNumber: o.invoiceNumber,
       amount: o.amount,
       creditsAmount: o.creditsAmount,
@@ -592,6 +627,8 @@ router.get("/admin/orders", async (_req, res): Promise<void> => {
       paidAt: o.paidAt?.toISOString() ?? null,
       ownerEmail: o.ownerEmail,
       ownerName: o.ownerName,
+      tokenPackageName: o.tokenPackageName,
+      tokenPackageCategory: o.tokenPackageCategory,
     }))
   );
 });
@@ -604,20 +641,42 @@ router.get("/admin/revenue", async (_req, res): Promise<void> => {
 
   const sumAmount = sql<number>`coalesce(sum(${paymentOrdersTable.amount}), 0)::int`;
 
+  // Hanya hitung uang masuk riil ke rekening perusahaan (provider bukan 'balance')
+  const isRealCash = and(
+    eq(paymentOrdersTable.status, "paid"),
+    sql`${paymentOrdersTable.provider} != 'balance'`
+  );
+
   const [total] = await db
     .select({ total: sumAmount })
     .from(paymentOrdersTable)
-    .where(eq(paymentOrdersTable.status, "paid"));
+    .where(isRealCash);
 
   const [today] = await db
     .select({ total: sumAmount })
     .from(paymentOrdersTable)
-    .where(and(eq(paymentOrdersTable.status, "paid"), gte(paymentOrdersTable.paidAt, startOfDay)));
+    .where(and(isRealCash, gte(paymentOrdersTable.paidAt, startOfDay)));
 
   const [month] = await db
     .select({ total: sumAmount })
     .from(paymentOrdersTable)
-    .where(and(eq(paymentOrdersTable.status, "paid"), gte(paymentOrdersTable.paidAt, startOfMonth)));
+    .where(and(isRealCash, gte(paymentOrdersTable.paidAt, startOfMonth)));
+
+  // Nilai penyerapan saldo kredit internal untuk pembelian token pass
+  const isBalanceRedemption = and(
+    eq(paymentOrdersTable.status, "paid"),
+    eq(paymentOrdersTable.provider, "balance")
+  );
+
+  const [totalBalanceRedeemed] = await db
+    .select({ total: sumAmount })
+    .from(paymentOrdersTable)
+    .where(isBalanceRedemption);
+
+  const [monthBalanceRedeemed] = await db
+    .select({ total: sumAmount })
+    .from(paymentOrdersTable)
+    .where(and(isBalanceRedemption, gte(paymentOrdersTable.paidAt, startOfMonth)));
 
   const statusRows = await db
     .select({ status: paymentOrdersTable.status, c: sql<number>`count(*)::int` })
@@ -635,6 +694,8 @@ router.get("/admin/revenue", async (_req, res): Promise<void> => {
     totalRevenue: total?.total ?? 0,
     todayRevenue: today?.total ?? 0,
     monthRevenue: month?.total ?? 0,
+    balanceRedeemedTotal: totalBalanceRedeemed?.total ?? 0,
+    balanceRedeemedMonth: monthBalanceRedeemed?.total ?? 0,
     paidCount,
     pendingCount,
     failedCount,

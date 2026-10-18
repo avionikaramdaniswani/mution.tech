@@ -2,9 +2,18 @@ import { useState } from "react";
 import { useAdminGetUsage, getAdminGetUsageQueryKey } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, Cpu, Coins, Hash, TrendingUp, Users2, X } from "lucide-react";
+import { Activity, Cpu, Coins, Hash, TrendingUp, Users2, X, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { csrfFetch } from "@/lib/csrf";
+import { cn } from "@/lib/utils";
+
+function detectTokenPassCategory(model: string | null): "claude" | "gpt" | null {
+  if (!model) return null;
+  const m = model.toLowerCase();
+  if (m.includes("claude")) return "claude";
+  if (m.startsWith("gpt-") || m.includes("gpt-4") || m.includes("gpt-3") || m.startsWith("o1") || m.startsWith("o3") || m.includes("chatgpt")) return "gpt";
+  return null;
+}
 
 function formatNumber(n: number) {
   return n.toLocaleString("id-ID");
@@ -100,18 +109,35 @@ function UserModelStatsDialog({ user, onClose }: { user: { userId: number; name:
               Belum ada data pemakaian model.
             </div>
           ) : (
-            stats?.map((s) => (
-              <div key={s.model} className="flex flex-col gap-1 rounded-lg border border-[#edf4fb] bg-[#f8fbff] p-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-semibold truncate mr-2">{s.model}</span>
-                  <span className="text-xs font-semibold tabular-nums text-[#f97316]">{formatCompact(s.totalTokens)} tok</span>
+            stats?.map((s) => {
+              const category = detectTokenPassCategory(s.model);
+              const isTokenPass = s.credits === 0 && s.totalTokens > 0 && category;
+
+              return (
+                <div key={s.model} className="flex flex-col gap-1 rounded-lg border border-[#edf4fb] bg-[#f8fbff] p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm font-semibold truncate mr-2">{s.model}</span>
+                    <span className="text-xs font-semibold tabular-nums text-[#f97316]">{formatCompact(s.totalTokens)} tok</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] text-[#526173]">
+                    <span>{formatNumber(s.requests)} requests</span>
+                    {isTokenPass ? (
+                      <span className={cn(
+                        "text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border inline-flex items-center gap-1",
+                        category === "claude"
+                          ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                          : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                      )}>
+                        <Sparkles className="h-2.5 w-2.5" />
+                        {category === "claude" ? "Claude Pass" : "GPT Pass"}
+                      </span>
+                    ) : (
+                      <span>{formatNumber(s.credits)} kredit</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex justify-between text-[11px] text-[#526173]">
-                  <span>{formatNumber(s.requests)} requests</span>
-                  <span>{formatNumber(s.credits)} kredit</span>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </DialogContent>
@@ -376,33 +402,57 @@ export default function AdminUsage() {
               ) : ((data as unknown as any)?.recentRequests as any[])?.length === 0 ? (
                  <tr><td colSpan={5} className="px-5 py-12 text-center text-muted-foreground">Belum ada request API.</td></tr>
               ) : (
-                ((data as unknown as any)?.recentRequests as Array<{ id: number; name: string; email: string; model: string; totalTokens: number; credits: number; createdAt: string }>)?.map((r) => (
-                  <tr key={r.id} className="hover:bg-[#f8fbff]/50 transition-colors">
-                    <td className="px-5 py-4 whitespace-nowrap text-xs font-medium">
-                      {new Date(r.createdAt).toLocaleString("id-ID", { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <UserAvatar name={r.name} />
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-[#172033]">{r.name}</span>
-                          <span className="text-[11px] text-[#526173]">{r.email}</span>
+                ((data as unknown as any)?.recentRequests as Array<{ id: number; name: string; email: string; model: string; totalTokens: number; credits: number; createdAt: string }>)?.map((r) => {
+                  const category = detectTokenPassCategory(r.model);
+                  const isTokenPass = r.credits === 0 && r.totalTokens > 0 && category;
+
+                  return (
+                    <tr key={r.id} className="hover:bg-[#f8fbff]/50 transition-colors">
+                      <td className="px-5 py-4 whitespace-nowrap text-xs font-medium">
+                        {new Date(r.createdAt).toLocaleString("id-ID", { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar name={r.name} />
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-[#172033]">{r.name}</span>
+                            <span className="text-[11px] text-[#526173]">{r.email}</span>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="inline-flex rounded-full border border-[#dbe8f3] bg-white px-2.5 py-1 text-[11px] font-mono font-medium text-[#f97316]">
-                        {r.model}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-right tabular-nums font-medium text-[#172033]">
-                      {formatNumber(r.totalTokens)}
-                    </td>
-                    <td className="px-5 py-4 text-right tabular-nums text-red-500 font-medium">
-                      -{formatNumber(r.credits)}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="inline-flex rounded-full border border-[#dbe8f3] bg-white px-2.5 py-1 text-[11px] font-mono font-medium text-[#f97316]">
+                          {r.model}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-right tabular-nums font-medium text-[#172033]">
+                        {formatNumber(r.totalTokens)}
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        {isTokenPass ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                                category === "claude"
+                                  ? "border-amber-500/20 bg-amber-500/10 text-amber-600"
+                                  : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
+                              )}
+                            >
+                              <Sparkles className="h-2.5 w-2.5" />
+                              {category === "claude" ? "Claude Pass" : "GPT Pass"}
+                            </span>
+                            <span className="text-[11px] tabular-nums text-[#526173]">0 cr</span>
+                          </div>
+                        ) : (
+                          <span className={cn("tabular-nums font-medium", r.credits > 0 ? "text-red-500" : "text-[#526173]")}>
+                            {r.credits > 0 ? `-${formatNumber(r.credits)}` : "0"}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

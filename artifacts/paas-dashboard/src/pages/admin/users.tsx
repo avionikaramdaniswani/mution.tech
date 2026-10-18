@@ -5,7 +5,9 @@ import {
   getAdminListUsersQueryKey, getAdminGetUserQueryKey,
 } from "@workspace/api-client-react";
 import type { UserWithStats } from "@workspace/api-client-react";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 import {
   Users, ShieldAlert, User, Eye, Trash2, Wallet,
   Box, Calendar, Clock, Mail, AlertTriangle, Plus, Minus, Loader2,
@@ -394,6 +396,159 @@ function EditUserDialog({
   );
 }
 
+function formatCompactTokens(n: number) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  return String(n);
+}
+
+interface UserTokenPackageItem {
+  id: number;
+  packageId: number | null;
+  packageName: string;
+  category: "claude" | "gpt";
+  totalTokens: number;
+  remainingTokens: number;
+  expiresAt: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+function UserTokenPackagesSection({ userId }: { userId: number }) {
+  const { data: packages, isLoading } = useQuery<UserTokenPackageItem[]>({
+    queryKey: ["admin", "users", userId, "token-packages"],
+    queryFn: async () => {
+      const res = await csrfFetch(`/api/admin/users/${userId}/token-packages`, { credentials: "include" });
+      if (!res.ok) throw new Error("Gagal mengambil data paket token");
+      return res.json();
+    },
+    staleTime: 10_000,
+  });
+
+  return (
+    <div className="mt-6 border-t border-[#edf4fb] pt-5">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[#526173] flex items-center gap-1.5">
+          <Sparkles className="h-3.5 w-3.5 text-[#f97316]" /> Paket Kuota Token
+        </h4>
+        {packages && packages.length > 0 && (
+          <span className="text-[11px] font-semibold text-[#526173]">
+            {packages.filter((p) => p.isActive && new Date(p.expiresAt) > new Date() && p.remainingTokens > 0).length} Aktif
+          </span>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2.5">
+          <Skeleton className="h-16 w-full rounded-lg" />
+          <Skeleton className="h-16 w-full rounded-lg" />
+        </div>
+      ) : !packages || packages.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-[#dbe8f3] p-4 text-center text-xs text-muted-foreground">
+          Pengguna belum memiliki paket kuota token.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {packages.map((pkg) => {
+            const isClaude = pkg.category === "claude";
+            const isExpired = new Date(pkg.expiresAt) <= new Date();
+            const isDepleted = pkg.remainingTokens <= 0;
+            const isStillActive = pkg.isActive && !isExpired && !isDepleted;
+
+            const percent = pkg.totalTokens > 0
+              ? Math.max(0, Math.min(100, Math.round((pkg.remainingTokens / pkg.totalTokens) * 100)))
+              : 0;
+
+            return (
+              <div
+                key={pkg.id}
+                className={cn(
+                  "rounded-lg border p-3 transition-colors",
+                  isStillActive
+                    ? isClaude
+                      ? "border-amber-500/25 bg-amber-500/[0.03]"
+                      : "border-emerald-500/25 bg-emerald-500/[0.03]"
+                    : "border-[#edf4fb] bg-[#f8fbff] opacity-70"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                          isClaude
+                            ? "border border-amber-500/20 bg-amber-500/10 text-amber-600"
+                            : "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
+                        )}
+                      >
+                        <Sparkles className="h-2.5 w-2.5" />
+                        {isClaude ? "Claude Pass" : "GPT Pass"}
+                      </span>
+                      <span className="text-xs font-semibold text-[#172033] truncate">
+                        {pkg.packageName}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    {isStillActive ? (
+                      <span className="inline-flex rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 border border-emerald-500/20">
+                        Aktif
+                      </span>
+                    ) : isDepleted ? (
+                      <span className="inline-flex rounded-full bg-gray-500/10 px-2 py-0.5 text-[10px] font-semibold text-gray-500 border border-gray-500/20">
+                        Habis
+                      </span>
+                    ) : (
+                      <span className="inline-flex rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-500 border border-red-500/20">
+                        Kedaluwarsa
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="mt-2.5 space-y-1.5">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-[#526173]">
+                      Sisa: <strong className="text-[#172033]">{formatCompactTokens(pkg.remainingTokens)}</strong> / {formatCompactTokens(pkg.totalTokens)} token
+                    </span>
+                    <span className={cn(
+                      "font-semibold tabular-nums text-[10px]",
+                      isClaude ? "text-amber-600" : "text-emerald-600"
+                    )}>
+                      {percent}%
+                    </span>
+                  </div>
+                  <Progress
+                    value={percent}
+                    className="h-1.5 bg-[#dbe8f3]"
+                  />
+                </div>
+
+                <div className="mt-2.5 flex items-center justify-between text-[10px] text-[#526173] pt-2 border-t border-[#edf4fb]">
+                  <span>
+                    Masa berlaku:{" "}
+                    <strong className={isExpired ? "text-red-500 font-semibold" : "text-[#172033]"}>
+                      {format(new Date(pkg.expiresAt), "dd MMM yyyy, HH:mm", { locale: idLocale })}
+                    </strong>
+                  </span>
+                  <span>
+                    {isStillActive && (
+                      formatDistanceToNow(new Date(pkg.expiresAt), { addSuffix: true, locale: idLocale })
+                    )}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UserDetailSheet({ userId, open, onClose }: { userId: number | null; open: boolean; onClose: () => void }) {
   const { data: user, isLoading } = useAdminGetUser(userId ?? 0);
 
@@ -457,6 +612,8 @@ function UserDetailSheet({ userId, open, onClose }: { userId: number | null; ope
                   : <span className="text-muted-foreground">Belum pernah login</span>
               }
             />
+
+            <UserTokenPackagesSection userId={user.id} />
           </div>
         )}
       </SheetContent>

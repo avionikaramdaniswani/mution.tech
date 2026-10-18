@@ -733,78 +733,80 @@ function TopupSection() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Presets */}
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Nominal Cepat</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {PRESETS.map((amount) => {
-                    const activePreset = isCustom && !selectedPackage && Number.parseInt(customRaw || "0") === amount;
-                    const label = amount >= 1_000_000
-                      ? `${amount / 1_000_000}jt`
-                      : `${amount / 1_000}rb`;
-                    return (
-                      <button
-                        key={amount}
-                        onClick={() => pickPreset(amount)}
-                        className={cn(
-                          "rounded-xl py-2.5 text-xs font-semibold border transition-all",
-                          activePreset
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border bg-background text-foreground hover:bg-muted"
-                        )}
-                      >
-                        Rp {label}
-                      </button>
-                    );
-                  })}
+            {billingType === "credit" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Presets */}
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Nominal Cepat</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {PRESETS.map((amount) => {
+                      const activePreset = isCustom && !selectedPackage && Number.parseInt(customRaw || "0") === amount;
+                      const label = amount >= 1_000_000
+                        ? `${amount / 1_000_000}jt`
+                        : `${amount / 1_000}rb`;
+                      return (
+                        <button
+                          key={amount}
+                          onClick={() => pickPreset(amount)}
+                          className={cn(
+                            "rounded-xl py-2.5 text-xs font-semibold border transition-all",
+                            activePreset
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-background text-foreground hover:bg-muted"
+                          )}
+                        >
+                          Rp {label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              {/* Custom */}
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Nominal Lain</p>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none text-muted-foreground">
-                    Rp
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="Masukkan nominal..."
-                    value={isCustom && !selectedPackage && !PRESETS.includes(Number.parseInt(customRaw || "0"))
-                      ? (customRaw ? Number.parseInt(customRaw).toLocaleString("id-ID") : "")
-                      : ""}
-                    onFocus={() => {
-                      if (selectedPackage || !isCustom || PRESETS.includes(Number.parseInt(customRaw || "0"))) {
-                        setIsCustom(true);
-                        setSelectedPackage(null);
-                        setCustomRaw("");
-                        setError(null);
-                      }
-                    }}
-                    onChange={(e) => handleCustomInput(e.target.value)}
-                    className={cn(
-                      "w-full h-[46px] rounded-xl pl-11 pr-10 text-sm font-bold bg-background text-foreground outline-none border-2 transition-all",
-                      amountError
-                        ? "border-destructive/50 focus:border-destructive"
-                        : isCustom && !selectedPackage && !PRESETS.includes(Number.parseInt(customRaw || "0")) && customRaw
-                        ? "border-primary"
-                        : "border-border focus:border-primary/50"
+                {/* Custom */}
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Nominal Lain</p>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold pointer-events-none text-muted-foreground">
+                      Rp
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Masukkan nominal..."
+                      value={isCustom && !selectedPackage && !PRESETS.includes(Number.parseInt(customRaw || "0"))
+                        ? (customRaw ? Number.parseInt(customRaw).toLocaleString("id-ID") : "")
+                        : ""}
+                      onFocus={() => {
+                        if (selectedPackage || !isCustom || PRESETS.includes(Number.parseInt(customRaw || "0"))) {
+                          setIsCustom(true);
+                          setSelectedPackage(null);
+                          setCustomRaw("");
+                          setError(null);
+                        }
+                      }}
+                      onChange={(e) => handleCustomInput(e.target.value)}
+                      className={cn(
+                        "w-full h-[46px] rounded-xl pl-11 pr-10 text-sm font-bold bg-background text-foreground outline-none border-2 transition-all",
+                        amountError
+                          ? "border-destructive/50 focus:border-destructive"
+                          : isCustom && !selectedPackage && !PRESETS.includes(Number.parseInt(customRaw || "0")) && customRaw
+                          ? "border-primary"
+                          : "border-border focus:border-primary/50"
+                      )}
+                    />
+                    {isCustom && !selectedPackage && customRaw && !PRESETS.includes(Number.parseInt(customRaw)) && (
+                      <button
+                        onClick={() => { setIsCustom(false); setCustomRaw(""); setSelectedPackage(null); }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     )}
-                  />
-                  {isCustom && !selectedPackage && customRaw && !PRESETS.includes(Number.parseInt(customRaw)) && (
-                    <button
-                      onClick={() => { setIsCustom(false); setCustomRaw(""); setSelectedPackage(null); }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
+                  </div>
+                  {amountError && <p className="text-[11px] font-medium text-destructive mt-1.5 ml-1">{amountError}</p>}
                 </div>
-                {amountError && <p className="text-[11px] font-medium text-destructive mt-1.5 ml-1">{amountError}</p>}
               </div>
-            </div>
+            )}
 
             <div className="pt-2">
               <button

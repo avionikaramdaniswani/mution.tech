@@ -2,8 +2,10 @@ import { useState, useMemo, useEffect } from "react";
 import { useAdminListOrders, useAdminGetRevenue, getAdminListOrdersQueryKey, getAdminGetRevenueQueryKey } from "@workspace/api-client-react";
 import type { PaymentOrderWithUser } from "@workspace/api-client-react";
 import {
-  Wallet, TrendingUp, Calendar, CheckCircle2, Clock, XCircle, Receipt, Search, RotateCcw
+  Wallet, TrendingUp, Calendar, CheckCircle2, Clock, XCircle, Receipt, Search, RotateCcw,
+  Coins, CreditCard, Sparkles
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -91,6 +93,23 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+type AdminPaymentOrder = PaymentOrderWithUser & {
+  tokenPackageId?: number | null;
+  tokenPackageName?: string | null;
+  tokenPackageCategory?: "claude" | "gpt" | null;
+};
+
+type AdminRevenue = {
+  totalRevenue: number;
+  todayRevenue: number;
+  monthRevenue: number;
+  balanceRedeemedTotal?: number;
+  balanceRedeemedMonth?: number;
+  paidCount: number;
+  pendingCount: number;
+  failedCount: number;
+};
+
 export default function AdminPayments() {
   const { data: revenue, isLoading: revenueLoading } = useAdminGetRevenue({
     query: { queryKey: getAdminGetRevenueQueryKey(), refetchInterval: 5000 },
@@ -99,8 +118,11 @@ export default function AdminPayments() {
     query: { queryKey: getAdminListOrdersQueryKey(), refetchInterval: 5000 },
   });
 
+  const revenueData = revenue as unknown as AdminRevenue | undefined;
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [methodFilter, setMethodFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -110,13 +132,13 @@ export default function AdminPayments() {
   // 1. Filter orders based on date range
   const dateFilteredOrders = useMemo(() => {
     if (!orders) return [];
-    if (dateFilter === "all") return orders;
+    if (dateFilter === "all") return orders as AdminPaymentOrder[];
 
     const now = new Date();
     const todayStart = startOfDay(now);
     const todayEnd = endOfDay(now);
 
-    return orders.filter(o => {
+    return (orders as AdminPaymentOrder[]).filter(o => {
       const created = new Date(o.createdAt);
       if (isNaN(created.getTime())) return true;
 
@@ -167,18 +189,22 @@ export default function AdminPayments() {
   const dynamicStats = useMemo(() => {
     const list = dateFilteredOrders;
     const paidList = list.filter(o => o.status === "paid");
-    const pendingList = list.filter(o => o.status === "pending");
-    const failedList = list.filter(o => ["failed", "cancelled", "expired"].includes(o.status));
+    const realCashList = paidList.filter(o => o.provider !== "balance");
+    const balanceList = paidList.filter(o => o.provider === "balance");
 
-    const totalRevenue = paidList.reduce((acc, o) => acc + (o.amount || 0), 0);
-    const averageOrder = paidList.length > 0 ? Math.round(totalRevenue / paidList.length) : 0;
+    const totalCashRevenue = realCashList.reduce((acc, o) => acc + (o.amount || 0), 0);
+    const totalBalanceRedeemed = balanceList.reduce((acc, o) => acc + (o.amount || 0), 0);
+    const averageOrder = realCashList.length > 0 ? Math.round(totalCashRevenue / realCashList.length) : 0;
     const successRate = list.length > 0 ? Math.round((paidList.length / list.length) * 100) : 0;
 
     return {
-      totalRevenue,
+      totalCashRevenue,
+      totalBalanceRedeemed,
+      realCashCount: realCashList.length,
+      balanceCount: balanceList.length,
       paidCount: paidList.length,
-      pendingCount: pendingList.length,
-      failedCount: failedList.length,
+      pendingCount: list.filter(o => o.status === "pending").length,
+      failedCount: list.filter(o => ["failed", "cancelled", "expired"].includes(o.status)).length,
       totalCount: list.length,
       averageOrder,
       successRate,
@@ -204,7 +230,7 @@ export default function AdminPayments() {
     }
   }, [dateFilter, customStart, customEnd]);
 
-  // 4. Final filtered list for the table (date + search + status)
+  // 4. Final filtered list for the table (date + search + status + method)
   const filteredOrders = useMemo(() => {
     let list = dateFilteredOrders;
 
@@ -217,17 +243,24 @@ export default function AdminPayments() {
       list = list.filter(o => o.status === statusFilter);
     }
 
+    if (methodFilter === "cash") {
+      list = list.filter(o => o.provider !== "balance");
+    } else if (methodFilter === "balance") {
+      list = list.filter(o => o.provider === "balance");
+    }
+
     return list;
-  }, [dateFilteredOrders, search, statusFilter]);
+  }, [dateFilteredOrders, search, statusFilter, methodFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / itemsPerPage));
   const paginatedOrders = filteredOrders.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
-  const isFilterActive = dateFilter !== "all" || statusFilter !== "all" || Boolean(search.trim()) || Boolean(customStart) || Boolean(customEnd);
+  const isFilterActive = dateFilter !== "all" || statusFilter !== "all" || methodFilter !== "all" || Boolean(search.trim()) || Boolean(customStart) || Boolean(customEnd);
 
   const handleResetFilters = () => {
     setSearch("");
     setStatusFilter("all");
+    setMethodFilter("all");
     setDateFilter("all");
     setCustomStart("");
     setCustomEnd("");
@@ -235,7 +268,7 @@ export default function AdminPayments() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, dateFilter, customStart, customEnd, itemsPerPage]);
+  }, [search, statusFilter, methodFilter, dateFilter, customStart, customEnd, itemsPerPage]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
@@ -247,46 +280,60 @@ export default function AdminPayments() {
       </div>
 
       {/* Revenue cards - adapts to filter */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {dateFilter === "all" ? (
           <>
             <StatCard
-              label="Pendapatan Hari Ini"
-              value={revenueLoading ? undefined : formatRupiah(revenue?.todayRevenue ?? 0)}
+              label="Kas Masuk Hari Ini"
+              value={revenueLoading ? undefined : formatRupiah(revenueData?.todayRevenue ?? 0)}
               icon={Calendar}
               color="rgb(99,102,241)"
-              sub="Dari order lunas"
+              sub="Uang masuk riil (Duitku)"
             />
             <StatCard
-              label="Pendapatan Bulan Ini"
-              value={revenueLoading ? undefined : formatRupiah(revenue?.monthRevenue ?? 0)}
+              label="Kas Masuk Bulan Ini"
+              value={revenueLoading ? undefined : formatRupiah(revenueData?.monthRevenue ?? 0)}
               icon={TrendingUp}
               color="rgb(249,115,22)"
-              sub="Sejak awal bulan"
+              sub="Uang masuk riil (Duitku)"
             />
             <StatCard
-              label="Total Pendapatan"
-              value={revenueLoading ? undefined : formatRupiah(revenue?.totalRevenue ?? 0)}
+              label="Total Kas Masuk"
+              value={revenueLoading ? undefined : formatRupiah(revenueData?.totalRevenue ?? 0)}
               icon={Wallet}
               color="rgb(34,197,94)"
-              sub="Sepanjang waktu"
+              sub="Rekening bank perusahaan"
+            />
+            <StatCard
+              label="Paket via Saldo"
+              value={revenueLoading ? undefined : formatRupiah(revenueData?.balanceRedeemedTotal ?? 0)}
+              icon={Coins}
+              color="rgb(168,85,247)"
+              sub={`Bulan ini: ${formatRupiah(revenueData?.balanceRedeemedMonth ?? 0)}`}
             />
           </>
         ) : (
           <>
             <StatCard
-              label={`Pendapatan (${dateFilterLabel})`}
-              value={ordersLoading ? undefined : formatRupiah(dynamicStats.totalRevenue)}
+              label={`Kas Masuk (${dateFilterLabel})`}
+              value={ordersLoading ? undefined : formatRupiah(dynamicStats.totalCashRevenue)}
               icon={Calendar}
               color="rgb(99,102,241)"
-              sub={`Dari ${dynamicStats.paidCount} order lunas`}
+              sub={`Dari ${dynamicStats.realCashCount} order kas lunas`}
             />
             <StatCard
-              label="Rata-rata Order"
+              label={`Paket via Saldo (${dateFilterLabel})`}
+              value={ordersLoading ? undefined : formatRupiah(dynamicStats.totalBalanceRedeemed)}
+              icon={Coins}
+              color="rgb(168,85,247)"
+              sub={`Dari ${dynamicStats.balanceCount} transaksi saldo`}
+            />
+            <StatCard
+              label="Rata-rata Order Kas"
               value={ordersLoading ? undefined : formatRupiah(dynamicStats.averageOrder)}
               icon={TrendingUp}
               color="rgb(249,115,22)"
-              sub={`Per transaksi lunas (${dateFilterLabel})`}
+              sub={`Per order kas lunas (${dateFilterLabel})`}
             />
             <StatCard
               label="Tingkat Sukses"
@@ -358,7 +405,7 @@ export default function AdminPayments() {
 
               {/* Date Filter */}
               <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="w-full sm:w-[160px] h-9 border-[#dbe8f3] text-sm bg-white">
+                <SelectTrigger className="w-full sm:w-[150px] h-9 border-[#dbe8f3] text-sm bg-white">
                   <Calendar className="mr-1.5 h-3.5 w-3.5 text-[#526173]" />
                   <SelectValue placeholder="Pilih Periode" />
                 </SelectTrigger>
@@ -374,9 +421,21 @@ export default function AdminPayments() {
                 </SelectContent>
               </Select>
 
+              {/* Method Filter */}
+              <Select value={methodFilter} onValueChange={setMethodFilter}>
+                <SelectTrigger className="w-full sm:w-[150px] h-9 border-[#dbe8f3] text-sm bg-white">
+                  <SelectValue placeholder="Metode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Metode</SelectItem>
+                  <SelectItem value="cash">Uang Masuk (Duitku)</SelectItem>
+                  <SelectItem value="balance">Saldo Akun</SelectItem>
+                </SelectContent>
+              </Select>
+
               {/* Status Filter */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[135px] h-9 border-[#dbe8f3] text-sm bg-white">
+                <SelectTrigger className="w-full sm:w-[130px] h-9 border-[#dbe8f3] text-sm bg-white">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -437,14 +496,15 @@ export default function AdminPayments() {
 
         <div className="overflow-hidden rounded-lg border border-[#dbe8f3] bg-white shadow-[0_16px_44px_rgba(23,32,51,0.07)]">
           <div className="overflow-x-auto">
-            <div className="min-w-[520px]">
+            <div className="min-w-[620px]">
               {/* Table header */}
               <div
                 className="grid border-b border-[#dbe8f3] bg-[#f8fbff] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#526173]"
-                style={{ gridTemplateColumns: "1fr 120px 110px 130px" }}
+                style={{ gridTemplateColumns: "1.4fr 110px 130px 100px 120px" }}
               >
-                <div>Pengguna</div>
+                <div>Pengguna & Produk</div>
                 <div className="text-right">Nominal</div>
+                <div className="text-center">Metode</div>
                 <div className="text-center">Status</div>
                 <div className="text-right">Waktu</div>
               </div>
@@ -462,26 +522,58 @@ export default function AdminPayments() {
                 </div>
               ) : (
                 <div>
-                  {paginatedOrders.map((order: PaymentOrderWithUser) => (
+                  {paginatedOrders.map((order: AdminPaymentOrder) => (
                     <div
                       key={order.id}
                       className="grid items-center border-b border-[#edf4fb] px-5 py-3.5 transition-colors last:border-b-0 hover:bg-[#f8fbff]"
                       style={{
-                        gridTemplateColumns: "1fr 120px 110px 130px",
+                        gridTemplateColumns: "1.4fr 110px 130px 100px 120px",
                       }}
                     >
-                      {/* User */}
+                      {/* User & Product */}
                       <div className="flex items-center gap-3 min-w-0">
                         <UserAvatar name={order.ownerName} />
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-[#172033]">{order.ownerName}</p>
                           <p className="truncate text-xs text-[#526173]">{order.ownerEmail}</p>
+                          <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                            {order.tokenPackageName ? (
+                              <span className={cn(
+                                "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold",
+                                order.tokenPackageCategory === "claude"
+                                  ? "bg-amber-500/10 text-amber-600 border border-amber-500/20"
+                                  : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+                              )}>
+                                <Sparkles className="h-2.5 w-2.5" />
+                                {order.tokenPackageName}
+                              </span>
+                            ) : order.creditsAmount > 0 ? (
+                              <span className="inline-flex items-center gap-1 rounded bg-[#f8fbff] px-1.5 py-0.5 text-[10px] font-medium text-[#526173] border border-[#dbe8f3]">
+                                Topup Kredit ({order.creditsAmount.toLocaleString("id-ID")} cr)
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
 
                       {/* Amount */}
                       <div className="text-right">
                         <span className="text-sm font-semibold tabular-nums text-[#172033]">{formatRupiah(order.amount)}</span>
+                      </div>
+
+                      {/* Method */}
+                      <div className="flex justify-center">
+                        {order.provider === "balance" ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 border border-purple-500/20">
+                            <Coins className="h-2.5 w-2.5" />
+                            Saldo Akun
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                            <CreditCard className="h-2.5 w-2.5" />
+                            Duitku (Kas)
+                          </span>
+                        )}
                       </div>
 
                       {/* Status */}
