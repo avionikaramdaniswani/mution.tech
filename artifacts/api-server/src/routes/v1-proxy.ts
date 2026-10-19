@@ -1111,7 +1111,7 @@ type CreditReservation = {
 function detectModelTokenCategory(model: string): "claude" | "gpt" | null {
   const m = model.toLowerCase();
   if (m.includes("claude")) return "claude";
-  if (m.includes("gpt") || m.startsWith("o1") || m.startsWith("o3") || m.includes("/o1") || m.includes("/o3")) return "gpt";
+  if (m.includes("gpt") || m.startsWith("o1") || m.startsWith("o3") || m.startsWith("o4") || m.includes("/o1") || m.includes("/o3") || m.includes("/o4")) return "gpt";
   return null;
 }
 
@@ -1418,11 +1418,6 @@ async function authenticate(req: Request, res: Response): Promise<{ key: typeof 
     }
   }
 
-  if (row.user.credits <= 0) {
-    updateApiRequestLog(res, { errorType: "insufficient_quota" });
-    res.status(402).json({ type: "error", error: { type: "insufficient_quota", message: "Insufficient credits. Top up at mution.tech/billing" } });
-    return null;
-  }
   if (row.key.expiresAt && new Date() > new Date(row.key.expiresAt)) {
     updateApiRequestLog(res, { errorType: "forbidden" });
     res.status(403).json({ type: "error", error: { type: "forbidden", message: "API key has expired" } });
