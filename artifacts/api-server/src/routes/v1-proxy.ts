@@ -2388,7 +2388,7 @@ function flattenResponsesTools(tools: any[]): { chatTools: any[]; namespaceMap: 
 
         let parameters = nested.parameters;
         let description = nested.description;
-        if (nested.name === "exec" && (!parameters || parameters.format)) {
+        if (nested.name === "exec") {
           hasShellTool = true;
           parameters = {
             type: "object",
@@ -2420,41 +2420,46 @@ function flattenResponsesTools(tools: any[]): { chatTools: any[]; namespaceMap: 
 
   // Ensure local_shell and exec_command are always registered if any shell/exec capability is present
   if (hasShellTool) {
-    chatTools.push({
-      type: "function",
-      function: {
-        name: "local_shell",
-        description: "Execute a command in the user's local terminal/shell to inspect directory contents, read files, run scripts, or execute tools.",
-        parameters: {
-          type: "object",
-          properties: {
-            command: {
-              type: "array",
-              items: { type: "string" },
-              description: "The command line array to execute, e.g. [\"powershell\", \"-Command\", \"Get-ChildItem\"] or [\"cat\", \"package.json\"]",
+    const existingNames = new Set(chatTools.map(t => t.function?.name));
+    if (!existingNames.has("local_shell")) {
+      chatTools.push({
+        type: "function",
+        function: {
+          name: "local_shell",
+          description: "Execute a command in the user's local terminal/shell to inspect directory contents, read files, run scripts, or execute tools.",
+          parameters: {
+            type: "object",
+            properties: {
+              command: {
+                type: "array",
+                items: { type: "string" },
+                description: "The command line array to execute, e.g. [\"powershell\", \"-Command\", \"Get-ChildItem\"] or [\"cat\", \"package.json\"]",
+              },
             },
+            required: ["command"],
           },
-          required: ["command"],
         },
-      },
-    });
-    chatTools.push({
-      type: "function",
-      function: {
-        name: "exec_command",
-        description: "Runs a command in the user's local terminal/shell.",
-        parameters: {
-          type: "object",
-          properties: {
-            cmd: {
-              type: "string",
-              description: "The shell command to run in powershell or terminal",
+      });
+    }
+    if (!existingNames.has("exec_command")) {
+      chatTools.push({
+        type: "function",
+        function: {
+          name: "exec_command",
+          description: "Runs a command in the user's local terminal/shell.",
+          parameters: {
+            type: "object",
+            properties: {
+              cmd: {
+                type: "string",
+                description: "The shell command to run in powershell or terminal",
+              },
             },
+            required: ["cmd"],
           },
-          required: ["cmd"],
         },
-      },
-    });
+      });
+    }
   }
 
   return { chatTools, namespaceMap };
