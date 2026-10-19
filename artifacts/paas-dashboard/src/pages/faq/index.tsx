@@ -94,6 +94,21 @@ const faqs: FAQEntry[] = [
     a: "Tidak ada biaya setup atau biaya tersembunyi. Biaya mengikuti resource yang kamu gunakan, sehingga pengeluaran lebih mudah dipantau.",
   },
   {
+    category: "Billing",
+    q: "Apa perbedaan antara Saldo Kredit (IDR) dan Paket Token Pass?",
+    a: "Saldo Kredit (IDR) adalah saldo fleksibel sistem pay-as-you-go untuk hosting, database, dan pemanggilan semua model AI. Sedangkan Paket Token Pass (Claude Pass & GPT Pass) adalah kuota token khusus dengan harga hemat dan masa aktif tertentu, di mana penggunaan model yang sesuai langsung memotong kuota token tanpa memotong saldo Rupiah Anda.",
+  },
+  {
+    category: "Billing",
+    q: "Bagaimana cara kerja masa aktif pada Paket Token Pass?",
+    a: "Setiap paket token memiliki masa aktif fleksibel (misal 7 hari, 14 hari, atau 30 hari tergantung paket yang Anda pilih). Masa aktif mulai berjalan sejak transaksi selesai, dan sisa token dapat dipakai selama rentang waktu tersebut.",
+  },
+  {
+    category: "Billing",
+    q: "Apakah saya bisa membeli Paket Token menggunakan Saldo Mution?",
+    a: "Bisa. Anda dapat membeli Paket Token Pass menggunakan Saldo Kredit Mution yang sudah ada di akun, ataupun langsung membayar via QRIS dan Virtual Account.",
+  },
+  {
     category: "AI & API",
     q: "Apakah Mution bisa mengelola API key AI?",
     a: "Bisa. Kamu dapat membuat API key, mengatur akses model, melihat pemakaian token, dan menghubungkan usage AI ke sistem kredit yang sama.",
@@ -102,6 +117,16 @@ const faqs: FAQEntry[] = [
     category: "AI & API",
     q: "Provider model AI apa saja yang tersedia?",
     a: "Mution menyiapkan katalog model dari beberapa provider yang bisa berubah sesuai ketersediaan platform. Daftar model dan tarif paling aman dicek dari halaman harga atau dashboard provider.",
+  },
+  {
+    category: "AI & API",
+    q: "Apakah kuota Token Pass mencakup input token dan output token?",
+    a: "Ya, kuota token pass mencakup akumulasi token input (prompt) dan output (completion) saat memanggil model yang didukung oleh pass tersebut (Claude Pass untuk model Claude, GPT Pass untuk model OpenAI/GPT).",
+  },
+  {
+    category: "AI & API",
+    q: "Apa yang terjadi jika kuota token habis atau masa aktifnya berakhir?",
+    a: "Jika kuota token habis atau masa aktif berakhir, request API berikutnya akan otomatis kembali memotong Saldo Kredit (IDR) akun Anda (jika saldo mencukupi), sehingga layanan aplikasi Anda tidak langsung terputus mendadak.",
   },
   {
     category: "Keamanan",
