@@ -2371,6 +2371,19 @@ function flattenResponsesTools(tools: any[]): { chatTools: any[]; namespaceMap: 
       chatTools.push(responsesToolToChatTool(tool));
       continue;
     }
+    if (tool.type === "custom" && tool.name) {
+      const toolName = String(tool.name);
+      namespaceMap.set(toolName, { namespace: "", name: toolName, toolType: "custom" });
+      chatTools.push({
+        type: "function",
+        function: {
+          name: toolName,
+          description: tool.description,
+          parameters: tool.parameters ?? { type: "object", properties: {}, additionalProperties: true },
+        },
+      });
+      continue;
+    }
     if (tool.type === "local_shell") {
       hasShellTool = true;
       continue;
@@ -2891,16 +2904,6 @@ async function streamChatToResponses(
     type: "response.created",
     response: { id: respId, object: "response", created_at: createdAt, status: "in_progress", model, output: [], usage: null },
   }));
-  res.write(responsesSseEvent("response.output_item.added", {
-    type: "response.output_item.added",
-    output_index: 0,
-    item: { type: "message", id: msgId, status: "in_progress", role: "assistant", content: [] },
-  }));
-  res.write(responsesSseEvent("response.content_part.added", {
-    type: "response.content_part.added",
-    item_id: msgId, output_index: 0, content_index: 0,
-    part: { type: "output_text", text: "", annotations: [] },
-  }));
 
   // ── Read + forward deltas ─────────────────────────────────────────────────
   const decoder = new TextDecoder();
@@ -2909,11 +2912,27 @@ async function streamChatToResponses(
   let inputTokens = 0;
   let outputTokens = 0;
   let cachedTokens = 0;
+  let messageOutputIndex: number | null = null;
 
   // Tool calls stream incrementally by index; accumulate arguments per index.
   type PendingCall = { outputIndex: number; id: string; name: string; arguments: string; addedSent?: boolean };
   const pendingCalls = new Map<number, PendingCall>();
-  let nextOutputIndex = 1; // 0 is reserved for the text message item
+  let nextOutputIndex = 0;
+
+  const startMessage = () => {
+    if (messageOutputIndex !== null) return;
+    messageOutputIndex = nextOutputIndex++;
+    res.write(responsesSseEvent("response.output_item.added", {
+      type: "response.output_item.added",
+      output_index: messageOutputIndex,
+      item: { type: "message", id: msgId, status: "in_progress", role: "assistant", content: [] },
+    }));
+    res.write(responsesSseEvent("response.content_part.added", {
+      type: "response.content_part.added",
+      item_id: msgId, output_index: messageOutputIndex, content_index: 0,
+      part: { type: "output_text", text: "", annotations: [] },
+    }));
+  };
 
   while (true) {
     const { done, value } = await reader.read();
@@ -2928,10 +2947,11 @@ async function streamChatToResponses(
         const delta = d.choices?.[0]?.delta;
         const textDelta = delta?.content;
         if (typeof textDelta === "string" && textDelta) {
+          startMessage();
           fullText += textDelta;
           res.write(responsesSseEvent("response.output_text.delta", {
             type: "response.output_text.delta",
-            item_id: msgId, output_index: 0, content_index: 0, delta: textDelta,
+            item_id: msgId, output_index: messageOutputIndex!, content_index: 0, delta: textDelta,
           }));
         }
         const toolCallDeltas = delta?.tool_calls;
@@ -2946,60 +2966,32 @@ async function streamChatToResponses(
             if (tc.function?.name) call.name = tc.function.name;
             if (tc.id) call.id = tc.id;
 
+            const argDelta = tc.function?.arguments;
+            if (typeof argDelta === "string" && argDelta) call.arguments += argDelta;
+
+            const callOutputIndex = call.outputIndex;
+            nextOutputIndex = Math.max(nextOutputIndex, callOutputIndex + 1);
             if (!call.addedSent && call.name) {
               call.addedSent = true;
               const target = resolveTargetTool(call.name, namespaceMap);
-              if (target.toolType === "custom") {
-                res.write(responsesSseEvent("response.output_item.added", {
-                  type: "response.output_item.added",
-                  output_index: call.outputIndex,
-                  item: {
-                    type: "custom_tool_call",
-                    id: `ctc_${call.id}`,
-                    call_id: call.id,
-                    name: target.name,
-                    ...(target.namespace != null ? { namespace: target.namespace } : {}),
-                    input: "",
-                    status: "in_progress",
-                  },
-                }));
-              } else if (target.toolType === "local_shell") {
-                res.write(responsesSseEvent("response.output_item.added", {
-                  type: "response.output_item.added",
-                  output_index: call.outputIndex,
-                  item: { type: "local_shell_call", id: `lsc_${call.id}`, call_id: call.id, status: "in_progress", action: { type: "exec", command: [] } },
-                }));
-              } else {
-                res.write(responsesSseEvent("response.output_item.added", {
-                  type: "response.output_item.added",
-                  output_index: call.outputIndex,
-                  item: { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: target.name, ...(target.namespace != null ? { namespace: target.namespace } : {}), arguments: "", status: "in_progress" },
-                }));
-              }
+              const itemId = target.toolType === "custom" ? `ctc_${call.id}` : target.toolType === "local_shell" ? `lsc_${call.id}` : `fc_${call.id}`;
+              const item = target.toolType === "custom"
+                ? { type: "custom_tool_call", id: itemId, call_id: call.id, name: target.name, ...(target.namespace != null ? { namespace: target.namespace } : {}), input: "", status: "in_progress" }
+                : target.toolType === "local_shell"
+                  ? { type: "local_shell_call", id: itemId, call_id: call.id, status: "in_progress", action: { type: "exec", command: [] } }
+                  : { type: "function_call", id: itemId, call_id: call.id, name: target.name, ...(target.namespace != null ? { namespace: target.namespace } : {}), arguments: "", status: "in_progress" };
+              res.write(responsesSseEvent("response.output_item.added", { type: "response.output_item.added", output_index: callOutputIndex, item }));
             }
 
-            const argDelta = tc.function?.arguments;
             if (typeof argDelta === "string" && argDelta) {
-              call.arguments += argDelta;
               const target = resolveTargetTool(call.name, namespaceMap);
-              if (target.toolType === "custom") {
-                // Codex Code Mode evaluates custom-tool input as JavaScript. The
-                // upstream arguments arrive as JSON fragments, so forwarding
-                // them as deltas would make the V8 runner evaluate e.g.
-                // `{"cmd":"Get-ChildItem"}` and fail on the colon. Buffer
-                // `functions.exec` until the complete call is available; the
-                // formatted script is emitted in the corresponding `.done`
-                // event below.
-                if (target.name !== "exec") {
-                  res.write(responsesSseEvent("response.custom_tool_call_input.delta", {
-                    type: "response.custom_tool_call_input.delta",
-                    item_id: `ctc_${call.id}`, output_index: call.outputIndex, delta: argDelta,
-                  }));
-                }
+              if (target.toolType === "custom" && target.name !== "exec") {
+                res.write(responsesSseEvent("response.custom_tool_call_input.delta", {
+                  type: "response.custom_tool_call_input.delta", item_id: `ctc_${call.id}`, output_index: callOutputIndex, delta: argDelta,
+                }));
               } else if (target.toolType === "function") {
                 res.write(responsesSseEvent("response.function_call_arguments.delta", {
-                  type: "response.function_call_arguments.delta",
-                  item_id: `fc_${call.id}`, output_index: call.outputIndex, delta: argDelta,
+                  type: "response.function_call_arguments.delta", item_id: `fc_${call.id}`, output_index: callOutputIndex, delta: argDelta,
                 }));
               }
             }
@@ -3023,18 +3015,18 @@ async function streamChatToResponses(
     embeddedExecCmd = extractEmbeddedExecCommand(fullText);
   }
 
-  if (fullText) {
+  if (fullText && messageOutputIndex !== null) {
     res.write(responsesSseEvent("response.output_text.done", {
       type: "response.output_text.done",
-      item_id: msgId, output_index: 0, content_index: 0, text: fullText,
+      item_id: msgId, output_index: messageOutputIndex, content_index: 0, text: fullText,
     }));
     res.write(responsesSseEvent("response.content_part.done", {
       type: "response.content_part.done",
-      item_id: msgId, output_index: 0, content_index: 0,
+      item_id: msgId, output_index: messageOutputIndex, content_index: 0,
       part: { type: "output_text", text: fullText, annotations: [] },
     }));
     const messageItem = { type: "message", id: msgId, status: "completed", role: "assistant", content: [{ type: "output_text", text: fullText, annotations: [] }] };
-    res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: 0, item: messageItem }));
+    res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: messageOutputIndex, item: messageItem }));
     output.push(messageItem);
   }
 
@@ -3095,25 +3087,25 @@ async function streamChatToResponses(
   }
 
   for (const call of pendingCalls.values()) {
-    const target = resolveTargetTool(call.name, namespaceMap);
-
-    if (!call.addedSent) {
+      const target = resolveTargetTool(call.name, namespaceMap);
+      const callOutputIndex = call.outputIndex;
+      if (!call.addedSent) {
       if (target.toolType === "custom") {
         res.write(responsesSseEvent("response.output_item.added", {
           type: "response.output_item.added",
-          output_index: call.outputIndex,
+          output_index: callOutputIndex,
           item: { type: "custom_tool_call", id: `ctc_${call.id}`, call_id: call.id, name: target.name, ...(target.namespace != null ? { namespace: target.namespace } : {}), input: "", status: "in_progress" },
         }));
       } else if (target.toolType === "local_shell") {
         res.write(responsesSseEvent("response.output_item.added", {
           type: "response.output_item.added",
-          output_index: call.outputIndex,
+          output_index: callOutputIndex,
           item: { type: "local_shell_call", id: `lsc_${call.id}`, call_id: call.id, status: "in_progress", action: { type: "exec", command: [] } },
         }));
       } else {
         res.write(responsesSseEvent("response.output_item.added", {
           type: "response.output_item.added",
-          output_index: call.outputIndex,
+          output_index: callOutputIndex,
           item: { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: target.name, ...(target.namespace != null ? { namespace: target.namespace } : {}), arguments: "", status: "in_progress" },
         }));
       }
@@ -3123,7 +3115,7 @@ async function streamChatToResponses(
       const finalInput = target.name === "exec" ? formatExecScript(call.arguments) : call.arguments;
       res.write(responsesSseEvent("response.custom_tool_call_input.done", {
         type: "response.custom_tool_call_input.done",
-        item_id: `ctc_${call.id}`, output_index: call.outputIndex, input: finalInput,
+        item_id: `ctc_${call.id}`, output_index: callOutputIndex, input: finalInput,
       }));
       const callItem = {
         type: "custom_tool_call",
@@ -3134,7 +3126,7 @@ async function streamChatToResponses(
         input: finalInput,
         status: "completed",
       };
-      res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: call.outputIndex, item: callItem }));
+      res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: callOutputIndex, item: callItem }));
       output.push(callItem);
     } else if (target.toolType === "local_shell") {
       const callItem = {
@@ -3147,15 +3139,15 @@ async function streamChatToResponses(
           command: parseLocalShellCommand(call.arguments, call.name),
         },
       };
-      res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: call.outputIndex, item: callItem }));
+      res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: callOutputIndex, item: callItem }));
       output.push(callItem);
     } else {
       res.write(responsesSseEvent("response.function_call_arguments.done", {
         type: "response.function_call_arguments.done",
-        item_id: `fc_${call.id}`, output_index: call.outputIndex, arguments: call.arguments,
+        item_id: `fc_${call.id}`, output_index: callOutputIndex, arguments: call.arguments,
       }));
       const callItem = { type: "function_call", id: `fc_${call.id}`, call_id: call.id, name: target.name, ...(target.namespace != null ? { namespace: target.namespace } : {}), arguments: call.arguments, status: "completed" };
-      res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: call.outputIndex, item: callItem }));
+      res.write(responsesSseEvent("response.output_item.done", { type: "response.output_item.done", output_index: callOutputIndex, item: callItem }));
       output.push(callItem);
     }
   }
