@@ -593,110 +593,185 @@ function TopupSection() {
             </div>
 
             {/* Token Packages View */}
-            {billingType === "token" && (
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">Pilih Kuota Token Pass (Masa Aktif 30 Hari)</p>
-                {tokenPackages.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground text-xs">
-                    Belum ada paket token aktif.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {tokenPackages.map((tp) => {
-                      const active = selectedTokenPackage?.id === tp.id;
-                      const isClaude = tp.category === "claude";
-                      const isClaimed = !!tp.isOncePerUser && claimedPackages.tokenPackageIds.includes(tp.id);
+            {billingType === "token" && (() => {
+              const claudePackages = tokenPackages.filter((tp) => tp.category === "claude");
+              const gptPackages = tokenPackages.filter((tp) => tp.category === "gpt");
+              const otherPackages = tokenPackages.filter((tp) => tp.category !== "claude" && tp.category !== "gpt");
 
-                      return (
-                        <button
-                          key={tp.id}
-                          type="button"
-                          disabled={isClaimed}
-                          onClick={() => {
-                            if (isClaimed) return;
-                            setSelectedTokenPackage(tp);
-                            setSelectedPackage(null);
-                            setIsCustom(false);
-                            setCustomRaw("");
-                            setError(null);
-                            if (userBalance >= tp.priceIdr) {
-                              setMethod("BALANCE");
-                            } else if (method === "BALANCE") {
-                              setMethod("SP");
-                            }
-                          }}
-                          className={cn(
-                            "relative flex flex-col text-left rounded-2xl p-4 transition-all border-2",
-                            isClaimed
-                              ? "opacity-60 cursor-not-allowed border-border bg-muted/40"
-                              : active 
-                                ? "border-primary bg-primary/5 shadow-sm" 
-                                : "border-border bg-background hover:bg-muted/40 hover:border-primary/30"
-                          )}
-                        >
-                          {tp.isHighlight && !isClaimed && (
-                            <div className="absolute -top-2.5 right-3 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                              🔥 FLASH SALE
+              const renderTokenCard = (tp: TokenPackage) => {
+                const active = selectedTokenPackage?.id === tp.id;
+                const isClaude = tp.category === "claude";
+                const isClaimed = !!tp.isOncePerUser && claimedPackages.tokenPackageIds.includes(tp.id);
+
+                return (
+                  <button
+                    key={tp.id}
+                    type="button"
+                    disabled={isClaimed}
+                    onClick={() => {
+                      if (isClaimed) return;
+                      setSelectedTokenPackage(tp);
+                      setSelectedPackage(null);
+                      setIsCustom(false);
+                      setCustomRaw("");
+                      setError(null);
+                      if (userBalance >= tp.priceIdr) {
+                        setMethod("BALANCE");
+                      } else if (method === "BALANCE") {
+                        setMethod("SP");
+                      }
+                    }}
+                    className={cn(
+                      "relative flex flex-col text-left rounded-2xl p-4 transition-all border-2",
+                      isClaimed
+                        ? "opacity-60 cursor-not-allowed border-border bg-muted/40"
+                        : active 
+                          ? "border-primary bg-primary/5 shadow-sm" 
+                          : "border-border bg-background hover:bg-muted/40 hover:border-primary/30"
+                    )}
+                  >
+                    {tp.isHighlight && !isClaimed && (
+                      <div className="absolute -top-2.5 right-3 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                        🔥 FLASH SALE
+                      </div>
+                    )}
+                    {isClaimed && (
+                      <div className="absolute -top-2.5 right-3 bg-zinc-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                        SUDAH DIKLAIM
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={cn(
+                        "text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border",
+                        isClaude 
+                          ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" 
+                          : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                      )}>
+                        {isClaude ? "Claude Pass" : "GPT Pass"}
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {tp.isOncePerUser && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30">
+                            1x per Akun
+                          </span>
+                        )}
+                        {tp.bonusLabel && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
+                            {tp.bonusLabel}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-sm font-extrabold text-foreground">{tp.name}</p>
+                    {tp.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{tp.description}</p>
+                    )}
+
+                    <div className="mt-3 pt-3 border-t border-border/60 flex items-end justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground font-medium">Kuota:</span>
+                          <span className="text-sm font-black text-foreground">
+                            {(tp.tokensAmount / 1_000_000).toFixed(1)}M Token
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 mt-1 text-[11px] font-semibold text-muted-foreground">
+                          <Clock className="h-3 w-3 text-primary/70 flex-shrink-0" />
+                          <span>Aktif {tp.durationDays || 30} Hari</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        {tp.originalPriceIdr && (
+                          <span className="text-[10px] text-muted-foreground line-through block opacity-70">
+                            {formatRp(tp.originalPriceIdr)}
+                          </span>
+                        )}
+                        <span className="text-sm font-extrabold text-primary">
+                          {formatRp(tp.priceIdr)}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              };
+
+              return (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-4">Pilih Kuota Token Pass</p>
+                  {tokenPackages.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground text-xs">
+                      Belum ada paket token aktif.
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Section Claude Pass */}
+                      {claudePackages.length > 0 && (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between pb-1 border-b border-border/40">
+                            <div className="flex items-center gap-2">
+                              <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+                              <h4 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                                Claude Pass
+                              </h4>
+                              <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                                • Akses semua model Claude
+                              </span>
                             </div>
-                          )}
-                          {isClaimed && (
-                            <div className="absolute -top-2.5 right-3 bg-zinc-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                              SUDAH DIKLAIM
-                            </div>
-                          )}
-                          <div className="flex items-center justify-between mb-2">
-                            <span className={cn(
-                              "text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border",
-                              isClaude 
-                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" 
-                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                            )}>
-                              {isClaude ? "Claude Pass" : "GPT Pass"}
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                              {claudePackages.length} Paket
                             </span>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {tp.isOncePerUser && (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30">
-                                  1x per Akun
-                                </span>
-                              )}
-                              {tp.bonusLabel && (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
-                                  {tp.bonusLabel}
-                                </span>
-                              )}
-                            </div>
                           </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {claudePackages.map(renderTokenCard)}
+                          </div>
+                        </div>
+                      )}
 
-                          <p className="text-sm font-extrabold text-foreground">{tp.name}</p>
-                          {tp.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{tp.description}</p>
-                          )}
-
-                          <div className="mt-3 pt-3 border-t border-border/60 flex items-baseline justify-between">
-                            <div>
-                              <span className="text-xs text-muted-foreground font-medium">Kuota: </span>
-                              <span className="text-sm font-black text-foreground">
-                                {(tp.tokensAmount / 1_000_000).toFixed(1)}M Token
+                      {/* Section GPT Pass */}
+                      {gptPackages.length > 0 && (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between pb-1 border-b border-border/40">
+                            <div className="flex items-center gap-2">
+                              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                              <h4 className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                                GPT Pass
+                              </h4>
+                              <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                                • Akses semua model GPT
                               </span>
                             </div>
-                            <div className="text-right">
-                              {tp.originalPriceIdr && (
-                                <span className="text-[10px] text-muted-foreground line-through block opacity-70">
-                                  {formatRp(tp.originalPriceIdr)}
-                                </span>
-                              )}
-                              <span className="text-sm font-extrabold text-primary">
-                                {formatRp(tp.priceIdr)}
-                              </span>
-                            </div>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+                              {gptPackages.length} Paket
+                            </span>
                           </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {gptPackages.map(renderTokenCard)}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Section Lainnya jika ada kategori lain */}
+                      {otherPackages.length > 0 && (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between pb-1 border-b border-border/40">
+                            <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                              Paket Lainnya
+                            </h4>
+                            <span className="text-[10px] font-bold text-muted-foreground">
+                              {otherPackages.length} Paket
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {otherPackages.map(renderTokenCard)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Credit Packages View */}
             {billingType === "credit" && packages.length > 0 && (
