@@ -24,6 +24,7 @@ interface CreditPackage {
   creditsAmount: number;
   bonusLabel: string | null;
   isHighlight: boolean;
+  isOncePerUser?: boolean;
   stock: number | null;
 }
 
@@ -38,6 +39,7 @@ interface TokenPackage {
   durationDays: number;
   bonusLabel: string | null;
   isHighlight: boolean;
+  isOncePerUser?: boolean;
 }
 
 function usePackages() {
@@ -60,6 +62,24 @@ function useTokenPackages() {
       .catch(() => undefined);
   }, []);
   return tokenPackages;
+}
+
+function useClaimedPackages() {
+  const [claimed, setClaimed] = useState<{ packageIds: number[]; tokenPackageIds: number[] }>({ packageIds: [], tokenPackageIds: [] });
+  useEffect(() => {
+    csrfFetch("/api/billing/user/claimed-packages", { credentials: "include" })
+      .then(r => r.ok ? r.json() : { packageIds: [], tokenPackageIds: [] })
+      .then(data => {
+        if (data && Array.isArray(data.packageIds)) {
+          setClaimed({
+            packageIds: data.packageIds,
+            tokenPackageIds: data.tokenPackageIds ?? [],
+          });
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+  return claimed;
 }
 
 function ActiveTokenPassesCard({ passes }: { passes: UserTokenPackage[] }) {
@@ -407,6 +427,7 @@ function TopupSection() {
   const { channels, loading: chLoading, error: chError } = usePaymentChannels();
   const packages = usePackages();
   const tokenPackages = useTokenPackages();
+  const claimedPackages = useClaimedPackages();
 
   const PRESETS = [5_000, 10_000, 20_000, 50_000, 100_000, 200_000];
 
@@ -584,11 +605,15 @@ function TopupSection() {
                     {tokenPackages.map((tp) => {
                       const active = selectedTokenPackage?.id === tp.id;
                       const isClaude = tp.category === "claude";
+                      const isClaimed = !!tp.isOncePerUser && claimedPackages.tokenPackageIds.includes(tp.id);
+
                       return (
                         <button
                           key={tp.id}
                           type="button"
+                          disabled={isClaimed}
                           onClick={() => {
+                            if (isClaimed) return;
                             setSelectedTokenPackage(tp);
                             setSelectedPackage(null);
                             setIsCustom(false);
@@ -602,14 +627,21 @@ function TopupSection() {
                           }}
                           className={cn(
                             "relative flex flex-col text-left rounded-2xl p-4 transition-all border-2",
-                            active 
-                              ? "border-primary bg-primary/5 shadow-sm" 
-                              : "border-border bg-background hover:bg-muted/40 hover:border-primary/30"
+                            isClaimed
+                              ? "opacity-60 cursor-not-allowed border-border bg-muted/40"
+                              : active 
+                                ? "border-primary bg-primary/5 shadow-sm" 
+                                : "border-border bg-background hover:bg-muted/40 hover:border-primary/30"
                           )}
                         >
-                          {tp.isHighlight && (
+                          {tp.isHighlight && !isClaimed && (
                             <div className="absolute -top-2.5 right-3 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
                               🔥 FLASH SALE
+                            </div>
+                          )}
+                          {isClaimed && (
+                            <div className="absolute -top-2.5 right-3 bg-zinc-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                              SUDAH DIKLAIM
                             </div>
                           )}
                           <div className="flex items-center justify-between mb-2">
@@ -621,11 +653,18 @@ function TopupSection() {
                             )}>
                               {isClaude ? "Claude Pass" : "GPT Pass"}
                             </span>
-                            {tp.bonusLabel && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
-                                {tp.bonusLabel}
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {tp.isOncePerUser && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30">
+                                  1x per Akun
+                                </span>
+                              )}
+                              {tp.bonusLabel && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400">
+                                  {tp.bonusLabel}
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           <p className="text-sm font-extrabold text-foreground">{tp.name}</p>
@@ -667,6 +706,9 @@ function TopupSection() {
                   {packages.map((pkg, i) => {
                     const active = !isCustom && selectedPackage?.id === pkg.id;
                     const isPopular = i === 1; // Highlight middle package
+                    const isClaimed = !!pkg.isOncePerUser && claimedPackages.packageIds.includes(pkg.id);
+                    const isOutOfStock = pkg.stock !== null && pkg.stock <= 0;
+                    const isDisabled = isClaimed || isOutOfStock;
                     const bonusPct = pkg.creditsAmount > pkg.priceIdr
                       ? Math.round(((pkg.creditsAmount - pkg.priceIdr) / pkg.priceIdr) * 100) : null;
                     const bonusText = pkg.bonusLabel ?? (bonusPct ? `+${bonusPct}%` : null);
@@ -674,25 +716,46 @@ function TopupSection() {
                     return (
                       <button
                         key={pkg.id}
-                        onClick={() => pickPackage(pkg)}
+                        disabled={isDisabled}
+                        onClick={() => {
+                          if (isDisabled) return;
+                          pickPackage(pkg);
+                        }}
                         className={cn(
                           "relative flex flex-col items-center justify-center text-center rounded-2xl p-4 transition-all border-2 flex-shrink-0 w-[200px] sm:w-auto snap-center",
-                          active 
-                            ? "border-primary bg-primary/5 shadow-sm" 
-                            : isPopular 
-                              ? "border-orange-500/30 hover:border-orange-500/50 hover:bg-orange-500/5" 
-                              : "border-border bg-background hover:bg-muted"
+                          isDisabled
+                            ? "opacity-60 cursor-not-allowed border-border bg-muted/40"
+                            : active 
+                              ? "border-primary bg-primary/5 shadow-sm" 
+                              : isPopular 
+                                ? "border-orange-500/30 hover:border-orange-500/50 hover:bg-orange-500/5" 
+                                : "border-border bg-background hover:bg-muted"
                         )}
                       >
-                        {pkg.isHighlight && !active && (
+                        {pkg.isHighlight && !active && !isDisabled && (
                           <div className="absolute -top-3 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10 animate-pulse">
                             🔥 FLASH SALE
                           </div>
                         )}
-                        {!pkg.isHighlight && isPopular && !active && (
+                        {!pkg.isHighlight && isPopular && !active && !isDisabled && (
                           <div className="absolute -top-3 bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10">
                             POPULER
                           </div>
+                        )}
+                        {isClaimed && (
+                          <div className="absolute -top-3 bg-zinc-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10">
+                            SUDAH DIKLAIM
+                          </div>
+                        )}
+                        {isOutOfStock && !isClaimed && (
+                          <div className="absolute -top-3 bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10">
+                            STOK HABIS
+                          </div>
+                        )}
+                        {pkg.isOncePerUser && (
+                          <span className="mb-1 rounded-full px-2 py-0.5 text-[9px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30">
+                            1x per Akun
+                          </span>
                         )}
                         {bonusText && (
                           <span className="mb-2 rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
@@ -716,8 +779,11 @@ function TopupSection() {
                             : `${pkg.creditsAmount} cr`}
                         </span>
                         {pkg.stock !== null && (
-                          <span className="text-[10px] font-bold text-red-500 mt-2 bg-red-500/10 px-1.5 py-0.5 rounded">
-                            Sisa {pkg.stock}
+                          <span className={cn(
+                            "text-[10px] font-bold mt-2 px-1.5 py-0.5 rounded",
+                            pkg.stock <= 0 ? "text-red-600 bg-red-500/10 font-bold" : "text-amber-600 bg-amber-500/10"
+                          )}>
+                            {pkg.stock <= 0 ? "Stok Habis" : `Sisa ${pkg.stock}`}
                           </span>
                         )}
                         

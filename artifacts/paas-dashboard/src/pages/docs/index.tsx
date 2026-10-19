@@ -551,9 +551,8 @@ console.log(message.content[0].type === "text" ? message.content[0].text : "");`
                 lang="toml"
                 filename="config.toml"
                 code={`model_provider = "OpenAI"
-model = "gpt-5.5"
-review_model = "gpt-5.5"
-model_reasoning_effort = "xhigh"
+model = "gpt-4o"
+review_model = "gpt-4o"
 disable_response_storage = true
 network_access = "enabled"
 windows_wsl_setup_acknowledged = true
@@ -561,7 +560,6 @@ windows_wsl_setup_acknowledged = true
 [model_providers.OpenAI]
 name = "OpenAI"
 base_url = "${base}"
-api_key = "${displayKey}"
 wire_api = "responses"
 requires_openai_auth = true
 
@@ -569,8 +567,32 @@ requires_openai_auth = true
 goals = true`}
               />
               <p className="text-xs text-foreground/50 -mt-2 mb-1">
-                Mau ganti model? Cukup ubah nilai <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">model</code> dan <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">review_model</code> di atas ke ID model lain dari tabel <span className="underline underline-offset-2 cursor-pointer" onClick={() => setActiveTab("quickstart")}>Quick Start</span> — tidak perlu ubah bagian lain.
+                Mau ganti model? Cukup ubah nilai <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">model</code> dan <code className="font-mono bg-background border border-border rounded px-1 py-0.5 text-foreground/90">review_model</code> di atas ke ID model lain dari tabel <span className="underline underline-offset-2 cursor-pointer" onClick={() => setActiveTab("quickstart")}>Quick Start</span> (misal: <code className="font-mono">o3-mini</code>, <code className="font-mono">claude-3-5-sonnet</code>).
               </p>
+
+              <H3>4. Masukkan API Key (auth.json)</H3>
+              <p className="text-foreground/60 text-xs mb-1">
+                Codex menyimpan autentikasi di file <code className="font-mono">auth.json</code> di dalam folder <code className="font-mono">.codex</code>.
+              </p>
+              <p className="text-foreground/60 text-xs mb-1">
+                macOS / Linux: <code className="font-mono">~/.codex/auth.json</code> &nbsp;·&nbsp; Windows: <code className="font-mono">%USERPROFILE%\.codex\auth.json</code>
+              </p>
+              <CodeBlock
+                lang="json"
+                filename="auth.json"
+                code={`{
+  "OPENAI_API_KEY": "${displayKey}"
+}`}
+              />
+              <p className="text-xs text-foreground/50 -mt-2 mb-1">
+                Atau kamu juga bisa mengaturnya langsung via Environment Variable sebelum menjalankan Codex:
+              </p>
+              <OsTabs
+                linux={`export OPENAI_API_KEY="${displayKey}"`}
+                powershell={`$env:OPENAI_API_KEY="${displayKey}"`}
+                cmd={`set OPENAI_API_KEY=${displayKey}`}
+              />
+
               <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-xs text-foreground/70 mb-4 flex items-start gap-2">
                 <span className="mt-0.5">⚠️</span>
                 <span>
@@ -578,7 +600,7 @@ goals = true`}
                 </span>
               </div>
 
-              <H3>4. Jalankan Codex</H3>
+              <H3>5. Jalankan Codex</H3>
               <CodeBlock lang="bash" code={`codex\n# Atau langsung dengan prompt:\ncodex "Buat REST API dengan Express dan TypeScript"`} />
             </div>
           )}

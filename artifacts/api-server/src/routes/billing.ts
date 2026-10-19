@@ -78,6 +78,24 @@ export async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: s
         .limit(1);
 
       if (tokenPkg) {
+        if (tokenPkg.isOncePerUser) {
+          const [{ priorPaid }] = await tx
+            .select({ priorPaid: count() })
+            .from(paymentOrdersTable)
+            .where(
+              and(
+                eq(paymentOrdersTable.userId, claimed.userId),
+                eq(paymentOrdersTable.tokenPackageId, tokenPkg.id),
+                eq(paymentOrdersTable.status, "paid"),
+                ne(paymentOrdersTable.id, claimed.id),
+              )
+            );
+          if (Number(priorPaid) > 0) {
+            logger.warn({ userId: claimed.userId, orderId: claimed.id }, "User already purchased this 1x token package");
+            return { processed: false, userId: claimed.userId, orderId: claimed.id, creditsAmount: 0 };
+          }
+        }
+
         const durationDays = tokenPkg.durationDays || 30;
         const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
 
@@ -167,9 +185,33 @@ export async function creditPaidOrderOnce(order: PaymentOrderRow, paymentName: s
       }
 
       if (claimed.packageId) {
+        const [credPkg] = await tx
+          .select()
+          .from(creditPackagesTable)
+          .where(eq(creditPackagesTable.id, claimed.packageId))
+          .limit(1);
+
+        if (credPkg?.isOncePerUser) {
+          const [{ priorPaid }] = await tx
+            .select({ priorPaid: count() })
+            .from(paymentOrdersTable)
+            .where(
+              and(
+                eq(paymentOrdersTable.userId, claimed.userId),
+                eq(paymentOrdersTable.packageId, credPkg.id),
+                eq(paymentOrdersTable.status, "paid"),
+                ne(paymentOrdersTable.id, claimed.id),
+              )
+            );
+          if (Number(priorPaid) > 0) {
+            logger.warn({ userId: claimed.userId, orderId: claimed.id }, "User already purchased this 1x credit package");
+            return { processed: false, userId: claimed.userId, orderId: claimed.id, creditsAmount: 0 };
+          }
+        }
+
         await tx
           .update(creditPackagesTable)
-          .set({ stock: sql`${creditPackagesTable.stock} - 1` })
+          .set({ stock: sql`GREATEST(0, ${creditPackagesTable.stock} - 1)` })
           .where(and(eq(creditPackagesTable.id, claimed.packageId), isNotNull(creditPackagesTable.stock)));
       }
     }
@@ -480,6 +522,7 @@ router.post("/billing/duitku/create", requireAuth, async (req, res): Promise<voi
     return;
   }
   const { packageId, tokenPackageId, method } = parsed.data;
+  const user = (req as any).user;
 
   // Resolve amount + creditsAmount dari paket token, paket kredit, atau custom
   let amount: number;
@@ -491,6 +534,22 @@ router.post("/billing/duitku/create", requireAuth, async (req, res): Promise<voi
     if (!tokenPkg || !tokenPkg.isActive) {
       res.status(400).json({ error: "Paket token tidak tersedia" });
       return;
+    }
+    if (tokenPkg.isOncePerUser) {
+      const [prior] = await db
+        .select({ count: count() })
+        .from(paymentOrdersTable)
+        .where(
+          and(
+            eq(paymentOrdersTable.userId, user.id),
+            eq(paymentOrdersTable.tokenPackageId, tokenPackageId),
+            eq(paymentOrdersTable.status, "paid"),
+          )
+        );
+      if (Number(prior?.count ?? 0) > 0) {
+        res.status(400).json({ error: "Paket token starter ini hanya dapat dibeli 1 kali per akun" });
+        return;
+      }
     }
     amount = tokenPkg.priceIdr;
     creditsAmount = 0;
@@ -505,6 +564,22 @@ router.post("/billing/duitku/create", requireAuth, async (req, res): Promise<voi
       res.status(400).json({ error: "Stok paket habis" });
       return;
     }
+    if (pkg.isOncePerUser) {
+      const [prior] = await db
+        .select({ count: count() })
+        .from(paymentOrdersTable)
+        .where(
+          and(
+            eq(paymentOrdersTable.userId, user.id),
+            eq(paymentOrdersTable.packageId, packageId),
+            eq(paymentOrdersTable.status, "paid"),
+          )
+        );
+      if (Number(prior?.count ?? 0) > 0) {
+        res.status(400).json({ error: "Paket starter ini hanya dapat dibeli 1 kali per akun" });
+        return;
+      }
+    }
     amount = pkg.priceIdr;
     creditsAmount = pkg.creditsAmount;
     itemName = `${pkg.name} — ${pkg.creditsAmount.toLocaleString("id-ID")} Kredit Mution`;
@@ -514,7 +589,6 @@ router.post("/billing/duitku/create", requireAuth, async (req, res): Promise<voi
     itemName = `Topup Kredit Mution — ${amount.toLocaleString("id-ID")} Kredit`;
   }
 
-  const user = (req as any).user;
   const invoiceNumber = `MUTION-${Date.now()}-${user.id}`;
 
   const [order] = await db
@@ -704,6 +778,8 @@ router.post("/billing/manual-qris/create", requireAuth, async (req, res): Promis
   let baseAmount: number;
   let creditsAmount: number;
 
+  const user = (req as any).user;
+
   if (packageId != null) {
     const [pkg] = await db.select().from(creditPackagesTable).where(eq(creditPackagesTable.id, packageId));
     if (!pkg || !pkg.isActive) {
@@ -713,6 +789,22 @@ router.post("/billing/manual-qris/create", requireAuth, async (req, res): Promis
     if (pkg.stock !== null && pkg.stock <= 0) {
       res.status(400).json({ error: "Stok paket habis" });
       return;
+    }
+    if (pkg.isOncePerUser) {
+      const [prior] = await db
+        .select({ count: count() })
+        .from(paymentOrdersTable)
+        .where(
+          and(
+            eq(paymentOrdersTable.userId, user.id),
+            eq(paymentOrdersTable.packageId, packageId),
+            eq(paymentOrdersTable.status, "paid"),
+          )
+        );
+      if (Number(prior?.count ?? 0) > 0) {
+        res.status(400).json({ error: "Paket starter ini hanya dapat dibeli 1 kali per akun" });
+        return;
+      }
     }
     baseAmount = pkg.priceIdr;
     creditsAmount = pkg.creditsAmount;
@@ -727,7 +819,6 @@ router.post("/billing/manual-qris/create", requireAuth, async (req, res): Promis
   const uniqueCode = Math.floor(Math.random() * maxCode) + 1;
   const amount = baseAmount + uniqueCode;
 
-  const user = (req as any).user;
   const invoiceNumber = `MUTION-M-${Date.now()}-${user.id}`;
 
   const baseStaticQris = process.env.MANUAL_QRIS_STRING;
@@ -791,6 +882,27 @@ router.get("/billing/user/token-packages", requireAuth, async (req, res): Promis
   res.json(activePackages);
 });
 
+router.get("/billing/user/claimed-packages", requireAuth, async (req, res): Promise<void> => {
+  const user = (req as any).user;
+  const orders = await db
+    .select({
+      packageId: paymentOrdersTable.packageId,
+      tokenPackageId: paymentOrdersTable.tokenPackageId,
+    })
+    .from(paymentOrdersTable)
+    .where(
+      and(
+        eq(paymentOrdersTable.userId, user.id),
+        eq(paymentOrdersTable.status, "paid"),
+      )
+    );
+
+  const packageIds = Array.from(new Set(orders.map((o) => o.packageId).filter((id): id is number => id != null)));
+  const tokenPackageIds = Array.from(new Set(orders.map((o) => o.tokenPackageId).filter((id): id is number => id != null)));
+
+  res.json({ packageIds, tokenPackageIds });
+});
+
 router.post("/billing/token-packages/purchase-with-balance", requireAuth, async (req, res): Promise<void> => {
   const user = (req as any).user;
   const { tokenPackageId } = req.body ?? {};
@@ -809,6 +921,23 @@ router.post("/billing/token-packages/purchase-with-balance", requireAuth, async 
   if (!pkg || !pkg.isActive) {
     res.status(400).json({ error: "Paket token tidak tersedia atau sudah dinonaktifkan" });
     return;
+  }
+
+  if (pkg.isOncePerUser) {
+    const [prior] = await db
+      .select({ count: count() })
+      .from(paymentOrdersTable)
+      .where(
+        and(
+          eq(paymentOrdersTable.userId, user.id),
+          eq(paymentOrdersTable.tokenPackageId, tokenPackageId),
+          eq(paymentOrdersTable.status, "paid"),
+        )
+      );
+    if (Number(prior?.count ?? 0) > 0) {
+      res.status(400).json({ error: "Paket token starter ini hanya dapat dibeli 1 kali per akun" });
+      return;
+    }
   }
 
   try {

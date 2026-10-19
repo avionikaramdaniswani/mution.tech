@@ -33,6 +33,7 @@ export type PublicTokenPackage = {
   durationDays: number;
   bonusLabel?: string | null;
   isHighlight: boolean;
+  isOncePerUser?: boolean;
   sortOrder: number;
 };
 
@@ -631,11 +632,18 @@ export default function HargaPage() {
                                   {isClaude ? "Claude Pass" : "GPT Pass"}
                                 </span>
 
-                                {pkg.bonusLabel && (
-                                  <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
-                                    {pkg.bonusLabel}
-                                  </span>
-                                )}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {pkg.isOncePerUser && (
+                                    <span className="rounded bg-purple-50 border border-purple-200 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+                                      1x per Akun
+                                    </span>
+                                  )}
+                                  {pkg.bonusLabel && (
+                                    <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                                      {pkg.bonusLabel}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
                               <h4 className="mt-3 text-lg font-extrabold text-[#172033]">{pkg.name}</h4>

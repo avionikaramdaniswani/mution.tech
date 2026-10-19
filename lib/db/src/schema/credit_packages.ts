@@ -16,6 +16,7 @@ export const creditPackagesTable = pgTable("credit_packages", {
   isHighlight: boolean("is_highlight").notNull().default(false),
   /** Stok paket. Jika null berarti stok tidak terbatas */
   stock: integer("stock"),
+  isOncePerUser: boolean("is_once_per_user").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),

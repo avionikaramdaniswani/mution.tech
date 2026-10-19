@@ -1130,6 +1130,7 @@ const PackageBody = _z.object({
   creditsAmount: _z.number().int().min(1),
   bonusLabel: _z.string().trim().max(40).nullish(),
   isHighlight: _z.boolean().optional(),
+  isOncePerUser: _z.boolean().optional(),
   stock: _z.number().int().min(0).nullish(),
   isActive: _z.boolean().optional(),
   sortOrder: _z.number().int().optional(),
@@ -1186,6 +1187,7 @@ const TokenPackageAdminBody = _z.object({
   durationDays: _z.number().int().min(1).default(30),
   bonusLabel: _z.string().trim().max(40).nullish(),
   isHighlight: _z.boolean().optional(),
+  isOncePerUser: _z.boolean().optional(),
   isActive: _z.boolean().optional(),
   sortOrder: _z.number().int().optional(),
 });

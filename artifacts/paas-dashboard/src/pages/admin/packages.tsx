@@ -20,6 +20,7 @@ interface CreditPackage {
   bonusLabel: string | null;
   originalPriceIdr: number | null;
   isHighlight: boolean;
+  isOncePerUser: boolean;
   stock: number | null;
   isActive: boolean;
   sortOrder: number;
@@ -36,6 +37,7 @@ interface TokenPackage {
   durationDays: number;
   bonusLabel: string | null;
   isHighlight: boolean;
+  isOncePerUser: boolean;
   isActive: boolean;
   sortOrder: number;
 }
@@ -57,6 +59,7 @@ const EMPTY_CREDIT: Omit<CreditPackage, "id" | "isActive"> = {
   bonusLabel: "",
   originalPriceIdr: null,
   isHighlight: false,
+  isOncePerUser: false,
   stock: null,
   sortOrder: 0,
 };
@@ -71,6 +74,7 @@ const EMPTY_TOKEN: Omit<TokenPackage, "id" | "isActive"> = {
   durationDays: 30,
   bonusLabel: "",
   isHighlight: false,
+  isOncePerUser: false,
   sortOrder: 0,
 };
 
@@ -114,7 +118,8 @@ function PackageFormDialog({
         bonusLabel: form.bonusLabel?.trim() || null,
         originalPriceIdr: form.originalPriceIdr || null,
         isHighlight: !!form.isHighlight,
-        stock: form.stock || null,
+        isOncePerUser: !!form.isOncePerUser,
+        stock: typeof form.stock === "number" && !Number.isNaN(form.stock) ? form.stock : null,
         sortOrder: form.sortOrder,
       });
       onClose();
@@ -187,7 +192,7 @@ function PackageFormDialog({
               <input type="number" className={inputCls} min={0}
                 placeholder="Kosong = tanpa batas"
                 value={form.stock ?? ""}
-                onChange={e => set("stock", e.target.value ? Number.parseInt(e.target.value, 10) : null)} />
+                onChange={e => set("stock", e.target.value === "" ? null : Math.max(0, Number.parseInt(e.target.value, 10) || 0))} />
             </div>
             <div>
               <label className={labelCls}>Urutan Tampil</label>
@@ -202,6 +207,15 @@ function PackageFormDialog({
               className="h-4 w-4 rounded border-[#dbe8f3] text-[#f97316] focus:ring-[#f97316]" />
             <label htmlFor="highlight" className="text-sm text-[#172033] font-medium cursor-pointer">
               Highlight Flash Sale (border merah & badge animasi)
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input type="checkbox" id="creditOncePerUser" checked={form.isOncePerUser}
+              onChange={e => set("isOncePerUser", e.target.checked)}
+              className="h-4 w-4 rounded border-[#dbe8f3] text-[#f97316] focus:ring-[#f97316]" />
+            <label htmlFor="creditOncePerUser" className="text-sm text-[#172033] font-medium cursor-pointer">
+              Batasi 1x Pembelian per Akun (Starter Pack)
             </label>
           </div>
 
@@ -259,6 +273,7 @@ function TokenPackageFormDialog({
         durationDays: form.durationDays || 30,
         bonusLabel: form.bonusLabel?.trim() || null,
         isHighlight: !!form.isHighlight,
+        isOncePerUser: !!form.isOncePerUser,
         sortOrder: form.sortOrder,
       });
       onClose();
@@ -355,6 +370,15 @@ function TokenPackageFormDialog({
               className="h-4 w-4 rounded border-[#dbe8f3] text-[#f97316] focus:ring-[#f97316]" />
             <label htmlFor="tokenHighlight" className="text-sm text-[#172033] font-medium cursor-pointer">
               Highlight Flash Sale (border merah & badge animasi)
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input type="checkbox" id="tokenOncePerUser" checked={form.isOncePerUser}
+              onChange={e => set("isOncePerUser", e.target.checked)}
+              className="h-4 w-4 rounded border-[#dbe8f3] text-[#f97316] focus:ring-[#f97316]" />
+            <label htmlFor="tokenOncePerUser" className="text-sm text-[#172033] font-medium cursor-pointer">
+              Batasi 1x Pembelian per Akun (Starter Pack)
             </label>
           </div>
 
@@ -623,9 +647,19 @@ export default function AdminPackages() {
                                 Flash Sale
                               </span>
                             )}
+                            {pkg.isOncePerUser && (
+                              <span className="rounded-full bg-purple-50 border border-purple-200 px-2 py-0.5 text-[11px] font-semibold text-purple-700">
+                                1x per Akun
+                              </span>
+                            )}
                             {pkg.stock !== null && (
-                              <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-                                Sisa {pkg.stock}
+                              <span className={cn(
+                                "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                                pkg.stock <= 0 
+                                  ? "bg-red-50 border-red-200 text-red-700 font-bold" 
+                                  : "bg-amber-50 border-amber-200 text-amber-700"
+                              )}>
+                                {pkg.stock <= 0 ? "Habis (0)" : `Sisa ${pkg.stock}`}
                               </span>
                             )}
                           </div>
@@ -740,6 +774,11 @@ export default function AdminPackages() {
                           {pkg.isHighlight && (
                             <span className="rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] font-semibold text-red-600">
                               Flash Sale
+                            </span>
+                          )}
+                          {pkg.isOncePerUser && (
+                            <span className="rounded-full bg-purple-50 border border-purple-200 px-2 py-0.5 text-[11px] font-semibold text-purple-700">
+                              1x per Akun
                             </span>
                           )}
                           {pkg.bonusLabel && (

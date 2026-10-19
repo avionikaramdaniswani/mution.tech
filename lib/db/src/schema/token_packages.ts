@@ -12,6 +12,7 @@ export const tokenPackagesTable = pgTable("token_packages", {
   durationDays: integer("duration_days").notNull().default(30),
   bonusLabel: text("bonus_label"),
   isHighlight: boolean("is_highlight").notNull().default(false),
+  isOncePerUser: boolean("is_once_per_user").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
