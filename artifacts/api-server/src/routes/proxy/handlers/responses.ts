@@ -169,6 +169,33 @@ export function flattenResponsesTools(tools: any[]): { chatTools: any[]; namespa
   return { chatTools, namespaceMap };
 }
 
+/**
+ * Extract a plain-text string from a tool output value.
+ * Handles strings, arrays of output items, and objects with text/stdout/stderr.
+ * Falls back to JSON.stringify for unknown shapes.
+ */
+function extractToolOutputText(output: any): string {
+  if (typeof output === "string") return output;
+  if (output == null) return "[no output]";
+  if (Array.isArray(output)) {
+    return output
+      .map((o: any) => {
+        if (typeof o === "string") return o;
+        if (o && (o.type === "text" || o.type === "output_text")) return o.text ?? "";
+        if (o && (o.stdout || o.stderr)) return [o.stdout, o.stderr].filter(Boolean).join("\n");
+        return JSON.stringify(o);
+      })
+      .join("\n");
+  }
+  if (typeof output === "object") {
+    if ("text" in output) return String(output.text);
+    if ("stdout" in output || "stderr" in output) {
+      return [output.stdout, output.stderr].filter(Boolean).join("\n") || `[exit code: ${output.exit_code ?? 0}]`;
+    }
+  }
+  return JSON.stringify(output);
+}
+
 export function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMap: NamespaceMap } {
   const messages: any[] = [];
 
@@ -248,7 +275,7 @@ export function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMa
         messages.push({
           role: "tool",
           tool_call_id: item.call_id,
-          content: typeof item.output === "string" ? item.output : JSON.stringify(item.output ?? ""),
+          content: extractToolOutputText(item.output),
         });
         continue;
       }
@@ -274,7 +301,7 @@ export function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMa
         messages.push({
           role: "tool",
           tool_call_id: item.call_id ?? item.id,
-          content: typeof item.output === "string" ? item.output : JSON.stringify(item.output ?? ""),
+          content: extractToolOutputText(item.output),
         });
         continue;
       }
@@ -290,6 +317,26 @@ export function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMa
         }
       }
       messages.push({ role: item.role ?? "user", content: content ?? "" });
+    }
+  }
+
+  // Post-process: merge consecutive assistant tool-call-only messages
+  // Chat Completions API requires all tool_calls from the same turn in one message
+  const mergedMessages: any[] = [];
+  for (const msg of messages) {
+    const prev = mergedMessages.length > 0 ? mergedMessages[mergedMessages.length - 1] : null;
+    if (
+      prev &&
+      prev.role === "assistant" &&
+      msg.role === "assistant" &&
+      prev.content === null &&
+      msg.content === null &&
+      Array.isArray(prev.tool_calls) &&
+      Array.isArray(msg.tool_calls)
+    ) {
+      prev.tool_calls.push(...msg.tool_calls);
+    } else {
+      mergedMessages.push(msg);
     }
   }
 
@@ -315,7 +362,7 @@ export function responsesBodyToChatBody(body: any): { chatBody: any; namespaceMa
 
   const chatBody = {
     model: body.model,
-    messages,
+    messages: mergedMessages,
     stream: true,
     ...(chatTools.length > 0 ? { tools: chatTools } : {}),
     ...(body.tool_choice != null ? { tool_choice: responsesToolChoiceToChat(body.tool_choice) } : {}),
