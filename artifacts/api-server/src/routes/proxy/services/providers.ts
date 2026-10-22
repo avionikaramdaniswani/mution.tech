@@ -29,14 +29,10 @@ let _cachedProviders: Provider[] = [];
 export const _upstreamHealth = new Map<string, UpstreamHealth>();
 
 export function buildOpenaiBase(rawUrl: string): string {
-  const url = rawUrl.replace(/\/$/, "");
-  if (url.endsWith("/v1")) return url;
-  try {
-    const parsed = new URL(url);
-    if (parsed.pathname === "/" || parsed.pathname === "") {
-      return `${url}/v1`;
-    }
-  } catch { }
+  let url = rawUrl.replace(/\/$/, "");
+  if (!url.endsWith("/v1") && !url.match(/\/v\d/)) {
+    url += "/v1";
+  }
   return url;
 }
 
@@ -665,6 +661,54 @@ export async function adminDeleteModelPricingOverride(modelId: string) {
   _modelPricingOverrides.delete(modelId);
 }
 
+let _healthCheckInterval: NodeJS.Timeout | null = null;
+let _isCheckingHealth = false;
+
+export async function checkUpstreamHealthNow(): Promise<void> {
+  if (_isCheckingHealth) return;
+  _isCheckingHealth = true;
+  try {
+    await refreshProviderSettingsForProxy();
+    let providers: Provider[];
+    try { providers = getProviders(); } catch { return; }
+
+    const seenProviderIds = new Set<string>();
+    for (const p of providers) {
+      if (_disabledProviders.has(p.id)) continue;
+      if (seenProviderIds.has(p.id)) continue;
+      seenProviderIds.add(p.id);
+
+      const start = Date.now();
+      try {
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${p.apiKey}`,
+        };
+        if (p.type === "conduit" || p.openaiBase.includes("conduit")) {
+          headers["x-api-key"] = p.apiKey;
+          headers["anthropic-version"] = "2023-06-01";
+        }
+
+        const res = await fetch(`${p.openaiBase}/models`, {
+          headers,
+          signal: AbortSignal.timeout(10000),
+        });
+        const latencyMs = Math.max(1, Date.now() - start);
+        if (res.ok || res.status === 404 || res.status === 405) {
+          _upstreamHealth.set(p.id, { status: "Online", latencyMs, lastChecked: Date.now() });
+        } else {
+          logger.warn({ providerId: p.id, status: res.status }, "Provider health check returned non-200");
+          _upstreamHealth.set(p.id, { status: "Offline", latencyMs, lastChecked: Date.now() });
+        }
+      } catch (err: any) {
+        logger.warn({ providerId: p.id, err: err?.message }, "Provider health check failed");
+        _upstreamHealth.set(p.id, { status: "Offline", latencyMs: Math.max(1, Date.now() - start), lastChecked: Date.now() });
+      }
+    }
+  } finally {
+    _isCheckingHealth = false;
+  }
+}
+
 export async function getUpstreamHealth() {
   await refreshProviderSettingsForProxy();
   let providers: Provider[];
@@ -673,12 +717,18 @@ export async function getUpstreamHealth() {
   const active = providers.filter((p) => !_disabledProviders.has(p.id));
   if (active.length === 0) return { status: "Offline" as const, latencyMs: 0, lastChecked: 0 };
 
+  // If health check has not run yet or has no data, run an immediate check
+  if (_upstreamHealth.size === 0) {
+    await checkUpstreamHealthNow();
+  }
+
+  const uniqueActiveIds = Array.from(new Set(active.map((p) => p.id)));
   let totalLatency = 0;
   let onlineCount = 0;
   let newestCheck = 0;
 
-  for (const p of active) {
-    const h = _upstreamHealth.get(p.id);
+  for (const providerId of uniqueActiveIds) {
+    const h = _upstreamHealth.get(providerId);
     if (h) {
       if (h.status === "Online") {
         onlineCount++;
@@ -691,38 +741,16 @@ export async function getUpstreamHealth() {
   if (onlineCount === 0) return { status: "Offline" as const, latencyMs: 0, lastChecked: newestCheck || Date.now() };
 
   const avgLatency = Math.round(totalLatency / onlineCount);
-  const status = onlineCount < active.length ? ("Degraded" as const) : ("Online" as const);
+  const status = onlineCount < uniqueActiveIds.length ? ("Degraded" as const) : ("Online" as const);
   return { status, latencyMs: avgLatency, lastChecked: newestCheck };
 }
 
 export function startUpstreamHealthCheck() {
-  const runCheck = async () => {
-    await refreshProviderSettingsForProxy();
-    let providers: Provider[];
-    try { providers = getProviders(); } catch { return; }
-
-    for (const p of providers) {
-      if (_disabledProviders.has(p.id)) continue;
-      const start = Date.now();
-      try {
-        const res = await fetch(`${p.openaiBase}/models`, {
-          headers: { Authorization: `Bearer ${p.apiKey}` },
-          signal: AbortSignal.timeout(10000),
-        });
-        const latencyMs = Date.now() - start;
-        if (res.ok) {
-          _upstreamHealth.set(p.id, { status: "Online", latencyMs, lastChecked: Date.now() });
-        } else {
-          _upstreamHealth.set(p.id, { status: "Offline", latencyMs, lastChecked: Date.now() });
-        }
-      } catch (err) {
-        _upstreamHealth.set(p.id, { status: "Offline", latencyMs: Date.now() - start, lastChecked: Date.now() });
-      }
-    }
-  };
-
-  runCheck();
-  setInterval(runCheck, 3 * 60 * 1000);
+  if (_healthCheckInterval) clearInterval(_healthCheckInterval);
+  checkUpstreamHealthNow().catch((err) => logger.error({ err }, "Initial upstream health check failed"));
+  _healthCheckInterval = setInterval(() => {
+    checkUpstreamHealthNow().catch((err) => logger.error({ err }, "Periodic upstream health check failed"));
+  }, 3 * 60 * 1000);
 }
 
 export async function seedProvidersFromEnv(): Promise<void> {
